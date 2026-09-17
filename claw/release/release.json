@@ -1,0 +1,62 @@
+{
+  "_": [
+    "Состав выпуска семейства CLAW: что уходит наружу, из каких папок и с каким описанием.",
+    "Читается скриптом scripts\\release.py. Версия здесь не хранится - она одна на семейство",
+    "и берётся из recipes\\build.json, чтобы не разъезжаться."
+  ],
+  "family": "CLAW",
+  "mods": [
+    {
+      "id": "base",
+      "mod": "CLAW - Configurable Lycanthrope Anatomy and Weight",
+      "archive": "CLAW",
+      "description": "CLAW",
+      "adult": false,
+      "_": "Основа семейства: тела, скелет, морфы без взрослых ползунков, плагин."
+    },
+    {
+      "id": "adult",
+      "mod": "CLAW - Anatomy",
+      "archive": "CLAW - Anatomy",
+      "description": "CLAW-Anatomy",
+      "adult": true,
+      "nexusAdultRating": "Sexualised",
+      "_": [
+        "Взрослая надстройка: только файлы морфов. На Nexus помечается Sexualised,",
+        "а не Pornographic - по их определению это partial nudity без иных отсылок."
+      ]
+    }
+  ],
+  "skip": [
+    "meta.ini"
+  ],
+  "_skip": [
+    "meta.ini не кладётся в архив: его заводит MO2 при установке, а наше описание едет",
+    "спутником .meta рядом с архивом и текстом на страницу мода."
+  ],
+  "requires": [
+    {
+      "name": "Elegant Werewolf Replacer",
+      "nexus": 93336,
+      "why": "донор геометрии и ВСЕ текстуры: без него зверь выходит нетекстурированным"
+    },
+    {
+      "name": "XP32 Maximum Skeleton Special Extended",
+      "nexus": 1988,
+      "why": "донор скелета; наш мод перекрывает skeleton.nif и обязан стоять НИЖЕ него"
+    },
+    {
+      "name": "RaceMenu",
+      "nexus": 19080,
+      "why": "NiOverride BodyMorph - тот механизм, которым игра применяет именованные морфы"
+    }
+  ],
+  "docs": {
+    "en": "README.md",
+    "ru": "README.ru.md"
+  },
+  "_docs": [
+    "Описание каждого мода кладётся ВНУТРЬ его архива двумя файлами и оно же идёт текстом",
+    "на страницу мода. Источник один - release\\<description>.en.md и .ru.md."
+  ]
+}
