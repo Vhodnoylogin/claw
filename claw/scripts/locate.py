@@ -15,23 +15,41 @@ from __future__ import annotations
 
 from pathlib import Path
 
-#: По этому файлу опознаётся корень проекта.
+#: Метки корня. Первая — прежняя раскладка, когда `tools\\` лежал прямо в корне проекта.
+#: Вторая — нынешняя: всё версионируемое уехало в рабочую копию `wt-claude-projects\\`,
+#: и модуль путей лежит в её общей части. Проверяются обе, потому что модуль обязан
+#: собираться и там, где раскладка ещё прежняя.
 MARKER = Path("tools") / "paths.py"
+WORKTREE = Path("wt-claude-projects")
+MARKER_WT = WORKTREE / "admin" / "tools" / "paths.py"
 
 
 def project_root(start: Path | str | None = None) -> Path:
-    """Ближайшая папка вверх по дереву, в которой лежит `tools\\paths.py`."""
+    """Ближайшая папка вверх по дереву, в которой лежит модуль путей проекта."""
     here = Path(start or __file__).resolve()
     for candidate in (here, *here.parents):
-        if (candidate / MARKER).is_file():
+        if (candidate / MARKER).is_file() or (candidate / MARKER_WT).is_file():
             return candidate
-    raise SystemExit(
-        "не найден корень проекта: вверх от %s нет папки с %s" % (here, MARKER))
+    raise SystemExit("не найден корень проекта: вверх от %s нет ни %s, ни %s"
+                     % (here, MARKER, MARKER_WT))
 
 
 def project_tools(start: Path | str | None = None) -> Path:
-    """Папка `tools\\` проекта — её кладут в sys.path, чтобы импортировать `paths`."""
-    return project_root(start) / "tools"
+    """Папка, которую кладут в sys.path, чтобы сделать `from paths import P`.
+
+    В нынешней раскладке таких папок две: общая `admin\\tools` и предметная
+    `<журнал проекта>\\tools`. Нужна предметная: она прокладкой подтягивает общую
+    и добавляет пути сборки — `P.mods`, `P.downloads`, `P.seven_zip`, — которых
+    в общей нет.
+    """
+    root = project_root(start)
+    if (root / MARKER).is_file():
+        return root / "tools"
+    journals = sorted(found.parent for found in (root / WORKTREE).glob("*/tools/paths.py")
+                      if found.parent.parent.name != "admin")
+    if journals:
+        return journals[0]
+    return root / WORKTREE / "admin" / "tools"
 
 
 def morphbench(start: Path | str | None = None) -> Path:
