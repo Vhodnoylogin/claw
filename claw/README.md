@@ -1,129 +1,138 @@
 # CLAW — Configurable Lycanthrope Anatomy and Weight
 
-Тело вервольфа с ползунками: пара по весу, именованные морфы, половой диморфизм и
-необязательная анатомия. Надстройка над **Elegant Werewolf Replacer** — без него ничего
-не собирается и не работает.
+A werewolf body with sliders: a weight pair, named morphs, sexual dimorphism and optional
+anatomy. An add-on to **Elegant Werewolf Replacer** — nothing here builds or works without it.
 
-## Имя
+*Эта страница на русском: [README.ru.md](README.ru.md).*
 
-`CLAW` расшифровывается как **Configurable Lycanthrope Anatomy and Weight** — по названию
-двух механизмов, на которых всё держится: анатомия задаётся морфами, масса весом.
+## The name
 
-Приём тот же, что у CBBE (Caliente's Beautiful Bodies Enhancer) и HIMBO (Highly Improved
-Male Body Overhaul): обычное название, чьи первые буквы складываются в подходящее слово.
+`CLAW` stands for **Configurable Lycanthrope Anatomy and Weight** — after the two mechanisms
+everything rests on: anatomy is set by morphs, mass by weight. The trick is the same one CBBE
+(Caliente's Beautiful Bodies Enhancer) and HIMBO (Highly Improved Male Body Overhaul) use:
+an ordinary name whose initials spell a fitting word.
 
-**`CLAW` — префикс всех модов семейства.** Полную расшифровку несёт только основной мод,
-остальные обходятся коротким именем и всё равно читаются как одна группа и стоят в списке
-рядом:
+**`CLAW` is the prefix of the whole family.** Only the base mod carries the full expansion;
+the others go by the short name and still read as one group and sit together in the list:
 
-| Мод в MO2 | Что несёт |
+| Mod in MO2 | What it carries |
 |---|---|
-| `CLAW - Configurable Lycanthrope Anatomy and Weight` | тела обоих полов с парой по весу, скелет с капсулами столкновений, файл морфов **без взрослых ползунков**, плагин с ползунком веса и женской моделью |
-| `CLAW - Anatomy` | взрослая надстройка: **только файл морфов** с паховыми ползунками, пять мегабайт |
-| `CLAW - VR` | возможности, которые есть только в шлеме: густые капсулы для рук, тело зверя игроку, настройки HIGGS, PLANCK и качающейся физики |
+| `CLAW - Configurable Lycanthrope Anatomy and Weight` | bodies of both sexes with a weight pair, a skeleton with collision capsules, a morph file **without adult sliders**, and a plugin with the weight slider and the female model |
+| `CLAW - Anatomy` | the adult add-on: **morph files only**, five megabytes |
+| `CLAW - VR` | what only makes sense in a headset: dense capsules for the hands, a beast body for the player, HIGGS, PLANCK and swinging-physics settings |
 
-Имя VR-мода намеренно без «First Person»: тело от первого лица там лишь одна из
-возможностей, а не суть.
+**The nearest release is the first pair — the base mod and `CLAW - Anatomy`.** `CLAW - VR`
+is not part of it: we move on to it, and to body physics, once the first pair has passed
+acceptance. Until then it stays a template with a plan, and the family ships as two mods
+for the flat game.
 
-**Выпускается сейчас первая пара — основной мод и `CLAW - Anatomy`.** `CLAW - VR` в ближайший
-выпуск не входит: к нему переходят после того, как приёмка первой пары закончена, и вместе
-с ним — к физике тела. До тех пор он остаётся шаблоном с планом, а семейство выпускается
-двумя модами для плоской игры.
+Two more folders sit next to these in the setup, and neither belongs to the family:
 
-**Этими тремя семейство и исчерпывается.** Рядом в сборке лежат ещё две папки, и ни одна
-из них частью семейства не является:
-
-| Папка в MO2 | Чем на самом деле является |
+| Folder in MO2 | What it actually is |
 |---|---|
-| `test_CLAW - Companion` | **проверочный мод**, а не часть выпуска: даёт единственную в сборке вервольфицу, на которой смотрят женское тело. Живёт в `claw\tests\`, в выпуск не идёт, удаляется после прогона |
-| `CLAW - OBody Presets` | **ещё не мод**: четыре набора ползунков, сложенные в папку, чтобы не потерялись. Осознанной вещи с назначением, именем и границами пока нет |
+| `test_CLAW - Companion` | a **test mod**, not part of any release: it provides the only she-werewolf in the setup, the one the female body is checked on. Lives in `claw\tests\`, never ships, removed after a run |
+| `CLAW - OBody Presets` | **not a mod yet**: four slider sets kept in a folder so they don't get lost. There is no deliberate thing with a purpose, a name and boundaries here so far |
 
-Разница не в размере, а в назначении: выпускаемый мод отвечает за что-то перед игроком,
-проверочный — только перед нами, а заготовка не отвечает ни перед кем.
+The difference is not size but responsibility: a released mod answers to the player, a test mod
+only to us, and a draft answers to no one.
 
-Разделение на базовую и взрослую версии сделано **файлом морфов, а не геометрией**: геометрия
-одна и та же, но в базовой версии паховых ползунков в файле нет — значит поднять их нечем.
+The split between the base and adult versions is made **by the morph file, not by geometry**:
+the geometry is identical, but the base version's morph file has no crotch sliders at all, so
+there is nothing to raise them with.
 
-И геометрия эта в покое **целиком под кожей**: снаружи остаются 27 вершин трубы из 442
-и 50 мошонки из 444, и это шов устья, который обязан лежать на поверхности, иначе на его
-месте будет дыра. То есть без надстройки взрослого содержимого в игре не существует —
-не «спрятано до поры», а буквально нечем достать.
+And that geometry sits **entirely under the skin** at rest: 27 of the 442 sheath vertices and
+50 of the 444 scrotum vertices stay outside, and those are the rim seam, which has to lie on
+the surface or there would be a hole in its place. So without the adult add-on the content
+does not exist in game — not "hidden for now", but literally unreachable.
 
-Почему не резать геометрией: форма живёт **внутри** файла тела, а менеджер модов перекрывает
-файлы целиком. Добавить форму в чужой меш нельзя, поэтому «взрослая геометрия отдельно»
-означала бы вторую копию всех четырёх тел — тридцать четыре мегабайта ради восьмисот вершин.
-Настоящая альтернатива одна — сделать анатомию надеваемым предметом, как это делают SOS и ABC;
-у них такой меш весит пятьдесят килобайт. Это цель, а не сегодняшний день.
+Why not cut it by geometry: the shape lives **inside** the body file, and a mod manager
+overrides whole files. You cannot add a shape to someone else's mesh, so "adult geometry
+separately" would mean a second copy of all four bodies — thirty-four megabytes for eight
+hundred vertices. There is one real alternative: make the anatomy a wearable item, the way SOS
+and ABC do; their mesh weighs fifty kilobytes. That is a goal, not today.
 
-## Что это и чем не является
+## What it is, and what it is not
 
-Elegant даёт облик: один меш на пол, красивый и плотный. Но он не даёт **ничего
-изменяемого** — у него нет мужской пары по весу, женская пара побайтово одинакова, файлов
-морфов нет ни одного, анатомии нет. Плюс в самой игре у записи брони вервольфа ползунок
-веса выключен, а женская модель указывает на мужской меш.
+Elegant provides the look: one mesh per sex, beautiful and dense. What it does not provide is
+**anything adjustable** — no male weight pair, a female pair that is byte-identical, not a
+single morph file, no anatomy. On top of that, the game's own werewolf armor record has the
+weight slider disabled, and the female model points at the male mesh.
 
-`CLAW` добавляет ровно то, чего нет, и собирается **из установленного Elegant на машине
-игрока**. Своих копий чужой геометрии мы не раздаём: без Elegant сборка не проходит.
+`CLAW` adds exactly what is missing, and builds **from the Elegant installed on the player's
+machine**. We ship no copies of anyone else's geometry: without Elegant the build does not run.
 
-## Раскладка
+## Layout
 
-    recipes\     описания ползунков и сборок в JSON - что растянуть, по каким костям, насколько
-    plugins\     ИСХОДНИКИ плагинов: дерево .yaml, по файлу на запись - раскладывает Spriggit
-    scripts\     сборка и раскладка именно этого мода
-    docs\        устройство и заметки
-    work\        распакованное и промежуточное, вне репозитория, восстановимо
-    assets\      донорские меши и собранные плагины - в репозитории через Git LFS
-    tests\       проверочное: моды и плагины, которые в выпуск не идут никогда
-    build\       вывод сборки, вне репозитория
+    recipes\     sliders and builds described in JSON - what to stretch, along which bones, by how much
+    plugins\     plugin SOURCES: a .yaml tree, one file per record - laid out by Spriggit
+    scripts\     building and packaging for this mod specifically
+    release\     what goes out: mod descriptions in both languages and the release manifest
+    docs\        how it works and why
+    work\        unpacked and intermediate files, outside the repository, reproducible
+    assets\      donor meshes and built plugins - in the repository through Git LFS
+    tests\       test material: mods and plugins that never ship
+    dist\        release archives, outside the repository
 
-**Двоичное версионируется через Git LFS независимо от веса.** Git над двоичным файлом хранит
-полную копию на каждое изменение и не показывает различий, поэтому плагин на восемьсот байт
-вредит истории тем же способом, что и меш на два мегабайта, — просто медленнее. Размер здесь
-ни при чём. Правило и список расширений — в `.gitattributes` в корне репозитория.
+**Binary files are versioned through Git LFS regardless of weight.** Git stores a full copy of
+a binary file on every change and shows no diff, so an eight-hundred-byte plugin harms the
+history the same way a two-megabyte mesh does — just more slowly. Size is beside the point.
+The rule and the extension list live in `.gitattributes` at the repository root; what is stored
+when, and why the release set goes in on release rather than on every build, is in
+[docs/versioning.md](docs/versioning.md).
 
-**У плагина два представления, и они не взаимозаменяемы.** Исходник — это **текст**
-в `plugins\<имя>\`: дерево `.yaml`, по файлу на запись. Его правят руками, читают в различиях
-и сливают. Продукт — `.esp` в `assets\plugins\`: он хранится в LFS, чтобы мод собирался и на
-машине, где Spriggit не поставлен. Одно получается из другого:
+**A plugin has two representations, and they are not interchangeable.** The source is **text**
+in `plugins\<name>\`: a `.yaml` tree, one file per record. It is edited by hand, read in diffs
+and merged. The product is the `.esp` in `assets\plugins\`, kept in LFS so the mod builds on a
+machine without Spriggit. One is made from the other:
 
-    python claw/scripts/plugin.py build     текст -> .esp
-    python claw/scripts/plugin.py dump      .esp  -> текст
-    python claw/scripts/plugin.py check     собрать во временное и сверить текст с текстом
+    python claw/scripts/plugin.py build     text -> .esp
+    python claw/scripts/plugin.py dump      .esp -> text
+    python claw/scripts/plugin.py check     build into a temp folder and compare text to text
 
-`check` сверяет **текст, а не байты**. Обратный ход Spriggit переписывает заголовок плагина
-по-своему — счётчик записей, следующий свободный номер, — поэтому побайтового совпадения
-не бывает, и добиваться его не нужно: значение имеет содержание записей.
+`check` compares **text, not bytes**. Spriggit rewrites the plugin header its own way on the
+way back — record count, next free id — so a byte-for-byte match never happens and is not
+needed: what matters is the content of the records.
 
-## Как собирается
+## How it is built
 
-Мод не хранится, а **строится**: в репозитории нет ни одного меша и ни одного файла морфов.
-Вместо них лежит журнал операций `recipesuild.json`, который приводит чужое тело к нашему,
-и рецепты, на которые его шаги ссылаются.
+The mod is not stored, it is **built**: there is not a single mesh and not a single morph file
+in the repository. In their place is the operation journal `recipes/build.json`, which brings
+someone else's body to ours, and the recipes its steps refer to.
 
-Собирается всё одной командой из папки модуля:
+Everything builds with one command from the module folder:
 
     python scripts/build-all.py
 
-Она проходит журнал по шагам, собирает в отдельную папку, **сверяет получившееся с тем, что
-лежит в моде** — по содержимому, а не по контрольной сумме, — и кладёт рядом манифест: из
-каких исходников и каким коммитом рецептов собрано.
+It walks the journal step by step, builds into a separate folder, **compares the result against
+what is in the mod** — by content, not by checksum — and writes a manifest next to it: which
+sources and which recipe commit it was built from.
 
-**Кому нужно собрать мод заново — читать [docs/rebuild.md](docs/rebuild.md):** от каких
-исходников отталкиваться (два чужих мода, три файла, закреплённых контрольными суммами),
-что должно быть установлено, как прогнать журнал, что означает ответ сверки и как добавить
-в журнал свой шаг.
+**To rebuild the mod, read [docs/rebuild.md](docs/rebuild.md):** which sources to start from
+(two third-party mods, three files pinned by checksums), what must be installed, how to run the
+journal, what the comparison's answer means, and how to add your own step.
 
-История правок журнала — это история git: `git log -p recipes/build.json`.
+The history of journal edits is the git history: `git log -p recipes/build.json`.
 
-Общие инструменты лежат в ветви `tools\` проекта и модом не владеют: разбор NIF, сборка морфов
-через Blender и PyNifly, замеры, рендер. Здесь — только описания, что именно строить.
+## How it is released
 
-Обязательное условие для любой работы с PyNifly: **интерфейс Blender должен быть английским**.
-PyNifly ищет узел материала по имени `"Material Output"`, и при русском интерфейсе молча теряет
-и шейдер, и все блоки прозрачности.
+    python scripts/release.py [--list]
 
-## Права
+The script checks that what is built is fit to ship — family version against every mod's
+`meta.ini`, the manifest present and of the same version, every comparison matched, the recipe
+tree clean and at the branch's current commit — and only then packs the archives, putting the
+descriptions from `release\` inside each one. The script itself never ends up in the archive.
 
-Автор Elegant (Wolflady500, KaienHash) разрешает использовать модели и текстуры в своём моде,
-если он не продаётся, и просит не делать его мод ненужным. Отсюда и устройство: мы раздаём
-разницу, а не меш, и без Elegant наш мод не работает. В описании обязательны оба имени.
+Shared tooling lives in the project's `tools\` branch and owns no mod: NIF parsing, morph
+building through Blender and PyNifly, measurements, rendering. Here there are only descriptions
+of what to build.
+
+A hard requirement for any work with PyNifly: **Blender's interface must be in English.**
+PyNifly looks up the material node by the name `"Material Output"`, and with a Russian interface
+it silently loses both the shader and every transparency block.
+
+## Rights
+
+The author of Elegant (Wolflady500, KaienHash) permits using the models and textures in another
+mod as long as it is not sold, and asks that it not make their mod redundant. Hence the design:
+we ship the difference, not the mesh, and without Elegant our mod does not work. Both names are
+mandatory in the description.
