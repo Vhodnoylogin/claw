@@ -58,7 +58,11 @@ def morphbench(start: Path | str | None = None) -> Path:
     Ищется от корня проекта, а не от модуля: рабочие копии лежат рядом в `dev\\`,
     и их взаимное расположение задано раскладкой проекта, а не глубиной модуля.
     """
-    path = project_root(start) / "dev" / "morphbench" / "mb.py"
-    if not path.is_file():
-        raise SystemExit("не найден верстак: %s" % path)
-    return path
+    dev = project_root(start) / "dev"
+    here = [dev / "morphbench" / "morphbench" / "mb.py",   # модуль в своей папке внутри ветки
+            dev / "morphbench" / "mb.py"]                  # прежняя раскладка, до 14.09
+    here += sorted(dev.glob("*/morphbench/mb.py")) if dev.is_dir() else []
+    for path in here:
+        if path.is_file():
+            return path
+    raise SystemExit("не найден верстак: ни одного mb.py в %s" % (dev / "morphbench"))
