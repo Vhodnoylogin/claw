@@ -14,7 +14,7 @@
     "восьмисот вершин незачем, да и форму в чужой меш всё равно не добавить."
   ],
   "mod": "CLAW",
-  "version": "0.6.0.0",
+  "version": "1.0.0.0",
   "sources": {
     "_": [
       "Вход закреплён контрольной суммой. Мод стоит на чужих ассетах, и без этого",
@@ -43,7 +43,7 @@
       "path": "meshes/actors/werewolfbeast/character assets/skeleton.nif",
       "crc": "1221F7AC",
       "bytes": 51942,
-      "_": "Даёт кости для анатомии и служит донором для нашего скелета с капсулами."
+      "_": "Даёт кости для анатомии: при сборке они переносятся из скелета в тела. Своего скелета мод не возит - капсулы XP32 в игре стоят верно (разбор 24.09.2026, REPORT-68)."
     }
   },
   "steps": [
@@ -221,17 +221,6 @@
         "--tri",
         "@out:adult/femalebodywerewolf.tri"
       ]
-    },
-    {
-      "name": "скелет: капсулы столкновений по телу",
-      "runner": "python",
-      "script": "build-skeleton.py",
-      "args": [
-        "--recipe",
-        "@recipe:skeleton.json",
-        "--out",
-        "@out:adult/skeleton.nif"
-      ]
     }
   ],
   "outputUnder": "meshes/actors/werewolfbeast/character assets",
@@ -257,13 +246,12 @@
     "base": {
       "name": "CLAW - Configurable Lycanthrope Anatomy and Weight",
       "under": "Meshes/Actors/WerewolfBeast/Character Assets",
-      "_": "Базовый мод: вся геометрия, скелет и файл морфов БЕЗ взрослых ползунков.",
+      "_": "Базовый мод: вся геометрия и файл морфов БЕЗ взрослых ползунков.",
       "files": {
         "malebodywerewolf_1.nif": "adult/malebodywerewolf_1.nif",
         "malebodywerewolf_0.nif": "adult/malebodywerewolf_0.nif",
         "femalebodywerewolf_1.nif": "adult/femalebodywerewolf_1.nif",
         "femalebodywerewolf_0.nif": "adult/femalebodywerewolf_0.nif",
-        "skeleton.nif": "adult/skeleton.nif",
         "malebodywerewolf.tri": "base/malebodywerewolf.tri",
         "femalebodywerewolf.tri": "base/femalebodywerewolf.tri"
       },

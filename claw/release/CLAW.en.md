@@ -1,7 +1,7 @@
 # CLAW — Configurable Lycanthrope Anatomy and Weight
 
 A werewolf body you can actually shape: a real weight pair, named morphs for every region,
-sexual dimorphism, and a skeleton whose collision capsules sit on the body instead of near it.
+and sexual dimorphism.
 
 CLAW is an **add-on to [Elegant Werewolf Replacer](https://www.nexusmods.com/skyrimspecialedition/mods/93336)**,
 not a replacement for it. Elegant gives the look; CLAW adds everything Elegant leaves out.
@@ -15,7 +15,6 @@ not a replacement for it. Elegant gives the look; CLAW adds everything Elegant l
 | morph files | none | 24 male / 25 female named sliders |
 | female model record | points at the male mesh | points at the female mesh |
 | weight slider on the beast armor | disabled in the game record | enabled |
-| collision capsules | generic skeleton capsules | 25 capsules fitted to the body |
 
 Morph names follow one pattern — `CLAW` + body area + what it does — so the list reads like
 a body, not like a glossary: `CLAWHeadEarSize`, `CLAWTorsoShoulderGirth`, `CLAWLegDigitigrade`,
@@ -26,11 +25,11 @@ a body, not like a glossary: `CLAWHeadEarSize`, `CLAWTorsoShoulderGirth`, `CLAWL
 | mod | why |
 |---|---|
 | [Elegant Werewolf Replacer](https://www.nexusmods.com/skyrimspecialedition/mods/93336) | donor geometry and **all** textures — CLAW ships none |
-| [XP32 Maximum Skeleton Special Extended](https://www.nexusmods.com/skyrimspecialedition/mods/1988) | donor skeleton |
+| [XP32 Maximum Skeleton Special Extended](https://www.nexusmods.com/skyrimspecialedition/mods/1988) | the skeleton the bodies are rigged to, anatomy bones included |
 | [RaceMenu](https://www.nexusmods.com/skyrimspecialedition/mods/19080) | NiOverride BodyMorph — the mechanism that applies named morphs |
 
-**Load order matters:** CLAW overrides the werewolf `skeleton.nif`, so it must sit **below XP32**
-in your mod manager. Below Elegant as well.
+**Load order matters:** CLAW replaces Elegant's body meshes, so it must sit **below Elegant**
+in your mod manager. CLAW ships no skeleton and does not conflict with XP32.
 
 ## How to use the sliders
 
@@ -53,11 +52,11 @@ Elegant Werewolf Replacer by **Wolflady500** and **KaienHash**. The meshes are u
 authors' permission, on their condition: no textures are redistributed, and CLAW does not work
 without Elegant installed. Please endorse their mod — this one exists because theirs does.
 
-Skeleton from XP32 Maximum Skeleton Special Extended by **Groovtama**, used under the terms
-of its page.
+The anatomy bones come from XP32 Maximum Skeleton Special Extended by **Groovtama**, used under
+the terms of its page.
 
 ## Under the hood
 
 CLAW is not a folder of meshes someone edited once. It is built by a journal of operations —
-fourteen steps that turn the donor meshes into these bodies — so every slider in it can be
+thirteen steps that turn the donor meshes into these bodies — so every slider in it can be
 traced to the line that made it, and the whole mod can be rebuilt from the sources.

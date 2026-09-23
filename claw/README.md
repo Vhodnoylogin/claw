@@ -17,7 +17,7 @@ the others go by the short name and still read as one group and sit together in 
 
 | Mod in MO2 | What it carries |
 |---|---|
-| `CLAW - Configurable Lycanthrope Anatomy and Weight` | bodies of both sexes with a weight pair, a skeleton with collision capsules, a morph file **without adult sliders**, and a plugin with the weight slider and the female model |
+| `CLAW - Configurable Lycanthrope Anatomy and Weight` | bodies of both sexes with a weight pair, a morph file **without adult sliders**, and a plugin with the weight slider and the female model |
 | `CLAW - Anatomy` | the adult add-on: **morph files only**, five megabytes |
 | `CLAW - VR` | what only makes sense in a headset: dense capsules for the hands, a beast body for the player, HIGGS, PLANCK and swinging-physics settings |
 
