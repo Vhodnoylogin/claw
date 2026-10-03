@@ -13,10 +13,10 @@ r"""Расширяет шары охвата тела так, чтобы они 
 `bounds --write`. Зовём командой, а не как библиотеку, - командная строка верстака -
 объявленный договор, а внутренности живут своей жизнью.
 
-    python fix-bounds.py <меш.nif> [--tri <файл.tri>] [--margin 0.05] [--dry]
+    python fix-bounds.py <меш.nif> [--tri <файл.tri>] [--margin 1.01] [--dry]
 
 `--tri` указывать ВАЖНО там, где в игре победит другой файл морфов: базовый мод возит
-свои 24 ползунка, но поверх него ложится надстройка с 29, и шар обязан накрывать
+свои 24/25 ползунков, но поверх него ложится надстройка с 28/26, и шар обязан накрывать
 широкий случай. Без ключа верстак берёт файл по имени меша.
 """
 from __future__ import annotations
@@ -24,6 +24,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -42,8 +43,14 @@ def fix(nif: Path, tri: Path | None, margin: str | None, dry: bool) -> int:
     # Пишем в СОСЕДНИЙ файл и подменяем: верстак ищет морфы по имени меша, и временное
     # имя вроде `x.bounds.nif` увело бы его от `<тело>.tri`. Ключ --tri это снимает,
     # но подмена на месте всё равно безопаснее записи поверх читаемого файла.
-    tmp = nif.with_suffix(".bounds.nif")
-    cmd = [sys.executable, str(bench()), "bounds", str(nif), "--write", str(tmp)]
+    with tempfile.TemporaryDirectory(prefix="claw-bounds-", dir=nif.parent) as folder:
+        return _fix_to(nif, tri, margin, dry, Path(folder) / nif.name)
+
+
+def _fix_to(nif: Path, tri: Path | None, margin: str | None, dry: bool, tmp: Path) -> int:
+    # Recompute every sphere: the diagnostic tolerance accepts small overflows,
+    # but the shipped sphere must include the requested margin even in those cases.
+    cmd = [sys.executable, str(bench()), "bounds", str(nif), "--write", str(tmp), "--shrink"]
     if tri is not None:
         cmd += ["--tri", str(tri)]
     if margin is not None:

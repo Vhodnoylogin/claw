@@ -29,6 +29,7 @@ r"""Собирает выпуск семейства CLAW: проверяет г
 from __future__ import annotations
 
 import configparser
+import hashlib
 import json
 import shutil
 import subprocess
@@ -45,10 +46,8 @@ MANIFEST = "claw-build.json"
 def project_paths():
     """Пути проекта. Корень ищется меткой, а не счётом родительских папок."""
     sys.path.insert(0, str(HERE))
-    from locate import project_tools                     # noqa: WPS433
-    sys.path.insert(0, str(project_tools(HERE)))
-    from paths import P                                  # noqa: WPS433
-    return P
+    from locate import project_paths as load_paths         # noqa: WPS433
+    return load_paths(HERE)
 
 
 def load(path: Path) -> dict:
@@ -103,6 +102,25 @@ def check(folder: Path, version: str, commit: str) -> list[str]:
     if commit and was and was != commit:
         notes.append("манифест собран коммитом %s, ветка стоит на %s — нужна пересборка"
                      % (was[:7], commit[:7]))
+    if not was:
+        notes.append("манифест не содержит коммит исходников")
+    recipe = load(RECIPES / "build.json")
+    key = next((key for key, mod in recipe['mods'].items() if mod['name'] == folder.name), None)
+    artifacts = {a['file'].replace('\\', '/').lower(): a for a in built.get('artifacts', []) if a.get('mod') == key}
+    expected = {str(Path(recipe['mods'][key]['under']) / name).replace('\\', '/').lower()
+                for name in recipe['mods'][key]['files']} if key else set()
+    if key:
+        expected.update(name.lower() for name in recipe['mods'][key].get('rootFiles', {}))
+    if set(artifacts) != expected:
+        notes.append("манифест не описывает полный набор файлов мода")
+    for item in artifacts.values():
+        path = folder / item['file']
+        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != item.get('sha256'):
+            notes.append("файл отличается от манифеста: " + item['file'])
+    actual = {p.relative_to(folder).as_posix().lower() for p in folder.rglob('*')
+              if p.is_file() and p.name.lower() not in ('meta.ini', MANIFEST)}
+    if actual != expected:
+        notes.append("состав установленного мода отличается от рецепта")
     bad = [o for o in built.get("outputs", []) if o.get("state") != "совпал"]
     for out in bad:
         notes.append("сверка не сошлась: %s/%s — %s"

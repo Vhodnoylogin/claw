@@ -36,15 +36,16 @@ import shutil
 import subprocess
 import sys
 import zlib
+import hashlib
+import configparser
 from datetime import datetime, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
-from locate import project_tools           # noqa: E402
-sys.path.insert(0, str(project_tools(HERE)))
-from paths import P                                        # noqa: E402
+from locate import project_paths, morphbench                # noqa: E402
+P = project_paths(HERE)
 
 
 def crc32(path: Path) -> str:
@@ -72,7 +73,7 @@ def _nifly():
     return pynifly
 
 
-def _diff_nif(a: Path, b: Path) -> dict:
+def _diff_nif(a: Path, b: Path, *, bounds: bool = False) -> dict:
     """Совпадают ли два меша по существу: части, вершины, координаты."""
     import numpy as np                                     # noqa: WPS433
     pynifly = _nifly()
@@ -89,6 +90,17 @@ def _diff_nif(a: Path, b: Path) -> dict:
                 "only": sorted(set(sa) ^ set(sb))}
     worst = 0.0
     for name in sa:
+        if sa[name].tris != sb[name].tris:
+            return {"state": "РАЗОШЁЛСЯ", "why": "разная топология: " + name}
+        if bounds:
+            for field in ("boundingSphereCenter", "boundingSphereRadius"):
+                if not np.allclose(getattr(sa[name].properties, field),
+                                   getattr(sb[name].properties, field), rtol=0, atol=1e-4):
+                    return {"state": "РАЗОШЁЛСЯ", "why": "разный шар охвата: " + name}
+            def bodytri(shape):
+                return [data.string_data for data in shape.extra_data("NiStringExtraData", "BODYTRI")]
+            if bodytri(sa[name]) != bodytri(sb[name]):
+                return {"state": "РАЗОШЁЛСЯ", "why": "разная ссылка BODYTRI: " + name}
         va = np.asarray(sa[name].verts, np.float32).reshape(-1, 3)
         vb = np.asarray(sb[name].verts, np.float32).reshape(-1, 3)
         if va.shape != vb.shape:
@@ -164,8 +176,12 @@ def _diff_tri(a: Path, b: Path) -> dict:
                 "only": sorted(names_a ^ names_b)}
     worst = 0.0
     for shape, morphs in fa.items():
+        if set(morphs) != set(fb[shape]):
+            return {"state": "РАЗОШЁЛСЯ", "why": "разные ползунки части " + shape}
         for name, offs in morphs.items():
             other = dict(fb[shape][name])
+            if {idx for idx, _ in offs} != set(other):
+                return {"state": "РАЗОШЁЛСЯ", "why": "разные вершины: %s/%s" % (shape, name)}
             for idx, d in offs:
                 o = other.get(idx)
                 if o is None:
@@ -230,8 +246,9 @@ class Pipeline:
                 rows.append({"source": key, "state": "НЕТ ФАЙЛА", "path": str(path)})
                 continue
             got = crc32(path)
-            rows.append({"source": key, "state": "совпал" if got == node["crc"] else "РАЗОШЁЛСЯ",
-                         "expected": node["crc"], "actual": got})
+            size = path.stat().st_size
+            rows.append({"source": key, "state": "совпал" if got == node["crc"] and size == node["bytes"] else "РАЗОШЁЛСЯ",
+                         "expected": node["crc"], "actual": got, "bytes": size})
         broken = [r for r in rows if r["state"] != "совпал"]
         if broken and not allow_drift:
             for r in broken:
@@ -268,7 +285,7 @@ class Pipeline:
             blender = str(P.blender) if getattr(P, "blender", "") else ""
             if not blender or not Path(blender).is_file():
                 raise SystemExit("не найден Blender: заполните ключ blender в tools\\paths.json")
-            cmd = [blender, "--background", "--python", str(HERE / step["script"]), "--", *args]
+            cmd = [blender, "--background", "--python-exit-code", "1", "--python", str(HERE / step["script"]), "--", *args]
         else:
             cmd = [sys.executable, str(HERE / step["script"]), *args]
         print("   " + " ".join(('"%s"' % c) if " " in c else c for c in cmd[:4]) + " ...")
@@ -304,7 +321,7 @@ class Pipeline:
                     continue
                 try:
                     rows.append({**row, **(_diff_tri(shipped, built) if name.endswith(".tri")
-                                           else _diff_nif(shipped, built))})
+                                           else _diff_nif(shipped, built, bounds=True))})
                 except Exception as e:                      # noqa: BLE001
                     rows.append({**row, "state": "сверить нечем: %s" % e})
             # Файлы в КОРНЕ мода - плагины и прочее, что не ложится под `under`.
@@ -339,6 +356,18 @@ class Pipeline:
 
     # ---- манифест ------------------------------------------------------------------
     def manifest(self, sources: list[dict], verified: list[dict]) -> dict:
+        artifacts = []
+        for key, mod in self.spec.get("mods", {}).items():
+            for name, src in mod["files"].items():
+                path = self.built(src)
+                if path.is_file():
+                    artifacts.append({"mod": key, "file": str(Path(mod.get("under", "")) / name),
+                                      "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
+            for name, src in mod.get("rootFiles", {}).items():
+                path = Path(self.resolve(src)) if src.startswith("@") else self.built(src)
+                if path.is_file():
+                    artifacts.append({"mod": key, "file": name,
+                                      "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
         return {
             "_": ("Чем собран этот мод. По манифесту любой выпущенный архив возводится "
                   "к точному состоянию исходников."),
@@ -350,7 +379,30 @@ class Pipeline:
                         "dirty": bool(git("status", "--porcelain"))},
             "sources": sources,
             "outputs": verified,
+            "artifacts": artifacts,
+            "tools": {"python": sys.version.split()[0],
+                      "blender": subprocess.run([str(P.blender), "--version"], capture_output=True,
+                                                text=True, timeout=20).stdout.splitlines()[0]
+                                 if Path(P.blender).is_file() else "unavailable",
+                      "pyniflyDllSha256": hashlib.sha256((Path(P.pynifly) / "NiflyDLL.dll").read_bytes()).hexdigest()
+                                           if (Path(P.pynifly) / "NiflyDLL.dll").is_file() else "unavailable",
+                      "morphbenchCommit": subprocess.run(["git", "-C", str(morphbench(HERE).parent),
+                                                          "rev-parse", "HEAD"], capture_output=True,
+                                                         text=True, timeout=20).stdout.strip()},
         }
+
+
+def preserve_provenance(previous: dict, current: dict) -> dict:
+    """Checking existing files must never re-label them as a new recipe build."""
+    for key in ("version", "artifacts", "sources"):
+        if previous.get(key) != current.get(key):
+            raise SystemExit("existing build differs from its manifest: " + key)
+    if not previous.get("recipes", {}).get("commit"):
+        raise SystemExit("existing build has no recipe provenance")
+    for key in ("recipes", "builtAt", "tools"):
+        if key in previous:
+            current[key] = previous[key]
+    return current
 
 
 def main(argv: list[str]) -> int:
@@ -358,8 +410,13 @@ def main(argv: list[str]) -> int:
         else ROOT / "work" / "build" / "claw"
     dry = "--dry" in argv
     only = argv[argv.index("--only") + 1] if "--only" in argv else None
+    if only and "--install" in argv:
+        raise SystemExit("--only cannot be installed: run a complete build")
     spec = json.loads((ROOT / "recipes" / "build.json").read_text(encoding="utf-8-sig"))
     pipe = Pipeline(spec, out)
+    previous = None
+    if "--verify-only" in argv:
+        previous = json.loads((out / "claw-build.json").read_text(encoding="utf-8"))
 
     print("мод    : %s %s" % (spec["mod"], spec["version"]))
     print("сборка : %s" % out)
@@ -371,7 +428,7 @@ def main(argv: list[str]) -> int:
         print("   %-14s %s" % (r["source"], r["state"]))
 
     print("\nшаги:")
-    for step in spec["steps"]:
+    for step in ([] if "--verify-only" in argv else spec["steps"]):
         if only and only.lower() not in step["name"].lower():
             continue
         print(" - %s" % step["name"])
@@ -392,11 +449,17 @@ def main(argv: list[str]) -> int:
         print("   %-8s %-34s %s%s" % (r.get("mod", ""), r["file"], r["state"], extra))
 
     man = pipe.manifest(sources, verified)
+    if previous is not None:
+        man = preserve_provenance(previous, man)
     (out / "claw-build.json").write_text(
         json.dumps(man, ensure_ascii=False, indent=2), encoding="utf-8")
     print("\nманифест: %s" % (out / "claw-build.json"))
 
     if "--install" in argv:
+        failures = [r for r in verified if r["state"] not in ("совпал", "РАЗОШЁЛСЯ", "мода ещё нет")
+                    or r.get("mod") == "наборы" and r["state"] != "совпал"]
+        if failures:
+            raise SystemExit("incomplete or invalid build: installation refused")
         for mod in spec.get("mods", {}).values():
             target = Path(P.mods) / mod["name"] / mod.get("under", "")
             target.mkdir(parents=True, exist_ok=True)
@@ -408,10 +471,24 @@ def main(argv: list[str]) -> int:
                 built = Path(pipe.resolve(src)) if src.startswith("@") else pipe.built(src)
                 if built.is_file():
                     shutil.copyfile(built, Path(P.mods) / mod["name"] / name)
-            shutil.copyfile(out / "claw-build.json",
-                            Path(P.mods) / mod["name"] / "claw-build.json")
+            meta = Path(P.mods) / mod["name"] / "meta.ini"
+            cfg = configparser.ConfigParser(strict=False, interpolation=None)
+            if meta.exists():
+                cfg.read(meta, encoding="utf-8-sig")
+            if not cfg.has_section("General"):
+                cfg.add_section("General")
+            cfg.set("General", "version", spec["version"])
+            with meta.open("w", encoding="utf-8") as fh:
+                cfg.write(fh)
             print("положено в мод: %s (%d файлов)"
                   % (mod["name"], len(mod["files"]) + len(mod.get("rootFiles", {}))))
+        verified = pipe.verify()
+        if any(r["state"] != "совпал" for r in verified):
+            raise SystemExit("installed files do not match the build")
+        man["outputs"] = verified
+        (out / "claw-build.json").write_text(json.dumps(man, ensure_ascii=False, indent=2), encoding="utf-8")
+        for mod in spec["mods"].values():
+            shutil.copyfile(out / "claw-build.json", Path(P.mods) / mod["name"] / "claw-build.json")
     return 0
 
 

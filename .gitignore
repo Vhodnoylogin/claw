@@ -18,3 +18,7 @@ session.jsonl
 
 # Служебные копии агентов Claude Code - это отдельные репозитории.
 .claude/
+
+# Reproducible intermediate files.
+work/*
+!work/README.md

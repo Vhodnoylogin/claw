@@ -10,18 +10,18 @@ Spriggit: папка с одним `.yaml` на запись. Его видно 
 
 Деревьев два, и они не смешиваются:
 
-    claw\\plugins\\<имя>\\            исходники ВЫПУСКАЕМЫХ плагинов
-    claw\\assets\\plugins\\*.esp      их продукты
+    plugins\\<имя>\\            исходники ВЫПУСКАЕМЫХ плагинов
+    assets\\plugins\\*.esp      их продукты
 
-    claw\\tests\\plugins\\<имя>\\       исходники ПРОВЕРОЧНЫХ плагинов
-    claw\\tests\\assets\\plugins\\*.esp  их продукты
+    tests\\plugins\\<имя>\\       исходники ПРОВЕРОЧНЫХ плагинов
+    tests\\assets\\plugins\\*.esp  их продукты
 
 Проверочное живёт отдельно, потому что в выпуск оно не идёт никогда: его собирают ради
 одного прогона и выбрасывают. Имена проверочных плагинов начинаются с `test_`.
 
-    python claw/scripts/plugin.py dump  [имя]   .esp  ->  текст
-    python claw/scripts/plugin.py build [имя]   текст ->  .esp
-    python claw/scripts/plugin.py check [имя]   собрать во временное и сверить с хранимым
+    python scripts/plugin.py dump  [имя]   .esp  ->  текст
+    python scripts/plugin.py build [имя]   текст ->  .esp
+    python scripts/plugin.py check [имя]   собрать во временное и сверить с хранимым
 
 Без имени берутся все плагины обоих деревьев.
 
@@ -40,9 +40,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
-from locate import project_tools                        # noqa: E402
-sys.path.insert(0, str(project_tools(HERE)))
-from paths import P                                     # noqa: E402
+from locate import project_paths                        # noqa: E402
+P = project_paths(HERE)
 
 TREES = (
     ("выпуск", ROOT / "plugins", ROOT / "assets" / "plugins"),

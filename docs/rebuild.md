@@ -1,10 +1,49 @@
 # Журнал сборки: как получить меши и морфы заново
 
-Мод не хранится — он **строится**. В репозитории нет ни одного меша и ни одного файла
-морфов; вместо них лежит журнал операций, который приводит чужое тело к нашему.
+Тела и морфы строятся по журналу операций. Закреплённые доноры и плагины лежат
+в `assets/` через Git LFS; промежуточные сборки исключены из Git.
 
 Этот документ отвечает на три вопроса: **от чего отталкиваться**, **чем прогнать журнал**
 и **как убедиться, что получилось то самое**.
+
+---
+
+## Самостоятельный репозиторий
+
+Основной репозиторий — `https://github.com/Vhodnoylogin/claw`, ветка `main`.
+Для сборки без старого журнала проекта создайте `build.local.json` в корне checkout.
+Файл исключён из Git. Пути могут быть абсолютными либо относительно этого файла:
+
+```json
+{
+  "mods": "D:/MO2/Skyrim VR/mods",
+  "pynifly": "C:/Blender/addons/io_scene_nifly",
+  "blender": "C:/Blender/blender.exe",
+  "sevenZip": "C:/Program Files/7-Zip/7z.exe",
+  "morphbench": "../morphbench/morphbench/mb.py"
+}
+```
+
+Запускайте `python scripts/build-all.py --out <новая папка>` из корня checkout.
+`--install` разрешён только для полного набора: после копирования выполняется повторная
+сверка, обновляется версия MO2 и записывается манифест с SHA-256 каждого файла.
+`--verify-only --out <папка готовой сборки>` сверяет существующий результат, не запуская
+сборщики; вместе с `--install` устанавливает этот полный набор. Перед обновлением
+сохраните копии собственных установленных модов. Профили при этом не меняются.
+
+Сверка NIF учитывает также топологию, BODYTRI и шары охвата. Проверка упаковки сверяет
+файлы с манифестом и рецептом; одного номера версии для неё недостаточно.
+
+## Independent checkout
+
+The canonical repository is `https://github.com/Vhodnoylogin/claw`, branch `main`.
+Create the ignored `build.local.json` at the checkout root using the keys shown above.
+Paths are absolute or relative to that file. No project journal is needed.
+Run `python scripts/build-all.py --out <new directory>`; add `--install` to install
+the complete family. `--only` cannot be installed. `--verify-only` checks an existing
+build directory and can install that complete set. Back up your own installed mods first.
+Installation updates MO2 versions and verifies the copies before writing fresh manifests.
+Packaging checks the recipe inventory and each artifact's SHA-256. Profiles stay unchanged.
 
 ---
 
