@@ -1,0 +1,165 @@
+{
+  "_": "Чем собран этот мод. По манифесту любой выпущенный архив возводится к точному состоянию исходников.",
+  "mod": "CLAW",
+  "version": "0.6.2.0",
+  "builtAt": "2026-10-07T15:15:27+00:00",
+  "recipes": {
+    "commit": "c3a18e360d2f48f86b3935345bff930051a7cdf4",
+    "branch": "main",
+    "dirty": false
+  },
+  "sources": [
+    {
+      "source": "elegantMale",
+      "state": "совпал",
+      "expected": "300435BB",
+      "actual": "300435BB",
+      "bytes": 8877163
+    },
+    {
+      "source": "elegantFemale",
+      "state": "совпал",
+      "expected": "01E04C78",
+      "actual": "01E04C78",
+      "bytes": 8788595
+    },
+    {
+      "source": "xp32Skeleton",
+      "state": "совпал",
+      "expected": "1221F7AC",
+      "actual": "1221F7AC",
+      "bytes": 51942
+    }
+  ],
+  "outputs": [
+    {
+      "mod": "base",
+      "file": "malebodywerewolf_1.nif",
+      "state": "совпал",
+      "shapes": 16,
+      "maxDelta": 0.0
+    },
+    {
+      "mod": "base",
+      "file": "malebodywerewolf_0.nif",
+      "state": "совпал",
+      "shapes": 16,
+      "maxDelta": 0.0
+    },
+    {
+      "mod": "base",
+      "file": "femalebodywerewolf_1.nif",
+      "state": "совпал",
+      "shapes": 15,
+      "maxDelta": 0.0
+    },
+    {
+      "mod": "base",
+      "file": "femalebodywerewolf_0.nif",
+      "state": "совпал",
+      "shapes": 15,
+      "maxDelta": 0.0
+    },
+    {
+      "mod": "base",
+      "file": "malebodywerewolf.tri",
+      "state": "совпал",
+      "morphs": 24,
+      "maxDelta": 0.0
+    },
+    {
+      "mod": "base",
+      "file": "femalebodywerewolf.tri",
+      "state": "совпал",
+      "morphs": 25,
+      "maxDelta": 0.0
+    },
+    {
+      "mod": "base",
+      "file": "CLAW.esp",
+      "state": "совпал",
+      "bytes": 810
+    },
+    {
+      "mod": "adult",
+      "file": "malebodywerewolf.tri",
+      "state": "совпал",
+      "morphs": 28,
+      "maxDelta": 0.0
+    },
+    {
+      "mod": "adult",
+      "file": "femalebodywerewolf.tri",
+      "state": "совпал",
+      "morphs": 26,
+      "maxDelta": 0.0
+    },
+    {
+      "mod": "наборы",
+      "file": "adult/malebodywerewolf_1.nif = base/malebodywerewolf.nif",
+      "state": "совпал",
+      "shapes": 16,
+      "maxDelta": 0.0
+    },
+    {
+      "mod": "наборы",
+      "file": "adult/femalebodywerewolf_1.nif = base/femalebodywerewolf.nif",
+      "state": "совпал",
+      "shapes": 15,
+      "maxDelta": 0.0
+    }
+  ],
+  "artifacts": [
+    {
+      "mod": "base",
+      "file": "Meshes\\Actors\\WerewolfBeast\\Character Assets\\malebodywerewolf_1.nif",
+      "sha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef"
+    },
+    {
+      "mod": "base",
+      "file": "Meshes\\Actors\\WerewolfBeast\\Character Assets\\malebodywerewolf_0.nif",
+      "sha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef"
+    },
+    {
+      "mod": "base",
+      "file": "Meshes\\Actors\\WerewolfBeast\\Character Assets\\femalebodywerewolf_1.nif",
+      "sha256": "8a19efee9c6873e2d5365e88eadaa4d80a5e31e9ea223bc81aafb50bd084ab86"
+    },
+    {
+      "mod": "base",
+      "file": "Meshes\\Actors\\WerewolfBeast\\Character Assets\\femalebodywerewolf_0.nif",
+      "sha256": "8a19efee9c6873e2d5365e88eadaa4d80a5e31e9ea223bc81aafb50bd084ab86"
+    },
+    {
+      "mod": "base",
+      "file": "Meshes\\Actors\\WerewolfBeast\\Character Assets\\malebodywerewolf.tri",
+      "sha256": "ff1a66d5b94eb240f154977721af9adc8890615de71118349d4e03bfca540729"
+    },
+    {
+      "mod": "base",
+      "file": "Meshes\\Actors\\WerewolfBeast\\Character Assets\\femalebodywerewolf.tri",
+      "sha256": "e6f6d9eb063a3f3cdf8f12688179d5fa1cee9cd9d2eb9b0a991d64223e85bfd9"
+    },
+    {
+      "mod": "base",
+      "file": "CLAW.esp",
+      "sha256": "cac9d75760dfda81315c760dd6769958eb125958c93e69806855b3073b768739"
+    },
+    {
+      "mod": "adult",
+      "file": "Meshes\\Actors\\WerewolfBeast\\Character Assets\\malebodywerewolf.tri",
+      "sha256": "863ad135ad2df1d6d39d6dcb388664cb24ef7eb8fbd62ed007aba6155dd66489"
+    },
+    {
+      "mod": "adult",
+      "file": "Meshes\\Actors\\WerewolfBeast\\Character Assets\\femalebodywerewolf.tri",
+      "sha256": "b452553b7d8e079b2839b61afbe256c34b528cfcad827907591109fb629aa111"
+    }
+  ],
+  "tools": {
+    "python": "3.12.9",
+    "blender": "Blender 5.2.2 LTS",
+    "pyniflyDllSha256": "21d34ab298e6d7ab5faf5659c6e8b15355c421627c4a92def60509859e908b13",
+    "morphbenchCommit": "4d16d2296497b092ea29b5013dc91caf9ff80b0d"
+  }
+}
