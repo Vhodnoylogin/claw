@@ -1,5 +1,12 @@
 # Что версионируется и чем
 
+## Fixed low-weight release 0.6.2.0
+
+Both weight endpoints use the respective sex `_0` shape. The female base and adult
+morph files are built against the slim (`--slim 0.90`) neutral geometry; the high-weight
+mesh is a copy of the low-weight mesh. The nearest package includes only base CLAW.
+Historical weight-pair explanations below describe the previous build policy.
+
 ## Четыре рода файлов, и у каждого своя форма хранения
 
 Вопрос «класть в git или не класть» отвечается не размером файла и не тем, двоичный он или

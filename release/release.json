@@ -13,18 +13,6 @@
       "description": "CLAW",
       "adult": false,
       "_": "Основа семейства: тела, морфы без взрослых ползунков, плагин."
-    },
-    {
-      "id": "adult",
-      "mod": "CLAW - Anatomy",
-      "archive": "CLAW - Anatomy",
-      "description": "CLAW-Anatomy",
-      "adult": true,
-      "nexusAdultRating": "Sexualised",
-      "_": [
-        "Взрослая надстройка: только файлы морфов. На Nexus помечается Sexualised,",
-        "а не Pornographic - по их определению это partial nudity без иных отсылок."
-      ]
     }
   ],
   "skip": [
@@ -58,5 +46,6 @@
   "_docs": [
     "Описание каждого мода кладётся ВНУТРЬ его архива двумя файлами и оно же идёт текстом",
     "на страницу мода. Источник один - release\\<description>.en.md и .ru.md."
-  ]
+  ],
+  "_deferred": "CLAW - Anatomy and CLAW - VR are outside the nearest base-only release."
 }

@@ -14,7 +14,7 @@
     "восьмисот вершин незачем, да и форму в чужой меш всё равно не добавить."
   ],
   "mod": "CLAW",
-  "version": "0.6.1.1",
+  "version": "0.6.2.0",
   "sources": {
     "_": [
       "Вход закреплён контрольной суммой. Мод стоит на чужих ассетах, и без этого",
@@ -68,17 +68,17 @@
       ]
     },
     {
-      "name": "взрослый: самец, полная половина",
+      "name": "самец: fixed low-weight shape",
       "runner": "move",
       "from": "@out:adult/malebodywerewolf.nif",
-      "to": "@out:adult/malebodywerewolf_1.nif"
+      "to": "@out:adult/malebodywerewolf_0.nif"
     },
     {
-      "name": "взрослый: самец, худая половина",
+      "name": "самец: duplicate low shape for high weight",
       "runner": "copy",
-      "from": "@out:adult/malebodywerewolf_1.nif",
-      "to": "@out:adult/malebodywerewolf_0.nif",
-      "_": "Половины сейчас одинаковы: ползунок веса самцу ничего не даёт."
+      "from": "@out:adult/malebodywerewolf_0.nif",
+      "to": "@out:adult/malebodywerewolf_1.nif",
+      "_": "Both endpoints use the same male shape for this release."
     },
     {
       "name": "базовый набор: тело самца без взрослых ползунков",
@@ -131,23 +131,11 @@
       "to": "@out:adult/femalebodywerewolf_0.nif"
     },
     {
-      "name": "взрослый: самка, полная половина",
-      "runner": "blender",
-      "script": "build-female.py",
-      "args": [
-        "@out:adult/malebodywerewolf_1.nif",
-        "@elegantFemale",
-        "@out:adult/femalebodywerewolf.nif",
-        "@recipe:full-body.json",
-        "@recipe:female.json"
-      ],
-      "_": "Идёт ПОСЛЕ худой: обе пишут один .tri, остаться должен файл полной половины."
-    },
-    {
-      "name": "взрослый: самка, полная — переименование",
-      "runner": "move",
-      "from": "@out:adult/femalebodywerewolf.nif",
-      "to": "@out:adult/femalebodywerewolf_1.nif"
+      "name": "самка: duplicate low shape for high weight",
+      "runner": "copy",
+      "from": "@out:adult/femalebodywerewolf_0.nif",
+      "to": "@out:adult/femalebodywerewolf_1.nif",
+      "_": "The slim build also produces the TRI; no full-weight build overwrites it."
     },
     {
       "name": "базовый набор: тело самки без взрослых ползунков",
@@ -168,9 +156,11 @@
         "--skip-morph",
         "CLAWCrotchBallsSize",
         "--skip-morph",
-        "CLAWCrotchVulva"
+        "CLAWCrotchVulva",
+        "--slim",
+        "0.90"
       ],
-      "_": "Нужен только ради файла морфов; худую половину пересобирать незачем."
+      "_": "Build the base TRI against the same fixed low-weight female geometry as the adult TRI."
     },
     {
       "name": "шары охвата: malebodywerewolf_1.nif",
@@ -293,5 +283,14 @@
     "Пары мешей, которые ОБЯЗАНЫ совпасть между собой. Это доказывает, что пропуск",
     "ползунков не трогает геометрию: базовый и взрослый наборы стоят на одном теле."
   ],
-  "_mod": "Имя СЕМЕЙСТВА, а не одного мода: манифест claw-build.json кладётся в каждый собранный мод, и подпись «CLAW - Anatomy» внутри основного мода вводила в заблуждение. Какие моды собираются - написано в mods."
+  "_mod": "Имя СЕМЕЙСТВА, а не одного мода: манифест claw-build.json кладётся в каждый собранный мод, и подпись «CLAW - Anatomy» внутри основного мода вводила в заблуждение. Какие моды собираются - написано в mods.",
+  "weightPolicy": {
+    "mode": "fixed-low",
+    "sourceVariant": "_0",
+    "sexes": [
+      "male",
+      "female"
+    ],
+    "note": "Both installed weight endpoints use the respective sex low-weight shape. Named morphs remain supported; weight-dependent geometry is deferred."
+  }
 }

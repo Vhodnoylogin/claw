@@ -1,7 +1,8 @@
 # CLAW — Configurable Lycanthrope Anatomy and Weight
 
-A werewolf body with sliders: a weight pair, named morphs, sexual dimorphism and optional
-anatomy. An add-on to **Elegant Werewolf Replacer** — nothing here builds or works without it.
+A werewolf body with named morphs and distinct male/female shapes. The nearest release
+uses each sex's low-weight (`_0`) shape at both weight endpoints; weight-dependent
+geometry and the optional Anatomy add-on are deferred. An add-on to **Elegant Werewolf Replacer** — nothing here builds or works without it.
 
 *Эта страница на русском: [README.ru.md](README.ru.md).*
 
@@ -21,14 +22,14 @@ the others go by the short name and still read as one group and sit together in 
 
 | Mod in MO2 | What it carries |
 |---|---|
-| `CLAW - Configurable Lycanthrope Anatomy and Weight` | bodies of both sexes with a weight pair, a morph file **without adult sliders**, and a plugin with the weight slider and the female model |
+| `CLAW - Configurable Lycanthrope Anatomy and Weight` | bodies of both sexes with identical low/high weight endpoints per sex, a morph file **without adult sliders**, and a plugin with the weight slider and the female model |
 | `CLAW - Anatomy` | the adult add-on: **morph files only**, five megabytes |
 | `CLAW - VR` | what only makes sense in a headset: dense capsules for the hands, a beast body for the player, HIGGS, PLANCK and swinging-physics settings |
 
-**The nearest release is the first pair — the base mod and `CLAW - Anatomy`.** `CLAW - VR`
-is not part of it: we move on to it, and to body physics, once the first pair has passed
-acceptance. Until then it stays a template with a plan, and the family ships as two mods
-for the flat game.
+**The nearest release is the base mod only.** `CLAW - Anatomy` and `CLAW - VR` are
+deferred and do not gate base acceptance. Version 0.6.2.0 retains both weight filenames
+for compatibility, with the same `_0` shape at every weight for each sex. Named morphs
+remain supported. This does not establish untested platform or physics compatibility.
 
 Two more folders sit next to these in the setup, and neither belongs to the family:
 

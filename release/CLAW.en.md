@@ -1,7 +1,8 @@
 # CLAW — Configurable Lycanthrope Anatomy and Weight
 
-A werewolf body you can actually shape: a real weight pair, named morphs for every region,
-and sexual dimorphism.
+A werewolf body you can shape with named morphs for every region and distinct male/female bodies.
+Version 0.6.2.0 uses each sex's low-weight (`_0`) shape at every actor weight.
+Weight-dependent geometry is deferred; named morphs remain available.
 
 CLAW is an **add-on to [Elegant Werewolf Replacer](https://www.nexusmods.com/skyrimspecialedition/mods/93336)**,
 not a replacement for it. Elegant gives the look; CLAW adds everything Elegant leaves out.
@@ -10,11 +11,10 @@ not a replacement for it. Elegant gives the look; CLAW adds everything Elegant l
 
 | | Elegant alone | with CLAW |
 |---|---|---|
-| male weight pair | one mesh, weight ignored | `_0` and `_1`, slider works |
-| female weight pair | both files byte-identical | two genuinely different bodies |
+| male/female weight endpoints | no body-shape variation by weight | matching `_0` and `_1` files per sex; weight does not change the body |
 | morph files | none | 24 male / 25 female named sliders |
 | female model record | points at the male mesh | points at the female mesh |
-| weight slider on the beast armor | disabled in the game record | enabled |
+| weight slider on the beast armor | disabled in the game record | enabled for compatibility; fixed geometry in this release |
 
 Morph names follow one pattern — `CLAW` + body area + what it does — so the list reads like
 a body, not like a glossary: `CLAWHeadEarSize`, `CLAWTorsoShoulderGirth`, `CLAWLegDigitigrade`,
@@ -44,7 +44,7 @@ Nothing explicit is visible in this mod. The anatomy is sculpted into the mesh b
 must, or there would be a hole in its place — and the morph file here contains no crotch
 sliders at all. There is simply nothing to raise it with.
 
-The separate add-on **CLAW - Anatomy** adds those five sliders and nothing else.
+The separate **CLAW - Anatomy** add-on is deferred and is not included in this release.
 
 ## Credits and permissions
 
@@ -58,5 +58,5 @@ the terms of its page.
 ## Under the hood
 
 CLAW is not a folder of meshes someone edited once. It is built by a journal of operations —
-thirteen steps that turn the donor meshes into these bodies — so every slider in it can be
+a reproducible sequence that turns the donor meshes into these bodies — so every slider in it can be
 traced to the line that made it, and the whole mod can be rebuilt from the sources.
