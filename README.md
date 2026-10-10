@@ -142,3 +142,7 @@ The author of Elegant (Wolflady500, KaienHash) permits using the models and text
 mod as long as it is not sold, and asks that it not make their mod redundant. Hence the design:
 we ship the difference, not the mesh, and without Elegant our mod does not work. Both names are
 mandatory in the description.
+
+## Development assistance
+
+Developed with assistance from [Codex (OpenAI)](https://github.com/codex).
