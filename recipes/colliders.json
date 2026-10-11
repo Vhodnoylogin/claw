@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Offline development candidate; game physics validation required before release",
+  "bodyMod": "CLAW - Configurable Lycanthrope Anatomy and Weight",
+  "skeletonMod": "XP32 Maximum Skeleton Special Extended",
+  "assetDirectory": "meshes/actors/werewolfbeast/character assets",
+  "bodies": {
+    "male": "malebodywerewolf_0.nif",
+    "female": "femalebodywerewolf_0.nif"
+  },
+  "fit": {
+    "only": ["body", "head", "claws"],
+    "percentile": 90.0,
+    "bundle": 1,
+    "split": "axis",
+    "sliders": {}
+  },
+  "requiredMorphbenchSettings": {
+    "colliderMinWeight": 0.5,
+    "bundleMinPoints": 12
+  },
+  "coverageScope": "All visible mesh parts at rest; Morphbench colliders CLI has no --only or --slider",
+  "assignment": "Dominant weighted vertices; descendants without collision bodies assigned to the nearest ancestor body",
+  "excludedFromFit": "Fur cards, blend patches, eyes, mouth and internal anatomy; visible silhouette is not assumed to be solid collision skin"
+}

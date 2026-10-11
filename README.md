@@ -1,8 +1,21 @@
 # CLAW — Configurable Lycanthrope Anatomy and Weight
 
-A werewolf body with named morphs and distinct male/female shapes. The nearest release
+A werewolf body with named morphs and distinct male/female shapes. The first release
 uses each sex's low-weight (`_0`) shape at both weight endpoints; weight-dependent
 geometry and the optional Anatomy add-on are deferred. An add-on to **Elegant Werewolf Replacer** — nothing here builds or works without it.
+
+The first published release is **resources for modders**: meshes, named morphs and
+the base plugin. OBody integration and automatic body distribution are planned for
+later releases. The packaged [resource contract and NiOverride example](release/CLAW.en.md)
+document the files, morph names and integration responsibilities.
+
+See the [future plans](docs/roadmap.md) for collider alignment, ear and breast
+physics, colliders that follow morphs, seam repairs, OBody or equivalent support,
+a first-person VR body, and the separate adult anatomy/physics add-on.
+
+Post-release development starts with an [offline distribution core](docs/distribution.md)
+and [measured collider candidates](docs/colliders.md). Automatic population variety
+is the primary goal, followed by VR. These prototypes are not installed game features.
 
 *Эта страница на русском: [README.ru.md](README.ru.md).*
 

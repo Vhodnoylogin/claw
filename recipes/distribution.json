@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "status": "offline-prototype-unqualified",
+  "key": "CLAW.Link",
+  "bodyFamilies": {
+    "CBBE": {
+      "CLAWTorsoGirth": {"inputs": {"BigTorso": 0.6, "ChubbyWaist": 0.4}, "limit": 0.25},
+      "CLAWTorsoBellyRound": {"inputs": {"Belly": 1.0}, "limit": 0.2},
+      "CLAWTorsoChestSize": {"inputs": {"ChestWidth": 0.5, "ChestDepth": 0.5}, "limit": 0.2},
+      "CLAWArmGirth": {"inputs": {"ChubbyArms": 0.5, "MuscleArms": 0.5}, "limit": 0.2},
+      "CLAWLegCalfGirth": {"inputs": {"CalfSize": 1.0}, "limit": 0.2}
+    },
+    "HIMBO": {
+      "CLAWTorsoGirth": {"inputs": {"TorsoMass": 0.5, "TorsoWidth": 0.5}, "limit": 0.25},
+      "CLAWTorsoBellyRound": {"inputs": {"TorsoBelly": 0.6, "BellyPot": 0.4}, "limit": 0.2},
+      "CLAWTorsoChestSize": {"inputs": {"PecsSize": 0.5, "PecsMass": 0.5}, "limit": 0.2},
+      "CLAWArmGirth": {"inputs": {"ArmsBiceps": 0.6, "ArmsShoulders": 0.4}, "limit": 0.2},
+      "CLAWLegCalfGirth": {"inputs": {"LegsCalfSize": 1.0}, "limit": 0.2}
+    }
+  },
+  "inherentTraits": {
+    "CLAWHeadEarSize": [0.0, 0.35],
+    "CLAWHeadEarTilt": [0.0, 0.2],
+    "CLAWHeadMuzzleLong": [0.0, 0.15],
+    "CLAWTailLength": [0.0, 0.35],
+    "CLAWTailFluff": [0.0, 0.15]
+  },
+  "nativeBeastTraits": {
+    "CLAWTorsoGirth": [0.0, 0.25],
+    "CLAWTorsoChestSize": [0.0, 0.2],
+    "CLAWArmGirth": [0.0, 0.2],
+    "CLAWLegCalfGirth": [0.0, 0.2]
+  },
+  "note": "Illustrative ranges, not game-qualified safety limits. Breast size deliberately stays neutral pending shape/rig repair. Inputs are already weight-interpolated NiOverride coefficients, not BodySlide XML percentages."
+}
