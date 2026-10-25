@@ -389,7 +389,7 @@ def _put_key(obj, morph, delta, log):
         % (morph, obj.name, len(delta), len(obj.data.vertices), mx))
 
 
-def carry_field(src_obj, src_delta, dst_obj, k=6, max_dist=6.0):
+def carry_field(src_obj, src_delta, dst_obj, k=6, max_dist=6.0, source_positions=None):
     """Переносит поле сдвигов с кожи на оболочку, лежащую поверх неё.
 
     Тело зверя собрано слоями: кожа, шесть оболочек шерсти и сшивки между ними.
@@ -410,7 +410,8 @@ def carry_field(src_obj, src_delta, dst_obj, k=6, max_dist=6.0):
     src = src_obj.data.vertices
     tree = kdtree.KDTree(len(src))
     for i, v in enumerate(src):
-        tree.insert(src_obj.matrix_world @ v.co, i)
+        tree.insert(source_positions[i] if source_positions is not None else
+                    src_obj.matrix_world @ v.co, i)
     tree.balance()
     out = {}
     for j, v in enumerate(dst_obj.data.vertices):
@@ -451,6 +452,201 @@ def carry_field(src_obj, src_delta, dst_obj, k=6, max_dist=6.0):
         if got.length > 0.001:
             out[j] = got
     return out
+
+
+class SurfaceCollarSession:
+    """Opt-in female attachment repair on frozen donor geometry.
+
+    The source positions and triangle bindings are captured before SLIM. Neutral
+    coordinates and every existing key move together; later corrections edit key
+    deltas against the corrected Basis. No vertex/UV/weight/topology edits occur.
+    """
+    def __init__(self, objects, recipe, source_path, log=print):
+        import hashlib
+        import numpy as np
+        import surface_collar as surface
+        from mathutils.bvhtree import BVHTree
+
+        if recipe.get('schemaVersion') != 1:
+            raise ValueError('Unsupported surface collar recipe')
+        with open(source_path, 'rb') as stream:
+            digest = hashlib.sha256(stream.read()).hexdigest()
+        if digest != recipe['donorSha256']:
+            raise ValueError('Surface collar requires the pinned female donor')
+        self.objects, self.recipe, self.log = objects, recipe, log
+        self.surface, self.np = surface, np
+        self.vertices, self.faces = {}, {}
+        for name, expected in recipe['shapes'].items():
+            obj = objects.get(name)
+            if obj is None:
+                raise ValueError('Missing pinned surface shape: ' + name)
+            obj.data.calc_loop_triangles()
+            vertices = np.asarray([obj.matrix_world @ v.co for v in obj.data.vertices], dtype=float)
+            faces = np.asarray([tuple(t.vertices) for t in obj.data.loop_triangles], dtype=int)
+            surface.validate_geometry(vertices, faces, expected, recipe['boundsTolerance'])
+            self.vertices[name], self.faces[name] = vertices, faces
+
+        def projector(vertices, faces):
+            tree = BVHTree.FromPolygons([Vector(p) for p in vertices], faces.tolist(), all_triangles=True)
+            def project(point):
+                nearest, _normal, index, distance = tree.find_nearest(Vector(point))
+                if index is None:
+                    raise ValueError('Cannot project surface attachment')
+                return np.asarray(nearest), index, distance
+            return project
+
+        self.collars = []
+        for rule in recipe['collars']:
+            source, target = rule['source'], rule['target']
+            self.collars.append((rule, surface.Collar(
+                self.vertices[source], self.faces[source], self.vertices[target],
+                self.faces[target], rule, projector(self.vertices[source], self.faces[source]))))
+        self.skin_names = recipe['skinSources']
+        self.skin_slices, offset, all_faces = {}, 0, []
+        for name in self.skin_names:
+            self.skin_slices[name] = slice(offset, offset + len(self.vertices[name]))
+            all_faces.append(self.faces[name] + offset)
+            offset += len(self.vertices[name])
+        skin_vertices = np.concatenate([self.vertices[name] for name in self.skin_names])
+        skin_faces = np.concatenate(all_faces)
+        skin_projector = projector(skin_vertices, skin_faces)
+        self.layers = []
+        for rule in recipe['layers']:
+            name = rule['shape']
+            layer = surface.Layer(self.vertices[name], self.faces[name], skin_vertices,
+                                  skin_faces, rule, skin_projector)
+            self.layers.append((name, layer))
+        self.report = {'schemaVersion': 1, 'donorSha256': digest,
+                       'status': 'prepared-export-visual-and-runtime-acceptance-pending',
+                       'neutral': [], 'morphs': {}}
+        self.report['attachmentWeights'] = []
+        def weights(name, index):
+            obj = objects[name]
+            return {obj.vertex_groups[g.group].name: g.weight
+                    for g in obj.data.vertices[index].groups}
+        for rule, collar in self.collars:
+            differences = []
+            for anchor, face_index, bary in zip(collar.anchors, collar.binding.indices,
+                                                collar.binding.weights):
+                expected = {}
+                for index, factor in zip(collar.binding.faces[face_index], bary):
+                    for name, value in weights(rule['source'], int(index)).items():
+                        expected[name] = expected.get(name, 0.0) + factor * value
+                actual = weights(rule['target'], int(anchor))
+                differences.append(sum(abs(expected.get(name, 0.0) - actual.get(name, 0.0))
+                                       for name in set(expected) | set(actual)))
+            self.report['attachmentWeights'].append({
+                'source': rule['source'], 'target': rule['target'],
+                'unchanged': True, 'L1Median': float(np.median(differences)),
+                'L1P95': float(np.quantile(differences, .95)), 'L1Max': max(differences)})
+        self.log('COLLAR|frozen pinned donor; anchors ' +
+                 ','.join(str(len(c.anchors)) for _, c in self.collars))
+
+    def _dense(self, name, field):
+        result = self.np.zeros(self.vertices[name].shape)
+        for index, value in field.items():
+            result[index] = tuple(value)
+        return result
+
+    def _key_delta(self, name, key_name):
+        obj = self.objects[name]
+        keys = obj.data.shape_keys.key_blocks if obj.data.shape_keys else None
+        if keys is None or key_name not in keys:
+            return self.np.zeros(self.vertices[name].shape)
+        basis = keys[0]
+        return self.np.asarray([obj.matrix_world.to_3x3() @ (v.co - b.co)
+                                for v, b in zip(keys[key_name].data, basis.data)], dtype=float)
+
+    def _put_delta(self, name, key_name, delta):
+        obj = self.objects[name]
+        if obj.data.shape_keys is None:
+            obj.shape_key_add(name='Basis', from_mix=False)
+        keys = obj.data.shape_keys.key_blocks
+        key = keys.get(key_name)
+        if key is None:
+            key = obj.shape_key_add(name=key_name, from_mix=False)
+        inverse = obj.matrix_world.to_3x3().inverted()
+        for index, value in enumerate(delta):
+            key.data[index].co = keys[0].data[index].co + inverse @ Vector(value)
+
+    def _skin_delta(self, fields):
+        return self.np.concatenate([fields[name] for name in self.skin_names])
+
+    def neutral_fields(self, fields):
+        """Compute all corrections before any object Basis is moved."""
+        dense = {name: self._dense(name, fields.get(name, {})) for name in self.vertices}
+        for rule, collar in self.collars:
+            source, target = rule['source'], rule['target']
+            before = collar.metrics(self.vertices[source] + dense[source],
+                                    self.vertices[target] + dense[target])
+            dense[target] = collar.reconcile(dense[source], dense[target])
+            after = collar.metrics(self.vertices[source] + dense[source],
+                                   self.vertices[target] + dense[target])
+            self.report['neutral'].append({'source': source, 'target': target,
+                                            'before': before, 'after': after})
+        skin_delta = self._skin_delta(dense)
+        for name, layer in self.layers:
+            dense[name] = layer.reconcile(dense[name], skin_delta)
+        result = dict(fields)
+        for name, values in dense.items():
+            result[name] = {i: Vector(value) for i, value in enumerate(values)
+                            if self.np.linalg.norm(value) > self.recipe['fieldEpsilon']}
+        return result
+
+    def reconcile_morphs(self):
+        names = set()
+        for name in self.skin_names:
+            keys = self.objects[name].data.shape_keys
+            if keys:
+                names.update(k.name for k in keys.key_blocks if k.name.startswith('>CLAW'))
+        for key_name in sorted(names):
+            fields = {name: self._key_delta(name, key_name) for name in self.vertices}
+            entries, changed = [], False
+            for rule, collar in self.collars:
+                source, target = rule['source'], rule['target']
+                before = collar.metrics(self.vertices[source] + fields[source],
+                                        self.vertices[target] + fields[target])
+                old = fields[target]
+                new = collar.reconcile(fields[source], old)
+                correction = float(self.np.max(self.np.linalg.norm(new - old, axis=1)))
+                if correction <= self.recipe['fieldEpsilon']:
+                    continue
+                changed = True
+                fields[target] = new
+                self._put_delta(target, key_name, new)
+                after = collar.metrics(self.vertices[source] + fields[source],
+                                       self.vertices[target] + fields[target])
+                entries.append({'source': source, 'target': target, 'before': before,
+                                'after': after, 'correctionMax': correction,
+                                'oldPeakDelta': float(self.np.linalg.norm(old, axis=1).max()),
+                                'newPeakDelta': float(self.np.linalg.norm(new, axis=1).max())})
+            if changed:
+                skin_delta = self._skin_delta(fields)
+                for name, layer in self.layers:
+                    new = layer.reconcile(fields[name], skin_delta)
+                    keys = self.objects[name].data.shape_keys
+                    existing = keys is not None and keys.key_blocks.get(key_name) is not None
+                    # A computed zero must replace an existing contribution. Only
+                    # avoid creating a new key when that new contribution is zero.
+                    if existing or self.np.max(self.np.abs(new)) > self.recipe['fieldEpsilon']:
+                        self._put_delta(name, key_name, new)
+                self.report['morphs'][key_name[1:]] = entries
+        self.log('COLLAR|reconciled %d named interfaces' % len(self.report['morphs']))
+
+
+def apply_neutral_fields(objects, fields):
+    """Translate Basis and all existing key positions by the same world delta."""
+    for name, field in fields.items():
+        obj = objects[name]
+        inverse = obj.matrix_world.to_3x3().inverted()
+        original = [v.co.copy() for v in obj.data.vertices]
+        if obj.data.shape_keys:
+            for key in obj.data.shape_keys.key_blocks:
+                saved = [v.co.copy() for v in key.data]
+                for index, value in field.items():
+                    key.data[index].co = saved[index] + inverse @ value
+        for index, value in field.items():
+            obj.data.vertices[index].co = original[index] + inverse @ value
 
 
 def apply_to_shape(item, objects, donor, log=print):

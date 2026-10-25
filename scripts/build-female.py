@@ -36,6 +36,20 @@ except Exception:
 addon_utils.enable("io_scene_nifly", default_set=False, persistent=True)
 
 argv = sys.argv[sys.argv.index("--") + 1:]
+COLLARS = None
+COLLAR_REPORT = None
+DRY_COLLARS = '--dry-surface-collars' in argv
+if DRY_COLLARS:
+    argv.remove('--dry-surface-collars')
+for flag in ('--surface-collars', '--surface-report'):
+    if flag in argv:
+        k = argv.index(flag)
+        value = argv[k + 1]
+        argv = argv[:k] + argv[k + 2:]
+        if flag == '--surface-collars':
+            COLLARS = value
+        else:
+            COLLAR_REPORT = value
 SLIM = None
 if '--slim' in argv:
     k = argv.index('--slim')
@@ -114,6 +128,16 @@ if arms_mesh is not None and bpy.data.objects.get('fur_arms') is None:
           % (len(obj.data.vertices), mx))
 
 meshes = {o.name: o for o in bpy.data.objects if o.type == 'MESH'}
+collar_session = None
+if COLLARS:
+    with open(COLLARS, encoding='utf-8-sig') as stream:
+        collar_recipe = json.load(stream)
+    collar_session = morphlib.SurfaceCollarSession(meshes, collar_recipe, FEMALE)
+if DRY_COLLARS:
+    if collar_session is None:
+        raise ValueError('--dry-surface-collars requires --surface-collars')
+    print('COLLAR|configuration validated; no geometry or morphs exported')
+    raise SystemExit(0)
 
 # ---- половина по весу --------------------------------------------------------
 # Убавление обхвата делается ГЕОМЕТРИЕЙ, а не морфом: пара _0/_1 - это встроенное
@@ -123,17 +147,26 @@ if SLIM is not None:
             "zFade": 12.0, "amount": SLIM,
             "includeContains": ["NPC Pelvis", "NPC Spine", "NPC Neck"]}
     d = morphlib.deltas_for(body, slim, arm)
-    for i, v in enumerate(body.data.vertices):
-        if i in d:
-            v.co = v.co + d[i]
+    fields = {'body': d} if collar_session else {}
+    legacy_source = None
+    if collar_session:
+        # Preserve out-of-scope fur/tail behavior without mutating the true donor
+        # used by the collar. Breast-local followers are replaced by skin bindings.
+        legacy_source = [(body.matrix_world @ v.co) + d.get(i, Vector((0, 0, 0)))
+                         for i, v in enumerate(body.data.vertices)]
+    if not collar_session:
+        # Keep the published legacy build reproducible until the opt-in candidate
+        # is selected by a new versioned build recipe.
+        morphlib.apply_neutral_fields(meshes, {'body': d})
     for name in ('fur_belly', 'fur_chest', 'fur_back', 'fur_shoulders', 'ChestBlend'):
         o = meshes.get(name)
         if o is None:
             continue
-        got = morphlib.carry_field(body, d, o)
-        for i, v in enumerate(o.data.vertices):
-            if i in got:
-                v.co = v.co + got[i]
+        # The opt-in candidate samples the frozen source, before its Basis moves.
+        fields[name] = morphlib.carry_field(body, d, o, source_positions=legacy_source)
+    if collar_session:
+        fields = collar_session.neutral_fields(fields)
+    morphlib.apply_neutral_fields(meshes, fields)
     print("FEM|половина по весу: обхват %.2f, сдвинуто %d вершин кожи" % (SLIM, len(d)))
 
 # ---- ползунки ----------------------------------------------------------------
@@ -160,5 +193,22 @@ for it in fem:
     if it.get('mode') == 'toShape':
         morphlib.apply_to_shape(it, meshes, {'body': male_co.get('body')}, print)
 
+if collar_session:
+    collar_session.reconcile_morphs()
+
 morphlib.export_clean(OUT)
+if collar_session:
+    import hashlib
+    report = collar_session.report
+    report['status'] = 'exported-candidate-visual-and-runtime-acceptance-pending'
+    report['blenderVersion'] = bpy.app.version_string
+    report['recipeSha256'] = hashlib.sha256(open(COLLARS, 'rb').read()).hexdigest()
+    report['maleInputSha256'] = hashlib.sha256(open(MALE, 'rb').read()).hexdigest()
+    report['sourceSha256'] = {name: hashlib.sha256(open(os.path.join(
+        os.path.dirname(__file__), name), 'rb').read()).hexdigest()
+        for name in ('build-female.py', 'morphlib.py', 'surface_collar.py')}
+    report_path = COLLAR_REPORT or OUT + '.surface-collars.json'
+    os.makedirs(os.path.dirname(os.path.abspath(report_path)), exist_ok=True)
+    with open(report_path, 'w', encoding='utf-8') as stream:
+        json.dump(report, stream, indent=2)
 print("FEM|экспорт ok ->", OUT)

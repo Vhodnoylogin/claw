@@ -1,0 +1,249 @@
+{
+  "schemaVersion": 1,
+  "status": "candidate-visual-and-runtime-acceptance-pending",
+  "donorSha256": "ec9c70bf5ed62fdf481bbfc0aad43c7d8d2e8d0ca90833a323b9b222e437265b",
+  "boundsTolerance": 0.001,
+  "fieldEpsilon": 1e-08,
+  "shapes": {
+    "body": {
+      "vertexCount": 18359,
+      "triangleCount": 34195,
+      "topologySha256": "038c3611aaaf51057c81a3822e9e351c48bf29da0f5cd1a4d5d53d13a9a72d7b",
+      "bounds": [
+        [
+          -72.86197662353516,
+          -61.16764831542969,
+          -2.083643674850464
+        ],
+        [
+          72.86199188232422,
+          40.655181884765625,
+          126.98584747314453
+        ]
+      ]
+    },
+    "head": {
+      "vertexCount": 9427,
+      "triangleCount": 17456,
+      "topologySha256": "387b3d5061fa5c73f99ceb4de256c698c18193b8c16c86bb60cd18c031d04cfb",
+      "bounds": [
+        [
+          -21.91989517211914,
+          14.813406944274902,
+          87.33429718017578
+        ],
+        [
+          21.91989517211914,
+          72.717041015625,
+          132.1552276611328
+        ]
+      ]
+    },
+    "fur_belly": {
+      "vertexCount": 10810,
+      "triangleCount": 7698,
+      "topologySha256": "508572e305fcb721661427b784325add3f4c7370b39fcc5723a32c6ef79737fc",
+      "bounds": [
+        [
+          -22.197675704956055,
+          -9.506068229675293,
+          62.9094123840332
+        ],
+        [
+          22.197675704956055,
+          49.75293731689453,
+          108.03663635253906
+        ]
+      ]
+    },
+    "fur_chest": {
+      "vertexCount": 2572,
+      "triangleCount": 1704,
+      "topologySha256": "bda061cc9f29ae770c2932c81dd1b1be46508775b8ce6cac3493aea4b46bc5db",
+      "bounds": [
+        [
+          -17.786510467529297,
+          19.52955436706543,
+          84.90455627441406
+        ],
+        [
+          17.786514282226562,
+          58.06499481201172,
+          113.7874984741211
+        ]
+      ]
+    },
+    "fur_shoulders": {
+      "vertexCount": 5010,
+      "triangleCount": 3332,
+      "topologySha256": "e51b88fe116e8ccf0e731a8727062120fa00b7950a7deec29f7a1b845fc23893",
+      "bounds": [
+        [
+          -29.57919692993164,
+          -11.383787155151367,
+          89.13949584960938
+        ],
+        [
+          29.57919692993164,
+          43.74147415161133,
+          130.6862030029297
+        ]
+      ]
+    },
+    "ChestBlend": {
+      "vertexCount": 1422,
+      "triangleCount": 826,
+      "topologySha256": "11a2c270dbbfeaf290c51e67fc58972dcccd2eb5787668eef9ec4a0868ecb577",
+      "bounds": [
+        [
+          -24.529720306396484,
+          29.059185028076172,
+          100.0214614868164
+        ],
+        [
+          23.182147979736328,
+          53.235050201416016,
+          112.7990493774414
+        ]
+      ]
+    }
+  },
+  "skinSources": [
+    "body",
+    "head"
+  ],
+  "collars": [
+    {
+      "source": "body",
+      "target": "head",
+      "anchorBounds": [
+        [
+          -23,
+          10,
+          85
+        ],
+        [
+          23,
+          45,
+          103
+        ]
+      ],
+      "anchorMaxDistance": 1.0,
+      "anchorCountRange": [
+        55,
+        55
+      ],
+      "width": 2.0,
+      "weldDecimals": 5,
+      "maxIterations": 400,
+      "solverTolerance": 1e-08
+    }
+  ],
+  "layers": [
+    {
+      "shape": "fur_belly",
+      "mode": "cards",
+      "bounds": [
+        [
+          -25,
+          8,
+          82
+        ],
+        [
+          25,
+          46,
+          108
+        ]
+      ],
+      "fade": [
+        2,
+        3,
+        2
+      ],
+      "distanceFade": [
+        2,
+        6
+      ],
+      "weldDecimals": 5
+    },
+    {
+      "shape": "fur_chest",
+      "mode": "cards",
+      "bounds": [
+        [
+          -25,
+          8,
+          82
+        ],
+        [
+          25,
+          46,
+          108
+        ]
+      ],
+      "fade": [
+        2,
+        3,
+        2
+      ],
+      "distanceFade": [
+        2,
+        6
+      ],
+      "weldDecimals": 5
+    },
+    {
+      "shape": "fur_shoulders",
+      "mode": "cards",
+      "bounds": [
+        [
+          -25,
+          8,
+          82
+        ],
+        [
+          25,
+          46,
+          108
+        ]
+      ],
+      "fade": [
+        2,
+        3,
+        2
+      ],
+      "distanceFade": [
+        2,
+        6
+      ],
+      "weldDecimals": 5
+    },
+    {
+      "shape": "ChestBlend",
+      "mode": "vertices",
+      "bounds": [
+        [
+          -25,
+          8,
+          82
+        ],
+        [
+          25,
+          60,
+          114
+        ]
+      ],
+      "fade": [
+        2,
+        3,
+        2
+      ],
+      "distanceFade": [
+        2,
+        6
+      ],
+      "weldDecimals": 5
+    }
+  ],
+  "note": "Bindings use frozen imported world/rest geometry before SLIM. Narrow head collar keeps original lobe interior. UV duplicates share solver corrections only; exported topology and UVs remain unchanged. Illustrative layer reach needs visual acceptance."
+}
