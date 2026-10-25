@@ -4,14 +4,24 @@ param(
     [Parameter(Mandatory=$true)][string]$SkeeHeader,
     [string]$CMakeExe,
     [string]$Generator = 'Visual Studio 18 2026',
+    [ValidateSet('VR','SE')][string]$Runtime = 'VR',
+    [string]$DependencyPrefix,
+    [string]$ToolchainFile,
     [int]$Parallel = 8,
     [switch]$BuildTests,
     [hashtable]$FetchSources = @{}
 )
 $ErrorActionPreference = 'Stop'
+$Runtime = $Runtime.ToUpperInvariant()
 $clawSource = [IO.Path]::GetFullPath($PSScriptRoot)
 $clawRepo = [IO.Directory]::GetParent($clawSource).FullName
 $clawOutput = [IO.Path]::GetFullPath($BuildDir)
+$clawCache = Join-Path $clawOutput 'CMakeCache.txt'
+if (Test-Path -LiteralPath $clawCache) {
+    $clawRuntimeEntry = Get-Content -LiteralPath $clawCache | Where-Object { $_ -match '^CLAW_RUNTIME:.*=' } | Select-Object -First 1
+    $clawPreviousRuntime = if ($clawRuntimeEntry) { ($clawRuntimeEntry -split '=', 2)[1] } else { 'VR' }
+    if ($clawPreviousRuntime -ne $Runtime) { throw 'Use a separate BuildDir for each runtime; legacy build trees are VR.' }
+}
 $clawAllowedWork = [IO.Path]::Combine($clawRepo, 'work') + [IO.Path]::DirectorySeparatorChar
 if ($clawOutput.Equals($clawRepo, [StringComparison]::OrdinalIgnoreCase) -or
     ($clawOutput.StartsWith($clawRepo + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -and
@@ -41,16 +51,20 @@ if (!$CMakeExe) {
     }
 }
 $clawConfigure = @('-S', $clawSource, '-B', $clawOutput, '-G', $Generator, '-A', 'x64',
+    "-DCLAW_RUNTIME=$Runtime",
     "-DCLAW_COMMONLIB_DIR=$([IO.Path]::GetFullPath($CommonLibDir))",
     "-DCLAW_SKEE_HEADER=$([IO.Path]::GetFullPath($SkeeHeader))",
     "-DCLAW_BUILD_TESTS=$($BuildTests.IsPresent.ToString().ToUpperInvariant())")
+if ($DependencyPrefix) { $clawConfigure += "-DCMAKE_PREFIX_PATH=$([IO.Path]::GetFullPath($DependencyPrefix))" }
+if ($ToolchainFile) { $clawConfigure += "-DCMAKE_TOOLCHAIN_FILE=$([IO.Path]::GetFullPath($ToolchainFile))" }
 foreach ($clawName in $FetchSources.Keys) {
     if ($clawName -notin @('PUGIXML','FMT','SPDLOG','RAPIDCSV')) { throw "Unknown external dependency: $clawName" }
     $clawConfigure += "-DFETCHCONTENT_SOURCE_DIR_$($clawName.ToUpperInvariant())=$([IO.Path]::GetFullPath($FetchSources[$clawName]))"
 }
 & $CMakeExe @clawConfigure
 if ($LASTEXITCODE) { throw 'CMake configuration failed.' }
-$clawTargets = @('CLAWDistribution','claw-preset-tool')
+$clawPluginTarget = if ($Runtime -eq 'SE') { 'CLAWDistributionSE' } else { 'CLAWDistribution' }
+$clawTargets = @($clawPluginTarget,'claw-preset-tool')
 if ($BuildTests) { $clawTargets += 'claw-preset-tests' }
 & $CMakeExe --build $clawOutput --config Release --target @clawTargets --parallel $Parallel
 if ($LASTEXITCODE) { throw 'Native compilation failed.' }

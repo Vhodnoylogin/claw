@@ -16,8 +16,29 @@
 #include <random>
 #include <set>
 #include <thread>
+#include <utility>
+
+#ifdef interface
+#undef interface
+#endif
 
 namespace {
+#if defined(CLAW_RUNTIME_SE) && !defined(CLAW_RUNTIME_VR)
+constexpr auto supportedRuntime = SKSE::RUNTIME_SSE_1_7_104;
+#elif defined(CLAW_RUNTIME_VR) && !defined(CLAW_RUNTIME_SE)
+constexpr auto supportedRuntime = SKSE::RUNTIME_VR_1_4_15;
+#else
+#error Select exactly one CLAW runtime through CMake.
+#endif
+
+bool supportsRuntime(const SKSE::QueryInterface* skse) {
+    return skse && !skse->IsEditor() && skse->RuntimeVersion() == supportedRuntime;
+}
+
+// CommonLib 3.7 enumerates references; 9.1 enumerates nullable pointers.
+RE::Actor* highActorPointer(RE::Actor* actor) { return actor; }
+RE::Actor* highActorPointer(RE::Actor& actor) { return &actor; }
+
 enum class Status : std::int32_t {
     unknown = 0, pending = 1, applied = 2, unloaded = 3,
     error = 4, human = 5, cleared = 6, providerUnavailable = 7
@@ -106,7 +127,7 @@ void checkRuntimeInstances() {
     for (auto it = states.begin(); it != states.end();) {
         auto& state = it->second;
         if (!state.runtimeSerial || state.quarantined) { ++it; continue; }
-        const auto actor = state.runtimeHandle.get(); // Strong temporary lives only in this main task.
+        const auto actor = std::as_const(state.runtimeHandle).get(); // Const resolution; strong temporary lives only in this main task.
         if (!claw::sameRuntimeActor(state.runtimePointer, actor.get(), state.runtimePointer)) {
             quarantine(state, "runtime actor handle expired or changed; saved assignment quarantined");
         } else if (actor->IsDeleted()) {
@@ -161,7 +182,7 @@ State* stateFor(RE::Actor* actor, bool create) {
             return &state;
         }
         if (state.runtimeSerial) {
-            const auto witness = state.runtimeHandle.get();
+            const auto witness = std::as_const(state.runtimeHandle).get();
             if (!claw::sameRuntimeActor(state.runtimePointer, witness.get(), actor))
                 quarantine(state, "actor runtime identity conflicts with saved FormID; assignment quarantined");
             return &state;
@@ -279,8 +300,9 @@ void scan() {
     std::set<RE::FormID> actors;
     if (auto* player = RE::PlayerCharacter::GetSingleton()) actors.insert(player->GetFormID());
     if (auto* processes = RE::ProcessLists::GetSingleton()) {
-        processes->ForEachHighActor([&](RE::Actor& actor) {
-            if (actors.size() < maxActors) actors.insert(actor.GetFormID());
+        processes->ForEachHighActor([&](auto&& value) {
+            auto* actor = highActorPointer(value);
+            if (actor && actors.size() < maxActors) actors.insert(actor->GetFormID());
             return RE::BSContainer::ForEachResult::kContinue;
         });
     }
@@ -583,7 +605,11 @@ void exchange() {
 
 std::filesystem::path presetDirectory() {
     std::array<wchar_t, 32768> executable{};
+#if defined(CLAW_RUNTIME_SE)
+    const auto length = GetModuleFileNameW(nullptr, executable.data(), static_cast<std::uint32_t>(executable.size()));
+#else
     const auto length = GetModuleFileName(nullptr, executable.data(), static_cast<std::uint32_t>(executable.size()));
+#endif
     if (!length || length >= executable.size()) throw std::runtime_error("cannot locate game executable directory");
     return std::filesystem::path(std::wstring(executable.data(), length)).parent_path() / "Data" / claw::presetRelativePath;
 }
@@ -651,13 +677,28 @@ void message(SKSE::MessagingInterface::Message* event) {
 }
 }
 
+#if defined(CLAW_RUNTIME_SE)
+extern "C" __declspec(dllexport) constinit SKSE::PluginVersionData SKSEPlugin_Version = [] {
+    SKSE::PluginVersionData version;
+    version.PluginVersion({0, 1, 0, 0});
+    version.PluginName("CLAWDistribution");
+    version.AuthorName("CLAW contributors");
+    version.versionIndependenceEx = SKSE::PluginVersionData::kVersionIndependentEx_AddressLibraryV5;
+    version.CompatibleVersions({supportedRuntime});
+    version.UsesUpdatedStructs();
+    version.MinimumRequiredXSEVersion({2, 3, 1, 0});
+    return version;
+}();
+#endif
+
 extern "C" __declspec(dllexport) bool SKSEPlugin_Query(const SKSE::QueryInterface* skse, SKSE::PluginInfo* info) {
+    if (!info) return false;
     info->infoVersion = SKSE::PluginInfo::kVersion; info->name = "CLAWDistribution"; info->version = 1;
-    // This candidate is intentionally scoped to the installed Skyrim VR runtime.
-    return !skse->IsEditor() && skse->RuntimeVersion() == SKSE::RUNTIME_VR_1_4_15;
+    return supportsRuntime(skse);
 }
 
 extern "C" __declspec(dllexport) bool SKSEPlugin_Load(const SKSE::LoadInterface* skse) {
+    if (!supportsRuntime(skse)) return false;
     try {
         const auto directory = SKSE::log::log_directory();
         if (directory) {
@@ -665,7 +706,12 @@ extern "C" __declspec(dllexport) bool SKSEPlugin_Load(const SKSE::LoadInterface*
                 std::make_shared<spdlog::sinks::basic_file_sink_mt>((*directory / "CLAWDistribution.log").string(), true));
             spdlog::set_default_logger(std::move(logger)); spdlog::set_level(spdlog::level::info); spdlog::flush_on(spdlog::level::warn);
         }
-        SKSE::Init(skse); tasks = SKSE::GetTaskInterface();
+#if defined(CLAW_RUNTIME_SE)
+        SKSE::Init(skse, {.log = false}); // Keep this plugin's existing logger.
+#else
+        SKSE::Init(skse);
+#endif
+        tasks = SKSE::GetTaskInterface();
         const auto* serial = SKSE::GetSerializationInterface();
         if (!tasks || !serial || !SKSE::GetPapyrusInterface() || !SKSE::GetMessagingInterface()) return false;
         serial->SetUniqueID(serializationID); serial->SetSaveCallback(save); serial->SetLoadCallback(load); serial->SetRevertCallback(revert);

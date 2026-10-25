@@ -1,10 +1,23 @@
 cmake_minimum_required(VERSION 3.25)
+if(EXISTS "${CMAKE_BINARY_DIR}/CMakeCache.txt" AND
+   NOT DEFINED CLAW_CONFIGURED_RUNTIME AND CLAW_RUNTIME STREQUAL "SE")
+    message(FATAL_ERROR "Existing unmarked build trees are legacy VR; use a new build directory for SE")
+endif()
 project(CLAWDistribution VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 option(CLAW_BUILD_PLUGIN "Build the SKSE DLL (Windows only)" ON)
 option(CLAW_BUILD_TESTS "Build offline core tests (do not execute automatically)" OFF)
+set(CLAW_RUNTIME "VR" CACHE STRING "Plugin runtime: VR (1.4.15) or SE (1.7.104)")
+set_property(CACHE CLAW_RUNTIME PROPERTY STRINGS VR SE)
+if(NOT CLAW_RUNTIME MATCHES "^(VR|SE)$")
+    message(FATAL_ERROR "CLAW_RUNTIME must be VR or SE")
+endif()
+if(DEFINED CLAW_CONFIGURED_RUNTIME AND NOT CLAW_CONFIGURED_RUNTIME STREQUAL CLAW_RUNTIME)
+    message(FATAL_ERROR "Use a separate build directory for each CLAW runtime")
+endif()
+set(CLAW_CONFIGURED_RUNTIME "${CLAW_RUNTIME}" CACHE INTERNAL "Runtime fixed for this build directory")
 set(CLAW_COMMONLIB_DIR "" CACHE PATH "External configured CommonLibSSE-NG checkout")
 set(CLAW_SKEE_HEADER "" CACHE FILEPATH "Pinned official external IPluginInterface.h")
 include(FetchContent)
@@ -28,6 +41,15 @@ if(CLAW_BUILD_PLUGIN)
     if(NOT EXISTS "${CLAW_COMMONLIB_DIR}/CMakeLists.txt")
         message(FATAL_ERROR "Set CLAW_COMMONLIB_DIR to an external CommonLibSSE-NG checkout")
     endif()
+    if(CLAW_RUNTIME STREQUAL "SE")
+        if(NOT EXISTS "${CLAW_COMMONLIB_DIR}/include/SKSE/Version.h")
+            message(FATAL_ERROR "SE requires a current CommonLib SDK with explicit 1.7.104 support")
+        endif()
+        file(READ "${CLAW_COMMONLIB_DIR}/include/SKSE/Version.h" CLAW_SDK_VERSIONS)
+        if(NOT CLAW_SDK_VERSIONS MATCHES "RUNTIME_SSE_1_7_104")
+            message(FATAL_ERROR "This CommonLib SDK predates SE 1.7.104; do not unlock the legacy VR SDK")
+        endif()
+    endif()
     if(NOT EXISTS "${CLAW_SKEE_HEADER}")
         message(FATAL_ERROR "Set CLAW_SKEE_HEADER to the official external IPluginInterface.h")
     endif()
@@ -35,37 +57,49 @@ if(CLAW_BUILD_PLUGIN)
     if(NOT CLAW_SKEE_SHA STREQUAL "875410dd22230f76a014a6841004e7d346f5fa1c748cfff695f9f495234da277")
         message(FATAL_ERROR "SKEE header differs from pinned official API revision")
     endif()
-    # Downloaded dependencies and all generated output stay in the caller's build tree.
-    set(FMT_TEST OFF CACHE BOOL "" FORCE)
-    set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(SPDLOG_INSTALL ON CACHE BOOL "Export dependency targets for CommonLib configuration" FORCE)
-    set(SPDLOG_FMT_EXTERNAL ON CACHE BOOL "" FORCE)
-    FetchContent_Declare(fmt
-        URL https://codeload.github.com/fmtlib/fmt/zip/refs/tags/10.2.1
-        URL_HASH SHA256=d368f9c39a33a3aef800f5be372ec1df1c12ad57ada1f60adc62f24c0e348469
-        OVERRIDE_FIND_PACKAGE)
-    FetchContent_Declare(spdlog
-        URL https://codeload.github.com/gabime/spdlog/zip/refs/tags/v1.14.1
-        URL_HASH SHA256=429dfdf3afc1984feb59e414353c21c110bc79609f6d7899d52f6aa388646f6d
-        OVERRIDE_FIND_PACKAGE)
-    FetchContent_Declare(rapidcsv
-        URL https://codeload.github.com/d99kris/rapidcsv/zip/refs/tags/v8.84
-        URL_HASH SHA256=6226df921e392eb5fa88dd1efaf26a1a7cfdc23bc00c08a7337fc0314bf8b5a8
-        SOURCE_SUBDIR no-cmake)
-    FetchContent_MakeAvailable(fmt spdlog rapidcsv)
-    set(RAPIDCSV_INCLUDE_DIRS "${rapidcsv_SOURCE_DIR}/src" CACHE PATH "" FORCE)
+    if(CLAW_RUNTIME STREQUAL "VR")
+        # Legacy VR dependency pins remain separate from the current SE SDK.
+        set(FMT_TEST OFF CACHE BOOL "" FORCE)
+        set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        set(SPDLOG_INSTALL ON CACHE BOOL "Export dependency targets for CommonLib configuration" FORCE)
+        set(SPDLOG_FMT_EXTERNAL ON CACHE BOOL "" FORCE)
+        FetchContent_Declare(fmt
+            URL https://codeload.github.com/fmtlib/fmt/zip/refs/tags/10.2.1
+            URL_HASH SHA256=d368f9c39a33a3aef800f5be372ec1df1c12ad57ada1f60adc62f24c0e348469
+            OVERRIDE_FIND_PACKAGE)
+        FetchContent_Declare(spdlog
+            URL https://codeload.github.com/gabime/spdlog/zip/refs/tags/v1.14.1
+            URL_HASH SHA256=429dfdf3afc1984feb59e414353c21c110bc79609f6d7899d52f6aa388646f6d
+            OVERRIDE_FIND_PACKAGE)
+        FetchContent_Declare(rapidcsv
+            URL https://codeload.github.com/d99kris/rapidcsv/zip/refs/tags/v8.84
+            URL_HASH SHA256=6226df921e392eb5fa88dd1efaf26a1a7cfdc23bc00c08a7337fc0314bf8b5a8
+            SOURCE_SUBDIR no-cmake)
+        FetchContent_MakeAvailable(fmt spdlog rapidcsv)
+        set(RAPIDCSV_INCLUDE_DIRS "${rapidcsv_SOURCE_DIR}/src" CACHE PATH "" FORCE)
+    else()
+        find_package(spdlog CONFIG REQUIRED)
+        find_path(RAPIDCSV_INCLUDE_DIRS "rapidcsv.h" REQUIRED)
+        # CLAW does not create trampolines; avoid fetching an unused decoder.
+        set(SKSE_SUPPORT_PATCH_SAFETY OFF CACHE BOOL "" FORCE)
+    endif()
     set(BUILD_TESTS OFF CACHE BOOL "Disable CommonLib tests" FORCE)
     set(ENABLE_SKYRIM_SE ON CACHE BOOL "" FORCE)
     set(ENABLE_SKYRIM_AE ON CACHE BOOL "" FORCE)
     set(ENABLE_SKYRIM_VR ON CACHE BOOL "" FORCE)
     add_subdirectory("${CLAW_COMMONLIB_DIR}" commonlib EXCLUDE_FROM_ALL)
     get_filename_component(CLAW_SKEE_INCLUDE_DIR "${CLAW_SKEE_HEADER}" DIRECTORY)
-    add_library(CLAWDistribution SHARED src/Plugin.cpp)
-    target_include_directories(CLAWDistribution PRIVATE "${CLAW_SKEE_INCLUDE_DIR}" "${RAPIDCSV_INCLUDE_DIRS}")
-    target_link_libraries(CLAWDistribution PRIVATE claw-preset-core CommonLibSSE::CommonLibSSE)
-    target_precompile_headers(CLAWDistribution PRIVATE <RE/Skyrim.h> <SKSE/SKSE.h>)
-    target_compile_definitions(CLAWDistribution PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
-    set_target_properties(CLAWDistribution PROPERTIES OUTPUT_NAME CLAWDistribution)
+    if(CLAW_RUNTIME STREQUAL "SE")
+        set(CLAW_PLUGIN_TARGET CLAWDistributionSE)
+    else()
+        set(CLAW_PLUGIN_TARGET CLAWDistribution)
+    endif()
+    add_library(${CLAW_PLUGIN_TARGET} SHARED src/Plugin.cpp)
+    target_include_directories(${CLAW_PLUGIN_TARGET} PRIVATE "${CLAW_SKEE_INCLUDE_DIR}" "${RAPIDCSV_INCLUDE_DIRS}")
+    target_link_libraries(${CLAW_PLUGIN_TARGET} PRIVATE claw-preset-core CommonLibSSE::CommonLibSSE)
+    target_precompile_headers(${CLAW_PLUGIN_TARGET} PRIVATE <RE/Skyrim.h> <SKSE/SKSE.h>)
+    target_compile_definitions(${CLAW_PLUGIN_TARGET} PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX CLAW_RUNTIME_${CLAW_RUNTIME}=1)
+    set_target_properties(${CLAW_PLUGIN_TARGET} PROPERTIES OUTPUT_NAME CLAWDistribution)
 endif()
 if(CLAW_BUILD_TESTS)
     enable_testing()

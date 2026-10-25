@@ -2,9 +2,20 @@
 
 This optional native SKSE companion reads third-party **CLAW** presets, assigns
 them to currently loaded werewolves and writes only the `CLAW.Distribution` morph
-key. The first compiled candidate targets **Skyrim VR 1.4.15**. It does not fork
+key. The preserved first compiled candidate targets **Skyrim VR 1.4.15**. A
+separate **Skyrim SE 1.7.104.0** development build is now the flat-game test target.
+It does not fork
 OBody, rename beast presets to human families, or change OBody's human assignments.
 It has not been installed or run in the game. Compilation is not runtime acceptance.
+The SE build requires **SKSE 2.3.1**, the matching **Address Library v13** data,
+and a RaceMenu/SKEE build qualified for that runtime. RaceMenu/SKEE runtime
+compatibility remains a separate gate; the pinned interface header alone does
+not establish it. Other SE/AE game versions are rejected rather than inferred
+compatible from their executable name. This exact-version bound describes the
+current SE test candidate, not a permanent limit on the Distribution mod. The
+actor/preset/state logic is shared; runtime DLL variants remain part of one
+Distribution mod. Older SE/AE variants require their SDK/API review and dependency
+qualification, and untested AE is not reported as a game pass.
 
 ## Preset contract
 
@@ -120,7 +131,8 @@ remain in the log rather than being exposed to a later ID owner.
 No uniqueness/reuse format or notification ordering of engine VM handles, or
 formal generation guarantees of ActorHandle, are asserted. Save/load, 3D reload,
 physical reference reconstruction,
-deletion ordering and pool lifetime still require VR runtime qualification.
+deletion ordering and pool lifetime still require qualification in the selected
+game runtime.
 
 Returning to human form clears only known base morphs under this companion's key,
 retaining the assignment for later beast form. Human OBody assignments and other
@@ -170,9 +182,20 @@ coefficient cache until queued work completes or reports an error.
 Use CMake 3.25+, x64 MSVC with C++23 support and an **external** configured
 CommonLibSSE-NG checkout. The verified source baseline is official
 [CommonLibSSE-NG v3.7.0](https://github.com/CharmedBaryon/CommonLibSSE-NG/tree/c4ab853d095e81e3390b282d7ba01ab2f24ebf25).
-The local newer CommonLib fork can be supplied, but its additional dependencies
-must be provided by that checkout's own build environment; it is not validated
-by this candidate. No machine path is hardcoded in the source.
+That historical baseline is for the preserved VR candidate, not SE 1.7.104.
+The SE target requires a current external SDK with explicit
+`SKSE::RUNTIME_SSE_1_7_104`, 1.7 layouts and Address Library format-5 support.
+The selected current source baseline is CommonLibSSE-NG 9.1.0 at
+`a898f469851c464d05137bb74b069dd234897643`, plus the owner's isolated TypeInfo
+object-array mask correction `0c95630c29ff98f64caeea83c29ca373cf93e58b` (its direct
+child). The actual source is staged outside Git with the exact official OpenVR
+submodule; the canonical checkout is not modified. The SE DLL and offline tools
+compile against that source; all 23 core cases and the four example presets pass.
+PE inspection confirms the expected metadata without loading the DLL, and the
+positive build-helper check leaves the DLL hash unchanged. Runtime dependency
+and engine qualification remain separate from these offline results.
+Do not unlock the old 3.7.0 SDK by changing only the runtime constant.
+No machine path is hardcoded in the source.
 
 Download the official external
 [SKEE API header](https://raw.githubusercontent.com/expired6978/SKSE64Plugins/9ebcb733e17be695f994cd2e9cc383043446bc02/skee64/IPluginInterface.h)
@@ -181,12 +204,40 @@ records upstream revisions/archive hashes. Pugixml, fmt, spdlog and rapidcsv are
 fetched with pinned hashes into the external build directory, or supplied using
 CMake `FETCHCONTENT_SOURCE_DIR_<NAME>` variables. Dependency sources are not copied
 into the CLAW repository. Retain their licenses in any future distributed bundle.
+Those fmt/spdlog/rapidcsv pins belong to the VR build. SE resolves spdlog,
+rapidcsv and the current SDK's DirectXTK dependency from the caller's external
+dependency prefix/toolchain instead. Supply only the pinned pugixml source through
+`-FetchSources` for that branch. CLAW uses no trampolines, so the SE configuration
+disables the SDK's optional patch decoder instead of downloading it.
 
 ```powershell
 ./distribution/build.ps1 -BuildDir '<external-build>' `
   -CommonLibDir '<external-commonlib-checkout>' `
   -SkeeHeader '<external-dependencies>/IPluginInterface.h'
 ```
+
+For SE, use a **new** build directory and the current configured SDK/dependencies:
+
+```powershell
+./distribution/build.ps1 -Runtime SE -BuildDir '<external-SE-build>' `
+  -CommonLibDir '<external-current-commonlib-checkout>' `
+  -SkeeHeader '<external-dependencies>/IPluginInterface.h' `
+  -DependencyPrefix '<external-SDK-dependency-prefix>' -BuildTests
+```
+
+`-ToolchainFile` can supply an existing external dependency toolchain instead.
+The equivalent CMake selector is `-DCLAW_RUNTIME=SE`; the default remains `VR`.
+Targets are `CLAWDistributionSE` for SE and `CLAWDistribution` for VR. Each emits
+`Release/CLAWDistribution.dll` in its own build tree; never combine their DLLs or
+reuse one runtime's build tree for the other. The helper refuses legacy VR tree
+reuse for SE, and CMake records the selected runtime for later configurations.
+
+The SE DLL exports modern `SKSEPlugin_Version` data with an exact supported
+runtime list, updated-struct and Address Library V5 metadata. It does not advertise
+unrestricted Address Library version independence. Query and Load both check the
+exact runtime, and Load rejects mismatches before SKSE initialization or engine
+access. These entry checks do not prove every downstream engine call or SKEE
+implementation is compatible.
 
 The helper defaults to the installed VS2026 generator, accepts `-CMakeExe` and
 `-Generator`, rejects source/live/archive output locations, and never installs or
