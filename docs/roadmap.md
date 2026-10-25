@@ -34,14 +34,20 @@ demonstrated requirement cannot be met otherwise.
 - [Human/beast pairs](transformation.md): exact-pair resolver and exclusive-key
   policy planner implemented offline; native integration remains disabled.
 - [Surface attachment repair](geometry-repair.md): opt-in female candidate built
-  with topology/UV/skin data retained; visual/animation qualification pending.
+  with topology/UV data retained. A separate post-export stage repairs the narrow
+  head/body skin-weight collar; controlled pose errors improve, while actual
+  seams, fur coverage and animation still need qualification.
 - [Ear/tail physics source candidate](../physics/README.md): isolated CBPC motion
   maps and actor capsule helper compile; host integration/contact qualification pending.
 - [Collider candidates](colliders.md): reproducible offline fitting and measured
   male/female candidates; installation and runtime physics qualification pending.
 - [Breast shape and rig](breast-rig.md): verified existing bones, missing mesh
   weights and a separate-part alternative. A moderate shape-only BreastSize profile
-  is implemented behind an explicit flag; existing-bone rig/influence-budget work
-  and visual/physics acceptance remain pending.
+  and a separate opt-in P1 skinning stage are implemented. The latter reuses six
+  existing XP32 nodes, retains the four-weight budget and verifies serialized
+  weights/binds against controlled poses. It does not replace the skeleton.
+  A separate pinned composition with the repaired collar passes the offline
+  pose checks. Common fur motion, effective physics driver ownership and
+  visual/game acceptance remain separate gates.
 
 These development results do not change or requalify the published0.6.2.0 package.

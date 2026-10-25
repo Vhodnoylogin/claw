@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "name": "explicit-collar-608448-plus-p1-reconstructed-v1",
+  "status": "opt-in-reconstructed-mask-candidate-runtime-driver-ownership-unknown",
+  "inputs": {
+    "bodyNifSha256": "608448b9436827edd6534439fd79bcc1679f5477cc5427708cf62ce11e918d65",
+    "triSha256": "18840924604e974d166ab4f489311e66bcbff1852427eb0924b1242909099b15",
+    "skeletonSha256": "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0",
+    "sourceNodeCount": 85,
+    "outputNodeCount": 91,
+    "anchorCount": 55,
+    "publicMorphCount": 25
+  },
+  "spineBone": "NPC Spine2 [Spn2]",
+  "p1Bones": [
+    "NPC L Breast P1",
+    "NPC R Breast P1"
+  ],
+  "requiredNodes": [
+    "Breast P1",
+    "CME Spine2 [Spn2]",
+    "NPC L Breast P1",
+    "NPC L PreBreast P1",
+    "NPC R Breast P1",
+    "NPC R PreBreast P1"
+  ],
+  "publicMorph": "CLAWTorsoBreastSize",
+  "shapeBasis": {
+    "massForward": 2.5,
+    "massLateral": 0.2,
+    "projectionForward": 0.75,
+    "projectionDown": 0.25,
+    "sagDown": 0.9,
+    "lowerTop": 102.0,
+    "lowerWidth": 8.0
+  },
+  "mobility": {
+    "maximum": 0.4,
+    "bottomStart": 89.0,
+    "bottomWidth": 4.0,
+    "topEnd": 103.0,
+    "topWidth": 4.0,
+    "faceCutoffY": 45.0,
+    "minimum": 1e-06,
+    "capacityGuardWidth": 2.0,
+    "weldDecimals": 5
+  },
+  "collar": {
+    "source": "body",
+    "target": "head",
+    "anchorBounds": [
+      [
+        -23,
+        10,
+        85
+      ],
+      [
+        23,
+        45,
+        103
+      ]
+    ],
+    "anchorMaxDistance": 1.0,
+    "anchorCountRange": [
+      55,
+      55
+    ],
+    "width": 2.0,
+    "weldDecimals": 5,
+    "maxIterations": 400,
+    "solverTolerance": 1e-08
+  },
+  "layers": [
+    {
+      "shape": "fur_belly",
+      "mode": "cards",
+      "bounds": [
+        [
+          -25,
+          8,
+          82
+        ],
+        [
+          25,
+          46,
+          108
+        ]
+      ],
+      "fade": [
+        2,
+        3,
+        2
+      ],
+      "distanceFade": [
+        2,
+        6
+      ],
+      "weldDecimals": 5
+    },
+    {
+      "shape": "fur_chest",
+      "mode": "cards",
+      "bounds": [
+        [
+          -25,
+          8,
+          82
+        ],
+        [
+          25,
+          46,
+          108
+        ]
+      ],
+      "fade": [
+        2,
+        3,
+        2
+      ],
+      "distanceFade": [
+        2,
+        6
+      ],
+      "weldDecimals": 5
+    },
+    {
+      "shape": "fur_shoulders",
+      "mode": "cards",
+      "bounds": [
+        [
+          -25,
+          8,
+          82
+        ],
+        [
+          25,
+          46,
+          108
+        ]
+      ],
+      "fade": [
+        2,
+        3,
+        2
+      ],
+      "distanceFade": [
+        2,
+        6
+      ],
+      "weldDecimals": 5
+    },
+    {
+      "shape": "ChestBlend",
+      "mode": "vertices",
+      "bounds": [
+        [
+          -25,
+          8,
+          82
+        ],
+        [
+          25,
+          60,
+          114
+        ]
+      ],
+      "fade": [
+        2,
+        3,
+        2
+      ],
+      "distanceFade": [
+        2,
+        6
+      ],
+      "weldDecimals": 5
+    }
+  ],
+  "verification": {
+    "nodeMatrixTolerance": 1e-05,
+    "packedWeightSumTolerance": 0.0005,
+    "normalizedOrdinaryMaxError": 0.005,
+    "rawOrdinaryMaxError": 0.075,
+    "p1Degrees": 3.0,
+    "seed": 20261025
+  },
+  "outputRelativeNif": "meshes/actors/werewolfbeast/character assets/femalebodywerewolf.nif",
+  "_note": "Own parameters and input pins only. Reconstructs a new mask from the moderate TRI; no external prototype weights/NIF. Default build pipeline unchanged. Driver ownership, animation, fur coupling and aesthetic acceptance remain pending; never auto-install."
+}
