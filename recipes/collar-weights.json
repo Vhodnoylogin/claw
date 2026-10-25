@@ -1,0 +1,583 @@
+{
+  "schemaVersion": 1,
+  "name": "head-collar-weights-experimental-v1",
+  "status": "opt-in-local-candidate-not-complete-geometry-fix",
+  "pins": {
+    "nifSha256": "83037676c99acd629bb55d498e311ebfd3b796a4ad1bda0d3a29faed99ab30b3",
+    "triSha256": "18840924604e974d166ab4f489311e66bcbff1852427eb0924b1242909099b15",
+    "skeletonSha256": "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0",
+    "nodeCount": 85,
+    "publicMorphCount": 25,
+    "anchorCount": 55,
+    "activeVertexCount": 104
+  },
+  "relativeNifPath": "meshes/actors/werewolfbeast/character assets/femalebodywerewolf.nif",
+  "anchors": [
+    {
+      "head": 0,
+      "bodyTriangle": 87,
+      "barycentric": [
+        0.49685396586333563,
+        0.2272452752966729,
+        0.27590075883999143
+      ]
+    },
+    {
+      "head": 8,
+      "bodyTriangle": 133,
+      "barycentric": [
+        0.8801720545052943,
+        0.07404827688152932,
+        0.045779668613176325
+      ]
+    },
+    {
+      "head": 9,
+      "bodyTriangle": 9142,
+      "barycentric": [
+        0.9591731327709503,
+        0.04082686722904974,
+        0.0
+      ]
+    },
+    {
+      "head": 10,
+      "bodyTriangle": 9120,
+      "barycentric": [
+        0.863889116824927,
+        0.09894356103048323,
+        0.03716732214458984
+      ]
+    },
+    {
+      "head": 12,
+      "bodyTriangle": 527,
+      "barycentric": [
+        0.37929498876786893,
+        0.08121420411274914,
+        0.5394908071193819
+      ]
+    },
+    {
+      "head": 14,
+      "bodyTriangle": 567,
+      "barycentric": [
+        0.2919753206747306,
+        0.35778922093700366,
+        0.3502354583882657
+      ]
+    },
+    {
+      "head": 16,
+      "bodyTriangle": 682,
+      "barycentric": [
+        0.8133528958844171,
+        0.03587013451898403,
+        0.15077696959659892
+      ]
+    },
+    {
+      "head": 18,
+      "bodyTriangle": 794,
+      "barycentric": [
+        0.3969134431945417,
+        0.32945133056527515,
+        0.2736352262401832
+      ]
+    },
+    {
+      "head": 20,
+      "bodyTriangle": 698,
+      "barycentric": [
+        0.3343778804419012,
+        0.3487049486568154,
+        0.31691717090128335
+      ]
+    },
+    {
+      "head": 22,
+      "bodyTriangle": 626,
+      "barycentric": [
+        0.6185406736185617,
+        0.08924347138104212,
+        0.2922158550003961
+      ]
+    },
+    {
+      "head": 24,
+      "bodyTriangle": 10400,
+      "barycentric": [
+        0.5572602602581203,
+        0.00583219323286196,
+        0.43690754650901775
+      ]
+    },
+    {
+      "head": 149,
+      "bodyTriangle": 4682,
+      "barycentric": [
+        0.8611686256075246,
+        0.04671181663242252,
+        0.09211955776005282
+      ]
+    },
+    {
+      "head": 158,
+      "bodyTriangle": 9552,
+      "barycentric": [
+        0.5045337872443322,
+        0.12086369039005891,
+        0.37460252236560887
+      ]
+    },
+    {
+      "head": 214,
+      "bodyTriangle": 85,
+      "barycentric": [
+        0.16828114726841564,
+        0.710864658451078,
+        0.1208541942805063
+      ]
+    },
+    {
+      "head": 224,
+      "bodyTriangle": 9130,
+      "barycentric": [
+        0.08014629981558263,
+        0.0858881505221014,
+        0.833965549662316
+      ]
+    },
+    {
+      "head": 226,
+      "bodyTriangle": 521,
+      "barycentric": [
+        0.2181723707285121,
+        0.3902155946246733,
+        0.39161203464681466
+      ]
+    },
+    {
+      "head": 229,
+      "bodyTriangle": 565,
+      "barycentric": [
+        0.3862555528653495,
+        0.31657658665053623,
+        0.29716786048411425
+      ]
+    },
+    {
+      "head": 231,
+      "bodyTriangle": 683,
+      "barycentric": [
+        0.8810242408243051,
+        0.023009130027923638,
+        0.09596662914777132
+      ]
+    },
+    {
+      "head": 233,
+      "bodyTriangle": 792,
+      "barycentric": [
+        0.24504447887745412,
+        0.5671731768922122,
+        0.18778234423033363
+      ]
+    },
+    {
+      "head": 235,
+      "bodyTriangle": 696,
+      "barycentric": [
+        0.29652473121474276,
+        0.31631108994997736,
+        0.38716417883527987
+      ]
+    },
+    {
+      "head": 237,
+      "bodyTriangle": 624,
+      "barycentric": [
+        0.3095680225506405,
+        0.47098362863381654,
+        0.21944834881554304
+      ]
+    },
+    {
+      "head": 239,
+      "bodyTriangle": 9550,
+      "barycentric": [
+        0.4781847725963636,
+        0.4858301725682066,
+        0.03598505483542981
+      ]
+    },
+    {
+      "head": 449,
+      "bodyTriangle": 514,
+      "barycentric": [
+        0.14074267524209516,
+        0.1140567645455564,
+        0.7452005602123485
+      ]
+    },
+    {
+      "head": 450,
+      "bodyTriangle": 4683,
+      "barycentric": [
+        0.9285694934100229,
+        0.015606015126588046,
+        0.05582449146338903
+      ]
+    },
+    {
+      "head": 479,
+      "bodyTriangle": 557,
+      "barycentric": [
+        0.1007650394400772,
+        0.3175490003533913,
+        0.5816859602065315
+      ]
+    },
+    {
+      "head": 548,
+      "bodyTriangle": 10398,
+      "barycentric": [
+        0.341133521078436,
+        0.6370020934780473,
+        0.021864385443516758
+      ]
+    },
+    {
+      "head": 575,
+      "bodyTriangle": 10422,
+      "barycentric": [
+        0.22933097510525394,
+        0.5629567610494814,
+        0.20771226384526462
+      ]
+    },
+    {
+      "head": 828,
+      "bodyTriangle": 17184,
+      "barycentric": [
+        0.49685396586333563,
+        0.27590075883999143,
+        0.2272452752966729
+      ]
+    },
+    {
+      "head": 836,
+      "bodyTriangle": 17230,
+      "barycentric": [
+        0.8801721814275499,
+        0.04578090069293511,
+        0.07404691787951503
+      ]
+    },
+    {
+      "head": 837,
+      "bodyTriangle": 26227,
+      "barycentric": [
+        0.0,
+        0.9591731327709503,
+        0.04082686722904974
+      ]
+    },
+    {
+      "head": 838,
+      "bodyTriangle": 26219,
+      "barycentric": [
+        0.863889116824927,
+        0.03716732214458984,
+        0.09894356103048323
+      ]
+    },
+    {
+      "head": 840,
+      "bodyTriangle": 17624,
+      "barycentric": [
+        0.3792959442657041,
+        0.5394909449379666,
+        0.08121311079632933
+      ]
+    },
+    {
+      "head": 842,
+      "bodyTriangle": 17664,
+      "barycentric": [
+        0.2919750467565792,
+        0.3502357230560946,
+        0.35778923018732617
+      ]
+    },
+    {
+      "head": 844,
+      "bodyTriangle": 17781,
+      "barycentric": [
+        0.8133528958844171,
+        0.15077696959659892,
+        0.03587013451898403
+      ]
+    },
+    {
+      "head": 846,
+      "bodyTriangle": 17893,
+      "barycentric": [
+        0.39691344319454164,
+        0.2736352262401832,
+        0.32945133056527515
+      ]
+    },
+    {
+      "head": 848,
+      "bodyTriangle": 17797,
+      "barycentric": [
+        0.3343787234732742,
+        0.31691694521870545,
+        0.3487043313080203
+      ]
+    },
+    {
+      "head": 850,
+      "bodyTriangle": 17725,
+      "barycentric": [
+        0.6187191851952814,
+        0.2920936175979545,
+        0.08918719720676417
+      ]
+    },
+    {
+      "head": 852,
+      "bodyTriangle": 27499,
+      "barycentric": [
+        0.5575515698697666,
+        0.4368527683290439,
+        0.005595661801189395
+      ]
+    },
+    {
+      "head": 977,
+      "bodyTriangle": 21781,
+      "barycentric": [
+        0.8611686256075246,
+        0.09211955776005282,
+        0.04671181663242252
+      ]
+    },
+    {
+      "head": 986,
+      "bodyTriangle": 26651,
+      "barycentric": [
+        0.5039605491433261,
+        0.3755935586742464,
+        0.12044589218242757
+      ]
+    },
+    {
+      "head": 1042,
+      "bodyTriangle": 17182,
+      "barycentric": [
+        0.1682810956651296,
+        0.1208544951435612,
+        0.7108644091913092
+      ]
+    },
+    {
+      "head": 1052,
+      "bodyTriangle": 26229,
+      "barycentric": [
+        0.08014629981558265,
+        0.833965549662316,
+        0.0858881505221014
+      ]
+    },
+    {
+      "head": 1054,
+      "bodyTriangle": 17618,
+      "barycentric": [
+        0.2181715820977434,
+        0.3916123013636639,
+        0.3902161165385927
+      ]
+    },
+    {
+      "head": 1057,
+      "bodyTriangle": 17662,
+      "barycentric": [
+        0.3862553659285862,
+        0.2971681701233611,
+        0.3165764639480527
+      ]
+    },
+    {
+      "head": 1059,
+      "bodyTriangle": 17780,
+      "barycentric": [
+        0.8810242408243051,
+        0.09596662914777132,
+        0.023009130027923638
+      ]
+    },
+    {
+      "head": 1061,
+      "bodyTriangle": 17891,
+      "barycentric": [
+        0.24504447887745406,
+        0.18778234423033363,
+        0.5671731768922122
+      ]
+    },
+    {
+      "head": 1063,
+      "bodyTriangle": 17795,
+      "barycentric": [
+        0.29652473121474276,
+        0.38716417883527987,
+        0.31631108994997736
+      ]
+    },
+    {
+      "head": 1065,
+      "bodyTriangle": 17723,
+      "barycentric": [
+        0.3095418860901054,
+        0.2194373508237557,
+        0.4710207630861389
+      ]
+    },
+    {
+      "head": 1067,
+      "bodyTriangle": 26649,
+      "barycentric": [
+        0.47852402533350025,
+        0.035605176576588925,
+        0.48587079808991085
+      ]
+    },
+    {
+      "head": 1277,
+      "bodyTriangle": 17613,
+      "barycentric": [
+        0.1407420398376068,
+        0.7452014985823495,
+        0.11405646158004369
+      ]
+    },
+    {
+      "head": 1278,
+      "bodyTriangle": 21780,
+      "barycentric": [
+        0.9285694934100228,
+        0.05582449146338903,
+        0.015606015126588046
+      ]
+    },
+    {
+      "head": 1307,
+      "bodyTriangle": 17654,
+      "barycentric": [
+        0.10076595373668529,
+        0.5816867107325939,
+        0.3175473355307208
+      ]
+    },
+    {
+      "head": 1377,
+      "bodyTriangle": 27497,
+      "barycentric": [
+        0.34096334469667855,
+        0.021735552684172613,
+        0.6373011026191489
+      ]
+    },
+    {
+      "head": 1404,
+      "bodyTriangle": 27521,
+      "barycentric": [
+        0.23082544630788004,
+        0.20739661444561946,
+        0.5617779392465005
+      ]
+    },
+    {
+      "head": 1674,
+      "bodyTriangle": 27523,
+      "barycentric": [
+        0.022046416952062442,
+        0.2631623107697354,
+        0.7147912722782022
+      ]
+    }
+  ],
+  "collar": {
+    "width": 2.0,
+    "weldDecimals": 5,
+    "maxIterations": 1000,
+    "solverTolerance": 1e-11,
+    "faceMinY": 45.0
+  },
+  "fitting": {
+    "maxInfluences": 4,
+    "referenceRegularizer": 1e-12,
+    "supportEpsilon": 1e-12
+  },
+  "poses": {
+    "ordinaryControls": [
+      {
+        "bone": "NPC Spine [Spn0]",
+        "degrees": 12
+      },
+      {
+        "bone": "NPC Spine1 [Spn1]",
+        "degrees": 12
+      },
+      {
+        "bone": "NPC Spine2 [Spn2]",
+        "degrees": 15
+      },
+      {
+        "bone": "NPC L Clavicle [RClv]",
+        "degrees": 15
+      },
+      {
+        "bone": "NPC R Clavicle [RClv]",
+        "degrees": 15
+      },
+      {
+        "bone": "NPC Neck [Neck]",
+        "degrees": 15
+      },
+      {
+        "bone": "NPC Head [Head]",
+        "degrees": 15
+      },
+      {
+        "bone": "NPC L UpperArm [RUar]",
+        "degrees": 15
+      },
+      {
+        "bone": "NPC R UpperArm [RUar]",
+        "degrees": 15
+      },
+      {
+        "bone": "NPC L UpperarmTwist1 [LUt1]",
+        "degrees": 10
+      },
+      {
+        "bone": "NPC R UpperarmTwist1 [RUt1]",
+        "degrees": 10
+      },
+      {
+        "bone": "NPC L UpperarmTwist2 [LUt2]",
+        "degrees": 10
+      },
+      {
+        "bone": "NPC R UpperarmTwist2 [RUt2]",
+        "degrees": 10
+      }
+    ],
+    "heldoutCount": 36,
+    "seed": 20261025
+  },
+  "_note": "Run after surface-collar v3 + moderate BreastSize export and before any P1 rig stage. This MVP pins exact NIF/TRI/XP32 inputs; do not widen pins for a composite build without new measured qualification. Fur/P1 are unchanged. Synthetic pose fitting/metrics are not animation/game acceptance."
+}

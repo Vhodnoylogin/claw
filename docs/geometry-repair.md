@@ -131,3 +131,107 @@ animated continuity. Compare deformation in actual poses before acceptance; do
 not replace XP32 or silently redistribute weights to hide that limitation.
 This change repairs attachment behavior, not the owner's separate request for a
 more natural breast sculpt and dedicated breast physics.
+
+## Separate experimental post-export weight repair
+
+The positional collar does not make the head/body skin weights agree. A separate
+standalone candidate now addresses this: `scripts/repair-collar-weights.py` with
+`recipes/collar-weights.json`. It is **not** a complete geometry fix, and no default
+female flag, production build recipe or installed asset enables it. It introduces
+no P1 weights, skeleton/bone references or fur weight changes.
+
+```text
+python scripts/repair-collar-weights.py
+  --nif <surface-collar-v3-and-moderate-BreastSize-female.nif>
+  --tri <explicit-moderate-female.tri>
+  --skeleton <pinned-XP32-skeleton.nif>
+  --profile recipes/collar-weights.json
+  --out-dir <new-external-staging-directory>
+```
+
+Use one command line, or the shell's normal continuation syntax. Machine paths
+come from ignored `build.local.json`; `--pynifly <add-on-directory>` overrides only
+that dependency path. The output directory must be new, with an existing parent,
+outside this checkout, configured live mods and Data/mods/Overwrite trees. There
+is no overwrite option. A failed serialization/readback may leave rejected files
+without a success report; those are not an accepted build.
+
+This MVP deliberately pins exact input bytes: NIF `83037676...30b3`, TRI
+`18840924...b15`, and XP32 `b64b614d...c2dd0`, with 85 carrier nodes and 25 public
+morph names. The profile contains the 55 frozen body-triangle/barycentric bindings
+and the two-unit geodesic band. Different geometric/sculpted/rigged inputs need an
+explicit new measured composition profile; widening a tolerance does not qualify
+them. Inputs remain unchanged and the TRI is copied byte-for-byte.
+The canonical relative NIF/TRI filename is also pinned: renaming a copied TRI
+would leave the unchanged embedded BODYTRI references pointing elsewhere, so an
+alternative destination name is rejected before writing.
+
+The numeric core `scripts/collar_weights.py` derives normalized body-bary target
+weights. Thirteen targets need three influences, 33 need four, eight need five
+and one needs six. Direct interpolation is therefore insufficient for the
+four-slot format. Even with unlimited slots, averaging weights at a head vertex
+differs from averaging the deformed body-triangle vertices: their position/weight
+covariance leaves a residual. A nonnegative simplex fit uses 79 controlled
+ordinary poses, with 36 deterministic combined poses held out for measurement.
+The existing skin-to-bone/global-to-skin matrices are used, including the old
+common-C frame; identity rest binds are not assumed.
+
+The fitted anchor weights blend into the head over a two-unit welded solver graph.
+Only 104 export vertices change. A bounded search chooses nearby half-float
+weights that sum **exactly** to one with at most four influences. This is explicit
+normalization of the permitted vertices only. All other packed weights remain
+exactly original. The public PyNifly adapter first clears every permitted vertex's
+old slots, then refills them: merely omitting a removed influence from a per-bone
+map left a stale 0.1152344 slot in the rejected local writer experiment.
+
+The written NIF is re-read. Any change to nodes/ancestry/matrices, shape vertices,
+triangle/UV arrays, bone references, skin binds, other-shape weights or head
+weights outside the band is an error. Readback must equal the exact-half plan;
+the TRI hash/name union must remain unchanged. The report records support mass
+removed, quantization adjustment, hashes, capacity and separate pose measurements.
+Readback compares detached pre-write arrays/scalars, not the mutable NIF object
+used by the writer. Node parents/globals, vertices, triangles, UVs, bone references,
+global-to-skin and individual skin binds are captured before any setter runs.
+The regression that shifts Spine2 bind by 0.25 in both the live writer carrier and
+readback must still fail against this original snapshot; pose metrics also use
+the detached original coordinates and bind products.
+
+The first source CLI build reproduced the local candidate exactly: NIF SHA-256
+`608448b9436827edd6534439fd79bcc1679f5477cc5427708cf62ce11e918d65`, unchanged
+TRI `18840924604e974d166ab4f489311e66bcbff1852427eb0924b1242909099b15`.
+Eleven regressions passed, plus actual CLI rejection of an existing output,
+wrong NIF hash and wrong active count. An independently modified serialized NIF
+with an outside-band weight change was rejected by the real readback guard.
+The subsequent guard revision passed 13 regressions and six actual negative
+checks. It also rejects a renamed BODYTRI destination before output creation and
+the coupled 0.25 bind shift in both public NIF writer/readback RAM objects. The
+recompiled default candidate retains exactly the NIF/TRI hashes above.
+
+For normalized LBS, the maximum **weighted rotating-offset error** on ordinary /
+unseen combined poses changes from 0.36788 / 0.60430 to 0.04613 / 0.06640.
+The expected head point is the actual posed body barypoint plus the donor-bary
+weighted `posedGlobal * inverse(restGlobal)` 3x3 applied to the original actual-bind
+rest offset. This permits natural LBS rotation/stretch; the old difference from
+a fixed world-space offset is not used alone as evidence of a gap. The direct
+full-bary transfer residual is 0.02588 / 0.03739, not a global lower bound on all
+possible fitted solutions.
+
+These numbers are **not absolute gap distances**. Distance to the actual posed
+frozen donor triangle has candidate p95/max of 0.52718/0.63963 on ordinary poses
+and 0.52297/0.63801 on combined poses, retaining the donor's original rest offsets.
+Maximum distance-change from rest improves from 0.35952/0.41329 to
+0.12463/0.17147. Geometric normal-gap change still reaches 0.15001/0.19756;
+normal-direction attachment is not perfect. Raw-packed LBS is reported separately:
+normalizing the 104 imperfect-sum original vertices changes its rest-offset by up
+to 0.02671, versus about 0.00000658 in normalized LBS. Neither mode claims how the
+engine shader treats weights. Up to 0.11523 original support mass and 0.02712 of
+the full bary target are removed in the explicit transfer/fit; this is disclosed
+alongside the pose results rather than hidden as harmless pruning.
+
+Stage ordering is geometry/collar + moderate shape export, **then this weight
+repair**, then a separately qualified P1 stage. The corrected 55 anchors have 13
+three-slot and 42 four-slot palettes. Recompute P1 capacity, masks, weights and
+binds from this new carrier; never silently reuse frozen P1 weights from the old
+base. Fur-root inheritance remains separate numeric research. Bounds, shoulder
+join, fur coverage, other morph combinations, animation clips and game acceptance
+remain open.
