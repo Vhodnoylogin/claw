@@ -100,7 +100,12 @@ and builds the selector quest in new external staging. After a native build,
 two development ZIPs: the companion and an independent example-preset mod. It
 requires all five dependency license texts. Unexpected compiled files, stale
 source receipts and changed artifact bytes are refused; no live installation or
-release promotion follows. Keep the authoring OSP/OSD resources separate from
+release promotion follows. A unified native build freeze can be supplied with
+`--native-receipt`; it must contain the matching source and artifact hashes and
+successful offline test results. This does not certify the game ABI or behavior.
+The CLI/test sources and their compiled bytes are verified too; those executables
+remain outside the installable companion archive.
+Keep the authoring OSP/OSD resources separate from
 the runtime mod. The companion package contains no test actors, body repair,
 physics, external executables or body meshes.
 

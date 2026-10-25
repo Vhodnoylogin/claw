@@ -18,6 +18,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import presets
 
+NATIVE_SOURCES = {"distribution/CMakeLists.txt", "distribution/dependencies.json",
+                  "distribution/src/Plugin.cpp", "distribution/src/Preset.cpp",
+                  "distribution/src/Tool.cpp", "distribution/tests/CoreTests.cpp",
+                  "distribution/include/claw/Preset.h", "distribution/include/claw/RequestOwnership.h"}
+
 
 def builder_module():
     spec = importlib.util.spec_from_file_location("claw_distribution_package", ROOT / "scripts/build-authoring.py")
@@ -49,6 +54,54 @@ def artifact_tree(package, records, expected, sha):
         same_file(package / record["path"], record["sha256"], record["bytes"], sha)
 
 
+def native_receipts(folder, combined=None):
+    """Normalize historical review receipts or one source/artifact build freeze."""
+    if combined is not None:
+        document = json.loads(combined.read_text(encoding="utf-8-sig"))
+        checks = document.get("tests", {})
+        exits_ok = all(type(checks.get(key)) is int and checks[key] == 0
+                       for key in ("ctestExitCode", "cliExitCode"))
+        ran_tests = all(type(checks.get(key)) is int and checks[key] > 0
+                        for key in ("registeredCTestTests", "contractCases", "validExamplePresets"))
+        if (document.get("status") != "compiled-offline-verified-development-candidate-awaiting-root-review"
+                or not exits_ok or not ran_tests
+                or checks.get("engineABIMockedOrExecuted") is not False):
+            raise ValueError("Expected a compiled, offline-verified native development freeze")
+        sources = [{"Path": row["path"], "SHA256": row["sha256"], "Bytes": row["bytes"]}
+                   for row in document["sourceFiles"]]
+        artifacts = [{"Path": row["path"], "SHA256": row["sha256"], "Bytes": row["bytes"]}
+                     for row in document["artifacts"]]
+        return sources, artifacts, combined, combined
+    source = folder / "source-manifest-review.json"
+    artifact = folder / "artifacts-review.json"
+    return (json.loads(source.read_text(encoding="utf-8-sig")),
+            json.loads(artifact.read_text(encoding="utf-8-sig")), source, artifact)
+
+
+def native_sources(sources, sha):
+    present = set()
+    for item in sources:
+        current_source(item["Path"], item["SHA256"], sha)
+        present.add(Path(item["Path"]).resolve().relative_to(ROOT).as_posix())
+    if not NATIVE_SOURCES.issubset(present):
+        raise ValueError("Native source receipt is incomplete")
+
+
+def native_binaries(folder, records, sha):
+    verified = {}
+    for name in ("CLAWDistribution.dll", "claw-preset-tool.exe", "claw-preset-tests.exe"):
+        matches = [row for row in records if Path(row["Path"]).name == name]
+        if len(matches) != 1:
+            raise ValueError("Need exactly one compiled native artifact receipt: " + name)
+        record = matches[0]
+        path = Path(record["Path"]).resolve()
+        if not path.is_relative_to(folder):
+            raise ValueError("Native artifact must belong to the specified build: " + name)
+        same_file(path, record["SHA256"], record["Bytes"], sha)
+        verified[name] = (record, path)
+    return verified
+
+
 def archive(folder, target):
     with zipfile.ZipFile(target, "x", compression=zipfile.ZIP_DEFLATED) as output:
         for path in sorted(folder.rglob("*")):
@@ -60,6 +113,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--native-build", type=Path, required=True,
                         help="Contains artifacts-review.json and source-manifest-review.json")
+    parser.add_argument("--native-receipt", type=Path,
+                        help="Optional unified native build freeze with sourceFiles/artifacts/tests")
     parser.add_argument("--data-build", type=Path, required=True,
                         help="Contains distribution-data-build.json and package/")
     parser.add_argument("--presets", type=Path, required=True, help="CLAW preset XML subtree")
@@ -72,27 +127,13 @@ def main(argv=None):
     report = {"status": "incomplete", "gameValidated": False, "runtime": "Skyrim VR 1.4.15"}
     try:
         native, data, preset_root = args.native_build.resolve(), args.data_build.resolve(), args.presets.resolve()
-        source_receipt = native / "source-manifest-review.json"
-        artifact_receipt = native / "artifacts-review.json"
-        sources = json.loads(source_receipt.read_text(encoding="utf-8-sig"))
-        required_sources = {"distribution/CMakeLists.txt", "distribution/dependencies.json",
-                            "distribution/src/Plugin.cpp", "distribution/src/Preset.cpp",
-                            "distribution/include/claw/Preset.h"}
-        present = set()
-        for item in sources:
-            current_source(item["Path"], item["SHA256"], helper.sha)
-            present.add(Path(item["Path"]).resolve().relative_to(ROOT).as_posix())
-        if not required_sources.issubset(present):
-            raise ValueError("Native source receipt is incomplete")
-        native_artifacts = json.loads(artifact_receipt.read_text(encoding="utf-8-sig"))
-        dlls = [item for item in native_artifacts if Path(item["Path"]).name == "CLAWDistribution.dll"]
-        if len(dlls) != 1:
-            raise ValueError("Need exactly one compiled companion DLL receipt")
-        dll = dlls[0]
-        dll_path = Path(dll["Path"]).resolve()
-        if not dll_path.is_relative_to(native):
-            raise ValueError("Native DLL must belong to the specified build")
-        same_file(dll_path, dll["SHA256"], dll["Bytes"], helper.sha)
+        combined = args.native_receipt.resolve() if args.native_receipt else None
+        if combined is not None and not combined.is_relative_to(native):
+            raise ValueError("Native build freeze must belong to the specified build")
+        sources, native_artifacts, source_receipt, artifact_receipt = native_receipts(native, combined)
+        native_sources(sources, helper.sha)
+        verified_binaries = native_binaries(native, native_artifacts, helper.sha)
+        dll, dll_path = verified_binaries["CLAWDistribution.dll"]
         data_report = data / "distribution-data-build.json"
         compiled = json.loads(data_report.read_text(encoding="utf-8"))
         if compiled["status"] != "built-game-validation-pending" or compiled["gameValidated"] is not False:
