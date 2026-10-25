@@ -111,6 +111,83 @@ class LinkedPresets(unittest.TestCase):
         self.assertEqual(result["desiredMorphs"], first["desiredMorphs"])
         self.assertTrue(result["pending"])
 
+    def test_confirmed_unassignment_retires_link_before_later_provider_loss(self):
+        first = self.plan()
+        self.snapshot["previous"] = first["state"]
+        self.snapshot["source"]["preset"] = None
+        unassigned = core.plan(self.snapshot, catalog=self.catalog, allowed=self.allowed)
+        self.assertEqual(unassigned["policy"], "independent")
+        self.assertEqual(unassigned["activeKey"], "CLAW.Distribution")
+        self.assertEqual(unassigned["clearKeys"], core.KEYS)
+        self.assertCoefficients(unassigned, {"CLAWTorsoGirth": .15, "CLAWArmGirth": .4, "CLAWHeadEarSize": .23})
+        self.assertNotIn("lastLink", unassigned["state"])
+        self.assertEqual(unassigned["state"]["traits"], first["state"]["traits"])
+        self.assertEqual(unassigned["generation"], first["generation"] + 1)
+        self.snapshot.update(previous=unassigned["state"], source=None)
+        unavailable = core.plan(self.snapshot, catalog=self.catalog, allowed=self.allowed)
+        self.assertEqual(unavailable["policy"], "independent")
+        self.assertEqual(unavailable["desiredMorphs"], unassigned["desiredMorphs"])
+        self.assertNotIn("lastLink", unavailable["state"])
+        self.assertEqual(unavailable["state"]["traits"], first["state"]["traits"])
+
+    def test_unassignment_does_not_retire_link_when_fallback_cannot_resolve(self):
+        first = self.plan()
+        self.snapshot.update(previous=first["state"])
+        self.snapshot["source"]["preset"] = None
+        original = copy.deepcopy(self.snapshot)
+        for change in ("missing-preset", "missing-catalog", "changed-traits", "invalid-weight", "invalid-profile"):
+            with self.subTest(change=change):
+                self.snapshot = copy.deepcopy(original)
+                catalog = self.catalog
+                if change == "missing-preset":
+                    self.snapshot["independentPreset"] = "Missing"
+                elif change == "missing-catalog":
+                    catalog = None
+                elif change == "changed-traits":
+                    self.snapshot["traits"]["CLAWHeadEarSize"] = .9
+                elif change == "invalid-weight":
+                    self.snapshot["weight"] = 101
+                else:
+                    self.snapshot["source"]["profile"] = ""
+                result = core.plan(self.snapshot, catalog=catalog, allowed=self.allowed)
+                self.assertEqual(result["policy"], "error")
+                self.assertEqual(result["clearKeys"], [])
+                self.assertEqual(result["desiredMorphs"], {})
+                self.assertEqual(result["state"]["lastLink"], first["state"]["lastLink"])
+
+    def test_unconfirmed_null_is_unavailable_but_confirmed_empty_is_invalid(self):
+        first = self.plan()
+        self.snapshot.update(previous=first["state"])
+        self.snapshot["source"].update(preset=None, confirmed=False)
+        unavailable = core.plan(self.snapshot, allowed=self.allowed)
+        self.assertEqual(unavailable["policy"], "stale-link")
+        self.assertEqual(unavailable["desiredMorphs"], first["desiredMorphs"])
+        self.snapshot["source"].update(preset="", confirmed=True)
+        invalid = self.plan()
+        self.assertEqual(invalid["policy"], "error")
+        self.assertEqual(invalid["clearKeys"], [])
+        self.assertEqual(invalid["state"]["lastLink"], first["state"]["lastLink"])
+
+    def test_unassignment_does_not_override_manual_or_cleanup_precedence(self):
+        first = self.plan()
+        self.snapshot.update(previous=first["state"], mode="manual", manualPreset="Neutral Female")
+        self.snapshot["source"]["preset"] = None
+        manual = core.plan(self.snapshot, catalog=self.catalog, allowed=self.allowed)
+        self.assertEqual(manual["policy"], "manual")
+        self.assertTrue(all(value == 0 for value in manual["desiredMorphs"].values()))
+        self.assertEqual(manual["state"]["lastLink"], first["state"]["lastLink"])
+        for controls, policy, clear in (({"suppressed": True}, "suppressed", core.KEYS),
+                                         ({"isBeast": False, "sex": None}, "human", core.KEYS),
+                                         ({"loaded": False}, "deferred", [])):
+            with self.subTest(policy=policy):
+                snapshot = copy.deepcopy(self.snapshot)
+                snapshot.update(mode="linked", **controls)
+                result = core.plan(snapshot)
+                self.assertEqual(result["policy"], policy)
+                self.assertEqual(result["clearKeys"], clear)
+                self.assertEqual(result["desiredMorphs"], {})
+                self.assertEqual(result["state"]["lastLink"], first["state"]["lastLink"])
+
     def test_changed_or_deleted_pinned_pair_needs_explicit_rebind(self):
         first = self.plan()
         self.snapshot["previous"] = first["state"]
@@ -167,6 +244,29 @@ class LinkedPresets(unittest.TestCase):
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(result.stdout)["policy"], "independent")
+
+    def test_cli_confirmed_unassignment_skips_absent_rules_but_requires_catalog(self):
+        self.snapshot.update(previous=self.plan()["state"])
+        self.snapshot["source"]["preset"] = None
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            snapshot = folder / "snapshot.json"
+            snapshot.write_text(json.dumps(self.snapshot))
+            xml = folder / "presets.xml"
+            xml.write_bytes(presets.export_recipe({"schemaVersion": 1, "presets": [self.catalog[0]]}))
+            command = [sys.executable, str(ROOT / "scripts/linked_presets.py"), str(snapshot)]
+            for pair_args in ([], ["--pairs", str(folder / "missing.json")]):
+                with self.subTest(pair_args=pair_args):
+                    result = subprocess.run(command + pair_args + ["--presets", str(xml)], capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    resolved = json.loads(result.stdout)
+                    self.assertEqual(resolved["policy"], "independent")
+                    self.assertAlmostEqual(resolved["desiredMorphs"]["CLAWHeadEarSize"], .23)
+                    self.assertNotIn("lastLink", resolved["state"])
+            missing = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(missing.returncode, 2, missing.stderr)
+            self.assertEqual(json.loads(missing.stdout)["policy"], "error")
+            self.assertIn("lastLink", json.loads(missing.stdout)["state"])
 
     def test_invalid_or_ambiguous_rules_do_not_plan_writes(self):
         original = copy.deepcopy(self.rules)

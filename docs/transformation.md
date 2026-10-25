@@ -63,6 +63,30 @@ pinned targets cause an error without new writes. The planner's cached intent is
 not a runtime acknowledgment; the adapter must retain a separate actual readback
 receipt and recheck epoch/identity/generation/race/sex/3D before writing.
 
+Source observations keep the existing three fields:
+
+| Observation | Meaning |
+|---|---|
+| `{"profile":"explicit profile ID","preset":"Exact preset name","confirmed":true}` | Assigned; match an exact pair |
+| `{"profile":"explicit profile ID","preset":null,"confirmed":true}` | Provider confirms no assignment |
+| Missing source or `confirmed:false` | Provider unavailable/unconfirmed |
+
+An empty preset string remains invalid. The future OBody adapter must convert a
+successful empty assignment query into `preset:null`; it must not convert API
+unavailability into a confirmed unassignment. OBody's native unassignment event
+can carry the **previous** preset name when `PresetWasUnassigned` is set. Check
+that flag and query current assignment instead of treating the payload as a new
+assignment ([pinned OBody NG 4.4.3 API contract](https://github.com/Aietos/OBody-NG/blob/e33bbc151c38fbe6feae9f5b04558cd6c7528384/include/API/API.h#L549-L572)).
+
+In linked mode, confirmed unassignment resolves the already selected independent
+preset plus saved individual traits. Only after that fallback resolves successfully
+does the new pending state remove `lastLink`. A later provider loss therefore
+cannot resurrect the retired link. Failure to resolve the fallback retains the
+previous link state and plans no writes. Manual, suppression, human cleanup and
+unloaded deferral keep their precedence and do not retire a link as a side effect.
+The CLI needs a catalog for this fallback, but neither loads nor requires a pairs
+document for confirmed unassignment, even if `--pairs` names a missing file.
+
 Existing native assignments do not record manual provenance. A future migration
 must stay independent until an explicit mode selection opts into linkage. A
 stored preset name alone cannot establish user intent.

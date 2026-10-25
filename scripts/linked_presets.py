@@ -37,7 +37,8 @@ def fingerprint(value):
 
 def confirmed_source(source):
     return (isinstance(source, dict) and set(source) == {"profile", "preset", "confirmed"}
-            and source["confirmed"] is True and isinstance(source["profile"], str) and isinstance(source["preset"], str))
+            and source["confirmed"] is True and isinstance(source["profile"], str)
+            and (source["preset"] is None or isinstance(source["preset"], str)))
 
 
 def vector(value, allowed):
@@ -163,7 +164,13 @@ def plan(snapshot, document=None, catalog=None, allowed=None):
             if sex == "female":
                 desired[BREAST] = 0.0
             state["traits"] = copy.deepcopy(traits)
-            if not source_ready:
+            if source_ready and source["preset"] is None:
+                text(source["profile"])
+                # Only retire the pinned link after the independent preset,
+                # weight and saved individual traits have resolved successfully.
+                state.pop("lastLink", None)
+                result["diagnostics"].append("source confirmed unassigned; independent fallback, previous link retired")
+            elif not source_ready:
                 result["diagnostics"].append("source unavailable/unconfirmed; independent fallback")
             else:
                 text(source["profile"])
@@ -219,7 +226,7 @@ def main():
         stale = snapshot.get("mode") == "linked" and not source_ready and cached
         if args.presets and not stale:
             catalog = presets.load_tree(args.presets)["presets"]
-        if args.pairs and snapshot.get("mode") == "linked" and source_ready:
+        if args.pairs and snapshot.get("mode") == "linked" and source_ready and snapshot["source"]["preset"] is not None:
             rules = json.loads(args.pairs.read_text(encoding="utf-8-sig"))
     result = plan(snapshot, rules, catalog, allowed)
     print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
