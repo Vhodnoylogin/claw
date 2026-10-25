@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "status": "development-examples-game-validation-pending",
+  "presets": [
+    {
+      "name": "CLAW Example - Keen Ears Male",
+      "sex": "male",
+      "morphs": {
+        "CLAWHeadEarSize": {"small": 0.15, "big": 0.30},
+        "CLAWTailLength": {"small": 0.15, "big": 0.30}
+      }
+    },
+    {
+      "name": "CLAW Example - Full Tail Male",
+      "sex": "male",
+      "morphs": {
+        "CLAWHeadEarTilt": {"small": 0.10, "big": 0.10},
+        "CLAWTailFluff": {"small": 0.15, "big": 0.25}
+      }
+    },
+    {
+      "name": "CLAW Example - Keen Ears Female",
+      "sex": "female",
+      "morphs": {
+        "CLAWHeadEarSize": {"small": 0.15, "big": 0.30},
+        "CLAWTailLength": {"small": 0.15, "big": 0.30}
+      }
+    },
+    {
+      "name": "CLAW Example - Full Tail Female",
+      "sex": "female",
+      "morphs": {
+        "CLAWHeadEarTilt": {"small": 0.10, "big": 0.10},
+        "CLAWTailFluff": {"small": 0.15, "big": 0.25}
+      }
+    }
+  ]
+}

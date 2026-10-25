@@ -15,7 +15,10 @@ a first-person VR body, and the separate adult anatomy/physics add-on.
 
 Post-release development starts with an [offline distribution core](docs/distribution.md)
 and [measured collider candidates](docs/colliders.md). Automatic population variety
-is the primary goal, followed by VR. These prototypes are not installed game features.
+is the primary goal. The25October order is independent presets, geometry repair,
+ear/tail and breast physics, then human/beast linkage; VR follows afterwards.
+The optional [typed preset companion and authoring resources](docs/presets.md)
+are development candidates; runtime acceptance is pending.
 
 *Эта страница на русском: [README.ru.md](README.ru.md).*
 

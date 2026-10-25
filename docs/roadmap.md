@@ -1,16 +1,19 @@
 # CLAW — future plans
 
-Owner-defined roadmap, updated 11 October 2026 after publication of the first
-0.6.2.0 modder-resource release. These are planned features and fixes for later
-updates; no release dates or version assignments have been set.
+Owner-defined priorities, revised 25 October 2026. No release dates are promised.
 
-1. Align the colliders with the visible body surface.
-2. Add physics and dedicated colliders for the ears and breasts.
-3. Make colliders adapt to the body shape as morphs change.
-4. Fix texture seams and visible gaps, including the known gap beneath the female breasts.
-5. Add support for OBody or an equivalent body distribution system.
-6. Add a first-person werewolf body for VR.
-7. Add adult anatomy and physics for it in the separate Anatomy add-on.
+1. Make working CLAW presets distributable as independent mods, as with human
+   bodies. Determine whether stock OBody is sufficient; implement an optional
+   companion when its family filtering/distribution APIs are insufficient.
+2. Repair geometry gaps, including the known underside breast/body separation.
+3. Add motion and collision physics for ears and tail. Correct the female breast
+   shape and rig before adding its physics. Prefer existing XP32 bones.
+4. Link human and beast morphology during transformation, preserving both forms
+   and other mods' contributions.
+
+After these goals, develop the first-person VR body if the remaining work budget
+allows it. Morph-responsive colliders and the optional adult Anatomy/physics
+add-on remain later goals; they do not displace the ordered priorities above.
 
 The published resource package remains the starting point for this work. The
 known female breast underside gap was accepted for that release; its repair is
@@ -18,8 +21,9 @@ future work.
 
 ## Development priorities and first work
 
-Owner clarification on 11 October 2026: automatic variety across the werewolf
-population (OBody or an equivalent) is the primary goal; first-person VR is second.
+The 25 October order supersedes the 11 October sequence that placed VR second.
+Preset interoperability and a usable independent preset ecosystem come first;
+human-to-beast coefficient mapping is fourth, not a prerequisite for distribution.
 Prefer keeping XP32 and its existing bones. Replace the skeleton only if a
 demonstrated requirement cannot be met otherwise.
 

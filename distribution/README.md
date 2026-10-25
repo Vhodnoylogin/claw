@@ -1,0 +1,170 @@
+# CLAW Distribution development companion
+
+This optional native SKSE companion reads third-party **CLAW** presets, assigns
+them to currently loaded werewolves and writes only the `CLAW.Distribution` morph
+key. The first compiled candidate targets **Skyrim VR 1.4.15**. It does not fork
+OBody, rename beast presets to human families, or change OBody's human assignments.
+It has not been installed or run in the game. Compilation is not runtime acceptance.
+
+## Preset contract
+
+Install standalone XML beneath:
+
+```
+Data/CalienteTools/BodySlide/SliderPresets/CLAW/<author>/<presets>.xml
+```
+
+The optional author subdirectory is recursive. Keep these presets nested beneath
+`CLAW`: stock OBody 4.4.3 scans the top level, while BodySlide supports recursive
+preset discovery. Never place CLAW beast XML in OBody's top-level preset directory.
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<SliderPresets version="1">
+  <Preset name="Author - Broad male" set="CLAW Male">
+    <Group name="CLAW"/>
+    <SetSlider name="CLAWTorsoGirth" size="small" value="15"/>
+    <SetSlider name="CLAWTorsoGirth" size="big" value="65"/>
+  </Preset>
+</SliderPresets>
+```
+
+Use exactly `CLAW Male` or `CLAW Female` as `set`; no name-based sex inference.
+`Group` is optional. Endpoints are finite percentages in **0..100**, divided by
+100 and interpolated once using the actor NPC weight in **0..100**. BodySlide's
+omitted endpoint semantics apply: an omitted small or big endpoint is zero, and
+an entirely omitted morph contributes zero. A typed preset with no `SetSlider`
+elements is accepted as the neutral body, and readback checks all 25 owned public
+morphs, including zeros for every omitted morph. This candidate intentionally rejects
+negative/extrapolated values. Different values are not certified safe geometry.
+
+The allowlist matches the published 0.6.2.0 base resource contract: 24 shared
+morphs plus female-only `CLAWTorsoBreastSize`. Adult and unknown morphs, wrong-sex
+morphs, unknown tags/attributes, malformed XML, duplicate preset names across files
+or families, duplicate endpoints and unreadable files are errors. A catalog with
+**any** such error is unavailable, with diagnostics in `CLAWDistribution.log`;
+it does not silently use a partially accepted population. XML is limited to 1 MiB
+per file and the catalog to 4,096 presets/files. DTD/entities are unsupported.
+Input is strict UTF-8 (an initial BOM is allowed). Preset names are nonempty,
+at most 160 UTF-8 bytes, without ASCII surrounding whitespace or control/DEL
+characters. Unexpected XML attributes, duplicate attributes and substantive text
+are rejected.
+
+Example XML and the Python authoring/export workflow are owned outside this
+directory by the main CLAW project. This parser is usable without the game:
+
+```
+claw-preset-tool validate <CLAW-preset-directory>
+claw-preset-tool interpolate <directory> "Author - Broad male" male 50
+```
+
+## Runtime and saved state
+
+Only `Actor.GetRace() == WerewolfBeastRace` qualifies, with readable NPC sex and
+loaded 3D. The actor base race is never used for eligibility. The player and
+high-process actors are discovered, with existing assignments also revisited.
+Race completion, object load, SKSE node updates and OBody's `Obody_ApplyMorph`
+event schedule refreshes. A coalesced two-second scan provides a fallback and
+detects 3D root or weight changes and lost own-key values. A timer thread only
+queues SKSE tasks; engine access and every SKEE read/write occur in those tasks.
+The preset directory is resolved relative to the actual game executable, not
+the launcher's working directory. After new-game/post-load readiness a task emits
+the `CLAWDistribution_Loaded` mod event for the optional menu bootstrap.
+
+Each actor reference gets an identity inside a randomized save namespace. A
+stable FNV-1a selector chooses among sorted presets of the correct sex; the actual
+assignment is saved, so adding presets never rerolls existing actors. SKSE
+serialization records namespace, identity, selected name, family, suppression,
+VM deletion identity and verified coefficient cache. `ResolveFormID` and
+`ResolveHandle` remap actor references/VM identities on load,
+including saved dynamic references supported by SKSE. Identity is never the NPC
+base ID. SKSE form-deletion notifications remove the matching VM identity rather
+than treating a new 3D handle as a new actor; ordinary 3D reloads keep assignments.
+Unresolved references are not applied to some other actor. Dynamic
+references that the game does not preserve cannot be promised persistence.
+
+Returning to human form clears only known base morphs under this companion's key,
+retaining the assignment for later beast form. Human OBody assignments and other
+morph keys are left intact. Explicit `ClearOwn` also saves a suppression flag,
+so periodic automatic assignment stays off until `AssignPreset` is called.
+Missing saved presets produce an error instead of choosing another preset.
+
+The official RaceMenu/SKEE `BodyMorph` interface is acquired through its SKSE
+message exchange. Applying clears this companion's own known contributions,
+sets the selected/interpolated coefficients, requests an immediate body-morph
+update and reads its own values back. A failed readback remains an error. This
+does not prove that the rendered body, every mesh's morph path or physics changed.
+
+OBody 4.4.3's non-respectful application can clear all actor morphs. Its applied
+event and the readback scan restore this companion's own values when the actor
+is currently a beast; race-return cleanup remains scoped. For older versions
+without the applied event, respectful mode is recommended. The readback scan is
+a recovery mechanism, not permission for this plugin to modify OBody settings.
+
+## Papyrus API
+
+`papyrus/CLAWDistributionNative.psc` is the declaration source. Compile it with
+the project's Papyrus tooling; it is not a quest, MCM or automatic menu installer.
+The coordinator owns the user menu and optional human OBody route.
+
+| Function | Result |
+|---|---|
+| `GetPresetNames(female)` | Sorted valid catalog names for that family |
+| `AssignPreset(actor, name)` | False if invalid/unavailable; true means queued |
+| `GetAssigned(actor)` | Saved selected name; does not imply application |
+| `GetStatus(actor)` | Enum below; queued native requests report pending immediately |
+| `GetLastError(actor)` | Most recent application/request error |
+| `GetOwnMorph(actor, name)` | Last verified own coefficient, zero unless status is applied |
+| `ClearOwn(actor)` | Queued scoped cleanup and saved automatic-distribution suppression |
+| `Refresh(actor)` | Queued lifecycle/readback refresh |
+
+Status values: **0** unknown, **1** pending, **2** own coefficients read back and
+model update requested, **3** unloaded, **4** error, **5** human/own key cleared,
+**6** explicitly cleared, **7** SKEE unavailable. A queued assignment can still
+fail because race/sex/reference/3D changed. `GetOwnMorph` is a cached readback, not
+the aggregate across mods. Inspect status before interpreting zero.
+Explicit refresh immediately marks the request pending and hides its previous
+coefficient cache until queued work completes or reports an error.
+
+## Build without installation
+
+Use CMake 3.25+, x64 MSVC with C++23 support and an **external** configured
+CommonLibSSE-NG checkout. The verified source baseline is official
+[CommonLibSSE-NG v3.7.0](https://github.com/CharmedBaryon/CommonLibSSE-NG/tree/c4ab853d095e81e3390b282d7ba01ab2f24ebf25).
+The local newer CommonLib fork can be supplied, but its additional dependencies
+must be provided by that checkout's own build environment; it is not validated
+by this candidate. No machine path is hardcoded in the source.
+
+Download the official external
+[SKEE API header](https://raw.githubusercontent.com/expired6978/SKSE64Plugins/9ebcb733e17be695f994cd2e9cc383043446bc02/skee64/IPluginInterface.h)
+as `IPluginInterface.h`; its SHA-256 is enforced by CMake. `dependencies.json`
+records upstream revisions/archive hashes. Pugixml, fmt, spdlog and rapidcsv are
+fetched with pinned hashes into the external build directory, or supplied using
+CMake `FETCHCONTENT_SOURCE_DIR_<NAME>` variables. Dependency sources are not copied
+into the CLAW repository. Retain their licenses in any future distributed bundle.
+
+```powershell
+./distribution/build.ps1 -BuildDir '<external-build>' `
+  -CommonLibDir '<external-commonlib-checkout>' `
+  -SkeeHeader '<external-dependencies>/IPluginInterface.h'
+```
+
+The helper defaults to the installed VS2026 generator, accepts `-CMakeExe` and
+`-Generator`, rejects source/live/archive output locations, and never installs or
+runs anything. It produces `Release/CLAWDistribution.dll` and
+`Release/claw-preset-tool.exe`. `-BuildTests` only compiles the optional test
+executable. Core-only builds require pugixml but no SKSE/CommonLib/Windows:
+
+```
+cmake -S distribution -B <external-build> -DCLAW_BUILD_PLUGIN=OFF
+cmake --build <external-build> --config Release
+```
+
+After the coordinator confirms testing readiness, explicitly configure
+`CLAW_BUILD_TESTS=ON`, compile `claw-preset-tests` and run it or CTest. No post-build
+command executes tests. Offline cases cover endpoints, sparse BodySlide exports,
+typed families, exclusions, duplicate catalogs, bad input, stable selection and
+nested third-party files. Runtime acceptance still needs a separately authorized
+game test: multiple male/female beasts, UI assignment, human key preservation,
+transform/race events, delayed/reloaded 3D, external OBody updates, saved dynamic
+references and save/load. This candidate contains no live test evidence.

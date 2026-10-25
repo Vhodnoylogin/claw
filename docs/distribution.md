@@ -1,7 +1,9 @@
 # Linked human and werewolf morphs
 
-Development contract, 11 October 2026. Automatic population diversity is the
-owner's first priority; first-person VR is second. The published 0.6.2.0 resource
+Linkage prototype contract, 11 October 2026; scope clarified25October2026.
+The owner's revised order places independent presets first and human/beast
+linkage fourth, with VR afterwards. See [presets.md](presets.md) for the separate
+distribution companion. The published 0.6.2.0 resource
 package has neither controller. `scripts/distribution.py` is an executable **offline
 reference core**, not an installed game integration.
 

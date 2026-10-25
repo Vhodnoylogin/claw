@@ -1,0 +1,12 @@
+FormKey: 000800:CLAW - Distribution.esp
+EditorID: CLAWDistributionQuest
+VirtualMachineAdapter:
+  Scripts:
+  - Name: CLAWDistributionMenu
+  FileName: ''
+Name:
+  TargetLanguage: English
+  Value: CLAW body preset selection
+Flags:
+- StartGameEnabled
+Priority: 20
