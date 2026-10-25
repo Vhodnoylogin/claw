@@ -1,5 +1,6 @@
 // Offline contracts only. Built/run explicitly after the coordinator opens testing.
 #include "claw/Preset.h"
+#include "claw/RequestOwnership.h"
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -28,6 +29,128 @@ void invalid(const std::string& input) {
 int main() {
     std::size_t passed{};
     const std::vector<std::pair<const char*, std::function<void()>>> cases{
+        {"bound wrong-sex request error survives pool release and automatic refresh", [] {
+            claw::RequestLedger<std::shared_ptr<int>> ledger{1};
+            std::map<int, std::shared_ptr<int>> pool;
+            auto pin = std::make_shared<int>(7); std::weak_ptr<int> weak = pin;
+            pool.emplace(1, pin);
+            const auto token = *ledger.begin(1, 3, 101, pin);
+            const claw::RequestBinding state{token, 77}; // Attached after validated main-task state lookup.
+            require(ledger.finish(1, token, 3, "preset family does not match actor sex"), "owned failure refused");
+            pin.reset(); require(claw::collectUnshared(pool) == 1 && weak.expired(), "terminal error pinned actor payload");
+            const auto* error = claw::resolveActorRequest(ledger, 1, 3, 0, &state, 77);
+            require(error && error->error == "preset family does not match actor sex", "pool collection hid terminal failure");
+            // Automatic application status is deliberately not a resolver input.
+            require(claw::resolveActorRequest(ledger, 1, 3, 0, &state, 77) == error, "automatic refresh lost request witness");
+        }},
+        {"new accepted request supersedes terminal error without stale completion", [] {
+            claw::RequestLedger<int> ledger{1};
+            const auto old = *ledger.begin(1, 4, 101, 1);
+            claw::RequestBinding state{old, 77};
+            require(ledger.finish(1, old, 4, "wrong family"), "first error refused");
+            const auto latest = *ledger.begin(1, 4, 202, 2); state = {latest, 77};
+            const auto* pending = claw::resolveActorRequest(ledger, 1, 4, 202, &state, 77);
+            require(pending && pending->error.empty() && pending->token == latest, "new request retained old error");
+            require(!ledger.finish(1, old, 4, "stale error"), "stale error overwrote new request");
+            require(ledger.finish(1, latest, 4), "latest success refused");
+            require(!claw::resolveActorRequest(ledger, 1, 4, 0, &state, 77), "success retained terminal error");
+        }},
+        {"terminal fallback rejects other runtime owner stale serial and world reset", [] {
+            claw::RequestLedger<int> ledger{1};
+            const auto token = *ledger.begin(1, 3, 101, 1); const claw::RequestBinding a{token, 77};
+            require(ledger.finish(1, token, 3, "failed"), "failure refused");
+            require(!claw::resolveActorRequest(ledger, 1, 3, 0, nullptr, 88), "unbound B saw A error");
+            require(!claw::resolveActorRequest(ledger, 1, 3, 0, &a, 88), "different runtime serial saw A error");
+            require(!claw::resolveActorRequest(ledger, 1, 4, 0, &a, 77), "new world saw old error");
+            const auto b = *ledger.begin(1, 3, 202, 2);
+            require(!claw::resolveActorRequest(ledger, 1, 3, 0, &a, 77), "A fallback saw B ledger row");
+            require(ledger.owns(1, b, 3), "A fallback changed B ownership");
+            ledger.clear(); require(!claw::resolveActorRequest(ledger, 1, 3, 0, &a, 77), "reset retained error");
+        }},
+        {"queued actor registry replacement rejects intent even without newer request", [] {
+            int a{}, b{};
+            require(claw::mayRunActorRequest(&a, &a, true, false), "live pinned owner refused");
+            require(!claw::mayRunActorRequest(&a, &b, true, false), "registry B received A intent");
+            require(!claw::mayRunActorRequest(&a, &a, true, true), "deleted original actor accepted");
+            require(!claw::mayRunActorRequest(&a, &a, false, false), "changed FormID accepted");
+            require(!claw::mayRunActorRequest(&a, nullptr, true, false), "missing registry owner accepted");
+        }},
+        {"weak runtime witness rejects expired and replaced references", [] {
+            int a{}, b{};
+            require(claw::sameRuntimeActor(&a, &a, &a), "same reference identity refused");
+            require(!claw::sameRuntimeActor(&a, nullptr, &a), "expired witness accepted");
+            require(!claw::sameRuntimeActor(&a, &b, &b), "replacement reference inherited identity");
+            require(!claw::sameRuntimeActor(&a, &a, &b), "current registry owner ignored");
+        }},
+        {"completed request error releases pending owner payload", [] {
+            claw::RequestLedger<std::shared_ptr<int>> ledger{1};
+            auto owner = std::make_shared<int>(7); std::weak_ptr<int> weak = owner;
+            const auto ticket = *ledger.begin(1, 1, 7, owner); owner.reset();
+            require(!weak.expired(), "pending owner was not retained");
+            require(ledger.finish(1, ticket, 1, "failed"), "owned failure refused");
+            require(weak.expired(), "completed error retained pending owner");
+            require(ledger.find(1, 7, 1)->error == "failed", "error metadata disappeared");
+        }},
+        {"pool retains owner when task finishes before native callback", [] {
+            std::map<int, std::shared_ptr<int>> pool;
+            auto native = std::make_shared<int>(7); std::weak_ptr<int> weak = native;
+            pool.emplace(1, native); auto task = native;
+            task.reset();
+            require(claw::collectUnshared(pool) == 0 && !weak.expired(), "task completion released native owner");
+            native.reset();
+            require(!weak.expired(), "last native copy released pooled owner");
+            require(claw::collectUnshared(pool) == 1 && weak.expired(), "explicit pool collection failed");
+        }},
+        {"reused ID old actor completion cannot alter new actor request", [] {
+            claw::RequestLedger<std::string> ledger{2};
+            const auto a = *ledger.begin(0xFF001234, 1, 101, "actor A");
+            const auto b = *ledger.begin(0xFF001234, 1, 202, "actor B");
+            require(!ledger.finish(0xFF001234, a, 1, "A failed"), "old A replaced B error");
+            require(!ledger.finish(0xFF001234, a, 1), "old A erased B pending");
+            const auto* row = ledger.find(0xFF001234, 202, 1);
+            require(row && row->owner == "actor B" && row->error.empty() && row->token == b, "B pending changed");
+            require(!ledger.find(0xFF001234, 101, 1), "A getter exposed B request");
+        }},
+        {"same actor newer serial supersedes delayed work", [] {
+            claw::RequestLedger<int> ledger{1};
+            const auto old = *ledger.begin(1, 4, 7, 7);
+            const auto latest = *ledger.begin(1, 4, 7, 7);
+            require(!ledger.owns(1, old, 4) && ledger.owns(1, latest, 4), "request serial ignored");
+            require(!ledger.finish(1, old, 4, "old error"), "stale same-actor error accepted");
+            require(ledger.finish(1, latest, 4, "latest error"), "owned error refused");
+            require(ledger.find(1, 7, 4)->error == "latest error", "owned error lost");
+        }},
+        {"world epoch invalidates pending work without serial reuse", [] {
+            claw::RequestLedger<int> ledger{1};
+            const auto old = *ledger.begin(1, 3, 8, 8);
+            require(!ledger.finish(1, old, 4, "old world"), "wrong epoch completed a request");
+            ledger.clear();
+            const auto restored = *ledger.begin(1, 4, 8, 8);
+            require(restored.serial != old.serial, "request serial reused after clear");
+            require(!ledger.finish(1, old, 4), "pre-load task erased restored request");
+            require(ledger.owns(1, restored, 4), "restored pending lost");
+        }},
+        {"old deletion receipt cannot erase another runtime owner", [] {
+            claw::RequestLedger<int> ledger{1};
+            const auto b = *ledger.begin(9, 2, 202, 202);
+            require(!ledger.eraseOwner(9, 101), "A deletion erased B request");
+            require(ledger.owns(9, b, 2), "B no longer owns its request");
+            require(ledger.eraseOwner(9, 202), "matching deletion owner refused");
+        }},
+        {"request limit bounds distinct actors but permits replacement", [] {
+            claw::RequestLedger<int> ledger{2};
+            require(ledger.begin(1, 1, 1, 1).has_value() && ledger.begin(2, 1, 2, 2).has_value(), "capacity unavailable");
+            require(!ledger.begin(3, 1, 3, 3), "request bound bypassed");
+            require(ledger.begin(1, 1, 4, 4).has_value(), "same-ID replacement rejected");
+            require(!ledger.find(1, 1, 1) && ledger.find(1, 4, 1), "replaced owner leaked");
+        }},
+        {"restored VM identity requires successful nonempty remap", [] {
+            require(claw::mayBindRestoredIdentity(123, 123, false), "matching restored identity refused");
+            require(!claw::mayBindRestoredIdentity(0, 123, false), "failed remap became fresh identity");
+            require(!claw::mayBindRestoredIdentity(123, 0, false), "missing current VM identity accepted");
+            require(!claw::mayBindRestoredIdentity(123, 456, false), "changed VM identity silently rebound");
+            require(!claw::mayBindRestoredIdentity(123, 123, true), "quarantined identity escaped");
+        }},
         {"weight endpoints and midpoint", [] {
             claw::Catalog catalog; require(catalog.loadXml(xml(small + big), "fixture"), "valid preset rejected");
             const auto* preset = catalog.find("Example", claw::Sex::male); require(preset != nullptr, "missing male preset");

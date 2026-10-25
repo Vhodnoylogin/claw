@@ -78,10 +78,49 @@ serialization records namespace, identity, selected name, family, suppression,
 VM deletion identity and verified coefficient cache. `ResolveFormID` and
 `ResolveHandle` remap actor references/VM identities on load,
 including saved dynamic references supported by SKSE. Identity is never the NPC
-base ID. SKSE form-deletion notifications remove the matching VM identity rather
-than treating a new 3D handle as a new actor; ordinary 3D reloads keep assignments.
-Unresolved references are not applied to some other actor. Dynamic
+base ID. After load, records are unbound until a main task checks their resolved
+nonempty VM deletion identity and binds the current actor. Failed/missing VM
+handle remaps, a changed VM identity or a conflicting runtime object quarantine
+the saved assignment; they never silently become a fresh assignment. The saved
+identity is retained. Diagnostics appear in the log, and a manual request for a
+quarantined record reports an error. Recovery is not guessed from a reused ID.
+Dynamic
 references that the game does not preserve cannot be promised persistence.
+
+Manual assign/clear/refresh requests pin the exact Actor object and check that it
+still owns its FormID and is not deleted before main-task work. Request serial,
+runtime owner and world epoch guard every completion/error; a stale request cannot
+erase or change a newer actor's pending request. Repeated pending commands use
+the latest request. Cached getters expose only the matching bound actor/request.
+Refresh keeps the pinned pointer rather than looking its ID up a second time.
+
+A bounded pool (8,192 distinct Actor objects) shares one intrusive reference pin
+across callbacks, pending requests and tasks. Pool entries are released
+only by main-task collection when no other owner remains, including after world
+change. This also handles a task completing before its native callback returns.
+State owns a weak ActorHandle, never a strong reference that could delay normal
+actor reclamation. Its handle is created/resolved only in main tasks. While it
+resolves to the same current registered actor and the VM identity matches, normal
+3D unload/reload preserves the assignment. An expired/mismatching handle is
+quarantined instead of guessed to be the same reference. The pool and state bounds
+fail closed when full. Pins, weak handles, pointers and runtime serials are never
+saved. A 3D-root change on the same reference does not mint a new identity. The
+pool container deliberately has process lifetime, so unqualified DLL/static
+teardown never releases engine pins; normal reclamation happens through main tasks.
+
+Deletion callbacks capture the existing runtime owner, then main-task cleanup
+checks that same state/runtime witness and deletion or registry displacement.
+A late receipt cannot erase a live current actor just because its VM handle matches, nor erase
+a different owner's pending request. A receipt for an unbound restored record
+quarantines it. Completed errors release their pending pin. A normal bound State
+retains only the latest request token/runtime serial, keeping its terminal error
+visible after pool collection and automatic refresh, until another accepted
+request or world reset supersedes it. Errors without a validated runtime witness
+remain in the log rather than being exposed to a later ID owner.
+No uniqueness/reuse format or notification ordering of engine VM handles, or
+formal generation guarantees of ActorHandle, are asserted. Save/load, 3D reload,
+physical reference reconstruction,
+deletion ordering and pool lifetime still require VR runtime qualification.
 
 Returning to human form clears only known base morphs under this companion's key,
 retaining the assignment for later beast form. Human OBody assignments and other

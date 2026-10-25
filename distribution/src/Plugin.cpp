@@ -1,5 +1,6 @@
 // Own implementation. Engine access and every SKEE write/read run in SKSE tasks.
 #include "claw/Preset.h"
+#include "claw/RequestOwnership.h"
 #include <IPluginInterface.h>  // official pinned external API, never vendored
 #include <spdlog/sinks/basic_file_sink.h>
 #include <atomic>
@@ -10,6 +11,7 @@
 #include <filesystem>
 #include <limits>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <random>
 #include <set>
@@ -20,6 +22,12 @@ enum class Status : std::int32_t {
     unknown = 0, pending = 1, applied = 2, unloaded = 3,
     error = 4, human = 5, cleared = 6, providerUnavailable = 7
 };
+struct ActorPin {
+    explicit ActorPin(RE::Actor* value, std::uint64_t number) : actor(value), serial(number) {}
+    RE::NiPointer<RE::Actor> actor;
+    std::uint64_t serial;
+};
+using Pin = std::shared_ptr<ActorPin>;
 struct State {
     std::uint64_t identity{};
     std::string preset;
@@ -32,6 +40,11 @@ struct State {
     RE::VMHandle vmHandle{};
     float lastWeight{-1};
     bool dirty{true};
+    RE::ActorHandle runtimeHandle; // Weak engine witness; created/resolved only in tasks.
+    RE::Actor* runtimePointer{}; // Cached comparison only, never dereferenced by getters.
+    std::uint64_t runtimeSerial{}; // Fresh after load; never serialized.
+    claw::RequestBinding latestRequest; // Non-owning, process-local terminal request witness.
+    bool quarantined{};
 };
 
 constexpr std::uint32_t serializationID = 0x444C5743; // CWLD, exclusive to this companion
@@ -41,9 +54,14 @@ constexpr std::size_t maxActors = 8192;
 constexpr float epsilon = 0.0001F;
 claw::Catalog catalog;
 std::map<RE::FormID, State> states;
-// Empty message means a queued native request; nonempty means it failed before
-// a readable actor/state existed. Native callers can observe pending immediately.
-std::map<RE::FormID, std::string> requests;
+claw::RequestLedger<Pin> requests{maxActors};
+// One intrusive pin per physical Actor, shared by pending tasks/requests/natives.
+// Native callbacks never remove entries: a task can finish before its callback
+// returns, so use_count alone is safe only when THIS pool keeps the last pin.
+// Deliberately process-lifetime storage: DLL/static teardown has no qualified
+// engine thread. Normal releases happen ONLY through collectPins in SKSE tasks.
+auto& pins = *new std::map<RE::Actor*, Pin>();
+std::uint64_t nextPinSerial{1}, nextRuntimeSerial{1};
 std::recursive_mutex mutex;
 std::uint64_t saveNamespace{};
 std::uint64_t nextIdentity{1};
@@ -53,8 +71,66 @@ const SKSE::TaskInterface* tasks{};
 IBodyMorphInterface* morphs{};
 RE::TESRace* beastRace{};
 std::jthread timer;
+void logError(State& state, std::string reason, Status status = Status::error);
 
-void logError(State& state, std::string reason, Status status = Status::error) {
+Pin pinActor(RE::Actor* actor) {
+    if (!actor) return {};
+    if (const auto found = pins.find(actor); found != pins.end()) return found->second;
+    if (pins.size() >= maxActors || nextPinSerial == std::numeric_limits<std::uint64_t>::max()) return {};
+    auto pin = std::make_shared<ActorPin>(actor, nextPinSerial++);
+    pins.emplace(actor, pin);
+    return pin;
+}
+
+// Called only in SKSE tasks. State owns no intrusive pin. The pool protects
+// pending/native owners until their final main-safe collection.
+void collectPins() {
+    claw::collectUnshared(pins);
+}
+void queuePinCollection() {
+    if (tasks) tasks->AddTask([] { std::lock_guard lock(mutex); collectPins(); });
+}
+
+bool currentOwner(RE::Actor* actor) {
+    return actor && !actor->IsDeleted() && RE::TESForm::LookupByID<RE::Actor>(actor->GetFormID()) == actor;
+}
+bool boundTo(const State& state, const RE::Actor* actor) {
+    return state.runtimeSerial && state.runtimePointer == actor;
+}
+void quarantine(State& state, std::string error) {
+    state.quarantined = true; state.runtimeSerial = 0; state.runtimePointer = nullptr;
+    state.runtimeHandle.reset(); state.cache.clear();
+    logError(state, std::move(error));
+}
+void checkRuntimeInstances() {
+    for (auto it = states.begin(); it != states.end();) {
+        auto& state = it->second;
+        if (!state.runtimeSerial || state.quarantined) { ++it; continue; }
+        const auto actor = state.runtimeHandle.get(); // Strong temporary lives only in this main task.
+        if (!claw::sameRuntimeActor(state.runtimePointer, actor.get(), state.runtimePointer)) {
+            quarantine(state, "runtime actor handle expired or changed; saved assignment quarantined");
+        } else if (actor->IsDeleted()) {
+            if (const auto pin = pins.find(actor.get()); pin != pins.end()) requests.eraseOwner(it->first, pin->second->serial);
+            it = states.erase(it);
+            continue;
+        } else if (RE::TESForm::LookupByID<RE::Actor>(it->first) != actor.get()) {
+            quarantine(state, "runtime actor no longer owns saved FormID; assignment quarantined");
+        } else if (!actor->Is3DLoaded() || !actor->Get3D()) {
+            state.status = Status::unloaded; state.dirty = true;
+        }
+        ++it;
+    }
+}
+const claw::RequestLedger<Pin>::Request* actorRequest(RE::Actor* actor) {
+    if (!actor) return nullptr;
+    const auto pin = pins.find(actor);
+    const auto found = states.find(actor->formID);
+    const State* state = found != states.end() && boundTo(found->second, actor) && !found->second.quarantined ? &found->second : nullptr;
+    return claw::resolveActorRequest(requests, actor->formID, epoch.load(), pin == pins.end() ? 0 : pin->second->serial,
+        state ? &state->latestRequest : nullptr, state ? state->runtimeSerial : 0);
+}
+
+void logError(State& state, std::string reason, Status status) {
     if (state.error != reason) SKSE::log::warn("CLAW Distribution: {}", reason);
     state.error = std::move(reason);
     state.status = status;
@@ -67,6 +143,7 @@ std::uint64_t newNamespace() {
 }
 
 State* stateFor(RE::Actor* actor, bool create) {
+    if (!currentOwner(actor) || !actor->GetActorBase()) return nullptr;
     const auto id = actor->GetFormID();
     auto found = states.find(id);
     RE::VMHandle handle{};
@@ -77,14 +154,38 @@ State* stateFor(RE::Actor* actor, bool create) {
         }
     }
     if (found != states.end()) {
-        if (handle) found->second.vmHandle = handle;
-        return &found->second;
+        auto& state = found->second;
+        if (state.quarantined) return &state;
+        if (!claw::mayBindRestoredIdentity(state.vmHandle, handle, false)) {
+            quarantine(state, "actor VM deletion identity unavailable or changed; assignment quarantined");
+            return &state;
+        }
+        if (state.runtimeSerial) {
+            const auto witness = state.runtimeHandle.get();
+            if (!claw::sameRuntimeActor(state.runtimePointer, witness.get(), actor))
+                quarantine(state, "actor runtime identity conflicts with saved FormID; assignment quarantined");
+            return &state;
+        }
+        if (nextRuntimeSerial == std::numeric_limits<std::uint64_t>::max()) return nullptr;
+        const auto runtime = actor->GetHandle();
+        const auto witness = runtime.get();
+        if (!witness || witness.get() != actor) {
+            quarantine(state, "restored runtime actor handle unavailable; assignment quarantined");
+            return &state;
+        }
+        state.runtimeHandle = runtime; state.runtimePointer = actor; state.runtimeSerial = nextRuntimeSerial++;
+        return &state;
     }
-    if (!create || states.size() >= maxActors) return nullptr;
+    if (!create || !handle || states.size() >= maxActors || nextIdentity == std::numeric_limits<std::uint64_t>::max() ||
+        nextRuntimeSerial == std::numeric_limits<std::uint64_t>::max()) return nullptr;
+    const auto runtime = actor->GetHandle();
+    const auto witness = runtime.get();
+    if (!witness || witness.get() != actor) return nullptr;
     if (!saveNamespace) saveNamespace = newNamespace();
     State state;
     state.identity = nextIdentity++;
     state.vmHandle = handle;
+    state.runtimeHandle = runtime; state.runtimePointer = actor; state.runtimeSerial = nextRuntimeSerial++;
     state.sex = actor->GetActorBase()->GetSex() == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
     return &states.emplace(id, std::move(state)).first->second;
 }
@@ -111,16 +212,12 @@ bool clearOwn(RE::Actor* actor) {
     return true;
 }
 
-void refresh(RE::FormID id, bool force = false) {
+void refreshActor(RE::Actor* actor, bool force = false) {
     // Called exclusively from a task. Do not move this into a native/event/timer.
-    auto* actor = RE::TESForm::LookupByID<RE::Actor>(id);
-    if (!actor || !actor->GetActorBase()) {
-        if (auto found = states.find(id); found != states.end()) found->second.status = Status::unloaded;
-        return;
-    }
+    if (!currentOwner(actor) || !actor->GetActorBase()) return;
     const bool beast = beastRace && actor->GetRace() == beastRace; // current race, never NPC base race
     State* state = stateFor(actor, beast);
-    if (!state) return;
+    if (!state || state->quarantined || !boundTo(*state, actor)) return;
     if (!actor->Is3DLoaded() || !actor->Get3D()) { state->status = Status::unloaded; state->dirty = true; return; }
     if (!morphs) { logError(*state, "SKEE BodyMorph API is unavailable", Status::providerUnavailable); return; }
     const auto root = reinterpret_cast<std::uintptr_t>(actor->Get3D());
@@ -157,7 +254,7 @@ void refresh(RE::FormID id, bool force = false) {
         state->status = Status::pending;
         if (!clearOwn(actor)) { logError(*state, "own-key preparation readback failed"); return; }
         // Recheck race/model immediately before writes; all operations stay on this main-thread task.
-        if (actor->GetRace() != beastRace || !actor->Is3DLoaded() || !actor->Get3D()) {
+        if (!currentOwner(actor) || actor->GetRace() != beastRace || !actor->Is3DLoaded() || !actor->Get3D()) {
             state->dirty = true; state->status = Status::pending; return;
         }
         for (const auto& [name, value] : expected)
@@ -171,8 +268,13 @@ void refresh(RE::FormID id, bool force = false) {
 
 void scan() {
     std::lock_guard lock(mutex);
+    collectPins();
     if (!enabled) return;
-    if (!beastRace) beastRace = RE::TESForm::LookupByEditorID<RE::TESRace>("WerewolfBeastRace");
+    checkRuntimeInstances();
+    if (!beastRace) {
+        if (auto* data = RE::TESDataHandler::GetSingleton())
+            beastRace = data->LookupForm<RE::TESRace>(0xCDD84, "Skyrim.esm");
+    }
     if (!beastRace) { SKSE::log::error("WerewolfBeastRace unavailable; distribution disabled"); return; }
     std::set<RE::FormID> actors;
     if (auto* player = RE::PlayerCharacter::GetSingleton()) actors.insert(player->GetFormID());
@@ -183,7 +285,11 @@ void scan() {
         });
     }
     for (const auto& [id, state] : states) { (void)state; actors.insert(id); }
-    for (const auto id : actors) refresh(id);
+    for (const auto id : actors) {
+        auto* actor = RE::TESForm::LookupByID<RE::Actor>(id);
+        refreshActor(actor);
+    }
+    collectPins();
 }
 
 void queueScan() {
@@ -201,8 +307,8 @@ void queueActor(RE::FormID id, bool force = false) {
     tasks->AddTask([id, force, token] {
         if (!enabled || token != epoch) return;
         std::lock_guard lock(mutex);
-        if (force) if (auto found = states.find(id); found != states.end()) found->second.dirty = true;
-        refresh(id, force);
+        // Events carrying only an ID are rescan hints, never actor-specific intent.
+        refreshActor(RE::TESForm::LookupByID<RE::Actor>(id), force);
     });
 }
 
@@ -257,7 +363,9 @@ void save(SKSE::SerializationInterface* interface) {
     Bytes session; u64(session, saveNamespace); u64(session, nextIdentity);
     if (!interface->WriteRecord(sessionRecord, 1, session.data(), static_cast<std::uint32_t>(session.size()))) SKSE::log::error("Session serialization failed");
     for (const auto& [id, state] : states) {
-        Bytes row; u32(row, id); u64(row, state.identity); u64(row, state.vmHandle); string(row, state.preset);
+        // Zero is already an unavailable VM identity in record v1. Preserve hard
+        // quarantine across saves without inventing a new persistence format.
+        Bytes row; u32(row, id); u64(row, state.identity); u64(row, state.quarantined ? 0 : state.vmHandle); string(row, state.preset);
         u32(row, static_cast<std::uint32_t>(state.sex)); u32(row, state.suppressed ? 1 : 0);
         u32(row, static_cast<std::uint32_t>(state.cache.size()));
         for (const auto& [name, value] : state.cache) {
@@ -269,11 +377,15 @@ void save(SKSE::SerializationInterface* interface) {
 
 void revert(SKSE::SerializationInterface*) {
     enabled = false; ++epoch;
-    std::lock_guard lock(mutex);
-    states.clear(); requests.clear(); saveNamespace = 0; nextIdentity = 1;
+    {
+        std::lock_guard lock(mutex);
+        states.clear(); requests.clear(); saveNamespace = 0; nextIdentity = 1;
+    }
+    queuePinCollection(); // Never release the last intrusive pin on a VM callback.
 }
 
 void load(SKSE::SerializationInterface* interface) {
+    enabled = false; ++epoch;
     std::lock_guard lock(mutex);
     states.clear(); requests.clear(); saveNamespace = 0; nextIdentity = 1;
     std::uint32_t type{}, version{}, length{};
@@ -309,7 +421,10 @@ void load(SKSE::SerializationInterface* interface) {
             RE::FormID id{};
             if (interface->ResolveFormID(oldID, id)) {
                 if (!id || states.contains(id) || states.size() >= maxActors) throw std::runtime_error("duplicate/excessive actor record");
-                if (oldHandle) (void)interface->ResolveHandle(oldHandle, state.vmHandle);
+                if (!oldHandle || !interface->ResolveHandle(oldHandle, state.vmHandle) || !state.vmHandle) {
+                    state.quarantined = true;
+                    logError(state, "saved VM deletion identity cannot be resolved; assignment quarantined");
+                }
                 states.emplace(id, std::move(state));
             }
         } catch (const std::exception& error) { SKSE::log::error("CLAW co-save: {}", error.what()); }
@@ -319,14 +434,85 @@ void load(SKSE::SerializationInterface* interface) {
 }
 
 void deleted(RE::VMHandle handle) {
-    // SKSE's form-delete callback supplies the VM identity, not an arbitrary
-    // raw FormID. Cache-only cleanup also prevents later temporary-ID reuse.
-    if (!handle) return;
-    std::lock_guard lock(mutex);
-    for (auto iterator = states.begin(); iterator != states.end();) {
-        if (iterator->second.vmHandle == handle) { requests.erase(iterator->first); iterator = states.erase(iterator); }
-        else ++iterator;
+    if (!handle || !tasks) return;
+    struct Receipt { RE::FormID id; std::uint64_t identity, runtime, requestOwner; RE::ActorHandle witness; RE::Actor* pointer; };
+    std::vector<Receipt> receipts;
+    {
+        std::lock_guard lock(mutex);
+        for (auto& [id, state] : states) {
+            if (state.vmHandle != handle) continue;
+            if (!state.runtimeSerial) {
+                quarantine(state, "deletion receipt for unbound saved identity; assignment quarantined");
+            } else {
+                const auto pin = pins.find(state.runtimePointer);
+                receipts.push_back({id, state.identity, state.runtimeSerial,
+                    pin == pins.end() ? 0 : pin->second->serial, state.runtimeHandle, state.runtimePointer});
+            }
+        }
     }
+    const auto token = epoch.load();
+    for (const auto& receipt : receipts) tasks->AddTask([receipt, token] {
+        if (token != epoch) return;
+        std::lock_guard lock(mutex);
+        const auto found = states.find(receipt.id);
+        if (found == states.end() || found->second.identity != receipt.identity ||
+            found->second.runtimeSerial != receipt.runtime || found->second.runtimePointer != receipt.pointer) return;
+        const auto actor = receipt.witness.get();
+        // VM handle format/order is not assumed unique across reuse. A late old
+        // receipt cannot retire a live current actor just sharing that VM handle.
+        if (actor && actor.get() != receipt.pointer) {
+            quarantine(found->second, "deletion runtime witness changed; saved assignment quarantined"); return;
+        }
+        if (actor && !actor->IsDeleted() && RE::TESForm::LookupByID<RE::Actor>(receipt.id) == actor.get()) return;
+        if (receipt.requestOwner) requests.eraseOwner(receipt.id, receipt.requestOwner);
+        states.erase(found);
+    });
+    if (!receipts.empty()) queuePinCollection();
+}
+
+enum class Operation { assign, clear, refresh };
+bool actorRequest(RE::Actor* actor, Operation operation, std::string presetName = {}) {
+    if (!actor || !tasks || !enabled) return false;
+    const auto id = actor->formID;
+    Pin owner;
+    std::optional<claw::RequestToken> ticket;
+    {
+        std::lock_guard lock(mutex);
+        if (!enabled) return false;
+        if (operation == Operation::assign && !catalog.find(presetName, claw::Sex::male) && !catalog.find(presetName, claw::Sex::female)) return false;
+        owner = pinActor(actor);
+        if (!owner) return false;
+        ticket = requests.begin(id, epoch.load(), owner->serial, owner);
+        if (!ticket) return false;
+        if (auto found = states.find(id); found != states.end() && boundTo(found->second, actor)) {
+            found->second.status = Status::pending;
+            found->second.latestRequest = {*ticket, found->second.runtimeSerial};
+        }
+    }
+    // The pool keeps an intrusive pin even if this task is disposed before the
+    // native callback's final shared_ptr copy dies. Only task collection erases it.
+    tasks->AddTask([id, owner = std::move(owner), ticket = *ticket, operation, presetName = std::move(presetName)] {
+        std::lock_guard lock(mutex);
+        if (!enabled || !requests.owns(id, ticket, epoch.load())) return;
+        auto fail = [&](std::string error) { requests.finish(id, ticket, epoch.load(), std::move(error)); };
+        auto* target = owner->actor.get();
+        if (!claw::mayRunActorRequest(target, RE::TESForm::LookupByID<RE::Actor>(id), target->formID == id, target->IsDeleted()) ||
+            !target->GetActorBase()) { fail("original actor reference is deleted or no longer owns its FormID"); return; }
+        auto* state = stateFor(target, true);
+        if (!state) { fail("actor identity unavailable or reference/pin state limit reached"); return; }
+        if (state->quarantined || !boundTo(*state, target)) { fail("actor assignment identity is quarantined"); return; }
+        state->latestRequest = {ticket, state->runtimeSerial};
+        if (operation == Operation::assign) {
+            const auto sex = target->GetActorBase()->GetSex() == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
+            if (!beastRace || target->GetRace() != beastRace) { fail("AssignPreset requires the current WerewolfBeastRace"); return; }
+            if (!catalog.find(presetName, sex)) { fail("preset family does not match actor sex"); return; }
+            state->preset = presetName; state->sex = sex; state->suppressed = false;
+        } else if (operation == Operation::clear) state->suppressed = true;
+        state->dirty = true;
+        refreshActor(target, true); // Use the pinned object, never a second ID lookup.
+        requests.finish(id, ticket, epoch.load());
+    });
+    return true;
 }
 
 std::vector<RE::BSFixedString> presetNames(RE::StaticFunctionTag*, bool female) {
@@ -336,92 +522,41 @@ std::vector<RE::BSFixedString> presetNames(RE::StaticFunctionTag*, bool female) 
 }
 
 bool assignPreset(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString name) {
-    if (!actor || !tasks || !enabled) return false;
-    const auto id = actor->formID; // plain captured identity; engine lookups occur only inside the task
-    const std::string presetName = name.c_str();
-    {
-        std::lock_guard lock(mutex);
-        if (!catalog.find(presetName, claw::Sex::male) && !catalog.find(presetName, claw::Sex::female)) return false;
-        if (requests.size() >= maxActors && !requests.contains(id)) return false;
-        requests[id].clear();
-        if (auto found = states.find(id); found != states.end()) found->second.status = Status::pending;
-    }
-    const auto token = epoch.load();
-    tasks->AddTask([id, presetName, token] {
-        if (!enabled || token != epoch) return;
-        std::lock_guard lock(mutex);
-        auto* target = RE::TESForm::LookupByID<RE::Actor>(id);
-        if (!target || !target->GetActorBase()) { requests[id] = "actor reference is unavailable"; return; }
-        auto* state = stateFor(target, true); if (!state) { requests[id] = "actor state limit reached"; return; }
-        requests.erase(id);
-        const auto sex = target->GetActorBase()->GetSex() == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
-        if (!beastRace || target->GetRace() != beastRace) { logError(*state, "AssignPreset requires the current WerewolfBeastRace"); return; }
-        if (!catalog.find(presetName, sex)) { logError(*state, "preset family does not match actor sex"); return; }
-        state->preset = presetName; state->sex = sex; state->suppressed = false; state->dirty = true;
-        refresh(id, true);
-    });
-    return true; // queued, never a claim that geometry changed
+    return actorRequest(actor, Operation::assign, name.c_str());
 }
 
+const State* cachedState(RE::Actor* actor) {
+    if (!enabled || !actor) return nullptr;
+    const auto found = states.find(actor->formID);
+    return found != states.end() && boundTo(found->second, actor) ? &found->second : nullptr;
+}
 RE::BSFixedString assigned(RE::StaticFunctionTag*, RE::Actor* actor) {
-    std::lock_guard lock(mutex); const auto found = actor ? states.find(actor->formID) : states.end();
-    return found == states.end() ? RE::BSFixedString{} : RE::BSFixedString(found->second.preset);
+    std::lock_guard lock(mutex);
+    const auto* state = cachedState(actor);
+    return state && !state->quarantined ? RE::BSFixedString(state->preset) : RE::BSFixedString{};
 }
 std::int32_t getStatus(RE::StaticFunctionTag*, RE::Actor* actor) {
     std::lock_guard lock(mutex);
-    if (actor) if (const auto request = requests.find(actor->formID); request != requests.end())
-        return static_cast<std::int32_t>(request->second.empty() ? Status::pending : Status::error);
-    const auto found = actor ? states.find(actor->formID) : states.end();
-    return static_cast<std::int32_t>(found == states.end() ? Status::unknown : found->second.status);
+    if (enabled) if (const auto* request = actorRequest(actor))
+        return static_cast<std::int32_t>(request->error.empty() ? Status::pending : Status::error);
+    const auto* state = cachedState(actor);
+    return static_cast<std::int32_t>(state ? state->status : Status::unknown);
 }
 RE::BSFixedString lastError(RE::StaticFunctionTag*, RE::Actor* actor) {
     std::lock_guard lock(mutex);
-    if (actor) if (const auto request = requests.find(actor->formID); request != requests.end()) return RE::BSFixedString(request->second);
-    const auto found = actor ? states.find(actor->formID) : states.end();
-    return found == states.end() ? RE::BSFixedString{} : RE::BSFixedString(found->second.error);
+    if (enabled) if (const auto* request = actorRequest(actor)) return RE::BSFixedString(request->error);
+    const auto* state = cachedState(actor);
+    return state ? RE::BSFixedString(state->error) : RE::BSFixedString{};
 }
 float ownMorph(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString name) {
-    std::lock_guard lock(mutex); const auto found = actor ? states.find(actor->formID) : states.end();
-    if (actor && requests.contains(actor->formID)) return 0;
-    if (found == states.end() || found->second.status != Status::applied) return 0;
-    const auto value = found->second.cache.find(name.c_str());
-    return value == found->second.cache.end() ? 0 : value->second;
+    std::lock_guard lock(mutex);
+    const auto* state = cachedState(actor);
+    if (actorRequest(actor) || !state || state->quarantined || state->status != Status::applied) return 0;
+    const auto value = state->cache.find(name.c_str());
+    return value == state->cache.end() ? 0 : value->second;
 }
-bool clearRequest(RE::StaticFunctionTag*, RE::Actor* actor) {
-    if (!actor || !tasks || !enabled) return false;
-    const auto id = actor->formID; const auto token = epoch.load();
-    { std::lock_guard lock(mutex); if (requests.size() >= maxActors && !requests.contains(id)) return false; requests[id].clear(); }
-    tasks->AddTask([id, token] {
-        if (!enabled || token != epoch) return;
-        std::lock_guard lock(mutex); auto* target = RE::TESForm::LookupByID<RE::Actor>(id);
-        if (!target || !target->GetActorBase()) { requests[id] = "actor reference is unavailable"; return; }
-        if (auto* state = stateFor(target, true)) { requests.erase(id); state->suppressed = true; state->dirty = true; refresh(id, true); }
-        else requests[id] = "actor state limit reached";
-    });
-    return true;
-}
-bool refreshRequest(RE::StaticFunctionTag*, RE::Actor* actor) {
-    if (!actor || !tasks || !enabled) return false;
-    const auto id = actor->formID; const auto token = epoch.load();
-    {
-        std::lock_guard lock(mutex);
-        if (requests.size() >= maxActors && !requests.contains(id)) return false;
-        requests[id].clear();
-        if (auto found = states.find(id); found != states.end()) found->second.status = Status::pending;
-    }
-    tasks->AddTask([id, token] {
-        if (!enabled || token != epoch) return;
-        std::lock_guard lock(mutex);
-        auto* target = RE::TESForm::LookupByID<RE::Actor>(id);
-        if (!target || !target->GetActorBase()) { requests[id] = "actor reference is unavailable"; return; }
-        auto* state = stateFor(target, true);
-        if (!state) { requests[id] = "actor state limit reached"; return; }
-        requests.erase(id);
-        state->dirty = true;
-        refresh(id, true);
-    });
-    return true;
-}
+bool clearRequest(RE::StaticFunctionTag*, RE::Actor* actor) { return actorRequest(actor, Operation::clear); }
+bool refreshRequest(RE::StaticFunctionTag*, RE::Actor* actor) { return actorRequest(actor, Operation::refresh); }
 bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     constexpr auto script = "CLAWDistributionNative";
     vm->RegisterFunction("GetPresetNames", script, presetNames);
@@ -477,7 +612,7 @@ void message(SKSE::MessagingInterface::Message* event) {
         enabled = false; ++epoch;
         {
             std::lock_guard lock(mutex);
-            for (auto& [id, error] : requests) { (void)id; if (error.empty()) error = "request superseded by world load"; }
+            requests.clear(); // Pool keeps pins until main-task collection.
         }
         break;
     case Type::kDataLoaded:
@@ -499,13 +634,18 @@ void message(SKSE::MessagingInterface::Message* event) {
         });
         break;
     case Type::kNewGame:
+        enabled = false; ++epoch;
         {
             std::lock_guard lock(mutex);
             states.clear(); requests.clear(); saveNamespace = newNamespace(); nextIdentity = 1;
         }
         [[fallthrough]];
     case Type::kPostLoadGame:
-        enabled = true; ++epoch; queueScan(); notifyLoaded(); break;
+        {
+            std::lock_guard lock(mutex);
+            enabled = true; ++epoch;
+        }
+        queueScan(); notifyLoaded(); break;
     default: break;
     }
 }
