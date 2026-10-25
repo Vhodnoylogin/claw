@@ -72,7 +72,15 @@ and remain development examples pending game validation.
 ```powershell
 python scripts/presets.py export presets/examples.json --out 'D:/staging/YourName.xml'
 python scripts/presets.py validate 'D:/staging/YourName.xml' --weight 50
+python scripts/package-presets.py 'D:/staging/YourName.xml' --out 'D:/staging/YourName - CLAW Presets.zip'
 ```
+
+The package command accepts one XML file or a directory of XML files. It validates
+the exact bytes included, checks names across files, preserves author subdirectories
+and writes a new standalone mod ZIP under the required `SliderPresets/CLAW` path.
+Other files are excluded. It does not bundle bodies, plugins or another author's
+textures. The output reports the archive and installed file hashes; an existing
+archive is never replaced. The same inputs produce the same archive bytes.
 
 The validator reports weight-interpolated values,
 sex, source paths and hashes. Installing a preset does not require rebuilding the

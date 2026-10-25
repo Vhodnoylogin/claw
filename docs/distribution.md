@@ -7,11 +7,13 @@ distribution companion. The published 0.6.2.0 resource
 package has neither controller. `scripts/distribution.py` is an executable **offline
 reference core**, not an installed game integration.
 
-The preferred25October linkage route is now [explicit preset pairing](transformation.md),
-implemented as a separate offline policy planner. The equations below remain
-unqualified hypotheses. Neither reference core may run as a second live writer
-beside `CLAW.Distribution`; one future coordinator must choose the active policy
-and clear the inactive owned key before applying a composed vector.
+The owner clarified26October that linkage is **morph to morph**. Presets supply
+the human values; their names do not select the wolf shape. See
+[transformation.md](transformation.md) for the current runtime bridge. The older
+explicit preset-pair planner remains a separate legacy experiment, not the
+chosen transformation mechanism. The equations below remain unqualified
+hypotheses. Reference cores must not run as a second live writer beside
+`CLAW.Distribution`; the native coordinator owns the composed beast vector.
 
 ## One actor, two forms
 

@@ -276,3 +276,60 @@ Inherited body22897 remains identical. There is no justified aggregate improveme
 so no width3 profile is promoted or installed and no further width tuning follows
 from this experiment. The next repair needs a locally shaped deformation field
 and visual/animation evidence, rather than assuming that a wider blend is enough.
+
+## Limited-field serialization and finite local diagnostic
+
+`scripts/tri_patch.py` provides a deliberately limited quantized-offset patcher.
+It replaces only explicitly named **existing** shape/morph/vertex int16 triples,
+retains their original multiplier and every other byte, and rejects duplicate or
+truncated structures, unsupported trailing data and out-of-range values. It does
+not introduce records, select a geometric correction or certify a mesh. Callers
+must convert the intended correction into the existing shape frame, quantize it
+explicitly, and evaluate the decoded result. This avoids a whole-TRI rewrite:
+an actual no-op with the public PyNifly writer changed the accepted input's bytes
+and length, while the limited patcher's no-op is exactly byte-identical.
+
+A bounded 26 October diagnostic evaluated four magnitudes of a mirrored local
+XY Girth direction on the previously identified eight free vertices. The maximum
+permitted displacement was 0.025298 world units, chosen as 2.5% of the shortest
+incident neutral edge. Each magnitude was quantized using the existing scale,
+then measured on all 36 affected triangles and nine continuous neutral-to-combined
+morph paths. Hard anchors, neutral geometry, other morphs and all outside-support
+decoded records remained exact, independently checked with the public reader.
+
+The largest tested displacement improved triangle1694's minimum area from
+0.009459227 to0.015992285; the affected-region minimum improved by the same amount
+and the minimum edge remained0.446776424. No previously thin (<0.05 area) face
+lost area, but 60 face/path measurements did lose area; the largest loss was
+triangle28 on the Girth1/Breast1 path,0.160377196 to0.143252022. This fails the
+experiment's conservative per-face non-regression criterion, which is **not** a
+release requirement: a smaller still-healthy triangle is not itself a defect.
+The measured direction is a plausible subsequent candidate, with unresolved
+neighbor shape, self-intersection and rendered/animated appearance. No new
+geometry candidate is promoted, serialized for installation, or declared
+release-ready. This is a finite local tradeoff measurement, not an optimizer
+result or an arbitrary coefficient-domain bound.
+
+## Body-only staging without physics
+
+A separate 26 October external staging payload uses the 85-node weight-repaired
+NIF `608448b9...8d65` and unchanged TRI `18840924...b15`. It excludes P1 nodes,
+physics and the finite local Girth diagnostic above. The qualified isolated
+Morphbench snapshot recomputed the conservative additive bounds with range0..1
+and margin1.01: all15shapes pass, with no corner-cap overflow. Only the15sphere
+fields changed (199bytes); every other NIF byte is retained. The bounded result
+is `3d14a68f1683d8a9362bfda19b1a8fc74a8a792036f08bb9917dc9c3ea42e2be`.
+
+The payload retains the published male pair/TRI and plugin byte-for-byte and
+places the corrected female shape in both `_0` and `_1`, preserving the existing
+weight-independent contract. The female TRI remains byte-identical to the
+input. Direct readback checks node ancestry/transforms, all neutral vertices,
+triangles, UVs, weights and binds. The104corrected head-weight vertices retain
+exactly normalized packed weights and at most four influences. The55frozen
+attachment anchors are measured again from actual serialized coordinates.
+
+This is a testing payload, not a new published version. Rendered breast/shoulder
+seams, fur coverage and representative animations in SE/VR remain acceptance
+gates, together with final package documentation and integration review. The
+attachment offset is measured relative to the donor overlap; zero distance
+between the two surfaces is not imposed as an invented release criterion.

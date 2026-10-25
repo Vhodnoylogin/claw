@@ -137,7 +137,8 @@ game runtime.
 Returning to human form clears only known base morphs under this companion's key,
 retaining the assignment for later beast form. Human OBody assignments and other
 morph keys are left intact. Explicit `ClearOwn` also saves a suppression flag,
-so periodic automatic assignment stays off until `AssignPreset` is called.
+so periodic automatic assignment stays off until `AssignPreset` or an explicit
+valid `ConfigureMorphLink` request is called.
 Missing saved presets produce an error instead of choosing another preset.
 
 The official RaceMenu/SKEE `BodyMorph` interface is acquired through its SKSE
@@ -166,8 +167,10 @@ The coordinator owns the user menu and optional human OBody route.
 | `GetStatus(actor)` | Enum below; queued native requests report pending immediately |
 | `GetLastError(actor)` | Most recent application/request error |
 | `GetOwnMorph(actor, name)` | Last verified own coefficient, zero unless status is applied |
-| `ClearOwn(actor)` | Queued scoped cleanup and saved automatic-distribution suppression |
+| `ClearOwn(actor)` | Queued scoped cleanup; saved suppression until explicit assign/configure |
 | `Refresh(actor)` | Queued lifecycle/readback refresh |
+| `ConfigureMorphLink(actor, profile, sources[], targets[], gains[], caps[])` | Queued explicit morph-to-morph profile, 1..32 rules; actual SKEE source coefficients, no preset-name pairs |
+| `DisableMorphLink(actor)` | Queued return to the retained independent preset |
 
 Status values: **0** unknown, **1** pending, **2** own coefficients read back and
 model update requested, **3** unloaded, **4** error, **5** human/own key cleared,
@@ -176,6 +179,20 @@ fail because race/sex/reference/3D changed. `GetOwnMorph` is a cached readback, 
 the aggregate across mods. Inspect status before interpreting zero.
 Explicit refresh immediately marks the request pending and hides its previous
 coefficient cache until queued work completes or reports an error.
+
+The optional [morph-to-morph bridge](../docs/transformation.md) reads actual
+applied signed human coefficients through SKEE in main-thread tasks. It sums
+configured source values times gains, clamps each target sum once to 0..1 and
+multiplies by its configured cap; it never reapplies actor weight to those human
+values. Independent ears and tail remain unchanged. The profile is explicit;
+there is no universally calibrated default or automatic body-family detection.
+Normal `AssignPreset` disables linkage. `ClearOwn` retains the mapping while
+suppressing distribution; a valid explicit configuration resumes it. Disabling
+linkage does not clear suppression. The existing
+single own key is retained. Actor record v2 stores the mapping/source snapshot;
+v1 migrates independent. Native compilation, real source aggregation and actual
+save/load/transform behavior require separate acceptance evidence. The API queues
+work: wait for the previous request to complete before submitting the next one.
 
 ## Build without installation
 

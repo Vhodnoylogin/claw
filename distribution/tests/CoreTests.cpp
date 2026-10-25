@@ -1,6 +1,7 @@
 // Offline contracts only. Built/run explicitly after the coordinator opens testing.
 #include "claw/Preset.h"
 #include "claw/RequestOwnership.h"
+#include "claw/MorphLink.h"
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -29,6 +30,46 @@ void invalid(const std::string& input) {
 int main() {
     std::size_t passed{};
     const std::vector<std::pair<const char*, std::function<void()>>> cases{
+        {"morph linkage combines signed actual values before one clamp", [] {
+            claw::MorphLink link{"Explicit-v1", {{"HumanA", "CLAWTorsoGirth", .5F, .25F}, {"HumanB", "CLAWTorsoGirth", .5F, .25F}}, {}, false};
+            require(link.valid(claw::Sex::female), "explicit scalar profile rejected");
+            link.capture([](std::string_view name) { return name == "HumanA" ? 10.0F : -10.0F; });
+            auto result = link.compose({{"CLAWHeadEarSize", .23F}, {"CLAWTailLength", .37F}}, claw::Sex::female);
+            require(result.at("CLAWTorsoGirth") == 0, "sources clamped separately or cancellation lost");
+            require(result.at("CLAWHeadEarSize") == .23F && result.at("CLAWTailLength") == .37F, "independent traits rerolled");
+            link.capture([](std::string_view) { return .5F; });
+            result = link.compose({}, claw::Sex::female);
+            require(result.at("CLAWTorsoGirth") == .125F && result.at("CLAWTorsoBreastSize") == 0, "weight applied twice or female exclusion lost");
+            link.capture([](std::string_view) { return 0.0F; });
+            require(link.compose({}, claw::Sex::male).at("CLAWTorsoGirth") == 0, "cleared human source resurrected cache");
+        }},
+        {"morph linkage cannot feed back its own beast values", [] {
+            claw::MorphLink link{"Explicit-v1", {{"CLAWTorsoGirth", "CLAWTorsoGirth", 1, .25F}}, {}, false};
+            require(!link.valid(claw::Sex::male), "CLAW source feedback accepted");
+            link.rules[0] = {"Human", "CLAWHeadEarSize", 1, .25F};
+            require(!link.valid(claw::Sex::male), "individual head trait entered linked body domain");
+            link.rules[0].target = "CLAWTorsoBreastSize";
+            require(!link.valid(claw::Sex::female), "unqualified breast link accepted");
+        }},
+        {"morph linkage rejects ambiguous or unbounded profiles", [] {
+            claw::MorphLink link{"Explicit-v1", {{"HumanA", "CLAWTorsoGirth", 1, .25F}, {"HumanB", "CLAWTorsoGirth", 1, .5F}}, {}, false};
+            require(!link.valid(claw::Sex::male), "inconsistent caps accepted");
+            link.rules[1] = link.rules[0];
+            require(!link.valid(claw::Sex::male), "duplicate mapping row accepted");
+            link.rules.resize(1); link.rules[0].gain = std::numeric_limits<float>::infinity();
+            require(!link.valid(claw::Sex::male), "nonfinite gain accepted");
+            require(claw::morphLinkIdentifier("\xD0\x92\xD0\xBE\xD0\xBB\xD0\xBA"), "valid UTF8 identifier rejected");
+        }},
+        {"failed source read preserves the last complete snapshot", [] {
+            claw::MorphLink link{"Explicit-v1", {{"Human", "CLAWTorsoGirth", 1, .25F}}, {}, false};
+            link.capture([](std::string_view) { return -.5F; });
+            bool refused = false;
+            try { link.capture([](std::string_view) { return std::numeric_limits<float>::quiet_NaN(); }); }
+            catch (const std::exception&) { refused = true; }
+            require(refused && link.sourceValues.at("Human") == -.5F, "failed read partly replaced snapshot");
+            link.sourceValues.emplace("Unlisted", 1);
+            require(!link.valid(claw::Sex::male), "corrupt persisted source accepted");
+        }},
         {"bound wrong-sex request error survives pool release and automatic refresh", [] {
             claw::RequestLedger<std::shared_ptr<int>> ledger{1};
             std::map<int, std::shared_ptr<int>> pool;

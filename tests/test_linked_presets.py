@@ -300,6 +300,31 @@ class LinkedPresets(unittest.TestCase):
         self.plan()
         self.assertEqual((self.snapshot, self.rules, self.catalog), before)
 
+    def test_human_unassignment_survives_cleanup_and_provider_loss(self):
+        first = self.plan()
+        self.snapshot.update(previous=first["state"], isBeast=False)
+        self.snapshot["source"]["preset"] = None
+        human = core.plan(self.snapshot)
+        self.assertEqual(human["policy"], "human")
+        self.assertIn("lastLink", human["state"])
+        self.assertIsNone(human["state"]["lastSource"]["preset"])
+        self.snapshot.update(previous=human["state"], isBeast=True, source=None)
+        beast = self.plan()
+        self.assertEqual(beast["policy"], "independent")
+        self.assertNotIn("lastLink", beast["state"])
+        self.assertAlmostEqual(beast["desiredMorphs"]["CLAWTorsoGirth"], .15)
+        self.assertAlmostEqual(beast["desiredMorphs"]["CLAWHeadEarSize"], .23)
+
+    def test_human_source_change_disables_stale_old_pair(self):
+        first = self.plan()
+        self.snapshot.update(previous=first["state"], isBeast=False)
+        self.snapshot["source"]["preset"] = "Human B"
+        human = core.plan(self.snapshot)
+        self.snapshot.update(previous=human["state"], isBeast=True, source=None)
+        beast = self.plan()
+        self.assertEqual(beast["policy"], "independent")
+        self.assertAlmostEqual(beast["desiredMorphs"]["CLAWTorsoGirth"], .15)
+
 
 if __name__ == "__main__":
     unittest.main()

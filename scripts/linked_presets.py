@@ -41,6 +41,29 @@ def confirmed_source(source):
             and (source["preset"] is None or isinstance(source["preset"], str)))
 
 
+def valid_observation(source):
+    """Keep confirmed history independently of whether a beast plan can resolve."""
+    if not confirmed_source(source):
+        return False
+    try:
+        text(source["profile"])
+        if source["preset"] is not None:
+            text(source["preset"])
+    except ValueError:
+        return False
+    return True
+
+
+def stale_link_allowed(snapshot, previous):
+    if confirmed_source(snapshot.get("source")) or not isinstance(previous, dict):
+        return False
+    last = previous.get("lastLink")
+    if not last:
+        return False
+    observed = previous.get("lastSource")
+    return observed is None or (valid_observation(observed) and observed == last.get("source"))
+
+
 def vector(value, allowed):
     if not isinstance(value, dict) or set(value).difference(allowed):
         raise ValueError("Unsupported morph in coefficient vector")
@@ -118,6 +141,10 @@ def plan(snapshot, document=None, catalog=None, allowed=None):
     if type(generation) is not int or not 0 <= generation < 2**63 - 1:
         raise ValueError("Invalid saved generation")
     state = previous | {"schemaVersion": 1, "identity": identity, "generation": generation + 1}
+    # A real provider observation in human form must survive cleanup. Otherwise
+    # an old cached link could return after unassignment and subsequent provider loss.
+    if valid_observation(snapshot.get("source")):
+        state["lastSource"] = copy.deepcopy(snapshot["source"])
     result = {"generation": generation + 1, "pending": True, "policy": mode,
               "activeKey": None, "clearKeys": [], "desiredMorphs": {}, "diagnostics": [], "state": state}
     if not snapshot["loaded"]:
@@ -137,7 +164,9 @@ def plan(snapshot, document=None, catalog=None, allowed=None):
             raise ValueError("Missing explicit morph contract")
         source = snapshot.get("source")
         source_ready = confirmed_source(source)
-        if mode == "linked" and not source_ready and previous.get("lastLink"):
+        if "lastSource" in state and not valid_observation(state["lastSource"]):
+            raise ValueError("Invalid saved source observation")
+        if mode == "linked" and stale_link_allowed(snapshot, previous):
             last = previous["lastLink"]
             desired = vector(last["desiredMorphs"], allowed[sex])
             if desired.get(BREAST, 0) != 0:
@@ -164,8 +193,9 @@ def plan(snapshot, document=None, catalog=None, allowed=None):
             if sex == "female":
                 desired[BREAST] = 0.0
             state["traits"] = copy.deepcopy(traits)
-            if source_ready and source["preset"] is None:
-                text(source["profile"])
+            observed_unassignment = (not source_ready and state.get("lastSource", {}).get("preset", "") is None)
+            if (source_ready and source["preset"] is None) or observed_unassignment:
+                text((source if source_ready else state["lastSource"])["profile"])
                 # Only retire the pinned link after the independent preset,
                 # weight and saved individual traits have resolved successfully.
                 state.pop("lastLink", None)
@@ -222,8 +252,7 @@ def main():
         allowed = presets.inventory()
         source_ready = confirmed_source(snapshot.get("source"))
         previous = snapshot.get("previous")
-        cached = isinstance(previous, dict) and previous.get("lastLink")
-        stale = snapshot.get("mode") == "linked" and not source_ready and cached
+        stale = snapshot.get("mode") == "linked" and stale_link_allowed(snapshot, previous)
         if args.presets and not stale:
             catalog = presets.load_tree(args.presets)["presets"]
         if args.pairs and snapshot.get("mode") == "linked" and source_ready and snapshot["source"]["preset"] is not None:

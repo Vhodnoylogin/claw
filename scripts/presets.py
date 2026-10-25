@@ -65,8 +65,12 @@ def percentage(text):
 
 
 def read_xml(path, allowed=None):
+    return parse_xml(Path(path).read_bytes(), allowed)
+
+
+def parse_xml(payload, allowed=None):
+    """Validate the exact bytes to be installed or packaged."""
     allowed = inventory() if allowed is None else allowed
-    payload = Path(path).read_bytes()
     if len(payload) > MAX_BYTES or b"<!DOCTYPE" in payload.upper() or b"<!ENTITY" in payload.upper():
         raise ValueError("Oversized XML or DTD/entities are not supported")
     root = ET.fromstring(payload.decode("utf-8-sig"))

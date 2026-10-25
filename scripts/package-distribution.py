@@ -24,6 +24,7 @@ NATIVE_SOURCES = {"distribution/CMakeLists.txt", "distribution/dependencies.json
                   "distribution/src/Plugin.cpp", "distribution/src/Preset.cpp",
                   "distribution/src/Tool.cpp", "distribution/tests/CoreTests.cpp",
                   "distribution/include/claw/Preset.h", "distribution/include/claw/RequestOwnership.h",
+                  "distribution/include/claw/MorphLink.h",
                   "distribution/build.ps1", "distribution/README.md", "distribution/papyrus/CLAWDistributionNative.psc"}
 BASE_LICENSES = {"commonlib", "pugixml", "fmt", "spdlog", "rapidcsv"}
 SE_LICENSES = BASE_LICENSES | {"directxmath", "directxtk", "openvr"}
@@ -420,7 +421,8 @@ def main(argv=None):
                 shutil.copy2(path, destination)
                 if helper.sha(destination) != license_hashes[name][index]:
                     raise ValueError("License input changed while packaging")
-        for name, source in {"README.md": ROOT / "distribution/README.md", "Preset-authoring.md": ROOT / "docs/presets.md"}.items():
+        for name, source in {"README.md": ROOT / "distribution/README.md", "Preset-authoring.md": ROOT / "docs/presets.md",
+                             "Transformation.md": ROOT / "docs/transformation.md"}.items():
             shutil.copy2(source, docs / name)
         if args.runtime == "VR":
             shutil.copy2(ROOT / "distribution/dependencies.json", docs / "Build-dependencies.json")
