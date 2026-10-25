@@ -35,6 +35,8 @@ demonstrated requirement cannot be met otherwise.
   policy planner implemented offline; native integration remains disabled.
 - [Surface attachment repair](geometry-repair.md): opt-in female candidate built
   with topology/UV/skin data retained; visual/animation qualification pending.
+- [Ear/tail physics source candidate](../physics/README.md): isolated CBPC motion
+  maps and actor capsule helper compile; host integration/contact qualification pending.
 - [Collider candidates](colliders.md): reproducible offline fitting and measured
   male/female candidates; installation and runtime physics qualification pending.
 - [Breast shape and rig](breast-rig.md): verified existing bones, missing mesh

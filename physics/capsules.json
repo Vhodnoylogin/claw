@@ -1,0 +1,245 @@
+{
+  "schemaVersion": 1,
+  "frame": "node-local-game-units",
+  "pose": "released0.6.2.0-rest-body-and-head",
+  "percentile": 90,
+  "ownershipThreshold": 0.5,
+  "provenance": {
+    "xp32Sha256": "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0",
+    "maleNifSha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef",
+    "femaleNifSha256": "8a19efee9c6873e2d5365e88eadaa4d80a5e31e9ea223bc81aafb50bd084ab86",
+    "measurementSha256": "cbd2e8a350cd2861919490e85e2311d5d9f08c06e4e6a504b0358155d7d0b839",
+    "method": "MorphBench.chain_capsules(percentile=90,shapes=[body,head])",
+    "sourceOwner": "CLAW offline measurement; source-only candidate, game unqualified"
+  },
+  "male": {
+    "NPC EarL [EarL]Bone01": {
+      "p1": [
+        1.268,
+        6.87,
+        1.582
+      ],
+      "p2": [
+        -3.496,
+        1.96,
+        3.37
+      ],
+      "radius": 3.226,
+      "points": 350
+    },
+    "NPC EarL [EarL]Bone02": {
+      "p1": [
+        -0.893,
+        9.851,
+        -4.749
+      ],
+      "p2": [
+        -2.37,
+        7.187,
+        -4.823
+      ],
+      "radius": 1.743,
+      "points": 277
+    },
+    "NPC EarR [EarR]Bone01": {
+      "p1": [
+        -1.274,
+        7.094,
+        1.394
+      ],
+      "p2": [
+        3.683,
+        1.831,
+        3.274
+      ],
+      "radius": 3.125,
+      "points": 343
+    },
+    "NPC EarR [EarR]Bone02": {
+      "p1": [
+        0.976,
+        10.007,
+        -4.895
+      ],
+      "p2": [
+        2.622,
+        7.097,
+        -5.008
+      ],
+      "radius": 1.696,
+      "points": 284
+    },
+    "TailBone01": {
+      "p1": [
+        0.407,
+        -1.444,
+        5.766
+      ],
+      "p2": [
+        0.019,
+        1.721,
+        5.015
+      ],
+      "radius": 3.479,
+      "points": 32
+    },
+    "TailBone02": {
+      "p1": [
+        -0.0,
+        3.294,
+        6.054
+      ],
+      "p2": [
+        -0.0,
+        1.114,
+        2.822
+      ],
+      "radius": 4.618,
+      "points": 33
+    },
+    "TailBone03": {
+      "p1": [
+        -1.195,
+        -0.248,
+        4.752
+      ],
+      "p2": [
+        1.195,
+        -0.248,
+        4.752
+      ],
+      "radius": 3.132,
+      "points": 12
+    },
+    "TailBone04": null,
+    "TailBone05": {
+      "p1": [
+        -0.0,
+        -0.384,
+        12.5
+      ],
+      "p2": [
+        -0.0,
+        -0.155,
+        0.623
+      ],
+      "radius": 2.158,
+      "points": 85
+    }
+  },
+  "female": {
+    "NPC EarL [EarL]Bone01": {
+      "p1": [
+        1.259,
+        6.855,
+        1.578
+      ],
+      "p2": [
+        -3.514,
+        1.94,
+        3.391
+      ],
+      "radius": 3.223,
+      "points": 350
+    },
+    "NPC EarL [EarL]Bone02": {
+      "p1": [
+        -0.87,
+        9.651,
+        -4.878
+      ],
+      "p2": [
+        -2.434,
+        7.146,
+        -4.79
+      ],
+      "radius": 1.683,
+      "points": 277
+    },
+    "NPC EarR [EarR]Bone01": {
+      "p1": [
+        -1.267,
+        7.078,
+        1.392
+      ],
+      "p2": [
+        3.7,
+        1.81,
+        3.294
+      ],
+      "radius": 3.122,
+      "points": 343
+    },
+    "NPC EarR [EarR]Bone02": {
+      "p1": [
+        0.954,
+        9.798,
+        -5.025
+      ],
+      "p2": [
+        2.685,
+        7.061,
+        -4.976
+      ],
+      "radius": 1.643,
+      "points": 284
+    },
+    "TailBone01": {
+      "p1": [
+        0.295,
+        -1.072,
+        5.263
+      ],
+      "p2": [
+        0.083,
+        2.297,
+        5.109
+      ],
+      "radius": 3.666,
+      "points": 32
+    },
+    "TailBone02": {
+      "p1": [
+        -0.0,
+        3.294,
+        6.054
+      ],
+      "p2": [
+        -0.0,
+        1.114,
+        2.822
+      ],
+      "radius": 4.618,
+      "points": 33
+    },
+    "TailBone03": {
+      "p1": [
+        -1.195,
+        -0.248,
+        4.752
+      ],
+      "p2": [
+        1.195,
+        -0.248,
+        4.752
+      ],
+      "radius": 3.132,
+      "points": 12
+    },
+    "TailBone04": null,
+    "TailBone05": {
+      "p1": [
+        -0.0,
+        -0.384,
+        12.5
+      ],
+      "p2": [
+        -0.0,
+        -0.155,
+        0.623
+      ],
+      "radius": 2.158,
+      "points": 85
+    }
+  }
+}

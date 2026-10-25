@@ -21,6 +21,8 @@ The optional [typed preset companion and authoring resources](docs/presets.md)
 are development candidates; runtime acceptance is pending.
 The [exact human/beast pairing planner](docs/transformation.md) remains offline;
 it is not a second live morph writer.
+The [ear/tail physics source candidate](physics/README.md) uses existing XP32
+chains and keeps collision attachment behind explicit provider qualification.
 
 *Эта страница на русском: [README.ru.md](README.ru.md).*
 

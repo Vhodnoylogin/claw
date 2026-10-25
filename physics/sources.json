@@ -1,0 +1,33 @@
+{
+  "schemaVersion":1,
+  "provider":"CBPC - Physics with Collisions",
+  "installedMetadataVersion":"1.7.2.0",
+  "installedDllSha256":"9585f78b2e4f1e09a3a33e1c7789e353caecd368738939b70ecd832b7792d729",
+  "publicPscSha256":"efda86786b650274dc135e106921891251c19059efdb475a8f7dbc2113fb7bf4",
+  "sourceRepository":"https://github.com/Acro748/CBPCSSE",
+  "sourceRevision":"fabd56ce8f8ac10cde17325f0bd61ecc8cbcda20",
+  "sourceLicense":"MIT",
+  "sourceBinaryEquivalence":"Unverified; qualification must establish actual deployed behavior",
+  "contracts":{
+    "attachDetach":"CBPC/scan.cpp:1021-1238",
+    "motionConditions":"CBPC/SimObj.cpp:45-103; CBPC/config.cpp:ConditionCheck",
+    "parameterReads":"CBPC/Thing.cpp:453-645; CBPC/config.cpp:loadConfig",
+    "rotationCalculation":"CBPC/Thing.cpp:2015-2039"
+  },
+  "ownership":{
+    "namespace":"CLAW.Physics",
+    "indexBase":1129054208,
+    "indexLast":1129054216,
+    "type":1,
+    "isAffectedNode":true,
+    "keyScope":"actor reference + exact node + capsule type + integer index; no native string owner key",
+    "attach":"appends; duplicate indices do not replace",
+    "detach":"removes all matching indices in the selected actor/node/type bucket",
+    "falseDetach":"does not distinguish absent collider, missing node, unloaded actor or untracked provider actor",
+    "readback":"no public collider enumeration/getter; bool acknowledges container operation only",
+    "scaleWeight":"the inspected affected-node attachment branch does not consume this argument; helper passes0"
+  },
+  "copiedImplementation":false,
+  "motionValues":"original small-displacement development trial; no third-party preset copied",
+  "qualification":"source candidate only; no game/visual/contact/physics acceptance"
+}

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "namespace": "CLAW.Physics",
+  "raceCondition": "IsRaceFormId(Skyrim.esm|000CDD84)",
+  "indexBase": 1129054208,
+  "capsulePolicy": {"radiusScale": 0.5, "maximumRadius": 2.0, "scaleWeight": 0.0},
+  "common": {
+    "stiffness": 0.15, "stiffness2": 0.02, "damping": 0.4,
+    "timetick": 15.0, "timeStep": 0.25, "timeStepRot": 0.25,
+    "forceMultipler": 0.1,
+    "linearX": 0.3, "linearY": 0.3, "linearZ": 0.3,
+    "rotationalX": 0.03, "rotationalY": 0.03, "rotationalZ": 0.03,
+    "linearXrotationX": 1.0, "linearXrotationY": 0.0, "linearXrotationZ": 0.0,
+    "linearYrotationX": 0.0, "linearYrotationY": 1.0, "linearYrotationZ": 0.0,
+    "linearZrotationX": 0.0, "linearZrotationY": 0.0, "linearZrotationZ": 1.0,
+    "gravityBias": 0.0, "gravityCorrection": 0.0,
+    "collisionFriction": 0.8, "collisionPenetration": 0.0,
+    "collisionMultipler": 0.15, "collisionMultiplerRot": 0.05,
+    "collisionElastic": 0.0, "collisionElasticConstraints": 1.0,
+    "collisionXmaxoffset": 0.5, "collisionXminoffset": -0.5,
+    "collisionYmaxoffset": 0.5, "collisionYminoffset": -0.5,
+    "collisionZmaxoffset": 0.5, "collisionZminoffset": -0.5
+  },
+  "groups": [
+    {"alias":"CLAW_EarL", "nodes":["NPC EarL [EarL]Bone01","NPC EarL [EarL]Bone02"], "maxOffset":0.35,"maxOffsetRot":0.25},
+    {"alias":"CLAW_EarR", "nodes":["NPC EarR [EarR]Bone01","NPC EarR [EarR]Bone02"], "maxOffset":0.35,"maxOffsetRot":0.25},
+    {"alias":"CLAW_Tail", "nodes":["TailBone01","TailBone02","TailBone03","TailBone04","TailBone05"], "maxOffset":0.5,"maxOffsetRot":0.35}
+  ]
+}
