@@ -283,3 +283,13 @@ This verifies file composition and the stated ordinary-LBS model. It does not
 close the residual collar normal gap, fur-layer coupling, effective driver
 ownership, real animation, physics or appearance gates. Static morph bounds are
 a separate check and do not cover the controlled skeletal poses.
+
+The qualified isolated Morphbench4bc01e41 tool subsequently ran the public
+summary/morphs/bounds/write/readback path on this composition. A new copy passes
+all15static spheres for range0..1, corner cap12, tolerance0.01 and margin1.01;
+the raw input passes1of15. Full-precision readback and byte reconstruction verify
+that only the15sphere fields changed (199bytes); every other byte, including
+skin data, is retained. The bounded copy is
+`05891e72862b5081e275f5360624860a95d549d27005b701c90cc4fe7838177f`.
+The raw candidate and explicit TRI remain unchanged. This is the configured
+additive file-space envelope, not a bound for P1/animation/physics displacement.

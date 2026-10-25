@@ -91,6 +91,37 @@ Existing native assignments do not record manual provenance. A future migration
 must stay independent until an explicit mode selection opts into linkage. A
 stored preset name alone cannot establish user intent.
 
+## Native human-assignment provider
+
+The pinned OBody NG4.4.3 public API already exposes
+`IPluginInterface::GetPresetAssignedToActor(actor, payload)`; its
+[implementation](https://github.com/Aietos/OBody-NG/blob/e33bbc151c38fbe6feae9f5b04558cd6c7528384/src/API/PluginInterface.cpp#L117-L141)
+reads the current assignment registry without applying or generating a preset.
+The adapter must supply a validated Actor and ActorBase. No OBody fork is needed
+for this query. This capability does not register beast families with its menu.
+
+Acquire APIv1 after SKSE PostPostLoad using the
+[official message contract](https://github.com/Aietos/OBody-NG/blob/e33bbc151c38fbe6feae9f5b04558cd6c7528384/include/API/API.h#L689-L739).
+Gate queries on OBodyIsReady and close the gate at OBodyIsBecomingUnready.
+Listen to both OnActorGenerated and OnActorPresetChangedWithoutGeneration;
+use events as invalidation hints, then requery. Copy temporary event strings
+before callback return. Callbacks do not promise main-thread delivery, and their
+listener lock must not be reentered to add/remove listeners. Queue identity- and
+epoch-checked game work through the existing task coordinator instead.
+
+The query returns a preset name, not the body resource profile/version or manual
+intent. Configure a versioned human profile ID explicitly by sex, with explicit
+actor/custom-body overrides where necessary; identical XML slider names cannot
+identify CBBE versus3BA geometry. Preserve assigned, confirmed-unassigned and
+provider-unavailable observations separately. Human-side observation history
+must survive cleanup-only plans so a known unassignment observed in human form
+cannot later be replaced with an older cached link during provider loss.
+
+This provider bridge is not yet implemented in the DLL. It needs independent
+readiness/lifecycle tests and observation persistence before native pairing is
+enabled. The external API header has its own GPLv3 notice; record and honor that
+dependency when adding it rather than copying OBody implementation code here.
+
 ## Offline interface and remaining work
 
 `plan(snapshot, rules, normalized_catalog, allowed_morphs)` is dependency-free and
