@@ -1,0 +1,16 @@
+{
+  "note": "Synthetic numerical fixtures; these are not mappings for installed human presets.",
+  "catalog": [
+    {"name":"Independent Female","sex":"female","morphs":{"CLAWTorsoGirth":{"small":0.1,"big":0.2},"CLAWArmGirth":{"small":0.4,"big":0.4},"CLAWHeadEarSize":{"small":0.05,"big":0.05}}},
+    {"name":"Pair A Female","sex":"female","morphs":{"CLAWTorsoGirth":{"small":0.2,"big":0.6}}},
+    {"name":"Pair B Female","sex":"female","morphs":{"CLAWArmGirth":{"small":0.1,"big":0.3}}},
+    {"name":"Neutral Female","sex":"female","morphs":{}},
+    {"name":"Neutral Male","sex":"male","morphs":{}}
+  ],
+  "rules":{"schemaVersion":1,"pairs":[
+    {"id":"fixture/a","sourceProfile":"Synthetic CBBE Profile","sourcePreset":"Human A","sex":"female","targetPreset":"Pair A Female","bodyMorphs":["CLAWTorsoGirth","CLAWArmGirth"]},
+    {"id":"fixture/b","sourceProfile":"Synthetic CBBE Profile","sourcePreset":"Human B","sex":"female","targetPreset":"Pair B Female","bodyMorphs":["CLAWTorsoGirth","CLAWArmGirth"]}
+  ]},
+  "snapshot":{"schemaVersion":1,"identity":"fixture-save/actor-123","sex":"female","weight":50,"isBeast":true,"loaded":true,"mode":"linked","suppressed":false,"independentPreset":"Independent Female","manualPreset":null,"traits":{"CLAWHeadEarSize":0.23},"source":{"profile":"Synthetic CBBE Profile","preset":"Human A","confirmed":true},"previous":null},
+  "expected":{"pairA":{"CLAWTorsoGirth":0.4,"CLAWArmGirth":0,"CLAWHeadEarSize":0.23},"pairB":{"CLAWTorsoGirth":0,"CLAWArmGirth":0.2,"CLAWHeadEarSize":0.23},"independent":{"CLAWTorsoGirth":0.15,"CLAWArmGirth":0.4,"CLAWHeadEarSize":0.05}}
+}

@@ -29,6 +29,12 @@ demonstrated requirement cannot be met otherwise.
 
 - [Distribution reference core](distribution.md): implemented offline mapping,
   stable individual traits and transformation action plans; game controller pending.
+- [Independent presets](presets.md): typed XML, optional VR native distributor,
+  selector and authoring resources built; runtime acceptance pending.
+- [Human/beast pairs](transformation.md): exact-pair resolver and exclusive-key
+  policy planner implemented offline; native integration remains disabled.
+- [Surface attachment repair](geometry-repair.md): opt-in female candidate built
+  with topology/UV/skin data retained; visual/animation qualification pending.
 - [Collider candidates](colliders.md): reproducible offline fitting and measured
   male/female candidates; installation and runtime physics qualification pending.
 - [Breast shape and rig](breast-rig.md): verified existing bones, missing mesh

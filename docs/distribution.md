@@ -7,6 +7,12 @@ distribution companion. The published 0.6.2.0 resource
 package has neither controller. `scripts/distribution.py` is an executable **offline
 reference core**, not an installed game integration.
 
+The preferred25October linkage route is now [explicit preset pairing](transformation.md),
+implemented as a separate offline policy planner. The equations below remain
+unqualified hypotheses. Neither reference core may run as a second live writer
+beside `CLAW.Distribution`; one future coordinator must choose the active policy
+and clear the inactive owned key before applying a composed vector.
+
 ## One actor, two forms
 
 Keep the actor's OBody human preset assignment and its morph contributions intact.

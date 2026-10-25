@@ -15,10 +15,12 @@ a first-person VR body, and the separate adult anatomy/physics add-on.
 
 Post-release development starts with an [offline distribution core](docs/distribution.md)
 and [measured collider candidates](docs/colliders.md). Automatic population variety
-is the primary goal. The25October order is independent presets, geometry repair,
+is the primary goal. The 25 October order is independent presets, geometry repair,
 ear/tail and breast physics, then human/beast linkage; VR follows afterwards.
 The optional [typed preset companion and authoring resources](docs/presets.md)
 are development candidates; runtime acceptance is pending.
+The [exact human/beast pairing planner](docs/transformation.md) remains offline;
+it is not a second live morph writer.
 
 *Эта страница на русском: [README.ru.md](README.ru.md).*
 
@@ -36,23 +38,24 @@ an ordinary name whose initials spell a fitting word.
 **`CLAW` is the prefix of the whole family.** Only the base mod carries the full expansion;
 the others go by the short name and still read as one group and sit together in the list:
 
-| Mod in MO2 | What it carries |
+| Component | Scope |
 |---|---|
 | `CLAW - Configurable Lycanthrope Anatomy and Weight` | bodies of both sexes with identical low/high weight endpoints per sex, a morph file **without adult sliders**, and a plugin with the weight slider and the female model |
+| `CLAW - Distribution` | development candidate: independent typed preset mods, automatic beast assignment and a selector; game acceptance pending |
 | `CLAW - Anatomy` | the adult add-on: **morph files only**, five megabytes |
 | `CLAW - VR` | what only makes sense in a headset: dense capsules for the hands, a beast body for the player, HIGGS, PLANCK and swinging-physics settings |
 
-**The nearest release is the base mod only.** `CLAW - Anatomy` and `CLAW - VR` are
-deferred and do not gate base acceptance. Version 0.6.2.0 retains both weight filenames
+**Published 0.6.2.0 contains the base mod only.** Distribution is a separate development
+candidate; `CLAW - Anatomy` and `CLAW - VR` are deferred. Version 0.6.2.0 retains both weight filenames
 for compatibility, with the same `_0` shape at every weight for each sex. Named morphs
 remain supported. This does not establish untested platform or physics compatibility.
 
-Two more folders sit next to these in the setup, and neither belongs to the family:
+Local test and legacy draft folders are outside the published package:
 
 | Folder in MO2 | What it actually is |
 |---|---|
-| `test_CLAW - Companion` | a **test mod**, not part of any release: it provides the only she-werewolf in the setup, the one the female body is checked on. Lives in `tests\`, never ships, removed after a run |
-| `CLAW - OBody Presets` | **not a mod yet**: four slider sets kept in a folder so they don't get lost. There is no deliberate thing with a purpose, a name and boundaries here so far |
+| `test_CLAW - Companion` | a **test mod** providing a female werewolf fixture. Lives in `tests\`, never ships, removed after a run |
+| `CLAW - OBody Presets` | historical draft folder; the supported new authoring contract is [typed independent CLAW presets](docs/presets.md), not OBody's human preset pool |
 
 The difference is not size but responsibility: a released mod answers to the player, a test mod
 only to us, and a draft answers to no one.

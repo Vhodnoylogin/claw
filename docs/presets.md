@@ -94,6 +94,16 @@ It compares the result to source NIF plus decoded TRI offsets; it does not use a
 second hand-written BSD/OSD codec. The first resource build passed all six builds
 and twelve endpoint comparisons outside the game.
 
+`scripts/build-distribution-data.py` separately compiles the menu/native script
+and builds the selector quest in new external staging. After a native build,
+`scripts/package-distribution.py` verifies source/artifact receipts and assembles
+two development ZIPs: the companion and an independent example-preset mod. It
+requires all five dependency license texts. Unexpected compiled files, stale
+source receipts and changed artifact bytes are refused; no live installation or
+release promotion follows. Keep the authoring OSP/OSD resources separate from
+the runtime mod. The companion package contains no test actors, body repair,
+physics, external executables or body meshes.
+
 ## Runtime ownership and settings
 
 The companion uses only `CLAW.Distribution`, persists an independent beast preset,
