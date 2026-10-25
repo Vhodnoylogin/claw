@@ -38,18 +38,21 @@ addon_utils.enable("io_scene_nifly", default_set=False, persistent=True)
 argv = sys.argv[sys.argv.index("--") + 1:]
 COLLARS = None
 COLLAR_REPORT = None
+BREAST_SHAPE = None
 DRY_COLLARS = '--dry-surface-collars' in argv
 if DRY_COLLARS:
     argv.remove('--dry-surface-collars')
-for flag in ('--surface-collars', '--surface-report'):
+for flag in ('--surface-collars', '--surface-report', '--breast-shape'):
     if flag in argv:
         k = argv.index(flag)
         value = argv[k + 1]
         argv = argv[:k] + argv[k + 2:]
         if flag == '--surface-collars':
             COLLARS = value
-        else:
+        elif flag == '--surface-report':
             COLLAR_REPORT = value
+        else:
+            BREAST_SHAPE = value
 SLIM = None
 if '--slim' in argv:
     k = argv.index('--slim')
@@ -62,6 +65,25 @@ while '--skip-morph' in argv:
     SKIP_MORPHS.add(argv[_k + 1])
     argv = argv[:_k] + argv[_k + 2:]
 MALE, FEMALE, OUT, FULL, FEM = argv[0], argv[1], argv[2], argv[3], argv[4]
+
+# Optional shape profile changes only BreastSize semantics. Validate executable
+# recipe inputs before importing/exporting anything; the default path is intact.
+breast_profile = None
+if BREAST_SHAPE:
+    import breast_shape
+    if not COLLARS:
+        raise ValueError('--breast-shape requires --surface-collars')
+    if breast_shape.PUBLIC_MORPH in SKIP_MORPHS:
+        raise ValueError('--breast-shape requires the source BreastSize morph')
+    with open(BREAST_SHAPE, encoding='utf-8-sig') as stream:
+        breast_profile = json.load(stream)
+    with open(FEM, encoding='utf-8-sig') as stream:
+        source_female = json.load(stream)
+    with open(FULL, encoding='utf-8-sig') as stream:
+        source_full = json.load(stream)
+    with open(COLLARS, encoding='utf-8-sig') as stream:
+        source_collar = json.load(stream)
+    breast_shape.validate_profile(breast_profile, source_female, source_full, source_collar, SLIM)
 
 
 def wipe():
@@ -195,8 +217,15 @@ for it in fem:
 
 if collar_session:
     collar_session.reconcile_morphs()
+if breast_profile:
+    collar_session.report['breastShape'] = breast_shape.apply_profile(collar_session, breast_profile)
 
 morphlib.export_clean(OUT)
+if breast_profile:
+    # PyNifly can omit all-subthreshold keys; only the written TRI establishes
+    # the public contract. A failed export leaves candidate files, no success report.
+    collar_session.report['breastShape']['serializedContract'] = breast_shape.verify_serialized_morphs(
+        OUT, collar_session.report['breastShape']['publicMorphs'])
 if collar_session:
     import hashlib
     report = collar_session.report
@@ -207,6 +236,10 @@ if collar_session:
     report['sourceSha256'] = {name: hashlib.sha256(open(os.path.join(
         os.path.dirname(__file__), name), 'rb').read()).hexdigest()
         for name in ('build-female.py', 'morphlib.py', 'surface_collar.py')}
+    if breast_profile:
+        report['breastShapeRecipeSha256'] = hashlib.sha256(open(BREAST_SHAPE, 'rb').read()).hexdigest()
+        report['sourceSha256']['breast_shape.py'] = hashlib.sha256(open(os.path.join(
+            os.path.dirname(__file__), 'breast_shape.py'), 'rb').read()).hexdigest()
     report_path = COLLAR_REPORT or OUT + '.surface-collars.json'
     os.makedirs(os.path.dirname(os.path.abspath(report_path)), exist_ok=True)
     with open(report_path, 'w', encoding='utf-8') as stream:

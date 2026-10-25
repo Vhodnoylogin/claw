@@ -40,7 +40,8 @@ demonstrated requirement cannot be met otherwise.
 - [Collider candidates](colliders.md): reproducible offline fitting and measured
   male/female candidates; installation and runtime physics qualification pending.
 - [Breast shape and rig](breast-rig.md): verified existing bones, missing mesh
-  weights, separate-part alternative and a measured local layer-follow experiment.
-  Shape/rig repair remains pending.
+  weights and a separate-part alternative. A moderate shape-only BreastSize profile
+  is implemented behind an explicit flag; existing-bone rig/influence-budget work
+  and visual/physics acceptance remain pending.
 
 These development results do not change or requalify the published0.6.2.0 package.

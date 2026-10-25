@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "name": "moderate-supported-v1",
+  "status": "opt-in-shape-only-candidate-not-runtime-or-aesthetic-acceptance",
+  "publicMorph": "CLAWTorsoBreastSize",
+  "source": {
+    "femaleMorphSemanticSha256": "d27e5112923c98c310d4e366baf69c70f62d0979c6f598080a94e64b844ee0d1",
+    "fullRecipeSemanticSha256": "15a09c4cb7b6e9ea50b7bda9a64b7764aec9e361f36f1fee8b7675daebcfb4e0",
+    "collarRecipeSemanticSha256": "29757655287320869494796e61f25811a63173698ceb539628def983288efbd9",
+    "slim": 0.9,
+    "headPeak": 15.990665409,
+    "headPeakTolerance": 0.001
+  },
+  "boundsTolerance": 0.002,
+  "anchorCount": 55,
+  "neutralShapes": {
+    "body": {
+      "vertexCount": 18359,
+      "triangleCount": 34195,
+      "topologySha256": "038c3611aaaf51057c81a3822e9e351c48bf29da0f5cd1a4d5d53d13a9a72d7b",
+      "bounds": [
+        [
+          -72.86198425292969,
+          -61.167659759521484,
+          -2.083645820617676
+        ],
+        [
+          72.86199951171875,
+          40.65518569946289,
+          126.9858627319336
+        ]
+      ]
+    },
+    "head": {
+      "vertexCount": 9427,
+      "triangleCount": 17456,
+      "topologySha256": "387b3d5061fa5c73f99ceb4de256c698c18193b8c16c86bb60cd18c031d04cfb",
+      "bounds": [
+        [
+          -21.35036849975586,
+          13.58340835571289,
+          87.33429718017578
+        ],
+        [
+          21.371896743774414,
+          72.717041015625,
+          132.15521240234375
+        ]
+      ]
+    },
+    "fur_belly": {
+      "vertexCount": 10810,
+      "triangleCount": 7698,
+      "topologySha256": "508572e305fcb721661427b784325add3f4c7370b39fcc5723a32c6ef79737fc",
+      "bounds": [
+        [
+          -21.41331672668457,
+          -9.09597396850586,
+          62.90941619873047
+        ],
+        [
+          21.409704208374023,
+          49.7529411315918,
+          108.03665161132812
+        ]
+      ]
+    },
+    "fur_chest": {
+      "vertexCount": 2572,
+      "triangleCount": 1704,
+      "topologySha256": "bda061cc9f29ae770c2932c81dd1b1be46508775b8ce6cac3493aea4b46bc5db",
+      "bounds": [
+        [
+          -17.786510467529297,
+          19.52954864501953,
+          84.90455627441406
+        ],
+        [
+          17.786514282226562,
+          58.06499099731445,
+          113.7874984741211
+        ]
+      ]
+    },
+    "fur_shoulders": {
+      "vertexCount": 5010,
+      "triangleCount": 3332,
+      "topologySha256": "e51b88fe116e8ccf0e731a8727062120fa00b7950a7deec29f7a1b845fc23893",
+      "bounds": [
+        [
+          -29.516408920288086,
+          -10.737658500671387,
+          89.13949584960938
+        ],
+        [
+          29.519607543945312,
+          43.741477966308594,
+          130.68621826171875
+        ]
+      ]
+    },
+    "ChestBlend": {
+      "vertexCount": 1422,
+      "triangleCount": 826,
+      "topologySha256": "11a2c270dbbfeaf290c51e67fc58972dcccd2eb5787668eef9ec4a0868ecb577",
+      "bounds": [
+        [
+          -23.993762969970703,
+          28.151540756225586,
+          100.02147674560547
+        ],
+        [
+          22.4539852142334,
+          53.23505783081055,
+          112.79906463623047
+        ]
+      ]
+    }
+  },
+  "coefficients": {
+    "mass": 1.0,
+    "lowerProjection": 1.0,
+    "sag": 1.0
+  },
+  "fields": {
+    "sourceAmplitude": 16.0,
+    "supportWidth": 2.0,
+    "midlineStart": 2.0,
+    "midlineWidth": 3.0,
+    "mirrorTolerance": 0.01,
+    "bounds": [
+      [
+        -23,
+        10,
+        85
+      ],
+      [
+        23,
+        45,
+        108
+      ]
+    ],
+    "lowerTop": 102.0,
+    "lowerWidth": 8.0,
+    "massForward": 2.5,
+    "massLateral": 0.2,
+    "projectionForward": 0.75,
+    "projectionDown": 0.25,
+    "sagDown": 0.9
+  },
+  "_note": "Private fields are composed into the existing BreastSize, only with the pinned 0.90 SLIM + surface-collar repair. New full range is deliberately much smaller. Neutral geometry/UV/topology/weights and public names remain unchanged; rig/physics/visual acceptance pending."
+}
