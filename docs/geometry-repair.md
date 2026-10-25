@@ -235,3 +235,44 @@ binds from this new carrier; never silently reuse frozen P1 weights from the old
 base. Fur-root inheritance remains separate numeric research. Bounds, shoulder
 join, fur coverage, other morph combinations, animation clips and game acceptance
 remain open.
+
+## Controlled morph combinations and rejected wider collar
+
+Nine representative Girth/BreastSize combinations were evaluated on the moderate
+width2 geometry, together with continuous triangle-area minima along the declared
+morph paths. A negative dot product between rest/deformed normals was not treated
+as proof of inversion. No zero-area path was found by the declared numerical
+criteria; this does not certify self-intersections, a safe coefficient domain or
+appearance. Static vertex geometry is distinct from animated/skinned game output.
+
+The body triangle22897 reaches area0.004590282 (0.00463491 of its rest area) at
+Girth0.888589. That strong flattening is identical to the published mesh and cannot
+be corrected by widening the head collar. Head triangle1694 reaches0.009459227 at
+Girth0.691186, versus0.08461107 in the published geometry. Its own-rest area ratio
+changes0.08962436 to0.00850383. The corresponding absolute edge minima around the
+collar are0.459140/0.446776, versus0.514836/0.511857 in the release; comparing only
+ratios would exaggerate the difference because neutral lengths also changed.
+The55anchor donor-triangle distances retain the improved attachment; moderate
+BreastSize adds no anchor movement. These are localized remaining defects, not
+evidence of a newly opened seam or a completed repair.
+
+A single external width3 experiment was tested and **rejected**. First, a passive
+capture reproduced the original width2 NIF/TRI byte-for-byte and the exact
+pre-reconcile Girth field. The original published Girth could not substitute for
+that field because recipes run after neutral Basis correction. The0.0003 geometry
+reproduction gate remained unchanged; TRI int16 truncation/float32 multiplier
+rounding was measured separately rather than disguised as a geometry tolerance.
+
+The complete width3 build used explicit external recipe/profile copies, recomputing
+all Basis-dependent fields. Only two measured fur_belly X bounds needed new input
+pins; their movement was independently explained by the existing full-card
+barycentric following law. Head/body pins, all tolerances, source/default recipes,
+topology/UV/skin data,85nodes,25morph names and55anchors were preserved.
+
+The selected edge minima improve to0.527279/0.553860, but triangle1694 minimum
+area worsens to0.009298904. On the Girth0.5/BreastSize1 path, head ROI minimum area
+worsens from0.069050328 to0.038134362, with triangle929 as the new worst case.
+Inherited body22897 remains identical. There is no justified aggregate improvement,
+so no width3 profile is promoted or installed and no further width tuning follows
+from this experiment. The next repair needs a locally shaped deformation field
+and visual/animation evidence, rather than assuming that a wider blend is enough.
