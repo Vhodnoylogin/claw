@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "threshold": 0.5,
+  "comparedThresholds": [0.25, 0.4, 0.5, 0.6, 0.75],
+  "selectionRationale": "Choose the 0.5 normalized Head-descendant ownership boundary on existing skin edges: it minimizes area-weighted binary ownership error among these thresholds, retains every BreastSize-support vertex in the torso, and follows the slanted throat/neck rather than intersecting the jaw with a horizontal plane. Fur cards and blend islands are assigned whole using their mean Head-descendant ownership. Only this boundary is serialized; all pieces remain visible for exact exterior comparison. This is an anatomical trial, not a camera-clearance or runtime visibility claim.",
+  "skeletonSha256": "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0",
+  "bodies": {
+    "female": {
+      "nif": "femalebodywerewolf_0.nif",
+      "nifSha256": "3d14a68f1683d8a9362bfda19b1a8fc74a8a792036f08bb9917dc9c3ea42e2be",
+      "tri": "femalebodywerewolf.tri",
+      "triSha256": "18840924604e974d166ab4f489311e66bcbff1852427eb0924b1242909099b15"
+    },
+    "male": {
+      "nif": "malebodywerewolf_0.nif",
+      "nifSha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef",
+      "tri": "malebodywerewolf.tri",
+      "triSha256": "ff1a66d5b94eb240f154977721af9adc8890615de71118349d4e03bfca540729"
+    }
+  }
+}

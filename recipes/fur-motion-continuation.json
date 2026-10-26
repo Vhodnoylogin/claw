@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "name": "canonical-collar-p1-belly-continue-chest-shoulders-v1",
+  "inputs": {
+    "bodyNifSha256": "d99a1180ec4e6ebb0ba54033ecfdd7623b54c29850e60262b46412bcac19276d",
+    "triSha256": "18840924604e974d166ab4f489311e66bcbff1852427eb0924b1242909099b15",
+    "skeletonSha256": "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0"
+  },
+  "rigProfile": "breast-rig-collar.json",
+  "layers": ["fur_chest", "fur_shoulders"],
+  "maximumCardStrainChange": 0.01,
+  "normalizedOrdinaryMaxError": 0.005,
+  "rawOrdinaryMaxError": 0.075,
+  "outputRelativeNif": "meshes/actors/werewolfbeast/character assets/femalebodywerewolf.nif"
+}

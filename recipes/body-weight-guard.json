@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "name": "minimal-local-male-neutral-weight-pose-guard-fixed-selected2.5-v2",
+  "priorManifestSha256": "986cf3467d183db3cfe31c19ad2030aa1b17883ac9b20375c4f1a9de35ecd7bf",
+  "priorCompositionSha256": "70067d3d7ed043aa2a441a48d9f72be87786a15a0ac8f47b553964656bde9eab",
+  "fadeCandidates": [2.5],
+  "selectedTrialEvidenceSha256": "90a17f9f2b9d6b601e334c0811fc9fd755c9b1ee94726a5c50858dcafc324058",
+  "seeds": {
+    "body": [10788, 12136, 15645, 17911],
+    "head": [2048, 2061, 2390, 2401, 3170, 3184, 3792, 3810, 3824, 3837, 4755, 4897, 4925, 5498, 5511, 6621, 7275, 7288, 8347]
+  }
+}

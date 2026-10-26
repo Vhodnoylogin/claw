@@ -10,15 +10,16 @@ Owner-defined priorities, revised 26 October 2026. No release dates are promised
 3. Add motion and collision physics for ears and tail. Correct the female breast
    shape and rig before adding its physics. Prefer existing XP32 bones.
    Alongside this stage, add distinct low/high-weight body shapes for both sexes
-   (`_0` and `_1`). This is a low-priority enhancement, not a blocker for the next
-   preset/distribution, geometry and transformation release. Verify intermediate
-   weights, morph combinations, seams and physics against both endpoints.
+   (`_0` and `_1`). The owner's later instruction explicitly brings both pairs
+   into the current implementation, linked to the same human NPC weight. Verify
+   intermediate weights, morph combinations, seams and physics against both
+   endpoints. Effective human morph coefficients must not be weighted twice.
 4. Link human and beast morphology during transformation, preserving both forms
    and other mods' contributions.
 
-After these goals, develop the first-person VR body if the remaining work budget
-allows it. Morph-responsive colliders and the optional adult Anatomy/physics
-add-on remain later goals; they do not displace the ordered priorities above.
+The owner subsequently added VR body development in parallel and explicitly
+requested morph-responsive collision fitting now. These refine the same work;
+the optional adult Anatomy/physics add-on remains deferred.
 
 The published resource package remains the starting point for this work. The
 known female breast underside gap was accepted for that release; its repair is
@@ -41,14 +42,17 @@ demonstrated requirement cannot be met otherwise.
 - [Human/beast morph linkage](transformation.md): native signed coefficient
   conversion is implemented as a development candidate. Linked actors start
   from neutral owned coefficients and bypass beast catalogs, saved choices and
-  actor-weight interpolation. Real body-profile calibration and runtime
-  transformation/persistence acceptance remain pending.
+  actor-weight interpolation. Measured typed CBBE2.0.3/3BA2.48/HIMBO5.8 conversions
+  support many-to-many signed rules, explicit setup defaults and female breast
+  fields; runtime transformation/persistence and appearance acceptance remain.
 - [Surface attachment repair](geometry-repair.md): opt-in female candidate built
   with topology/UV data retained. A separate post-export stage repairs the narrow
   head/body skin-weight collar; controlled pose errors improve, while actual
   seams, fur coverage and animation still need qualification.
-- [Ear/tail physics source candidate](../physics/README.md): isolated CBPC motion
-  maps and actor capsule helper compile; host integration/contact qualification pending.
+- [Ear/tail physics source candidate](../physics/README.md): native effective
+  SKEE aggregation, stable observation, bounded worker fitting and host lifecycle
+  integration are implemented. Current normalized NPC weight is a separate fit
+  input. Explicit provider qualification and actual motion/contact tests remain.
 - [Collider candidates](colliders.md): reproducible offline fitting and measured
   male/female candidates; installation and runtime physics qualification pending.
 - [Breast shape and rig](breast-rig.md): verified existing bones, missing mesh
@@ -56,9 +60,9 @@ demonstrated requirement cannot be met otherwise.
   and a separate opt-in P1 skinning stage are implemented. The latter reuses six
   existing XP32 nodes, retains the four-weight budget and verifies serialized
   weights/binds against controlled poses. It does not replace the skeleton.
-  A separate pinned composition with the repaired collar passes the offline
-  pose checks. Common fur motion, effective physics driver ownership and
-  visual/game acceptance remain separate gates.
+  Current composition retains the repaired collar, breast support and constrained
+  fur-root continuation. Actual provider ownership, remaining attachment residuals
+  and visual/game acceptance remain separate gates.
 - [Human-driven morph expansion](morph-expansion.md): proposed localized forearm,
   glute, abdomen and thorax targets have real 3BA/HIMBO sources. Additional head/
   ear conversion needs a separate readable human head-data contract.
@@ -106,5 +110,8 @@ the original attempt remains consumed, with no automatic replay or acceptance.
   behavior in this round. The owner excluded VR testing from this session.
   Offline builds and mesh bounds do not replace game checks.
 
-New physics, distinct weight-endpoint geometry, VR first-person body and adult
-Anatomy remain later work; they do not block this functional release.
+New physics and distinct weight endpoints are current development candidates,
+with their own geometry/provider/contact acceptance requirements. VR remains
+parallel offline work in this SE round, and adult Anatomy remains deferred.
+None of these source builds changes the published resource release or starts a
+manual game, microphone session or old held test order.

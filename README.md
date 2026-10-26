@@ -1,8 +1,9 @@
 # CLAW — Configurable Lycanthrope Anatomy and Weight
 
 A werewolf body with named morphs and distinct male/female shapes. The first release
-uses each sex's low-weight (`_0`) shape at both weight endpoints; weight-dependent
-geometry and the optional Anatomy add-on are deferred. An add-on to **Elegant Werewolf Replacer** — nothing here builds or works without it.
+uses each sex's low-weight (`_0`) shape at both weight endpoints. Distinct weight
+endpoints are now in development; the optional Anatomy add-on remains deferred.
+An add-on to **Elegant Werewolf Replacer** — nothing here builds or works without it.
 
 The first published release is **resources for modders**: meshes, named morphs and
 the base plugin. OBody integration and automatic body distribution are planned for
@@ -15,19 +16,27 @@ a first-person VR body, and the separate adult anatomy/physics add-on.
 
 Post-release development starts with an [offline distribution core](docs/distribution.md)
 and [measured collider candidates](docs/colliders.md). Automatic population variety
-is the primary goal. The 25 October order is independent presets, geometry repair,
-ear/tail and breast physics, then human/beast linkage; VR follows afterwards.
+is the primary goal: ordinary human presets must determine the wolf through
+morph-to-morph conversion, without requiring wolf presets. Geometry repair,
+ear/tail and breast physics, morph-responsive colliders and the transformation
+link proceed alongside the explicitly requested distinct weight endpoints and
+parallel VR resource work.
 The optional [typed preset companion and authoring resources](docs/presets.md)
 are development candidates; runtime acceptance is pending.
 The native [human/beast morph link](docs/transformation.md) derives a neutral
 beast morph vector from actual applied human coefficients. Linked actors need
 no beast preset files; real OBody/profile calibration and game acceptance remain
-pending. The older exact preset-pairing experiment is historical.
+pending. Measured CBBE/3BA/HIMBO resource-family conversions are included as
+development data. The older exact preset-pairing experiment is historical.
 The [ear/tail physics source candidate](physics/README.md) uses existing XP32
 chains, an optional finite per-actor host and explicit provider qualification.
+A native observer follows actual effective morphs and NPC weight, refits capsules
+on a bounded worker, and rejects stale results before publication. Actual provider
+ownership, close contact and game behavior remain unqualified.
 The [breast rig](docs/breast-rig.md) includes a separate layer-only fur motion
 experiment. The owner has added [first-person VR body resources](docs/vr-body.md)
-to parallel development; engine integration and camera/interaction acceptance
+to parallel development. Anatomical head/torso separation and a names-only XP32
+alias compatibility candidate are implemented offline; engine integration and camera/interaction acceptance
 remain pending. [Additional human-driven morphs](docs/morph-expansion.md) and
 [Morphbench improvements](docs/morphbench-needs.md) are researched proposals.
 

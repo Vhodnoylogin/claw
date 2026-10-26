@@ -1,8 +1,10 @@
 # Human-driven morph expansion
 
-Design research, 26 October 2026. These are proposed geometry targets, not new
-runtime morphs or release promises. The current 24 shared / 25 female names and
-the frozen SE test inputs are unchanged.
+Design research and measured family conversion, 26 October 2026. The additional
+geometry targets below remain proposals. Existing targets now have measured
+CBBE2.0.3, 3BA2.48 and HIMBO5.8 family conversions in
+`distribution/profiles/MorphLinks.xml`; see [transformation.md](transformation.md).
+The public 24 shared / 25 female names and frozen live SE inputs remain unchanged.
 
 ## Rule
 
@@ -67,7 +69,7 @@ forearm   = clamp(0.4*m + 0.2*f, 0, 1)
 One human trait contributes to two wolf regions; two traits contribute to each
 region. The numbers explain the rule and are **not measured production gains**.
 Current native rules read raw named SKEE coefficients, not these intermediate
-measurements. A flat linear version can be expressed now, subject to the 32-row
+measurements. A flat linear version can be expressed now, subject to the 128-row
 limit and existing target allowlist. Shared nonlinear measurements, source
 curves, conditional corrections and signed output pairs are a future contract,
 not features of `ConfigureMorphLink` today.
@@ -192,11 +194,12 @@ snapshot and recapture rules; querying the beast's current face/skeleton must no
 overwrite the human source snapshot. Current body refresh behavior remains as
 documented in [transformation.md](transformation.md).
 
-The present 32-row budget counts **edges**, not independent source names or output
-names. A full many-to-many profile can exhaust it quickly. Start with a measured
-compact body subset. A larger graph, nonlinear stage or new signed target format
-requires coordinated API, validation, persistence, bounds and migration work;
-editing only an array limit would leave the other contracts inconsistent.
+The current 128-row budget counts **edges**, not independent source names or output
+names. Native validation, public API, typed family files and co-savev3/v4 support
+that bound together; older v2 records keep their original 32-row reader. This
+larger graph supports the measured combinations without introducing wolf presets.
+A nonlinear stage or signed target format would still need coordinated API,
+validation, persistence, geometry bounds and migration work.
 
 ## Current wolf fields: measured improvement candidates
 

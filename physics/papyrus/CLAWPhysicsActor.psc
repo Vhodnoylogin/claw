@@ -22,6 +22,10 @@ Bool _morphValuesQualified = False
 Bool _morphRefresh = False
 String _morphEvidence = ""
 String _acceptedModel = ""
+Bool _nativeSnapshot = False
+Bool _nativeOwner = False
+Int _nativeToken = 0
+Float _nativeWeight = -1.0
 
 ; 0 dormant, 1 capability blocked, 2 not beast, 3 unloaded,
 ; 4 requested native appends accepted (NO readback), 5 attach failed/rolled back,
@@ -40,6 +44,14 @@ EndFunction
 
 Actor Function GetTrackedActor()
   Return _tracked
+EndFunction
+
+Actor Function GetQualifiedActor()
+  Return _qualifiedActor
+EndFunction
+
+Bool Function HasNativeOwner()
+  Return _nativeOwner
 EndFunction
 
 Int Function GetModelGeneration()
@@ -69,13 +81,19 @@ Bool Function AttachmentQualified(Actor target)
 EndFunction
 
 Bool Function CleanupContextCurrent(Actor target, Int generation)
-  ; No native queries here: recheck the captured ledger/authority after data reads.
+  ; The optional native owner check reads cached runtime identity only.
+  If _nativeOwner && !CLAWPhysicsNative.ActorCurrent(target)
+    Return False
+  EndIf
   Return target != None && _tracked == target && ProviderQualified && ExclusiveIndexRange && _modelGeneration == generation
 EndFunction
 
 Bool Function AttachmentContextCurrent(Actor target, Int generation, String node)
   ; The check and the following native mutation are NOT an atomic operation.
   If !IsCurrentBeast(target) || !target.Is3DLoaded() || !NetImmerse.HasNode(target, node, False) || GetActorReference() != target
+    Return False
+  EndIf
+  If _nativeSnapshot && !CLAWPhysicsNative.SnapshotCurrent(target, generation, _nativeToken)
     Return False
   EndIf
   Return !_generationUnknown && _tracked == target && _modelGeneration == generation && AttachmentQualified(target)
@@ -122,12 +140,28 @@ EndFunction
 ; Values must be the effective aggregate of ALL SKEE keys for each generated
 ; MorphName, after its model update completes. Never pass only CLAW's own key.
 ; The coordinator calls this after a morph change; no world scan or timer runs.
-Int Function SynchronizeMorphs(Actor expectedActor, Float[] values, String evidence)
+Int Function SynchronizeMorphs(Actor expectedActor, Float[] values, String evidence, Bool nativeSnapshot = False, Int snapshotToken = 0)
   If _busy
     Return 8
   EndIf
   _busy = True
   Int snapshotGeneration = _modelGeneration
+  Float snapshotWeight = -1.0
+  If nativeSnapshot && !CLAWPhysicsNative.SnapshotCurrent(expectedActor, snapshotGeneration, snapshotToken)
+    _busy = False
+    Return SetStatus(1, "Native aggregate snapshot is stale; no append attempted")
+  EndIf
+  If nativeSnapshot
+    snapshotWeight = CLAWPhysicsNative.GetWeight(expectedActor, snapshotGeneration, snapshotToken)
+    If !(snapshotWeight >= 0.0 && snapshotWeight <= 1.0)
+      _busy = False
+      Return SetStatus(1, "Native independent weight input is stale or invalid")
+    EndIf
+  EndIf
+  If CLAWPhysicsData.NativeFitRequired() && !nativeSnapshot
+    _busy = False
+    Return SetStatus(1, "Current-vector model requires the matching native fitted capsule snapshot")
+  EndIf
   If expectedActor == None || expectedActor != GetActorReference() || evidence == ""
     _busy = False
     Return SetStatus(1, "Effective morph snapshot actor/evidence missing; no append attempted")
@@ -158,7 +192,7 @@ Int Function SynchronizeMorphs(Actor expectedActor, Float[] values, String evide
     _busy = False
     Return SetStatus(1, "Morph snapshot changed or became invalid while copying; no append attempted")
   EndIf
-  Bool changed = !_morphValuesQualified
+  Bool changed = !_morphValuesQualified || (nativeSnapshot && snapshotWeight != _nativeWeight)
   index = 0
   While index < count
     If _morphValues == None || _morphValues[index] != prepared[index]
@@ -170,6 +204,10 @@ Int Function SynchronizeMorphs(Actor expectedActor, Float[] values, String evide
   _morphValuesQualified = True
   _morphRefresh = _morphRefresh || changed
   _morphEvidence = evidence
+  _nativeSnapshot = nativeSnapshot
+  _nativeOwner = _nativeOwner || nativeSnapshot
+  _nativeToken = snapshotToken
+  _nativeWeight = snapshotWeight
   Int outcome = SynchronizeInternal()
   _busy = False
   Return outcome
@@ -193,6 +231,8 @@ Function MarkModelGenerationChanged()
   _modelGeneration += 1
   StaticPoseAccepted = False
   _morphValuesQualified = False
+  _nativeSnapshot = False
+  _nativeToken = 0
   _generationUnknown = True
   If GetAcceptedLedgerCount() > 0
     SetStatus(6, "Model/provider generation changed; previous container presence is unknown")
@@ -212,6 +252,7 @@ Bool Function AcknowledgeProviderReset(Actor previousActor, Bool previousContain
   EndWhile
   _tracked = None
   _acceptedModel = ""
+  _nativeOwner = False
   _generationUnknown = False
   SetStatus(9, "Host acknowledged old CBPC containers discarded; not independently read back")
   Return True
@@ -219,7 +260,7 @@ EndFunction
 
 Function EnsureLedger()
   If _accepted == None
-    _accepted = new Bool[32]
+    _accepted = new Bool[128]
   EndIf
 EndFunction
 
@@ -241,9 +282,10 @@ Int Function CleanupInternal()
   EnsureLedger()
   If GetAcceptedLedgerCount() == 0
     _tracked = None
+    _nativeOwner = False
     Return SetStatus(0)
   EndIf
-  If _accepted.Length > 32
+  If _accepted.Length > 128
     Return SetStatus(6, "Unsupported saved ledger length; entries retained and no native cleanup attempted")
   EndIf
   If _acceptedModel != CLAWPhysicsData.ModelIdentity()
@@ -286,6 +328,7 @@ Int Function CleanupInternal()
   EndIf
   _tracked = None
   _generationUnknown = False
+  _nativeOwner = False
   Return SetStatus(7, "Native reported matching-index removals; no collider enumeration exists")
 EndFunction
 
@@ -339,7 +382,7 @@ Int Function SynchronizeInternal()
       Return SetStatus(6, "Previous sex capsule cleanup pending")
     EndIf
   EndIf
-  If GetAcceptedLedgerCount() == CLAWPhysicsData.ExpectedCapsuleCount() && !_morphRefresh
+  If GetAcceptedLedgerCount() == CLAWPhysicsData.ExpectedCapsuleCountForSex(female) && !_morphRefresh
     If GetActorReference() != target || _modelGeneration != synchronizationGeneration || !AttachmentQualified(target) || _generationUnknown
       Return SetStatus(6, "Accepted ledger context changed during synchronization; no append attempted")
     EndIf
@@ -353,20 +396,21 @@ Int Function SynchronizeInternal()
   EndIf
   ; An older serialized nine-slot array stays untouched until every old bit is
   ; resolved. Only an empty ledger may be replaced with the larger capacity.
-  If _accepted.Length < 32
+  If _accepted.Length < CLAWPhysicsData.SlotCount()
     If GetAcceptedLedgerCount() > 0
       Return SetStatus(6, "Old short ledger still has unresolved slots; capacity migration refused")
     EndIf
-    _accepted = new Bool[32]
+    _accepted = new Bool[128]
   EndIf
   _tracked = target
+  _nativeOwner = _nativeSnapshot
   _acceptedModel = CLAWPhysicsData.ModelIdentity()
   _female = female
   _generationUnknown = False
   Int slot = 0
   Bool failed = False
   While slot < CLAWPhysicsData.SlotCount() && !failed
-    If CLAWPhysicsData.HasCapsule(slot)
+    If CLAWPhysicsData.HasCapsule(slot) && CLAWPhysicsData.SlotEnabled(slot, female)
       String node = CLAWPhysicsData.Node(slot)
       Int colliderIndex = CLAWPhysicsData.ColliderIndex(slot)
       If !AttachmentContextCurrent(target, synchronizationGeneration, node)
@@ -378,13 +422,27 @@ Int Function SynchronizeInternal()
         Float[] point1 = CLAWPhysicsData.Point(slot, female, False)
         Float[] point2 = CLAWPhysicsData.Point(slot, female, True)
         Float radius = CLAWPhysicsData.Radius(slot, female)
-        If CLAWPhysicsData.MorphCount() > 0
+        If CLAWPhysicsData.MorphCount() > 0 && !CLAWPhysicsData.NativeFitRequired()
           point1 = CLAWPhysicsData.PointForMorphs(slot, female, False, _morphValues)
           point2 = CLAWPhysicsData.PointForMorphs(slot, female, True, _morphValues)
           radius = CLAWPhysicsData.RadiusForMorphs(slot, female, _morphValues)
         EndIf
+        If CLAWPhysicsData.NativeFitRequired()
+          Float[] capsule = CLAWPhysicsNative.GetCapsule(target, synchronizationGeneration, _nativeToken, slot)
+          If capsule == None || capsule.Length != 7
+            failed = True
+          Else
+            point1[0] = capsule[0]
+            point1[1] = capsule[1]
+            point1[2] = capsule[2]
+            point2[0] = capsule[3]
+            point2[1] = capsule[4]
+            point2[2] = capsule[5]
+            radius = capsule[6]
+          EndIf
+        EndIf
         ; Data access/preclean may yield. Recheck AFTER them, immediately before append.
-        If !AttachmentContextCurrent(target, synchronizationGeneration, node)
+        If failed || !AttachmentContextCurrent(target, synchronizationGeneration, node)
           failed = True
         Else
           Bool accepted = CBPCPluginScript.AttachColliderCapsule(target, node, point1, radius, point2, radius, 0.0, colliderIndex, True)

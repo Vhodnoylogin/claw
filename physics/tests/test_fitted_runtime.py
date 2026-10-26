@@ -84,7 +84,7 @@ class FittedRuntimeTests(unittest.TestCase):
     def test_actor_refresh_cleans_old_indices_before_reappend_and_same_values_skip(self):
         actor=(ROOT/'papyrus/CLAWPhysicsActor.psc').read_text()
         sync=function(actor,'SynchronizeInternal')
-        self.assertIn('GetAcceptedLedgerCount() == CLAWPhysicsData.ExpectedCapsuleCount() && !_morphRefresh',sync)
+        self.assertIn('GetAcceptedLedgerCount() == CLAWPhysicsData.ExpectedCapsuleCountForSex(female) && !_morphRefresh',sync)
         self.assertLess(sync.index('If GetAcceptedLedgerCount() > 0\n    CleanupInternal()'),sync.index('AttachColliderCapsule('))
         self.assertGreater(sync.index('_morphRefresh = False'),sync.index('If failed'))
         pulse=function(actor,'SynchronizeMorphs')
@@ -103,8 +103,8 @@ class FittedRuntimeTests(unittest.TestCase):
         self.assertLess(cleanup.index('_acceptedModel != CLAWPhysicsData.ModelIdentity()'),cleanup.index('DetachCollider('))
         sync=function(actor,'SynchronizeInternal')
         self.assertLess(sync.index('_acceptedModel != CLAWPhysicsData.ModelIdentity()'),sync.index('AttachColliderCapsule('))
-        migrate=sync[sync.index('If _accepted.Length < 32'):sync.index('_tracked = target')]
-        self.assertLess(migrate.index('If GetAcceptedLedgerCount() > 0'),migrate.index('_accepted = new Bool[32]'))
+        migrate=sync[sync.index('If _accepted.Length < CLAWPhysicsData.SlotCount()'):sync.index('_tracked = target')]
+        self.assertLess(migrate.index('If GetAcceptedLedgerCount() > 0'),migrate.index('_accepted = new Bool[128]'))
         self.assertIn('Return SetStatus(6,',migrate)
 
 if __name__=='__main__':unittest.main()

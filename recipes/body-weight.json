@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "name": "actual-human-neutral-endpoint-regional-calibration-v1",
+  "humanShapes": {"female": "3BA", "male": "HIMBO - Body HP"},
+  "humanInputs": {
+    "female": ["43dcaada2fa879ccdc5b517ba85da8a0d361ae8db97537c4d5f7548e8bc8ba7d", "8297dae5853dc7b4a52650b33ac2404fdbb1a810966263b3925c991797c243e8"],
+    "male": ["4f72e36d456ff60fccc5bd99612dd28dd4bfc017d49276952caf6b458bc8f5bb", "12cbb4624f74f1d7182545d4bb7d9dc3dc1c2e4218df02e5254925b410fd060d"]
+  },
+  "basis": "smooth-anatomical-radial-width-depth-fields",
+  "maximumBasisMagnitude": 0.25,
+  "regularizer": 0.000001,
+  "bodies": {
+    "female": {"nifSha256": "d04aced0b9204c09fe2a710df2974f0000a2fc5bbcd43070f7b845b0f8ff1c33", "triSha256": "18840924604e974d166ab4f489311e66bcbff1852427eb0924b1242909099b15"},
+    "male": {"nifSha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef", "triSha256": "ff1a66d5b94eb240f154977721af9adc8890615de71118349d4e03bfca540729"}
+  }
+}

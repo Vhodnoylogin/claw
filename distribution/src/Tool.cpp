@@ -1,10 +1,32 @@
 #include "claw/Preset.h"
+#include "claw/MorphProfiles.h"
 #include <charconv>
 #include <iostream>
 
 int main(int argc, char** argv) {
+    if (argc == 3 && std::string_view(argv[1]) == "families") {
+        claw::MorphProfileCatalog profiles;
+        if (!profiles.loadFile(argv[2])) { std::cerr << profiles.error() << '\n'; return 2; }
+        std::cout << "{\"profiles\":["; bool first = true;
+        for (const auto sex : {claw::Sex::male, claw::Sex::female}) {
+            for (const auto& id : profiles.names(sex)) {
+                const auto* profile = profiles.find(id, sex);
+                if (!first) std::cout << ','; first = false;
+                std::cout << "{\"id\":" << claw::jsonString(id) << ",\"family\":" << claw::jsonString(profile->sourceFamily)
+                    << ",\"sex\":" << claw::jsonString(sex == claw::Sex::male ? "male" : "female")
+                    << ",\"rules\":" << profile->link.rules.size() << '}';
+            }
+        }
+        std::cout << "],\"defaults\":{"; first = true;
+        for (const auto sex : {claw::Sex::male, claw::Sex::female}) if (const auto* profile = profiles.defaultFor(sex)) {
+            if (!first) std::cout << ','; first = false;
+            std::cout << claw::jsonString(sex == claw::Sex::male ? "male" : "female") << ':' << claw::jsonString(profile->id);
+        }
+        std::cout << "}}\n"; return 0;
+    }
     if (argc != 3 && argc != 6) {
         std::cerr << "claw-preset-tool validate <CLAW-preset-directory>\n"
+                     "claw-preset-tool families <MorphLinks.xml>\n"
                      "claw-preset-tool interpolate <directory> <preset> <male|female> <weight>\n";
         return 2;
     }

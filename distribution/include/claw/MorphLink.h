@@ -18,7 +18,7 @@ inline bool morphLinkIdentifier(std::string_view value) {
     return true;
 }
 inline bool linkedBodyMorph(std::string_view name) {
-    return (name.starts_with("CLAWTorso") && name != "CLAWTorsoBreastSize") || name == "CLAWArmGirth" || name == "CLAWLegCalfGirth" || name == "CLAWLegThighGirth";
+    return name.starts_with("CLAWTorso") || name == "CLAWArmGirth" || name == "CLAWLegCalfGirth" || name == "CLAWLegThighGirth";
 }
 struct MorphLink {
     std::string profile;
@@ -28,7 +28,7 @@ struct MorphLink {
     [[nodiscard]] bool enabled() const { return !profile.empty(); }
     [[nodiscard]] bool valid(Sex sex) const {
         if (!enabled()) return rules.empty() && sourceValues.empty() && !captured;
-        if (!morphLinkIdentifier(profile) || rules.empty() || rules.size() > 32) return false;
+        if (!morphLinkIdentifier(profile) || rules.empty() || rules.size() > 128) return false;
         std::set<std::pair<std::string, std::string>> pairs;
         std::map<std::string, float> caps;
         std::set<std::string> sources;

@@ -2,13 +2,25 @@
 #include "claw/Preset.h"
 #include "claw/RequestOwnership.h"
 #include "claw/MorphLink.h"
+#include "claw/PhysicsObserver.h"
+#include "claw/MorphProfiles.h"
+#include "claw/SourceBootstrapPolicy.h"
+#if defined(CLAW_PHYSICS_MODEL_HEADER)
+#include "claw/PhysicsFit.h"
+#include CLAW_PHYSICS_MODEL_HEADER
+#endif
 #include <IPluginInterface.h>  // official pinned external API, never vendored
+#if defined(CLAW_OBODY_API_HEADER)
+#include CLAW_OBODY_API_HEADER // Official public protocol, optional external SDK.
+#endif
 #include <spdlog/sinks/basic_file_sink.h>
 #include <atomic>
 #include <array>
 #include <chrono>
+#include <condition_variable>
 #include <cmath>
 #include <cstring>
+#include <deque>
 #include <filesystem>
 #include <limits>
 #include <map>
@@ -62,12 +74,22 @@ struct State {
     std::uintptr_t lastRoot{};
     RE::VMHandle vmHandle{};
     float lastWeight{-1};
+    float humanWeight{-1}, beastWeight{-1}; // Last observed normalized NPC property, never an input override.
     bool dirty{true};
     RE::ActorHandle runtimeHandle; // Weak engine witness; created/resolved only in tasks.
     RE::Actor* runtimePointer{}; // Cached comparison only, never dereferenced by getters.
     std::uint64_t runtimeSerial{}; // Fresh after load; never serialized.
     claw::RequestBinding latestRequest; // Non-owning, process-local terminal request witness.
     bool quarantined{};
+    // Optional source bootstrap lease: deliberately transient, never restored.
+    bool adoptedDefault{}, firstSeenBeast{}, observedHuman{}, sourceRevoked{};
+    bool sourceAdvertised{}, sourceValidationPending{}, sourceReady{}, sourceClaimed{};
+    std::uint32_t sourceToken{};
+    std::uint64_t sourceWorld{}, sourceRuntime{};
+    std::uint64_t sourceProviderEpoch{};
+    std::uintptr_t defaultRoot{}, sourceRoot{};
+    claw::Sex sourceSex{};
+    std::string sourceProfile;
 };
 
 constexpr std::uint32_t serializationID = 0x444C5743; // CWLD, exclusive to this companion
@@ -76,6 +98,7 @@ constexpr std::uint32_t actorRecord = 0x414C5743;
 constexpr std::size_t maxActors = 8192;
 constexpr float epsilon = 0.0001F;
 claw::Catalog catalog;
+claw::MorphProfileCatalog morphProfiles;
 std::map<RE::FormID, State> states;
 claw::RequestLedger<Pin> requests{maxActors};
 // One intrusive pin per physical Actor, shared by pending tasks/requests/natives.
@@ -94,7 +117,103 @@ const SKSE::TaskInterface* tasks{};
 IBodyMorphInterface* morphs{};
 RE::TESRace* beastRace{};
 std::jthread timer;
+struct PhysicsBinding {
+    RE::ActorHandle actor;
+    RE::Actor* pointer{};
+    std::uint64_t runtime{}, world{}, registration{};
+    std::int32_t generation{};
+    std::vector<std::string> names;
+    std::string model, evidence, condition;
+    claw::PhysicsObservation observation;
+    std::uint32_t snapshot{};
+    bool female{}, ready{}, delivered{}, active{true};
+#if defined(CLAW_PHYSICS_MODEL_HEADER)
+    std::vector<claw::physics::Capsule> capsules;
+    bool needsFit{}, fitPending{};
+#endif
+};
+std::map<RE::FormID, PhysicsBinding> physicsBindings;
+bool physicsPopulationEnabled{};
+bool obodySourcePopulationEnabled{};
+std::uint32_t nextSourceBootstrapToken{1};
+std::atomic<bool> obodyApiReady{};
+std::atomic<bool> obodyApiAvailable{};
+std::atomic<std::uint64_t> obodyProviderEpoch{};
+std::atomic<std::uint64_t> obodyStockGenerationEpoch{std::numeric_limits<std::uint64_t>::max()};
+std::atomic<bool> obodyActorListenerRegistered{};
+#if defined(CLAW_OBODY_API_HEADER)
+OBody::API::IPluginInterface* obodyAPI{};
+class OBodyStockGeneration final : public OBody::API::IActorChangeEventListener {
+public:
+    using Generated = struct OBody::API::IActorChangeEventListener::OnActorGenerated;
+    Generated::Response OnActorGenerated(::Actor*, Generated::Flags, Generated::Payload& payload) override {
+        const auto providerEpoch = obodyProviderEpoch.load();
+        if (obodyApiReady.load() && payload.responsiblePluginInterface == nullptr &&
+            obodyStockGenerationEpoch.exchange(providerEpoch) != providerEpoch && tasks) {
+            // The provider's internal CanDistribute path established the actual
+            // save's distribution key. No actor or provider operation crosses here.
+            tasks->AddTask([providerEpoch] {
+                if (!enabled || !obodyApiReady || obodyProviderEpoch != providerEpoch ||
+                    obodyStockGenerationEpoch != providerEpoch) return;
+                if (auto* source = SKSE::GetModCallbackEventSource()) {
+                    SKSE::ModCallbackEvent event;
+                    event.eventName = "CLAWDistribution_OBodySourceAvailable";
+                    event.strArg = "stock-generation-readiness"; event.numArg = 0; event.sender = nullptr;
+                    source->SendEvent(&event);
+                }
+            });
+        }
+        return Generated::Response::None;
+    }
+} obodyStockGeneration;
+class OBodyReadiness final : public OBody::API::IOBodyReadinessEventListener {
+public:
+    void OBodyIsReady() override {
+        obodyApiAvailable = obodyAPI != nullptr;
+        if (obodyAPI && !obodyActorListenerRegistered) obodyActorListenerRegistered = obodyAPI->RegisterEventListener(obodyStockGeneration);
+        obodyApiReady.store(obodyAPI != nullptr);
+    }
+    void OBodyIsNoLongerReady() override {
+        obodyApiReady.store(false); ++obodyProviderEpoch;
+        obodyStockGenerationEpoch = std::numeric_limits<std::uint64_t>::max();
+    }
+} obodyReadiness;
+#endif
+bool sourceProviderReady() {
+    return obodyApiReady.load() && obodyActorListenerRegistered.load() &&
+        obodyStockGenerationEpoch.load() == obodyProviderEpoch.load();
+}
+std::map<RE::FormID, std::uint64_t> physicsPopulationBlocked;
+std::map<RE::Actor*, std::uint64_t> physicsRegistrationRequests;
+std::uint64_t nextPhysicsRegistration{1};
+std::uint32_t nextPhysicsSnapshot{1};
+#if defined(CLAW_PHYSICS_MODEL_HEADER)
+struct PhysicsFitWork {
+    RE::FormID id{}; // Numeric routing token; no engine object crosses to worker.
+    std::uint64_t world{}, registration{};
+    std::uintptr_t root{};
+    std::int32_t generation{};
+    bool female{};
+    std::vector<float> values;
+    float weight{};
+};
+std::mutex physicsWorkMutex;
+std::condition_variable_any physicsWorkReady;
+std::deque<PhysicsFitWork> physicsWork;
+std::jthread physicsWorker;
+#endif
+void observePhysics(RE::Actor* actor);
+void invalidatePhysics(RE::FormID id) {
+    if (const auto it = physicsBindings.find(id); it != physicsBindings.end()) {
+        it->second.observation.invalidate(); it->second.ready = false;
+    }
+}
 void logError(State& state, std::string reason, Status status = Status::error);
+void offerSourceBootstrap(RE::Actor* actor);
+void revokeSourceBootstrap(State& state) {
+    state.sourceRevoked = true; state.sourceReady = false;
+    state.sourceValidationPending = false; state.sourceToken = 0;
+}
 
 Pin pinActor(RE::Actor* actor) {
     if (!actor) return {};
@@ -121,6 +240,7 @@ bool boundTo(const State& state, const RE::Actor* actor) {
     return state.runtimeSerial && state.runtimePointer == actor;
 }
 void quarantine(State& state, std::string error) {
+    revokeSourceBootstrap(state);
     state.quarantined = true; state.runtimeSerial = 0; state.runtimePointer = nullptr;
     state.runtimeHandle.reset(); state.cache.clear();
     logError(state, std::move(error));
@@ -140,6 +260,7 @@ void checkRuntimeInstances() {
             quarantine(state, "runtime actor no longer owns saved FormID; assignment quarantined");
         } else if (!actor->Is3DLoaded() || !actor->Get3D()) {
             state.status = Status::unloaded; state.dirty = true;
+            if (state.defaultRoot) revokeSourceBootstrap(state);
         }
         ++it;
     }
@@ -151,6 +272,17 @@ const claw::RequestLedger<Pin>::Request* actorRequest(RE::Actor* actor) {
     const State* state = found != states.end() && boundTo(found->second, actor) && !found->second.quarantined ? &found->second : nullptr;
     return claw::resolveActorRequest(requests, actor->formID, epoch.load(), pin == pins.end() ? 0 : pin->second->serial,
         state ? &state->latestRequest : nullptr, state ? state->runtimeSerial : 0);
+}
+
+bool pendingActorRequest(RE::Actor* actor) {
+    const auto* request = actorRequest(actor);
+    return request && request->error.empty();
+}
+
+bool sourcePolicyAllows(const State& state, RE::Actor* actor) {
+    return claw::SourceBootstrapPolicy{state.adoptedDefault, state.firstSeenBeast, state.observedHuman,
+        state.humanWeight >= 0, state.sourceRevoked, state.suppressed, state.quarantined,
+        state.sourceClaimed, pendingActorRequest(actor)}.allows();
 }
 
 void logError(State& state, std::string reason, Status status) {
@@ -165,7 +297,8 @@ std::uint64_t newNamespace() {
     return value ? value : 1;
 }
 
-State* stateFor(RE::Actor* actor, bool create) {
+::TESObjectREFR* skeeReference(RE::Actor* actor);
+State* stateFor(RE::Actor* actor, bool create, bool adoptDefaults = true) {
     if (!currentOwner(actor) || !actor->GetActorBase()) return nullptr;
     const auto id = actor->GetFormID();
     auto found = states.find(id);
@@ -206,16 +339,268 @@ State* stateFor(RE::Actor* actor, bool create) {
     if (!witness || witness.get() != actor) return nullptr;
     if (!saveNamespace) saveNamespace = newNamespace();
     State state;
+    const auto newSex = actor->GetActorBase()->GetSex();
+    if (newSex != RE::SEX::kMale && newSex != RE::SEX::kFemale) return nullptr;
+    state.sex = newSex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
+    if (adoptDefaults) if (const auto* profile = morphProfiles.defaultFor(state.sex)) {
+        if (!morphs) return nullptr; // No empty identity is minted before a full source capture.
+        auto link = profile->link;
+        try { link.capture([actor](std::string_view name) { return morphs->GetBodyMorphs(skeeReference(actor), name.data()); }); }
+        catch (const std::exception& error) { SKSE::log::warn("CLAW default family source capture: {}", error.what()); return nullptr; }
+        state.link = std::move(link);
+        state.adoptedDefault = true;
+        if (!beastRace) if (auto* data = RE::TESDataHandler::GetSingleton())
+            beastRace = data->LookupForm<RE::TESRace>(0xCDD84, "Skyrim.esm");
+        state.firstSeenBeast = beastRace && actor->GetRace() == beastRace;
+        state.defaultRoot = reinterpret_cast<std::uintptr_t>(actor->Get3D());
+        for (const auto& [name, value] : state.link.sourceValues) {
+            (void)value;
+            if (value != 0 || morphs->HasBodyMorphName(skeeReference(actor), name.c_str())) { revokeSourceBootstrap(state); break; }
+        }
+    }
     state.identity = nextIdentity++;
     state.vmHandle = handle;
     state.runtimeHandle = runtime; state.runtimePointer = actor; state.runtimeSerial = nextRuntimeSerial++;
-    state.sex = actor->GetActorBase()->GetSex() == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
     return &states.emplace(id, std::move(state)).first->second;
 }
 
 ::TESObjectREFR* skeeReference(RE::Actor* actor) {
     // The official SKSE64 API uses global forward declarations; CommonLib uses RE.
     return reinterpret_cast<::TESObjectREFR*>(actor);
+}
+
+void physicsEvent(RE::Actor* actor, std::string_view kind, std::uint32_t sequence = 0) {
+    if (auto* source = SKSE::GetModCallbackEventSource()) {
+        SKSE::ModCallbackEvent event;
+        event.eventName = "CLAWPhysics_Observation"; event.strArg = kind.data();
+        event.numArg = static_cast<float>(sequence); event.sender = actor;
+        source->SendEvent(&event);
+    }
+}
+
+void sourceBootstrapEvent(RE::Actor* actor, State& state, bool ready) {
+    if (auto* source = SKSE::GetModCallbackEventSource()) {
+        SKSE::ModCallbackEvent event;
+        event.eventName = ready ? "CLAWDistribution_OBodySourceReady" : "CLAWDistribution_OBodySourceCandidate";
+        event.strArg = state.sourceProfile;
+        event.numArg = static_cast<float>(state.sourceToken); event.sender = actor;
+        source->SendEvent(&event);
+    }
+}
+
+bool sourceBootstrapLive(RE::Actor* actor, State& state) {
+    if (!enabled || !obodySourcePopulationEnabled || !morphs || !sourceProviderReady() ||
+        !sourcePolicyAllows(state, actor) ||
+        !currentOwner(actor) || !boundTo(state, actor) || state.quarantined || state.suppressed ||
+        !state.adoptedDefault || !state.firstSeenBeast || state.observedHuman || state.humanWeight >= 0 ||
+        state.sourceRevoked || state.sourceClaimed || !state.link.enabled() || !state.link.captured ||
+        state.beastWeight < 0 || state.status != Status::applied || actor->GetRace() != beastRace ||
+        !actor->Is3DLoaded() || !actor->Get3D()) return false;
+    const auto witness = std::as_const(state.runtimeHandle).get();
+    const auto* base = actor->GetActorBase();
+    const auto* declared = morphProfiles.defaultFor(state.sex);
+    const auto root = reinterpret_cast<std::uintptr_t>(actor->Get3D());
+    const float rawWeight = base ? base->weight : std::numeric_limits<float>::quiet_NaN();
+    if (!witness || witness.get() != actor || !base || !std::isfinite(rawWeight) || rawWeight < 0 || rawWeight > 100 ||
+        (base->GetSex() != RE::SEX::kMale && base->GetSex() != RE::SEX::kFemale) ||
+        (base->GetSex() == RE::SEX::kFemale) != (state.sex == claw::Sex::female) ||
+        !declared || declared->id != state.link.profile || state.lastRoot != root ||
+        (state.defaultRoot && state.defaultRoot != root) || state.link.sourceValues.empty()) return false;
+    for (const auto& [name, value] : state.link.sourceValues) {
+        (void)value;
+        // Name presence protects zero-valued keys too; a sum of zero is not unassigned.
+        if (value != 0 || morphs->HasBodyMorphName(skeeReference(actor), name.c_str())) { revokeSourceBootstrap(state); return false; }
+    }
+    try { state.link.capture([actor](std::string_view name) { return morphs->GetBodyMorphs(skeeReference(actor), name.data()); }); }
+    catch (const std::exception&) { return false; }
+    for (const auto& [name, value] : state.link.sourceValues)
+        if (value != 0 || morphs->HasBodyMorphName(skeeReference(actor), name.c_str())) { revokeSourceBootstrap(state); return false; }
+    return true;
+}
+
+void offerSourceBootstrap(RE::Actor* actor) {
+    if (!actor) return;
+    const auto found = states.find(actor->GetFormID());
+    if (found == states.end() || !boundTo(found->second, actor)) return;
+    auto& state = found->second;
+    if (pendingActorRequest(actor)) return; // Includes accepted intent before State creation.
+    if (!state.adoptedDefault || state.sourceRevoked || state.sourceClaimed) return;
+    const auto root = reinterpret_cast<std::uintptr_t>(actor->Get3D());
+    if (state.observedHuman || (state.defaultRoot && state.defaultRoot != root)) { revokeSourceBootstrap(state); return; }
+    if (state.sourceAdvertised && state.sourceProviderEpoch != obodyProviderEpoch) { revokeSourceBootstrap(state); return; }
+    if (!state.defaultRoot && root) state.defaultRoot = root;
+    if (!obodySourcePopulationEnabled) return;
+    if (!sourceBootstrapLive(actor, state)) {
+        if (state.sourceAdvertised) revokeSourceBootstrap(state);
+        return;
+    }
+    if (state.sourceAdvertised) return; // No event retry loop, even without a consumer.
+    if (nextSourceBootstrapToken >= 0x01000000U) { revokeSourceBootstrap(state); return; }
+    state.sourceAdvertised = true; state.sourceToken = nextSourceBootstrapToken++;
+    state.sourceWorld = epoch.load(); state.sourceRuntime = state.runtimeSerial;
+    state.sourceProviderEpoch = obodyProviderEpoch.load();
+    state.sourceRoot = root; state.sourceSex = state.sex; state.sourceProfile = state.link.profile;
+    sourceBootstrapEvent(actor, state, false);
+}
+
+void publishPhysics(RE::Actor* actor, PhysicsBinding& binding) {
+    if (nextPhysicsSnapshot >= 0x01000000U) { binding.condition = "token-limit"; binding.ready = false; return; }
+    binding.snapshot = nextPhysicsSnapshot++; binding.ready = true; binding.delivered = false;
+    physicsEvent(actor, "snapshot", binding.snapshot);
+}
+
+#if defined(CLAW_PHYSICS_MODEL_HEADER)
+void startPhysicsWorker() {
+    physicsWorker = std::jthread([](std::stop_token stop) {
+        while (!stop.stop_requested()) {
+            PhysicsFitWork job;
+            {
+                std::unique_lock lock(physicsWorkMutex);
+                if (!physicsWorkReady.wait(lock, stop, [] { return !physicsWork.empty(); })) return;
+                job = std::move(physicsWork.front()); physicsWork.pop_front();
+            }
+            std::vector<claw::physics::Capsule> capsules;
+            std::string error;
+            try {
+                capsules = claw::physics::Evaluate(claw::physics::CompiledModel(job.female),
+                    std::vector<double>(job.values.begin(), job.values.end()), static_cast<double>(job.weight));
+            } catch (const std::exception& failure) { error = failure.what(); }
+            if (stop.stop_requested()) return;
+            tasks->AddTask([job = std::move(job), capsules = std::move(capsules), error = std::move(error)]() mutable {
+                std::lock_guard lock(mutex);
+                const auto found = physicsBindings.find(job.id);
+                if (found == physicsBindings.end() || found->second.registration != job.registration) return;
+                auto& binding = found->second; binding.fitPending = false;
+                if (!enabled || job.world != epoch || binding.world != job.world || !binding.active ||
+                    binding.generation != job.generation || !binding.condition.empty() ||
+                    binding.observation.root != job.root || binding.observation.published != job.values ||
+                    binding.observation.publishedWeight != job.weight) return;
+                const auto witness = std::as_const(binding.actor).get();
+                auto* actor = witness.get();
+                const auto state = states.find(job.id);
+                if (!actor || actor != binding.pointer || !currentOwner(actor) || state == states.end() ||
+                    state->second.quarantined || !boundTo(state->second, actor) || state->second.runtimeSerial != binding.runtime ||
+                    !actor->Is3DLoaded() || reinterpret_cast<std::uintptr_t>(actor->Get3D()) != job.root || actor->GetRace() != beastRace) return;
+                const auto* base = actor->GetActorBase();
+                const float rawWeight = base ? base->weight : std::numeric_limits<float>::quiet_NaN();
+                if (!base || !std::isfinite(rawWeight) || rawWeight < 0 || rawWeight > 100 ||
+                    rawWeight / 100.0F != job.weight) return;
+                const auto actualSex = base->GetSex();
+                if ((actualSex != RE::SEX::kMale && actualSex != RE::SEX::kFemale) ||
+                    (actualSex == RE::SEX::kFemale) != binding.female) return;
+                // A writer can change a foreign key while the pure fit runs.
+                // Re-read the exact provider aggregate before publishing it.
+                for (std::size_t index = 0; index < binding.names.size(); ++index)
+                    if (morphs->GetBodyMorphs(skeeReference(actor), binding.names[index].c_str()) != job.values[index]) {
+                        binding.observation.invalidate(); binding.ready = false; return;
+                    }
+                binding.needsFit = false;
+                if (!error.empty()) {
+                    binding.ready = false; binding.condition = "domain";
+                    physicsPopulationBlocked.insert_or_assign(job.id, binding.runtime);
+                    SKSE::log::warn("CLAW physics fit: {}", error); physicsEvent(actor, "domain"); return;
+                }
+                binding.capsules = std::move(capsules); publishPhysics(actor, binding);
+            });
+        }
+    });
+}
+
+void queuePhysicsFit(RE::FormID id, PhysicsBinding& binding) {
+    if (binding.fitPending || !binding.needsFit || binding.observation.stablePasses < 2 ||
+        binding.observation.candidate != binding.observation.published ||
+        binding.observation.weight != binding.observation.publishedWeight) return;
+    std::lock_guard lock(physicsWorkMutex);
+    if (physicsWork.size() >= 16) return; // Bounded; the next main scan retries.
+    physicsWork.push_back({id, binding.world, binding.registration, binding.observation.root,
+        binding.generation, binding.female, binding.observation.published, binding.observation.publishedWeight});
+    binding.fitPending = true;
+    physicsWorkReady.notify_one();
+}
+#endif
+
+void observePhysics(RE::Actor* actor) {
+    if (!actor) return;
+    const auto found = physicsBindings.find(actor->GetFormID());
+    if (found == physicsBindings.end()) return;
+    auto& binding = found->second;
+    if (!binding.active) return;
+    const auto state = states.find(actor->GetFormID());
+    const auto witness = std::as_const(binding.actor).get();
+    const auto* observedBase = actor->GetActorBase();
+    const float rawWeight = observedBase ? observedBase->weight : std::numeric_limits<float>::quiet_NaN();
+    if (binding.pointer != actor) {
+        binding.ready = false; binding.observation.invalidate();
+        if (binding.condition != "identity" && witness && witness.get() == binding.pointer)
+            physicsEvent(witness.get(), "identity");
+        binding.condition = "identity";
+        return;
+    }
+    auto condition = [&]() -> std::string {
+        if (!enabled || binding.world != epoch || !currentOwner(actor) || !witness || witness.get() != actor ||
+            binding.pointer != actor || state == states.end() || state->second.quarantined ||
+            !boundTo(state->second, actor) || state->second.runtimeSerial != binding.runtime) return "identity";
+        if (!beastRace || actor->GetRace() != beastRace) return "human";
+        if (!actor->Is3DLoaded() || !actor->Get3D()) return "unloaded";
+        if (!morphs) return "provider";
+        const auto* base = observedBase;
+        if (!base) return "identity";
+        if (!std::isfinite(rawWeight) || rawWeight < 0 || rawWeight > 100) return "weight";
+        const auto sex = base->GetSex();
+        if ((sex != RE::SEX::kMale && sex != RE::SEX::kFemale) || (sex == RE::SEX::kFemale) != binding.female) return "identity";
+        return {};
+    }();
+    const auto root = reinterpret_cast<std::uintptr_t>(actor->Get3D());
+    if (condition.empty() && binding.observation.root && binding.observation.root != root) condition = "model";
+    if (condition == "model") physicsPopulationBlocked.insert_or_assign(actor->GetFormID(), binding.runtime);
+    if (!condition.empty()) {
+        if (condition == "weight" || condition == "identity" || condition == "provider")
+            physicsPopulationBlocked.insert_or_assign(actor->GetFormID(), binding.runtime);
+        binding.ready = false; binding.observation.invalidate();
+        binding.observation.root = 0;
+        if (binding.condition != condition) binding.delivered = false;
+        binding.condition = condition;
+        if (!binding.delivered) physicsEvent(actor, condition);
+        return;
+    }
+    if (!binding.condition.empty()) {
+        if (binding.condition == "domain" || binding.condition == "weight" || binding.condition == "provider" ||
+            binding.condition == "identity" || binding.condition == "token-limit") {
+            physicsEvent(actor, binding.condition); return; // Requires fresh explicit qualification.
+        }
+        if (binding.condition != "waiting") binding.delivered = false;
+        binding.condition = "waiting";
+        if (!binding.delivered) physicsEvent(actor, "ready");
+        return; // Host must renew the exact generation after a lifecycle change.
+    }
+    std::vector<float> values;
+    const float normalizedWeight = rawWeight / 100.0F;
+    for (const auto& name : binding.names) values.push_back(morphs->GetBodyMorphs(skeeReference(actor), name.c_str()));
+    // Apply the provider's current effective coefficients on this main task.
+    // The pinned SKEE implementation joins morph workers and executes partition
+    // updates before returning on its main thread. Sample again on a later pass.
+    if (binding.observation.candidate != values || binding.observation.weight != normalizedWeight) {
+        binding.ready = false;
+        physicsEvent(actor, "refit", binding.snapshot); // Old capsules are no longer current geometry.
+        morphs->ApplyBodyMorphs(skeeReference(actor), false);
+        if (!currentOwner(actor) || actor->GetRace() != beastRace || reinterpret_cast<std::uintptr_t>(actor->Get3D()) != root) {
+            invalidatePhysics(actor->GetFormID()); return;
+        }
+    }
+    if (!binding.observation.observe(root, std::move(values), normalizedWeight)) {
+        if (!binding.ready) physicsEvent(actor, "refit", binding.snapshot);
+#if defined(CLAW_PHYSICS_MODEL_HEADER)
+        queuePhysicsFit(actor->GetFormID(), binding);
+#endif
+        if (binding.ready && !binding.delivered) physicsEvent(actor, "snapshot", binding.snapshot);
+        return;
+    }
+#if defined(CLAW_PHYSICS_MODEL_HEADER)
+    binding.ready = false; binding.needsFit = true;
+    queuePhysicsFit(actor->GetFormID(), binding);
+#else
+    publishPhysics(actor, binding);
+#endif
 }
 
 bool readback(RE::Actor* actor, const claw::Morphs& expected) {
@@ -239,8 +624,16 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     // Called exclusively from a task. Do not move this into a native/event/timer.
     if (!currentOwner(actor) || !actor->GetActorBase()) return;
     const bool beast = beastRace && actor->GetRace() == beastRace; // current race, never NPC base race
-    State* state = stateFor(actor, beast);
+    const auto actorSex = actor->GetActorBase()->GetSex();
+    const bool defaultDeclared = (actorSex == RE::SEX::kMale || actorSex == RE::SEX::kFemale) &&
+        morphProfiles.defaultFor(actorSex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male);
+    State* state = stateFor(actor, beast || defaultDeclared);
     if (!state || state->quarantined || !boundTo(*state, actor)) return;
+    const auto* weightBase = actor->GetActorBase();
+    const float rawNPCWeight = weightBase ? weightBase->weight : std::numeric_limits<float>::quiet_NaN();
+    const float observedWeight = std::isfinite(rawNPCWeight) && rawNPCWeight >= 0 && rawNPCWeight <= 100 ? rawNPCWeight / 100.0F : -1.0F;
+    if (beast) state->beastWeight = observedWeight;
+    else { state->humanWeight = observedWeight; state->observedHuman = true; revokeSourceBootstrap(*state); }
     if (!actor->Is3DLoaded() || !actor->Get3D()) { state->status = Status::unloaded; state->dirty = true; return; }
     if (!morphs) { logError(*state, "SKEE BodyMorph API is unavailable", Status::providerUnavailable); return; }
     // Human coefficients already include the provider's weight interpolation.
@@ -251,6 +644,10 @@ void refreshActor(RE::Actor* actor, bool force = false) {
             state->link.capture([actor](std::string_view name) {
                 return morphs->GetBodyMorphs(skeeReference(actor), name.data());
             });
+            if (state->adoptedDefault && !state->sourceRevoked) for (const auto& [name, value] : state->link.sourceValues) {
+                (void)value;
+                if (value != 0 || morphs->HasBodyMorphName(skeeReference(actor), name.c_str())) { revokeSourceBootstrap(*state); break; }
+            }
         } catch (const std::exception& error) { sourceError = error.what(); }
     }
     const auto root = reinterpret_cast<std::uintptr_t>(actor->Get3D());
@@ -261,6 +658,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         if (force || state->dirty || hasOwnValue || state->lastRoot != root) {
             if (!clearOwn(actor)) { logError(*state, "own-key cleanup readback failed"); return; }
             morphs->ApplyBodyMorphs(skeeReference(actor), false);
+            invalidatePhysics(actor->GetFormID());
         }
         state->status = state->suppressed ? Status::cleared : Status::human;
         state->error.clear(); state->cache.clear(); state->lastRoot = root; state->dirty = false;
@@ -271,6 +669,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     const auto sex = actor->GetActorBase()->GetSex();
     if (sex != RE::SEX::kMale && sex != RE::SEX::kFemale) { logError(*state, "actor has no readable NPC sex"); return; }
     const auto desiredSex = sex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
+    if (state->sex != desiredSex) revokeSourceBootstrap(*state);
     const bool linked = state->link.enabled();
     float weight = -1; // Linked mode never reads or interpolates actor weight.
     claw::Morphs expected;
@@ -303,6 +702,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         for (const auto& [name, value] : expected)
             morphs->SetMorph(skeeReference(actor), name.c_str(), claw::morphKey, value);
         morphs->ApplyBodyMorphs(skeeReference(actor), false);
+        invalidatePhysics(actor->GetFormID());
         if (!readback(actor, expected)) { logError(*state, "SKEE own morph readback differs from requested values"); return; }
     }
     state->sex = desiredSex; state->cache = std::move(expected); state->lastRoot = root; state->lastWeight = weight;
@@ -314,6 +714,11 @@ void scan() {
     collectPins();
     if (!enabled) return;
     checkRuntimeInstances();
+    for (auto it = physicsPopulationBlocked.begin(); it != physicsPopulationBlocked.end();) {
+        const auto state = states.find(it->first);
+        if (state == states.end() || state->second.runtimeSerial != it->second) it = physicsPopulationBlocked.erase(it);
+        else ++it;
+    }
     if (!beastRace) {
         if (auto* data = RE::TESDataHandler::GetSingleton())
             beastRace = data->LookupForm<RE::TESRace>(0xCDD84, "Skyrim.esm");
@@ -332,6 +737,26 @@ void scan() {
     for (const auto id : actors) {
         auto* actor = RE::TESForm::LookupByID<RE::Actor>(id);
         refreshActor(actor);
+        observePhysics(actor);
+        offerSourceBootstrap(actor);
+    }
+    if (physicsPopulationEnabled) {
+        unsigned emitted{};
+        for (const auto& [id, state] : states) {
+            if (emitted >= 16) break;
+            if (!state.runtimeSerial || state.quarantined || physicsBindings.contains(id)) continue;
+            const auto blocked = physicsPopulationBlocked.find(id);
+            if (blocked != physicsPopulationBlocked.end() && blocked->second == state.runtimeSerial) continue;
+            const auto witness = std::as_const(state.runtimeHandle).get();
+            auto* actor = witness.get();
+            if (!actor || actor != state.runtimePointer || !currentOwner(actor) || actor->GetRace() != beastRace ||
+                !actor->Is3DLoaded() || !actor->Get3D()) continue;
+            if (auto* source = SKSE::GetModCallbackEventSource()) {
+                SKSE::ModCallbackEvent event;
+                event.eventName = "CLAWPhysics_Candidate"; event.strArg = "known-loaded-beast";
+                event.numArg = 0; event.sender = actor; source->SendEvent(&event); ++emitted;
+            }
+        }
     }
     collectPins();
 }
@@ -353,6 +778,9 @@ void queueActor(RE::FormID id, bool force = false) {
         std::lock_guard lock(mutex);
         // Events carrying only an ID are rescan hints, never actor-specific intent.
         refreshActor(RE::TESForm::LookupByID<RE::Actor>(id), force);
+        if (force) invalidatePhysics(id);
+        observePhysics(RE::TESForm::LookupByID<RE::Actor>(id));
+        offerSourceBootstrap(RE::TESForm::LookupByID<RE::Actor>(id));
     });
 }
 
@@ -425,7 +853,10 @@ void save(SKSE::SerializationInterface* interface) {
         for (const auto& [name, value] : state.link.sourceValues) {
             string(row, name); std::uint32_t bits; std::memcpy(&bits, &value, sizeof(bits)); u32(row, bits);
         }
-        if (!interface->WriteRecord(actorRecord, 2, row.data(), static_cast<std::uint32_t>(row.size()))) SKSE::log::error("Actor {:08X} serialization failed", id);
+        for (const float weight : {state.humanWeight, state.beastWeight}) {
+            std::uint32_t bits; std::memcpy(&bits, &weight, sizeof(bits)); u32(row, bits);
+        }
+        if (!interface->WriteRecord(actorRecord, 4, row.data(), static_cast<std::uint32_t>(row.size()))) SKSE::log::error("Actor {:08X} serialization failed", id);
     }
 }
 
@@ -433,7 +864,9 @@ void revert(SKSE::SerializationInterface*) {
     enabled = false; ++epoch;
     {
         std::lock_guard lock(mutex);
-        states.clear(); requests.clear(); saveNamespace = 0; nextIdentity = 1;
+        states.clear(); requests.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = 0; nextIdentity = 1;
+        physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
+        obodySourcePopulationEnabled = false;
     }
     queuePinCollection(); // Never release the last intrusive pin on a VM callback.
 }
@@ -441,13 +874,16 @@ void revert(SKSE::SerializationInterface*) {
 void load(SKSE::SerializationInterface* interface) {
     enabled = false; ++epoch;
     std::lock_guard lock(mutex);
-    states.clear(); requests.clear(); saveNamespace = 0; nextIdentity = 1;
+    states.clear(); requests.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = 0; nextIdentity = 1;
+    physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
+    obodySourcePopulationEnabled = false;
     std::uint32_t type{}, version{}, length{};
     bool sessionFound = false;
     std::set<std::uint64_t> identities;
     while (interface->GetNextRecordInfo(type, version, length)) {
         if (type != sessionRecord && type != actorRecord) continue;
-        if ((version != 1 && !(type == actorRecord && version == 2)) || length > 16384) { SKSE::log::error("Unsupported/corrupt CLAW record"); continue; }
+        if ((version != 1 && !(type == actorRecord && (version == 2 || version == 3 || version == 4))) ||
+            length > (type == actorRecord && version >= 3 ? 131072U : 16384U)) { SKSE::log::error("Unsupported/corrupt CLAW record"); continue; }
         Bytes bytes(length);
         if (interface->ReadRecordData(bytes.data(), length) != length) { SKSE::log::error("Truncated CLAW record"); continue; }
         try {
@@ -471,16 +907,17 @@ void load(SKSE::SerializationInterface* interface) {
                 if (!claw::recognizedMorph(name, state.sex) || !std::isfinite(value) || value < 0 || value > 1 || !state.cache.emplace(name, value).second)
                     throw std::runtime_error("invalid serialized morph");
             }
-            if (version == 2) {
+            if (version >= 2) {
                 state.link.profile = reader.string(); const auto ruleCount = reader.u32();
-                if (ruleCount > 32) throw std::runtime_error("excessive morph link rules");
+                const std::uint32_t maxLinkEntries = version >= 3 ? 128U : 32U;
+                if (ruleCount > maxLinkEntries) throw std::runtime_error("excessive morph link rules");
                 for (std::uint32_t index = 0; index < ruleCount; ++index) {
                     claw::MorphLinkRule rule; rule.source = reader.string(); rule.target = reader.string();
                     auto bits = reader.u32(); std::memcpy(&rule.gain, &bits, sizeof(bits));
                     bits = reader.u32(); std::memcpy(&rule.cap, &bits, sizeof(bits)); state.link.rules.push_back(std::move(rule));
                 }
                 const auto captured = reader.u32(), sourceCount = reader.u32();
-                if (captured > 1 || sourceCount > 32) throw std::runtime_error("invalid morph source snapshot");
+                if (captured > 1 || sourceCount > maxLinkEntries) throw std::runtime_error("invalid morph source snapshot");
                 state.link.captured = captured != 0;
                 for (std::uint32_t index = 0; index < sourceCount; ++index) {
                     const auto name = reader.string(); const auto bits = reader.u32(); float value; std::memcpy(&value, &bits, sizeof(value));
@@ -488,6 +925,13 @@ void load(SKSE::SerializationInterface* interface) {
                 }
                 if (!state.link.valid(state.sex)) throw std::runtime_error("invalid saved morph link profile");
             } // Old v1 state remains independent; a preset name never opts into linkage.
+            if (version >= 4) {
+                for (float* weight : {&state.humanWeight, &state.beastWeight}) {
+                    const auto bits = reader.u32(); std::memcpy(weight, &bits, sizeof(bits));
+                    if (!std::isfinite(*weight) || (*weight != -1 && (*weight < 0 || *weight > 1)))
+                        throw std::runtime_error("invalid saved NPC weight observation");
+                }
+            }
             if (reader.offset != bytes.size()) throw std::runtime_error("trailing serialized actor bytes");
             RE::FormID id{};
             if (interface->ResolveFormID(oldID, id)) {
@@ -542,7 +986,7 @@ void deleted(RE::VMHandle handle) {
 }
 
 enum class Operation { assign, clear, refresh, configureMorphLink, disableMorphLink };
-bool actorRequest(RE::Actor* actor, Operation operation, std::string presetName = {}, claw::MorphLink link = {}) {
+bool actorRequest(RE::Actor* actor, Operation operation, std::string presetName = {}, claw::MorphLink link = {}, std::optional<claw::Sex> requiredSex = {}) {
     if (!actor || !tasks || !enabled) return false;
     const auto id = actor->formID;
     Pin owner;
@@ -556,22 +1000,30 @@ bool actorRequest(RE::Actor* actor, Operation operation, std::string presetName 
         ticket = requests.begin(id, epoch.load(), owner->serial, owner);
         if (!ticket) return false;
         if (auto found = states.find(id); found != states.end() && boundTo(found->second, actor)) {
+            if (operation != Operation::refresh) {
+                revokeSourceBootstrap(found->second); found->second.adoptedDefault = false;
+            }
             found->second.status = Status::pending;
             found->second.latestRequest = {*ticket, found->second.runtimeSerial};
         }
     }
     // The pool keeps an intrusive pin even if this task is disposed before the
     // native callback's final shared_ptr copy dies. Only task collection erases it.
-    tasks->AddTask([id, owner = std::move(owner), ticket = *ticket, operation, presetName = std::move(presetName), link = std::move(link)]() mutable {
+    tasks->AddTask([id, owner = std::move(owner), ticket = *ticket, operation, presetName = std::move(presetName), link = std::move(link), requiredSex]() mutable {
         std::lock_guard lock(mutex);
         if (!enabled || !requests.owns(id, ticket, epoch.load())) return;
         auto fail = [&](std::string error) { requests.finish(id, ticket, epoch.load(), std::move(error)); };
         auto* target = owner->actor.get();
         if (!claw::mayRunActorRequest(target, RE::TESForm::LookupByID<RE::Actor>(id), target->formID == id, target->IsDeleted()) ||
             !target->GetActorBase()) { fail("original actor reference is deleted or no longer owns its FormID"); return; }
-        auto* state = stateFor(target, true);
+        auto* state = stateFor(target, true, false); // Explicit manual policy never adopts a population default.
         if (!state) { fail("actor identity unavailable or reference/pin state limit reached"); return; }
         if (state->quarantined || !boundTo(*state, target)) { fail("actor assignment identity is quarantined"); return; }
+        if (operation != Operation::refresh) {
+            // A queued scan can create/adopt State after the native callback
+            // accepted this request but before this task gets its turn.
+            revokeSourceBootstrap(*state); state->adoptedDefault = false;
+        }
         state->latestRequest = {ticket, state->runtimeSerial};
         if (operation == Operation::assign) {
             const auto sex = target->GetActorBase()->GetSex() == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
@@ -579,7 +1031,10 @@ bool actorRequest(RE::Actor* actor, Operation operation, std::string presetName 
             if (!catalog.find(presetName, sex)) { fail("preset family does not match actor sex"); return; }
             state->preset = presetName; state->sex = sex; state->suppressed = false; state->link = {};
         } else if (operation == Operation::configureMorphLink) {
+            const auto actorSex = target->GetActorBase()->GetSex();
+            if (actorSex != RE::SEX::kMale && actorSex != RE::SEX::kFemale) { fail("actor has no readable NPC sex"); return; }
             const auto sex = target->GetActorBase()->GetSex() == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
+            if (requiredSex && *requiredSex != sex) { fail("morph family does not match the actor's readable NPC sex"); return; }
             if (!link.valid(sex)) { fail("invalid morph-to-morph profile for actor sex"); return; }
             if (!morphs) { fail("SKEE BodyMorph API is unavailable; previous link retained"); return; }
             try { link.capture([target](std::string_view name) { return morphs->GetBodyMorphs(skeeReference(target), name.data()); }); }
@@ -634,11 +1089,19 @@ float ownMorph(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString name)
     const auto value = state->cache.find(name.c_str());
     return value == state->cache.end() ? 0 : value->second;
 }
+float humanWeight(RE::StaticFunctionTag*, RE::Actor* actor) {
+    std::lock_guard lock(mutex); const auto* state = cachedState(actor);
+    return state && !state->quarantined ? state->humanWeight : -1.0F;
+}
+float beastWeight(RE::StaticFunctionTag*, RE::Actor* actor) {
+    std::lock_guard lock(mutex); const auto* state = cachedState(actor);
+    return state && !state->quarantined ? state->beastWeight : -1.0F;
+}
 bool clearRequest(RE::StaticFunctionTag*, RE::Actor* actor) { return actorRequest(actor, Operation::clear); }
 bool refreshRequest(RE::StaticFunctionTag*, RE::Actor* actor) { return actorRequest(actor, Operation::refresh); }
 bool configureMorphLink(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString profile,
     std::vector<RE::BSFixedString> sources, std::vector<RE::BSFixedString> targets, std::vector<float> gains, std::vector<float> caps) {
-    if (sources.empty() || sources.size() > 32 || targets.size() != sources.size() || gains.size() != sources.size() || caps.size() != sources.size()) return false;
+    if (sources.empty() || sources.size() > 128 || targets.size() != sources.size() || gains.size() != sources.size() || caps.size() != sources.size()) return false;
     claw::MorphLink link; link.profile = profile.c_str();
     for (std::size_t index = 0; index < sources.size(); ++index)
         link.rules.push_back({sources[index].c_str(), targets[index].c_str(), gains[index], caps[index]});
@@ -646,6 +1109,224 @@ bool configureMorphLink(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedStr
     return actorRequest(actor, Operation::configureMorphLink, {}, std::move(link));
 }
 bool disableMorphLink(RE::StaticFunctionTag*, RE::Actor* actor) { return actorRequest(actor, Operation::disableMorphLink); }
+bool configureMorphFamily(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString profileID) {
+    std::lock_guard lock(mutex);
+    const auto* profile = morphProfiles.find(profileID.c_str(), claw::Sex::male);
+    if (!profile) profile = morphProfiles.find(profileID.c_str(), claw::Sex::female);
+    if (!profile) return false;
+    return actorRequest(actor, Operation::configureMorphLink, {}, profile->link, profile->sex);
+}
+std::vector<RE::BSFixedString> morphFamilies(RE::StaticFunctionTag*, bool female) {
+    std::lock_guard lock(mutex); std::vector<RE::BSFixedString> result;
+    for (const auto& name : morphProfiles.names(female ? claw::Sex::female : claw::Sex::male)) result.emplace_back(name);
+    return result;
+}
+
+State* sourceCandidateCached(RE::Actor* actor, std::int32_t token, bool ready) {
+    if (!actor || token <= 0 || !enabled || !obodySourcePopulationEnabled || !morphs || !sourceProviderReady()) return nullptr;
+    const auto found = states.find(actor->formID);
+    if (found == states.end()) return nullptr;
+    auto& state = found->second;
+    return sourcePolicyAllows(state, actor) && boundTo(state, actor) && !state.quarantined && !state.suppressed && state.adoptedDefault && state.firstSeenBeast &&
+        !state.observedHuman && state.humanWeight < 0 && !state.sourceRevoked && !state.sourceClaimed && state.sourceAdvertised &&
+        state.sourceToken == static_cast<std::uint32_t>(token) && state.sourceWorld == epoch &&
+        state.sourceProviderEpoch == obodyProviderEpoch &&
+        state.sourceRuntime == state.runtimeSerial && state.sourceSex == state.sex && state.sourceProfile == state.link.profile &&
+        state.sourceRoot == state.lastRoot && state.status == Status::applied && (!ready || state.sourceReady) ? &state : nullptr;
+}
+
+bool enableOBodySourcePopulation(RE::StaticFunctionTag*, bool optIn) {
+    std::lock_guard lock(mutex);
+    if (optIn && (!enabled || !tasks || !morphs || !sourceProviderReady() ||
+        !morphProfiles.valid() || (!morphProfiles.defaultFor(claw::Sex::male) && !morphProfiles.defaultFor(claw::Sex::female)))) return false;
+    obodySourcePopulationEnabled = optIn;
+    if (!optIn) for (auto& [id, state] : states) { (void)id; if (state.sourceAdvertised) revokeSourceBootstrap(state); }
+    return true;
+}
+
+std::int32_t oBodySourceStatus(RE::StaticFunctionTag*) {
+#if defined(CLAW_OBODY_API_HEADER)
+    if (!obodyApiAvailable) return 0;
+    if (!enabled || !obodyApiReady) return 1;
+    if (!sourceProviderReady()) return 2;
+    std::lock_guard lock(mutex);
+    return obodySourcePopulationEnabled ? 4 : 3;
+#else
+    return 0;
+#endif
+}
+
+bool requestSourceBootstrap(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t token) {
+    std::lock_guard lock(mutex);
+    auto* state = sourceCandidateCached(actor, token, false);
+    if (!state || !tasks || state->sourceValidationPending || state->sourceReady) return false;
+    auto owner = pinActor(actor);
+    if (!owner) return false;
+    state->sourceValidationPending = true;
+    const auto world = epoch.load();
+    const auto runtime = state->runtimeSerial;
+    tasks->AddTask([owner = std::move(owner), token, world, runtime] {
+        std::lock_guard lock(mutex);
+        auto* actor = owner->actor.get();
+        if (world != epoch) return;
+        auto* state = sourceCandidateCached(actor, token, false);
+        if (!state || state->runtimeSerial != runtime || !state->sourceValidationPending) return;
+        state->sourceValidationPending = false;
+        if (!sourceBootstrapLive(actor, *state) || reinterpret_cast<std::uintptr_t>(actor->Get3D()) != state->sourceRoot) {
+            revokeSourceBootstrap(*state); return;
+        }
+        state->sourceReady = true;
+        sourceBootstrapEvent(actor, *state, true);
+    });
+    return true;
+}
+
+bool claimSourceBootstrap(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t token) {
+    std::lock_guard lock(mutex);
+    auto* state = sourceCandidateCached(actor, token, true);
+    if (!state) return false;
+    state->sourceClaimed = true; state->sourceReady = false; // One atomic lease claim, never an OBody/SKEE transaction.
+    return true;
+}
+
+bool physicsRegister(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation,
+    std::vector<RE::BSFixedString> names, RE::BSFixedString model, RE::BSFixedString evidence) {
+    if (!actor || generation < 0 || !tasks || !enabled || !model.c_str()[0] || !evidence.c_str()[0] ||
+        std::strlen(model.c_str()) > 160 || std::strlen(evidence.c_str()) > 1024) return false;
+    std::vector<std::string> ordered;
+    for (const auto& name : names) ordered.emplace_back(name.c_str());
+    if (!claw::validPhysicsNames(ordered)) return false;
+    std::lock_guard lock(mutex);
+    auto pin = pinActor(actor);
+    if (!pin || nextPhysicsRegistration == std::numeric_limits<std::uint64_t>::max()) return false;
+    const auto request = nextPhysicsRegistration++;
+    physicsRegistrationRequests.insert_or_assign(actor, request);
+    const auto token = epoch.load();
+    tasks->AddTask([pin = std::move(pin), generation, ordered = std::move(ordered),
+        model = std::string(model.c_str()), evidence = std::string(evidence.c_str()), token, request] {
+        std::lock_guard lock(mutex);
+        auto* target = pin->actor.get();
+        const auto pending = physicsRegistrationRequests.find(target);
+        if (pending == physicsRegistrationRequests.end() || pending->second != request) return;
+        physicsRegistrationRequests.erase(pending);
+        if (!enabled || token != epoch || !currentOwner(target) || !target->GetActorBase()) return;
+        auto* state = stateFor(target, true);
+        if (!state || state->quarantined || !boundTo(*state, target)) return;
+        if (!physicsBindings.contains(target->GetFormID()) && physicsBindings.size() >= 16) return;
+        const auto sex = target->GetActorBase()->GetSex();
+        if (sex != RE::SEX::kMale && sex != RE::SEX::kFemale) return;
+#if defined(CLAW_PHYSICS_MODEL_HEADER)
+        const auto& compiled = claw::physics::CompiledModel(sex == RE::SEX::kFemale);
+        if (compiled.identity != model || compiled.morphs != ordered) {
+            SKSE::log::warn("CLAW physics host/model identity or ordered morph names differ from compiled fit"); return;
+        }
+#endif
+        PhysicsBinding binding;
+        binding.actor = target->GetHandle(); binding.pointer = target;
+        binding.runtime = state->runtimeSerial; binding.world = token; binding.registration = request; binding.generation = generation;
+        binding.names = ordered; binding.model = model; binding.evidence = evidence;
+        binding.female = sex == RE::SEX::kFemale;
+        physicsBindings.insert_or_assign(target->GetFormID(), std::move(binding));
+        observePhysics(target);
+    });
+    return true;
+}
+
+bool physicsSetPopulation(RE::StaticFunctionTag*, bool optIn) {
+    std::lock_guard lock(mutex);
+    if (optIn && !enabled) return false;
+    physicsPopulationEnabled = optIn;
+    if (optIn) physicsPopulationBlocked.clear(); // Fresh explicit current-session qualification.
+    return true;
+}
+
+void physicsUnregister(RE::StaticFunctionTag*, RE::Actor* actor, bool retainForCleanup) {
+    if (!actor) return;
+    std::lock_guard lock(mutex);
+    physicsRegistrationRequests.erase(actor);
+    const auto found = physicsBindings.find(actor->formID);
+    if (found != physicsBindings.end() && found->second.pointer == actor) {
+        if (retainForCleanup) { found->second.active = false; found->second.ready = false; }
+        else physicsBindings.erase(found);
+    }
+}
+
+bool physicsActorCurrent(RE::StaticFunctionTag*, RE::Actor* actor) {
+    if (!actor || !enabled) return false;
+    std::lock_guard lock(mutex);
+    const auto found = physicsBindings.find(actor->formID);
+    const auto state = states.find(actor->formID);
+    return found != physicsBindings.end() && found->second.pointer == actor && found->second.world == epoch &&
+        found->second.condition != "identity" && found->second.condition != "provider" && state != states.end() &&
+        !state->second.quarantined && boundTo(state->second, actor) && state->second.runtimeSerial == found->second.runtime;
+}
+
+const PhysicsBinding* physicsSnapshot(RE::Actor* actor, std::int32_t generation, std::int32_t snapshot) {
+    if (!enabled || !actor || snapshot <= 0) return nullptr;
+    const auto found = physicsBindings.find(actor->formID);
+    if (found == physicsBindings.end()) return nullptr;
+    const auto& binding = found->second;
+    const auto state = states.find(actor->formID);
+    return binding.pointer == actor && binding.world == epoch && binding.ready && binding.generation == generation &&
+        binding.snapshot == static_cast<std::uint32_t>(snapshot) && state != states.end() && !state->second.quarantined &&
+        boundTo(state->second, actor) && state->second.runtimeSerial == binding.runtime ? &binding : nullptr;
+}
+
+bool physicsSnapshotCurrent(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation, std::int32_t snapshot) {
+    std::lock_guard lock(mutex); return physicsSnapshot(actor, generation, snapshot) != nullptr;
+}
+bool physicsRefitPending(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation, std::int32_t previousSnapshot) {
+    if (!actor || !enabled || previousSnapshot < 0) return false;
+    std::lock_guard lock(mutex);
+    const auto found = physicsBindings.find(actor->formID);
+    return found != physicsBindings.end() && found->second.pointer == actor && found->second.world == epoch &&
+        found->second.active && !found->second.ready && found->second.generation == generation &&
+        found->second.snapshot == static_cast<std::uint32_t>(previousSnapshot) && found->second.condition.empty();
+}
+void physicsAcknowledge(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation, std::int32_t snapshot) {
+    std::lock_guard lock(mutex);
+    if (physicsSnapshot(actor, generation, snapshot)) physicsBindings.at(actor->formID).delivered = true;
+}
+void physicsAcknowledgeLifecycle(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString condition) {
+    if (!actor) return;
+    std::lock_guard lock(mutex);
+    const auto found = physicsBindings.find(actor->formID);
+    if (found != physicsBindings.end() && found->second.pointer == actor && found->second.world == epoch &&
+        found->second.condition == condition.c_str()) found->second.delivered = true;
+}
+std::vector<float> physicsValues(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation, std::int32_t snapshot) {
+    std::lock_guard lock(mutex);
+    const auto* binding = physicsSnapshot(actor, generation, snapshot);
+    return binding ? binding->observation.published : std::vector<float>{};
+}
+float physicsWeight(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation, std::int32_t snapshot) {
+    std::lock_guard lock(mutex);
+    const auto* binding = physicsSnapshot(actor, generation, snapshot);
+    return binding ? binding->observation.publishedWeight : -1.0F;
+}
+std::vector<float> physicsCapsule(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation, std::int32_t snapshot, std::int32_t slot) {
+    std::lock_guard lock(mutex);
+    const auto* binding = physicsSnapshot(actor, generation, snapshot);
+#if defined(CLAW_PHYSICS_MODEL_HEADER)
+    if (binding && slot >= 0 && static_cast<std::size_t>(slot) < binding->capsules.size() &&
+        claw::physics::CompiledModel(binding->female).slots[slot].active) {
+        const auto& cap = binding->capsules[slot];
+        return {static_cast<float>(cap.p1[0]), static_cast<float>(cap.p1[1]), static_cast<float>(cap.p1[2]),
+            static_cast<float>(cap.p2[0]), static_cast<float>(cap.p2[1]), static_cast<float>(cap.p2[2]), static_cast<float>(cap.radius)};
+    }
+#else
+    (void)binding; (void)slot;
+#endif
+    return {};
+}
+RE::BSFixedString physicsModel(RE::StaticFunctionTag*) {
+#if defined(CLAW_PHYSICS_MODEL_HEADER)
+    return RE::BSFixedString(claw::physics::CompiledModel(false).identity);
+#else
+    return {};
+#endif
+}
+
 bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     constexpr auto script = "CLAWDistributionNative";
     vm->RegisterFunction("GetPresetNames", script, presetNames);
@@ -654,10 +1335,30 @@ bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("GetStatus", script, getStatus);
     vm->RegisterFunction("GetLastError", script, lastError);
     vm->RegisterFunction("GetOwnMorph", script, ownMorph);
+    vm->RegisterFunction("GetHumanWeight", script, humanWeight);
+    vm->RegisterFunction("GetBeastWeight", script, beastWeight);
     vm->RegisterFunction("ClearOwn", script, clearRequest);
     vm->RegisterFunction("Refresh", script, refreshRequest);
     vm->RegisterFunction("ConfigureMorphLink", script, configureMorphLink);
     vm->RegisterFunction("DisableMorphLink", script, disableMorphLink);
+    vm->RegisterFunction("ConfigureMorphFamily", script, configureMorphFamily);
+    vm->RegisterFunction("GetMorphFamilies", script, morphFamilies);
+    vm->RegisterFunction("EnableOBodySourcePopulation", script, enableOBodySourcePopulation);
+    vm->RegisterFunction("GetOBodySourceStatus", script, oBodySourceStatus);
+    vm->RegisterFunction("RequestSourceBootstrap", script, requestSourceBootstrap);
+    vm->RegisterFunction("ClaimSourceBootstrap", script, claimSourceBootstrap);
+    vm->RegisterFunction("RegisterActor", "CLAWPhysicsNative", physicsRegister);
+    vm->RegisterFunction("SetPopulationEnabled", "CLAWPhysicsNative", physicsSetPopulation);
+    vm->RegisterFunction("UnregisterActor", "CLAWPhysicsNative", physicsUnregister);
+    vm->RegisterFunction("ActorCurrent", "CLAWPhysicsNative", physicsActorCurrent);
+    vm->RegisterFunction("SnapshotCurrent", "CLAWPhysicsNative", physicsSnapshotCurrent);
+    vm->RegisterFunction("RefitPending", "CLAWPhysicsNative", physicsRefitPending);
+    vm->RegisterFunction("AcknowledgeSnapshot", "CLAWPhysicsNative", physicsAcknowledge);
+    vm->RegisterFunction("AcknowledgeLifecycle", "CLAWPhysicsNative", physicsAcknowledgeLifecycle);
+    vm->RegisterFunction("GetValues", "CLAWPhysicsNative", physicsValues);
+    vm->RegisterFunction("GetWeight", "CLAWPhysicsNative", physicsWeight);
+    vm->RegisterFunction("GetCapsule", "CLAWPhysicsNative", physicsCapsule);
+    vm->RegisterFunction("GetModelIdentity", "CLAWPhysicsNative", physicsModel);
     return true;
 }
 
@@ -672,7 +1373,22 @@ void exchange() {
     SKSE::log::info("SKEE body morph API {}", morphs ? "available" : "unavailable");
 }
 
-std::filesystem::path presetDirectory() {
+void exchangeOBodyReadiness() {
+    obodyApiReady = false;
+#if defined(CLAW_OBODY_API_HEADER)
+    OBody::API::SKSEMessages::RequestPluginInterface request{};
+    request.version = OBody::API::PluginAPIVersion::v1;
+    request.pluginInterface = &obodyAPI;
+    request.readinessEventListener = &obodyReadiness;
+    SKSE::GetMessagingInterface()->Dispatch(decltype(request)::type, &request, sizeof(request), "OBody");
+    obodyApiAvailable = obodyAPI != nullptr;
+    SKSE::log::info("OBody public readiness interface {}", obodyAPI ? "available" : "unavailable");
+#else
+    SKSE::log::info("OBody source bootstrap unavailable: optional public API SDK was not selected at build time");
+#endif
+}
+
+std::filesystem::path dataDirectory() {
     std::array<wchar_t, 32768> executable{};
 #if defined(CLAW_RUNTIME_SE)
     const auto length = GetModuleFileNameW(nullptr, executable.data(), static_cast<std::uint32_t>(executable.size()));
@@ -680,8 +1396,9 @@ std::filesystem::path presetDirectory() {
     const auto length = GetModuleFileName(nullptr, executable.data(), static_cast<std::uint32_t>(executable.size()));
 #endif
     if (!length || length >= executable.size()) throw std::runtime_error("cannot locate game executable directory");
-    return std::filesystem::path(std::wstring(executable.data(), length)).parent_path() / "Data" / claw::presetRelativePath;
+    return std::filesystem::path(std::wstring(executable.data(), length)).parent_path() / "Data";
 }
+std::filesystem::path presetDirectory() { return dataDirectory() / claw::presetRelativePath; }
 
 void notifyLoaded() {
     if (!tasks) return;
@@ -702,12 +1419,15 @@ void notifyLoaded() {
 void message(SKSE::MessagingInterface::Message* event) {
     using Type = SKSE::MessagingInterface;
     switch (event->type) {
-    case Type::kPostPostLoad: exchange(); break;
+    case Type::kPostPostLoad: exchange(); exchangeOBodyReadiness(); break;
     case Type::kPreLoadGame:
         enabled = false; ++epoch;
         {
             std::lock_guard lock(mutex);
             requests.clear(); // Pool keeps pins until main-task collection.
+            physicsBindings.clear(); physicsRegistrationRequests.clear();
+            physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
+            obodySourcePopulationEnabled = false;
         }
         break;
     case Type::kDataLoaded:
@@ -717,6 +1437,9 @@ void message(SKSE::MessagingInterface::Message* event) {
             catch (const std::exception& error) { catalog.clear(); SKSE::log::error("CLAW preset path: {}", error.what()); }
             for (const auto& error : catalog.diagnostics()) SKSE::log::error("{}: {}", error.source, error.reason);
             SKSE::log::info("CLAW catalog contains {} presets", catalog.size());
+            try { morphProfiles.loadFile(dataDirectory() / claw::morphProfilesRelativePath); }
+            catch (const std::exception& error) { SKSE::log::error("CLAW morph family catalog: {}", error.what()); }
+            if (!morphProfiles.valid()) SKSE::log::warn("CLAW morph family catalog: {}", morphProfiles.error());
         }
         if (auto* source = RE::ScriptEventSourceHolder::GetSingleton()) {
             source->AddEventSink<RE::TESObjectLoadedEvent>(&events);
@@ -724,6 +1447,9 @@ void message(SKSE::MessagingInterface::Message* event) {
         }
         if (auto* source = SKSE::GetNiNodeUpdateEventSource()) source->AddEventSink(&events);
         if (auto* source = SKSE::GetModCallbackEventSource()) source->AddEventSink(&events);
+#if defined(CLAW_PHYSICS_MODEL_HEADER)
+        startPhysicsWorker();
+#endif
         timer = std::jthread([](std::stop_token stop) {
             while (!stop.stop_requested()) { std::this_thread::sleep_for(std::chrono::seconds(2)); if (!stop.stop_requested()) queueScan(); }
         });
@@ -732,7 +1458,9 @@ void message(SKSE::MessagingInterface::Message* event) {
         enabled = false; ++epoch;
         {
             std::lock_guard lock(mutex);
-            states.clear(); requests.clear(); saveNamespace = newNamespace(); nextIdentity = 1;
+            states.clear(); requests.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = newNamespace(); nextIdentity = 1;
+            physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
+            obodySourcePopulationEnabled = false;
         }
         [[fallthrough]];
     case Type::kPostLoadGame:

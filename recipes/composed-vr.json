@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "name": "canonical-xp32-chest-root-neutral-weight-and-anatomical-split-v1",
+  "threshold": 0.5,
+  "comparedThresholds": [0.25, 0.4, 0.5, 0.6, 0.75],
+  "selectionRationale": "Use the measured0.5 Head-descendant ownership boundary, preserving all BreastSize support and every original triangle material/UV. Compose the selected collar/P1/belly/shoulder/localized-chest carrier with actual-human-calibrated independent neutral weight endpoints, then public MorphBench additive+weight+declared-pose bounds, then exactly remapped anatomical head/torso pieces. Only this selected seam and family is emitted. No skeleton replacement or live install.",
+  "inputs": {
+    "femaleNifSha256": "d04aced0b9204c09fe2a710df2974f0000a2fc5bbcd43070f7b845b0f8ff1c33",
+    "femaleHighNifSha256": "1a61d90383af117e74f2399251a05d3b4e557b261848ad84e8e841530093db49",
+    "femaleTriSha256": "18840924604e974d166ab4f489311e66bcbff1852427eb0924b1242909099b15",
+    "maleNifSha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef",
+    "maleHighNifSha256": "d623b6f817d88d9cbcc4f85dd734658a86ccfaaf897078ea43c24a4f14b98169",
+    "maleTriSha256": "ff1a66d5b94eb240f154977721af9adc8890615de71118349d4e03bfca540729",
+    "skeletonSha256": "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0"
+  }
+}

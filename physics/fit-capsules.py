@@ -26,6 +26,109 @@ MORPHS = ("CLAWHeadEarSize", "CLAWHeadEarTilt", "CLAWHeadMuzzleLong",
           "CLAWHeadMuzzleWide", "CLAWHeadSize", "CLAWTailFluff",
           "CLAWTailLength", "CLAWTailLift", "CLAWTorsoFlankWidth", "CLAWTorsoGirth")
 BUNDLE_COUNTS = (8, 3, 8, 3, 5, 2, 1, 0, 2)
+P1_NODES = ('NPC L Breast P1','NPC R Breast P1')
+CONTACT_NODES = NODES+P1_NODES
+
+
+def triangle_regions(shape, skeleton, records, nodes=NODES):
+    """Whole mixed faces, uniquely assigned by average actual skin influence.
+
+    The ownership threshold only selects which faces touch the requested ear/
+    tail anatomy. Every vertex of a touching face is transformed by *all* its
+    weights, including head/torso vertices across the boundary. No boundary
+    face is silently discarded. Owners without vertices can still own faces.
+    """
+    vertices=finite_points(shape.verts); names=list(shape.bone_weights)
+    weights=np.zeros((len(vertices),len(names)))
+    for j,name in enumerate(names):
+        for vertex,weight in shape.bone_weights[name]:weights[vertex,j]+=weight
+    sums=weights.sum(axis=1)
+    if not np.isfinite(weights).all() or weights.min()<0 or np.any(sums<=0):raise ValueError("Invalid full skin weights")
+    normalized=weights/sums[:,None]
+    transforms=np.einsum('vb,bjk->vjk',normalized,np.asarray([
+        _matrix(skeleton.nodes[name].global_transform)@_matrix(shape.get_shape_skin_to_bone(name))@_matrix(shape.global_to_skin)
+        for name in names]))
+    world=np.einsum('vjk,vk->vj',transforms,np.column_stack([vertices,np.ones(len(vertices))]))[:,:3]
+    target=np.column_stack([weights[:,names.index(node)] if node in names else np.zeros(len(vertices)) for node in nodes])
+    dominant=weights.argmax(axis=1)
+    selected=np.array([names[int(i)] in nodes and weights[v,int(i)]>=.5 for v,i in enumerate(dominant)])
+    for node in P1_NODES:
+        if node not in nodes or node not in names:continue
+        side=float(skeleton.nodes[node].global_transform.translation[0])
+        if abs(side)<1e-8:raise ValueError('P1 side node has no explicit rest X sign')
+        selected|=(weights[:,names.index(node)]>1e-6)&(world[:,0]*side>0)
+    faces=np.asarray(shape.tris,dtype=int).reshape(-1,3)
+    face_ids=np.flatnonzero(selected[faces].any(axis=1)); selected_faces=faces[face_ids]
+    ownership=np.argmax(target[selected_faces].mean(axis=1),axis=1)
+    fields={}
+    for (shape_name,morph,vertex),record in records.items():
+        if shape_name!=shape.name:continue
+        delta=fields.setdefault(morph,np.zeros_like(world))
+        delta[vertex]=transforms[vertex,:3,:3]@(np.asarray(record.packed)*record.scale)
+    result={}
+    for owner,node in enumerate(nodes):
+        local_faces=selected_faces[ownership==owner]
+        if not len(local_faces):continue
+        ids=np.unique(local_faces.reshape(-1)); mapping={int(v):i for i,v in enumerate(ids)}
+        inverse=np.linalg.inv(_matrix(skeleton.nodes[node].global_transform))
+        points=(np.column_stack([world[ids],np.ones(len(ids))])@inverse.T)[:,:3]
+        deltas={name:delta[ids]@inverse[:3,:3].T for name,delta in fields.items() if np.max(abs(delta[ids]))>1e-12}
+        result[node]=(points,deltas,{"shape":shape.name,"vertices":ids.tolist(),
+            "fullRegionTriangles":[[mapping[int(v)] for v in face] for face in local_faces],
+            "sourceTriangleIndices":face_ids[ownership==owner].tolist(),
+            "mixedOwnershipTrianglesIncluded":int(np.sum(~selected[local_faces].all(axis=1))),
+            "boundaryTrianglesExcluded":0,"packedWeightSumMaximumError":float(abs(sums[ids]-1).max()),
+            "restLBSMatricesSha256":hashlib.sha256(transforms[ids].tobytes()).hexdigest(),
+            "selectionRule":"actual positive side-matched minority P1 skin support" if node in P1_NODES else "dominant target influence >=0.5"})
+    return result
+
+
+def write_cpp_model(report,path):
+    """Emit the exact schema3 evidence as a compiled immutable native model."""
+    def vector(points):return '{'+','.join('{'+','.join(format(float(v),'.17g') for v in p)+'}' for p in points)+'}'
+    lines=['#pragma once','#include "claw/PhysicsFit.h"','namespace claw::physics {',
+           'inline const Model& CompiledModel(bool isFemale) {']
+    for sex in ('male','female'):
+        lines.append('static const Model '+sex+' = [] { Model m;')
+        lines.append('m.identity='+json.dumps(report['modelIdentity'])+';')
+        lines.append('m.morphs={'+','.join(json.dumps(n) for n in report['morphs'])+'};')
+        lines.append('m.contactPasses='+str(report.get('contactPasses',0))+';')
+        lines.append('m.weightDependent='+str(report.get('weightDependent',False)).lower()+';')
+        for slot in report['slots']:
+            if slot.get(sex) is None:
+                lines.append('{ Slot s; s.node='+json.dumps(slot['node'])+'; s.active=false; m.slots.push_back(std::move(s)); }');continue
+            model=report['regions'][sex+'/'+slot['node']]; ids=slot[sex]['partitionIndices']
+            lines.append('{ Slot s; s.node='+json.dumps(slot['node'])+'; s.points='+vector(np.asarray(model['points'])[ids])+';')
+            if 'weightDeltas' in model:lines.append('s.weightDeltas='+vector(np.asarray(model['weightDeltas'])[ids])+';')
+            for name,delta in model['deltas'].items():
+                values=np.asarray(delta)[ids]
+                if np.max(abs(values))>1e-12:lines.append('s.fields.push_back({'+str(report['morphs'].index(name))+','+vector(values)+'});')
+            if report.get('contactPasses',0):
+                mapping={int(v):i for i,v in enumerate(ids)}
+                faces=[[mapping[int(v)] for v in model['faces'][i]] for i in slot[sex]['triangleIndices']]
+                lines.append('s.triangles={'+','.join('{'+','.join(str(v) for v in face)+'}' for face in faces)+'};')
+            if 'axisHints' in model:
+                lines.append('s.prescribedAxis=true; s.axis='+vector([model['axisHints'][slot['partition']]])[1:-1]+';')
+                for name,values in model.get('axisDeltas',{}).items():
+                    lines.append('s.axisFields.push_back({'+str(report['morphs'].index(name))+','+vector([values[slot['partition']]])+'});')
+            lines.append('m.slots.push_back(std::move(s)); }')
+        lines.append('return m; }();')
+    lines.extend(['return isFemale ? '+ 'female : male;','}','}'])
+    path.write_text('\n'.join(lines)+'\n',encoding='utf-8')
+
+
+def write_cpp_fixtures(report,path):
+    def values(row):return '{'+','.join(format(float(v),'.17g') for v in row)+'}'
+    lines=['#pragma once','#include "claw/PhysicsFit.h"','namespace claw::physics {',
+        'struct NumericFixture { bool female; std::string identity; std::vector<double> values; std::vector<Capsule> capsules; double weight{}; };',
+        'inline const std::vector<NumericFixture>& CompiledFixtures() { static const std::vector<NumericFixture> result = {']
+    for fixture in report['fixtures']:
+        for sex in ('male','female'):
+            caps='{'+','.join('{'+values(c['p1'])+','+values(c['p2'])+','+format(c['radius'],'.17g')+'}' for c in fixture['sexes'][sex]['capsules'])+'}'
+            lines.append('{'+str(sex=='female').lower()+','+json.dumps(report['modelIdentity'])+','+
+                values([fixture['values'].get(name,0.) for name in report['morphs']])+','+caps+','+format(fixture.get('weight',0.),'.17g')+'},')
+    lines.extend(['}; return result; }','}'])
+    path.write_text('\n'.join(lines)+'\n',encoding='utf-8')
 
 
 def finite_points(value):
@@ -294,27 +397,276 @@ def safe_output(path, inputs):
     return out
 
 
+def solid_tail(regions,sex,skeleton,count,prescribe=False):
+    """Keep opposite tail surfaces together in axial solid sections.
+
+    A whole connected tail is partitioned before assigning its sections to the
+    nearest existing XP32 node. This avoids clustering separate circumference
+    patches into outward-facing spheres. A section's tangent is derived from
+    neighboring section centres; its signed TRI tangent field comes from local
+    affine regression. Every actual support point still sets the enclosing
+    radius, so direction regression never discards a skin residual.
+    """
+    import contact_fit as contact
+    chunks=[]; fields=[]; faces=[];offset=0;names=set();source=[]
+    for node in NODES[4:]:
+        region=regions.pop(sex+'/'+node,None)
+        if region is None:continue
+        frame=_matrix(skeleton.nodes[node].global_transform);p=np.asarray(region['points'])
+        chunks.append((np.column_stack([p,np.ones(len(p))])@frame.T)[:,:3])
+        fields.append({n:np.asarray(v)@frame[:3,:3].T for n,v in region['deltas'].items()});names.update(region['morphs'])
+        faces.extend((np.asarray(region['faces'])+offset).tolist());offset+=len(p);source.extend(region['sources'])
+    p=np.concatenate(chunks);names=sorted(names)
+    ds={n:np.concatenate([d.get(n,np.zeros_like(points)) for points,d in zip(chunks,fields)]) for n in names}
+    groups,tri_groups=contact.partitions(p,faces,count,'strips-0');centres=np.asarray([p[g].mean(axis=0) for g in groups])
+    positions=np.asarray([list(skeleton.nodes[node].global_transform.translation) for node in NODES[4:]])
+    owners=np.argmin(np.sum((centres[:,None,:]-positions[None,:,:])**2,axis=2),axis=1)
+    face_array=np.asarray(faces,dtype=int)
+    for owner,node in enumerate(NODES[4:]):
+        assigned=np.flatnonzero(owners==owner)
+        if not len(assigned):continue
+        chosen=np.unique(np.concatenate([groups[i] for i in assigned]));mapping={int(v):i for i,v in enumerate(chosen)}
+        inverse=np.linalg.inv(_matrix(skeleton.nodes[node].global_transform))
+        local=(np.column_stack([p[chosen],np.ones(len(chosen))])@inverse.T)[:,:3]
+        deltas={n:ds[n][chosen]@inverse[:3,:3].T for n in names}
+        part=[[mapping[int(v)] for v in groups[i]] for i in assigned]
+        owned_faces=[];face_groups=[];axes=[];axis_fields={n:[] for n in names}
+        for i in assigned:
+            tri_ids=tri_groups[i];start=len(owned_faces)
+            owned_faces.extend([[mapping[int(v)] for v in face] for face in face_array[tri_ids]])
+            face_groups.append(list(range(start,len(owned_faces))))
+            direction=centres[min(len(centres)-1,i+1)]-centres[max(0,i-1)]
+            direction=inverse[:3,:3]@direction;direction/=np.linalg.norm(direction);axes.append(direction.tolist())
+            local_ids=np.asarray(part[len(axes)-1]);x=np.column_stack([local[local_ids]-local[local_ids].mean(axis=0),np.ones(len(local_ids))])
+            for name in names:
+                affine=np.linalg.lstsq(x,deltas[name][local_ids],rcond=1e-8)[0]
+                axis_fields[name].append((direction@affine[:3]).tolist())
+        regions[sex+'/'+node]={"points":local.tolist(),"deltas":{n:v.tolist() for n,v in deltas.items()},
+            "faces":owned_faces,"partitions":part,"triangleGroups":face_groups,"morphs":names,"padding":1e-4,
+            "sources":source,
+            "partitionChoice":"whole-tail-axial-solid-sections-nearest-existing-XP32-node",
+            "tangentRule":"current deformed support PCA"}
+        if prescribe:
+            regions[sex+'/'+node].update(axisHints=axes,axisDeltas=axis_fields,
+                tangentRule="neighboring neutral section centroids with local signed affine TRI tangent regression; radius retains all actual residuals")
+
+
+def build_current(args,api,records_by_sex,skeleton,snapshots,out):
+    import contact_fit as contact
+    counts=tuple(int(x) for x in args.current_counts.split(',')) if args.current_counts else (8,3,8,3,5,2,1,0,2)
+    if len(counts)!=len(NODES) or min(counts)<0 or sum(counts)>128:raise ValueError("Supply nine current counts, total <=128")
+    p1_counts=tuple(int(x) for x in args.female_p1_counts.split(','))
+    if len(p1_counts)!=2 or min(p1_counts)<0 or sum(counts)+sum(p1_counts)>128:raise ValueError('Female P1 counts require two nonnegative counts within total128 budget')
+    count_map=dict(zip(CONTACT_NODES,counts+p1_counts));weight_dependent=bool(args.male_nif_1 or args.female_nif_1)
+    if weight_dependent and not(args.male_nif_1 and args.female_nif_1):raise ValueError('Independent weight requires both sex endpoint1 NIFs')
+    if args.solid_tail and weight_dependent:raise ValueError('Experimental solid-tail regrouping is not weight-qualified')
+    if args.solid_tail and args.tail_axis=='tangent' and args.contact_passes:raise ValueError('Prescribed-axis contact optimization is not a supported family')
+    report={"schemaVersion":3,"frame":"node-local-game-units","domain":[0.,1.],
+            "status":"offline-current-vector-triangle-fit","runtimeQualified":False,"gameValidated":False,
+            "evaluator":"deform-actual-normalized-rest-LBS-support-then-PCA-refit-v1",
+            "ownership":"Each face touching a >=.5 dominant ear/tail vertex is owned once by mean full target skin influence; all three full-LBS vertices retained",
+            "sourceInputs":[{"path":str(p),"bytes":len(b),"sha256":hashlib.sha256(b).hexdigest()} for p,b in snapshots.items()],
+            "regions":{},"slots":[],"omittedNodes":[],"geometryChangesWithMorphVector":True,
+            "proofScope":"For each current vector, every support vertex and assigned complete mixed skin triangle is enclosed by its freshly fitted convex capsule. This is an algebraic current-state containment property, not an affine full-box envelope or animated-skin proof.",
+            "excluded":"fur/blend layers, faces with no dominant ear/tail vertex, animation/pose/actor or bone scale, engine contact and Havok"}
+    report.update(weightDependent=weight_dependent,weightDomain=[0.,1.],
+        weightFormula='P0 + independentActorWeight*(P1-P0) + sum(actualEffectiveMorph*absoluteTRIdelta)',
+        coveredShapes=args.skin_shapes.split(','),femaleP1Contacts=bool(sum(p1_counts)),endpointChecks=[])
+    report['configuration']={'requestedEarTailCounts':list(counts),'requestedFemaleP1Counts':list(p1_counts),
+        'partitionMethod':args.partition_method,'solidTail':args.solid_tail,'tailAxis':args.tail_axis,
+        'contactPasses':args.contact_passes,'fixtureSet':args.fixture_set,'signedDiagnostics':args.signed_diagnostics,
+        'independentWeightSamples':[0.,.5,1.] if weight_dependent else [0.],
+        'requireDistinctWeightEndpoints':args.require_distinct_weight_endpoints}
+    if args.contact_passes:
+        report.update(contactPasses=args.contact_passes,evaluator='deform-rest-LBS-support-then-symmetric-triangle-contact-minimax-RMS-v3',
+            proofScope='Finite symmetric skin/capsule-surface minimax/RMS optimization at each actual vector. Explicit measured undercoverage and separation replace unconditional convex containment. No continuous Hausdorff, animation or game-contact proof.',
+            constructionObjective={'maximumSampleDistanceWeight':1.,'rmsSampleDistanceWeight':.2,'coordinatePasses':args.contact_passes,'objectiveImprovementEpsilon':1e-7,
+                'axisComponentTieEpsilon':1e-10,'pcaVarianceRelativeTieEpsilon':1e-12,'targetSampleP95GameUnits':1.,'targetIsNotAcceptanceThreshold':True})
+    for sex in ('male','female'):
+        mesh=api.NifFile(str(getattr(args,sex+'_nif'))); chunks={node:[] for node in CONTACT_NODES}
+        mesh1=api.NifFile(str(getattr(args,sex+'_nif_1'))) if weight_dependent else None
+        chosen_nodes=NODES+tuple(n for n in P1_NODES if sex=='female' and count_map[n])
+        weight_chunks={node:[] for node in CONTACT_NODES}
+        for shape in args.skin_shapes.split(','):
+            if shape not in mesh.shape_dict:raise ValueError('Explicit skin shape missing: '+shape)
+            selected=triangle_regions(mesh.shape_dict[shape],skeleton,records_by_sex[sex],chosen_nodes)
+            other=triangle_regions(mesh1.shape_dict[shape],skeleton,records_by_sex[sex],chosen_nodes) if mesh1 is not None else selected
+            if set(selected)!=set(other):raise ValueError('Weight endpoint changes triangle ownership')
+            for node,row in selected.items():
+                endpoint=other[node]
+                if row[2]['vertices']!=endpoint[2]['vertices'] or row[2]['fullRegionTriangles']!=endpoint[2]['fullRegionTriangles'] or row[2]['restLBSMatricesSha256']!=endpoint[2]['restLBSMatricesSha256']:
+                    raise ValueError('Weight endpoint changed topology or actual normalized rest skin matrices')
+                if set(row[1])!=set(endpoint[1]) or any(not np.array_equal(row[1][name],endpoint[1][name]) for name in row[1]):
+                    raise ValueError('Weight endpoint changed absolute TRI skin field')
+                chunks[node].append(row);weight_chunks[node].append(endpoint[0]-row[0])
+                report['endpointChecks'].append({'sex':sex,'shape':shape,'node':node,'vertices':len(row[0]),
+                    'sameTopologyAndRestLBSMatrices':True,'sameAbsoluteTRIFields':True,'maximumWeightDisplacement':float(np.linalg.norm(endpoint[0]-row[0],axis=1).max())})
+        for node,rows in chunks.items():
+            if not rows:continue
+            p=np.concatenate([row[0] for row in rows]); names=sorted({n for row in rows for n in row[1]})
+            d={name:np.concatenate([row[1].get(name,np.zeros_like(row[0])) for row in rows]) for name in names}
+            faces=[]; offset=0
+            for points,_,source in rows:
+                faces.extend((np.asarray(source['fullRegionTriangles'])+offset).tolist()); offset+=len(points)
+            count=count_map[node]
+            if count==0:raise ValueError("Current counts omit a face-bearing node: "+node)
+            partition,groups=contact.partitions(p,faces,count)
+            choices=[]
+            if args.partition_method=='auto':
+                for method in ('compact','strips-0','strips-1','strips-2'):
+                    ids,tri_ids=contact.partitions(p,faces,count,method)
+                    caps=[contact.capsule(p[group]) for group in ids]
+                    measure=contact.surface_metrics(p,faces,caps)
+                    score=measure['capsuleToSkinP95']+.25*measure['capsuleToSkinMaxSampled']
+                    choices.append((score,method,ids,tri_ids))
+                _,method,partition,groups=min(choices,key=lambda row:row[0])
+            elif args.partition_method!='compact':
+                partition,groups=contact.partitions(p,faces,count,args.partition_method)
+            report['regions'][sex+'/'+node]={"points":p.tolist(),"deltas":{n:v.tolist() for n,v in d.items()},
+                "faces":faces,"partitions":partition,"triangleGroups":groups,"morphs":names,"padding":1e-4,
+                "sources":[row[2] for row in rows],"partitionChoice":method if choices else args.partition_method,
+                "partitionScores":[{'score':row[0],'method':row[1]} for row in choices],"contactPasses":args.contact_passes}
+            if weight_dependent:report['regions'][sex+'/'+node]['weightDeltas']=np.concatenate(weight_chunks[node]).tolist()
+    if args.solid_tail:
+        for sex in ('male','female'):solid_tail(report['regions'],sex,skeleton,sum(counts[4:]),args.tail_axis=='tangent')
+        for region in report['regions'].values():region['contactPasses']=args.contact_passes
+    actual=sorted({name for region in report['regions'].values() for name in region['morphs']})
+    if len(actual)>32:raise ValueError("Current model has more than 32 actual dependencies")
+    report['morphs']=actual
+    for node in CONTACT_NODES:
+        pair=[report['regions'].get(sex+'/'+node) for sex in ('male','female')]
+        if pair[0] is None or pair[1] is None:
+            if pair==[None,None]:
+                if node in P1_NODES and count_map[node]:raise ValueError('Requested P1 has no actual body-skin region: '+node)
+                report['omittedNodes'].append({"node":node,"reason":"No touching skin face assigned by mean influence; not a silently missing source triangle"});continue
+            if not(node in P1_NODES and pair[0] is None and pair[1] is not None):raise ValueError("Unsupported sex-specific current-vector region layout")
+        if pair[0] is not None and len(pair[0]['partitions'])!=len(pair[1]['partitions']):raise ValueError("Sex-specific partition count")
+        for i in range(len(pair[1]['partitions'])):
+            report['slots'].append({"node":node,"partition":i,"sexMask":"female" if pair[0] is None else "both",**{sex:None if region is None else {"partitionIndices":region['partitions'][i],"triangleIndices":region['triangleGroups'][i]}
+                for sex,region in zip(('male','female'),pair)}})
+    canonical=json.dumps({k:report[k] for k in ('evaluator','morphs','regions','slots','weightDependent')},sort_keys=True,separators=(',',':')).encode()
+    report['modelIdentity']='CLAW.Physics.CurrentVector.'+hashlib.sha256(canonical).hexdigest()
+    states=[('neutral',{}),('all-1',dict.fromkeys(actual,1.)),('mixed-035',dict.fromkeys(actual,.35)),
+            ('alternating',{n:float(i%2) for i,n in enumerate(actual)})]
+    if args.fixture_set=='full':
+        states.extend((name+'-1',{name:1.}) for name in actual)
+        rng=np.random.default_rng(20261026)
+        states.extend(('heldout-'+str(i),dict(zip(actual,row.tolist()))) for i,row in enumerate(rng.random((6,len(actual)))))
+    report['fixtureSet']=args.fixture_set
+    states.append(('return-neutral',{})); fixtures=[]
+    weighted_states=[(label,values,weight) for weight in ([0.,.5,1.] if weight_dependent else [0.]) for label,values in states]
+    for label,values,weight in weighted_states:
+        entry={"name":label,"values":values,"weight":weight,"sexes":{}}
+        for sex in ('male','female'):
+            caps=[]; metrics={}; maxoutside=0.; world_points=[];world_faces=[];world_caps=[];world_offset=0;bundles={}
+            for node in CONTACT_NODES:
+                region=report['regions'].get(sex+'/'+node)
+                if region is None:continue
+                selected={n:values.get(n,0.) for n in region['morphs']}; points=contact.deform(region,selected,weight)
+                bundle=contact.evaluate(region,selected,weight);bundles[node]=bundle
+                outside=float(contact.signed_capsules(points,bundle).max());maxoutside=max(maxoutside,outside)
+                if outside>1e-8 and not args.contact_passes:raise ValueError("Current-vector containment failed")
+                if label in ('neutral','all-1','mixed-035','alternating'):
+                    metrics[node]=contact.surface_metrics(points,region['faces'],bundle)
+                    frame=_matrix(skeleton.nodes[node].global_transform)
+                    world_points.extend((np.column_stack([points,np.ones(len(points))])@frame.T)[:,:3])
+                    world_faces.extend((np.asarray(region['faces'])+world_offset).tolist());world_offset+=len(points)
+                    for cap in bundle:
+                        world_caps.append({"p1":(frame@np.r_[cap['p1'],1])[:3].tolist(),
+                            "p2":(frame@np.r_[cap['p2'],1])[:3].tolist(),"radius":cap['radius']*float(skeleton.nodes[node].global_transform.scale)})
+            if world_faces and args.signed_diagnostics:
+                from contact_diagnostics import signed_witnesses
+                details=signed_witnesses(world_points,world_faces,world_caps);global_surface=details.pop('surfaceMetrics')
+                global_surface['signedDiagnostics']=details
+            else:global_surface=contact.surface_metrics(world_points,world_faces,world_caps) if world_faces else None
+            caps=[bundles[slot['node']][slot['partition']] if slot.get(sex) is not None else {'p1':[0.,0.,0.],'p2':[0.,0.,0.],'radius':0.} for slot in report['slots']]
+            entry['sexes'][sex]={"capsules":caps,"worstSupportOutside":maxoutside,"surface":metrics,
+                "wholeSelectedSurface":global_surface,"activeSlots":[i for i,slot in enumerate(report['slots']) if slot.get(sex) is not None],
+                "regionSurfaceLimit":"Regional seams/endcaps may be hidden by neighboring node capsules; use wholeSelectedSurface for union fit."}
+        fixtures.append(entry)
+    report['returnNeutralChecks']=[]
+    for weight in ([0.,.5,1.] if weight_dependent else [0.]):
+        for sex in ('male','female'):
+            neutral=next(f['sexes'][sex]['capsules'] for f in fixtures if f['name']=='neutral' and f['weight']==weight)
+            high=next(f['sexes'][sex]['capsules'] for f in fixtures if f['name']=='all-1' and f['weight']==weight)
+            returned=next(f['sexes'][sex]['capsules'] for f in fixtures if f['name']=='return-neutral' and f['weight']==weight)
+            if neutral!=returned:raise ValueError('Return to neutral changed current-vector geometry')
+            report['returnNeutralChecks'].append({'sex':sex,'weight':weight,'identicalNeutralCapsules':True,
+                'radiiReducedOnReturn':sum(h['radius']>n['radius']+1e-8 for h,n in zip(high,neutral)),
+                'radiiIncreasedOnReturn':sum(h['radius']<n['radius']-1e-8 for h,n in zip(high,neutral)),
+                'inactiveSlots':sum(c['radius']==0 for c in neutral)})
+    report['fixtures']=fixtures; report['surfaceFitAccepted']=False
+    report['surfaceAcceptanceNote']='Measured finite sampled distances are retained; engine acceptance and explicit anatomical tolerances remain required.'
+    for p,b in snapshots.items():
+        if p.read_bytes()!=b:raise ValueError("Input changed during current-vector fit: "+str(p))
+    out.mkdir(parents=True)
+    (out/'fitted-capsules.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
+    write_cpp_model(report,out/'physics-fit-model.h')
+    write_cpp_fixtures(report,out/'physics-fit-fixtures.h')
+    (out/'runtime-fixtures.json').write_text(json.dumps({"modelIdentity":report['modelIdentity'],"morphs":actual,
+        "nodes":[slot['node'] for slot in report['slots']],"fixtures":fixtures},indent=2)+'\n',encoding='utf-8')
+    print(json.dumps({"status":report['status'],"slots":len(report['slots']),"morphs":len(actual),"output":str(out)}))
+    return 0
+
+
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     for sex in ("male", "female"):
         parser.add_argument("--"+sex+"-nif", type=Path, required=True)
+        parser.add_argument("--"+sex+"-nif-1", type=Path,help='Distinct reviewed high-weight endpoint; requires matching other sex endpoint')
         parser.add_argument("--"+sex+"-tri", type=Path, required=True)
     parser.add_argument("--skeleton", type=Path, required=True)
     parser.add_argument("--pynifly", type=Path, help="Installed PyNifly addon directory (read only)")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--bundles", action="store_true", help="Explicit 32-slot fitted bundle candidate; never changes the legacy eight-slot model")
+    parser.add_argument("--current-vector",action="store_true",help="Schema3 exact current-vector refit; separate native model, not affine Papyrus input")
+    parser.add_argument("--current-counts",help="Nine comma-separated requested triangle group counts; total <=128")
+    parser.add_argument("--partition-method",default='compact',choices=['auto','compact','strips-0','strips-1','strips-2'])
+    parser.add_argument("--solid-tail",action='store_true',help='Partition the connected tail into solid axial sections before node assignment')
+    parser.add_argument("--tail-axis",default='pca',choices=['pca','tangent'],help='Current PCA or experimental signed TRI section tangent for solid tail')
+    parser.add_argument("--skin-shapes",default='body,head',help='Explicit comma-separated bound skin shapes; include anatomical head split pieces')
+    parser.add_argument("--contact-passes",type=int,default=0,choices=range(9),help='Symmetric current-vector contact optimization passes, rather than an enclosing capsule objective')
+    parser.add_argument("--fixture-set",default='full',choices=['full','compact'],help='Compact four-state trial or full per-field/random/return numeric fixtures')
+    parser.add_argument("--female-p1-counts",default='0,0',help='Explicit female-only left,right P1 body-skin capsule counts within total128 budget')
+    parser.add_argument("--signed-diagnostics",action='store_true',help='Retain oriented nearest-face signed distributions and exact worst witnesses with explicit sign limits')
+    parser.add_argument("--contact-recipe",type=Path,help='Explicit development contact recipe; command-line values override its defaults')
+    parser.add_argument("--require-distinct-weight-endpoints",action='store_true')
     args=parser.parse_args(argv)
     try:
+        if args.contact_recipe is not None:
+            recipe=json.loads(args.contact_recipe.read_bytes())
+            if recipe.get('schemaVersion')!=1 or recipe.get('weightDomain')!=[0.,1.] or recipe.get('morphDomain')!=[0.,1.]:raise ValueError('Unsupported contact recipe domains')
+            provided=list(sys.argv[1:] if argv is None else argv)
+            options={'skinShapes':('skin_shapes',lambda v:','.join(v)),
+                'currentCounts':('current_counts',lambda v:','.join(str(x) for x in v)),
+                'femaleP1Counts':('female_p1_counts',lambda v:','.join(str(x) for x in v)),
+                'partitionMethod':('partition_method',str),'contactPasses':('contact_passes',int),
+                'fixtureSet':('fixture_set',str),'signedDiagnostics':('signed_diagnostics',bool),
+                'requireDistinctWeightEndpoints':('require_distinct_weight_endpoints',bool)}
+            for key,(attribute,convert) in options.items():
+                option='--'+attribute.replace('_','-')
+                if key in recipe and not any(value==option or value.startswith(option+'=') for value in provided):setattr(args,attribute,convert(recipe[key]))
+            if args.contact_passes not in range(9) or args.fixture_set not in ('full','compact') or args.partition_method not in ('compact','auto','strips-0','strips-1','strips-2'):raise ValueError('Unsupported contact recipe options')
+        if args.require_distinct_weight_endpoints:
+            for sex in ('male','female'):
+                endpoint=getattr(args,sex+'_nif_1')
+                if endpoint is None or endpoint.read_bytes()==getattr(args,sex+'_nif').read_bytes():raise ValueError('Distinct reviewed '+sex+' low/high weight endpoints required')
         sys.path.insert(0, str(ROOT/"scripts"))
         import breast_rig, tri_patch
         api, _, addon=breast_rig.load_pynifly(args.pynifly)
         paths=[args.male_nif,args.male_tri,args.female_nif,args.female_tri,args.skeleton,
                Path(__file__), ROOT/"scripts/breast_rig.py", ROOT/"scripts/tri_patch.py",
                addon/"NiflyDLL.dll", addon/"pyn/pynifly.py"]
+        if args.current_vector:paths.extend([ROOT/'physics/contact_fit.py',ROOT/'distribution/include/claw/PhysicsFit.h'])
+        paths.extend(path for path in (args.male_nif_1,args.female_nif_1) if path is not None)
+        if args.signed_diagnostics:paths.append(ROOT/'physics/contact_diagnostics.py')
+        if args.contact_recipe is not None:paths.append(args.contact_recipe)
         snapshots={p.resolve():p.read_bytes() for p in paths}
         out=safe_output(args.out, paths)
         skeleton=api.NifFile(str(args.skeleton))
         if any(n not in skeleton.nodes for n in NODES): raise ValueError("Missing XP32 ear/tail nodes")
+        if args.current_vector:
+            return build_current(args,api,{sex:tri_patch.offsets(snapshots[getattr(args,sex+'_tri').resolve()]) for sex in ('male','female')},skeleton,snapshots,out)
         report={"schemaVersion":2 if args.bundles else 1,"frame":"node-local-game-units","domain":[0.,1.],
                 "status":"offline-selected-skin-envelope","runtimeQualified":False,
                 "morphs":list(MORPHS), "nodes":list(NODES), "coveredShapes":["body","head"],

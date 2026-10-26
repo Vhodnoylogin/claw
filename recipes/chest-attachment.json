@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "name": "canonical-localized-chest-fade-p1-and-head-root-v1",
+  "inputs": {
+    "bodyNifSha256": "da12437b16953eae0da2dcd841715a4110163702991b9a0912c17559a0a8f1d5",
+    "triSha256": "18840924604e974d166ab4f489311e66bcbff1852427eb0924b1242909099b15",
+    "skeletonSha256": "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0"
+  },
+  "layer": "fur_chest",
+  "maximumCardStrainChange": 0.01,
+  "normalizedOrdinaryMaxError": 0.005,
+  "rawOrdinaryMaxError": 0.075
+}

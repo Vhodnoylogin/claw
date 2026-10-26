@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "name": "CLAW actual-vector skin contact development objective",
+  "skinShapes": ["body", "head", "head_CLAWHead"],
+  "currentCounts": [16, 10, 16, 10, 16, 10, 8, 0, 10],
+  "femaleP1Counts": [16, 16],
+  "partitionMethod": "compact",
+  "contactPasses": 3,
+  "fixtureSet": "full",
+  "signedDiagnostics": true,
+  "requireDistinctWeightEndpoints": true,
+  "weightDomain": [0.0, 1.0],
+  "morphDomain": [0.0, 1.0],
+  "weightFormula": "P0 + u*(P1-P0) + sum(actualEffectiveMorph*absoluteTRIdelta)",
+  "earTailSelection": "Whole faces touching a >=0.5 dominant ear/tail vertex; all normalized skin influences retained",
+  "femaleP1Selection": "Whole faces touching actual positive P1 skin support on that bone's rest X side; minority mobility influences are intentional",
+  "objective": {
+    "maximumSampleDistanceWeight": 1.0,
+    "rmsSampleDistanceWeight": 0.2,
+    "targetSampleP95GameUnits": 1.0,
+    "targetIsNotAcceptanceThreshold": true,
+    "acceptance": "Retain both directional distances, oriented sign limitations, undercoverage and worst witnesses. Physical acceptance needs a separate actual game test."
+  },
+  "runtime": {
+    "maximumSlots": 128,
+    "inactiveMaleP1Slots": true,
+    "fitOnBoundedWorker": true,
+    "publishAfterActorRootGenerationVectorWeightRevalidation": true,
+    "noActorWeightMutation": true
+  },
+  "surfaceFitAccepted": false,
+  "runtimeQualified": false
+}

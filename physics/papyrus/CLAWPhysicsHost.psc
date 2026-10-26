@@ -14,6 +14,16 @@ String _lastResetEvidence = ""
 Int _sessionGeneration = 0
 Int _enabledGeneration = -1
 String _activationEvidence = ""
+Bool[] _automatic
+String[] _automaticEvidence
+Bool[] _automaticProvider
+Bool[] _automaticIndices
+Bool[] _automaticFit
+String[] _automaticLifecycle
+Bool[] _populationSlots
+Bool _populationEnabled = False
+String _populationEvidence = ""
+String _populationModel = ""
 
 Int Function GetSessionGeneration()
   Return _sessionGeneration
@@ -48,6 +58,7 @@ EndFunction
 
 Bool Function Initialize()
   If _slots != None
+    EnsureAutomaticArrays()
     Return True
   EndIf
   If ActorSlots == None || ActorSlots.Length < 1 || ActorSlots.Length > 16
@@ -78,7 +89,270 @@ Bool Function Initialize()
   EndWhile
   _slotCount = ActorSlots.Length
   _slots = prepared
+  EnsureAutomaticArrays()
   Return True
+EndFunction
+
+Function EnsureAutomaticArrays()
+  If _automatic != None && _automatic.Length == 16 && _automaticEvidence != None && _automaticEvidence.Length == 16 && _automaticLifecycle != None && _automaticLifecycle.Length == 16 && _automaticProvider != None && _automaticProvider.Length == 16 && _automaticIndices != None && _automaticIndices.Length == 16 && _automaticFit != None && _automaticFit.Length == 16 && _populationSlots != None && _populationSlots.Length == 16
+    Return
+  EndIf
+  ; Older saves keep their aliases/cleanup ledgers; new automatic policy starts off.
+  _automatic = new Bool[16]
+  _automaticEvidence = new String[16]
+  _automaticProvider = new Bool[16]
+  _automaticIndices = new Bool[16]
+  _automaticFit = new Bool[16]
+  _automaticLifecycle = new String[16]
+  _populationSlots = new Bool[16]
+EndFunction
+
+Int Function EnableAutomaticPopulation(String evidence, Bool provider, Bool exclusiveIndices, Bool fittedDomain)
+  If _busy
+    Return -8
+  EndIf
+  If !IntegrationEnabled() || !Initialize()
+    Return Fail(-6, "Current-session integration opt-in is required")
+  EndIf
+  If evidence == "" || !provider || !exclusiveIndices || !fittedDomain
+    Return Fail(-5, "Qualify the actual provider, index range and all matching population body resources")
+  EndIf
+  If CLAWPhysicsData.NativeFitRequired() && CLAWPhysicsNative.GetModelIdentity() != CLAWPhysicsData.ModelIdentity()
+    Return Fail(-5, "Population host and native model identities differ")
+  EndIf
+  _populationEvidence = evidence
+  _populationModel = CLAWPhysicsData.ModelIdentity()
+  RegisterForModEvent("CLAWPhysics_Candidate", "OnPhysicsCandidate")
+  _populationEnabled = CLAWPhysicsNative.SetPopulationEnabled(True)
+  If !_populationEnabled
+    Return Fail(-5, "Native population registry is unavailable")
+  EndIf
+  Return 0
+EndFunction
+
+Function DisableAutomaticPopulation()
+  _populationEnabled = False
+  CLAWPhysicsNative.SetPopulationEnabled(False)
+  If !Initialize()
+    Return
+  EndIf
+  Int index = 0
+  While index < _slotCount
+    If _populationSlots[index]
+      ; Cleanup may retain its exact former actor. Never evict a pending ledger.
+      Release(index)
+    EndIf
+    index += 1
+  EndWhile
+EndFunction
+
+Function OnPhysicsCandidate(String eventName, String kind, Float unused, Form sender)
+  If _busy || !_populationEnabled || !IntegrationEnabled() || !Initialize()
+    Return
+  EndIf
+  If _populationModel != CLAWPhysicsData.ModelIdentity()
+    _populationEnabled = False
+    CLAWPhysicsNative.SetPopulationEnabled(False)
+    Fail(-5, "Population capsule model changed; fresh explicit qualification required")
+    Return
+  EndIf
+  Actor target = sender as Actor
+  If target == None || ActorInOtherSlot(-1, target)
+    Return
+  EndIf
+  Int index = 0
+  While index < _slotCount
+    CLAWPhysicsActor helper = _slots[index]
+    If helper.GetActorReference() == None && helper.GetTrackedActor() == None && helper.GetAcceptedLedgerCount() == 0
+      _busy = True
+      Int assigned = AssignInternal(index, target)
+      If assigned == 0
+        Int activated = EnableAutomaticInternal(index, target, _populationEvidence, True, True, True)
+        If activated == 0
+          _populationSlots[index] = True
+        Else
+          ReleaseInternal(index)
+        EndIf
+      EndIf
+      _busy = False
+      Return
+    EndIf
+    index += 1
+  EndWhile
+  ; No free alias: retain every current actor/cleanup ledger and wait.
+EndFunction
+
+; The caller explicitly qualifies this actor/session and the matching fitted
+; model. This is a real opt-in path; every bool and evidence is then bound to
+; this alias's actor. It never chooses an actor or guesses provider ownership.
+Int Function EnableAutomatic(Int index, Actor target, String evidence, Bool provider, Bool exclusiveIndices, Bool fittedDomain)
+  If _busy
+    Return -8
+  EndIf
+  _busy = True
+  Int outcome = EnableAutomaticInternal(index, target, evidence, provider, exclusiveIndices, fittedDomain)
+  _busy = False
+  Return outcome
+EndFunction
+
+Int Function EnableAutomaticInternal(Int index, Actor target, String evidence, Bool provider, Bool exclusiveIndices, Bool fittedDomain)
+  If !IntegrationEnabled()
+    Return Fail(-6, "Current-session integration opt-in is required")
+  EndIf
+  CLAWPhysicsActor helper = SlotAt(index)
+  If helper == None || target == None || helper.GetActorReference() != target || ActorInOtherSlot(index, target) || evidence == ""
+    Return Fail(-1, "Automatic observer requires the exact uniquely assigned actor and evidence")
+  EndIf
+  If !provider || !exclusiveIndices || !fittedDomain
+    Return Fail(-5, "Explicit provider, exclusive index ownership and fitted domain qualification are required")
+  EndIf
+  If CLAWPhysicsData.NativeFitRequired() && CLAWPhysicsNative.GetModelIdentity() != CLAWPhysicsData.ModelIdentity()
+    Return Fail(-5, "Distribution DLL and Papyrus capsule model identities differ")
+  EndIf
+  If !helper.QualifyForActor(target, helper.GetModelGeneration(), evidence, provider, exclusiveIndices, fittedDomain)
+    Return Fail(-5, "Actor qualification changed while enabling its observer")
+  EndIf
+  _automatic[index] = True
+  _automaticEvidence[index] = evidence
+  _automaticProvider[index] = provider
+  _automaticIndices[index] = exclusiveIndices
+  _automaticFit[index] = fittedDomain
+  _automaticLifecycle[index] = ""
+  RegisterForModEvent("CLAWPhysics_Observation", "OnPhysicsObservation")
+  If !RegisterAutomatic(index, target)
+    _automatic[index] = False
+    Return Fail(-5, "Native observer registration was refused")
+  EndIf
+  Return 0
+EndFunction
+
+Bool Function RegisterAutomatic(Int index, Actor target)
+  String[] names = new String[32]
+  Int count = CLAWPhysicsData.MorphCount()
+  If count < 1 || count > 32
+    Return False
+  EndIf
+  ; Exact-length array: generated model names remain the single source of order.
+  names = Utility.CreateStringArray(count)
+  Int morph = 0
+  While morph < count
+    names[morph] = CLAWPhysicsData.MorphName(morph)
+    morph += 1
+  EndWhile
+  Return CLAWPhysicsNative.RegisterActor(target, _slots[index].GetModelGeneration(), names, CLAWPhysicsData.ModelIdentity(), _automaticEvidence[index])
+EndFunction
+
+Bool Function DisableAutomatic(Int index)
+  CLAWPhysicsActor helper = SlotAt(index)
+  If helper == None
+    Return False
+  EndIf
+  Bool nativeOwner = _automatic[index] || helper.HasNativeOwner()
+  _automatic[index] = False
+  Actor target = helper.GetActorReference()
+  If nativeOwner && helper.GetQualifiedActor() != None
+    target = helper.GetQualifiedActor()
+  EndIf
+  If nativeOwner && target != None
+    CLAWPhysicsNative.UnregisterActor(target, helper.GetAcceptedLedgerCount() > 0)
+  EndIf
+  Return nativeOwner
+EndFunction
+
+; SKSE dispatches the registered callback by function name. PEX has the same
+; callable representation for a void function and an event handler.
+Function OnPhysicsObservation(String eventName, String kind, Float tokenValue, Form sender)
+  ; Native repeats unacknowledged observations at its bounded two-second scan.
+  If _busy || !IntegrationEnabled() || !Initialize()
+    Return
+  EndIf
+  Actor target = sender as Actor
+  If target == None
+    Return
+  EndIf
+  Int index = 0
+  While index < _slotCount
+    If _automatic[index] && _slots[index].GetActorReference() == target
+      _busy = True
+      ProcessAutomatic(index, target, kind, tokenValue as Int)
+      _busy = False
+      Return
+    EndIf
+    index += 1
+  EndWhile
+EndFunction
+
+Function ProcessAutomatic(Int index, Actor target, String kind, Int token)
+  CLAWPhysicsActor helper = _slots[index]
+  If ActorInOtherSlot(index, target)
+    DisableAutomatic(index)
+    Fail(-2, "Duplicate alias ownership disabled automatic observer")
+    Return
+  EndIf
+  Int generation = helper.GetModelGeneration()
+  If kind == "snapshot"
+    If !CLAWPhysicsNative.SnapshotCurrent(target, generation, token)
+      ; A Papyrus lifecycle event may precede the native receipt. Renew only
+      ; after actual scoped cleanup; no provider-reset inference is made.
+      If helper.Cleanup() != 8 && helper.GetAcceptedLedgerCount() == 0
+        If helper.QualifyForActor(target, generation, _automaticEvidence[index], _automaticProvider[index], _automaticIndices[index], _automaticFit[index])
+          RegisterAutomatic(index, target)
+        EndIf
+      EndIf
+      Return
+    EndIf
+    Float[] values = CLAWPhysicsNative.GetValues(target, generation, token)
+    Int outcome = helper.SynchronizeMorphs(target, values, _automaticEvidence[index], True, token)
+    If outcome == 4
+      CLAWPhysicsNative.AcknowledgeSnapshot(target, generation, token)
+    ElseIf outcome == 6
+      ; Keep the native observation unacknowledged while old capsules need
+      ; reported removal. The next bounded pass can retry after cleanup.
+      helper.Cleanup()
+    EndIf
+  ElseIf kind == "refit"
+    ; A delayed old refit receipt cannot remove newly accepted current capsules.
+    If CLAWPhysicsNative.RefitPending(target, generation, token)
+      helper.Cleanup()
+    EndIf
+  ElseIf kind == "ready"
+    If helper.Cleanup() == 8 || helper.GetAcceptedLedgerCount() > 0
+      Return
+    EndIf
+    If helper.QualifyForActor(target, generation, _automaticEvidence[index], _automaticProvider[index], _automaticIndices[index], _automaticFit[index])
+      _automaticLifecycle[index] = ""
+      RegisterAutomatic(index, target)
+    EndIf
+  ElseIf kind == "human" || kind == "unloaded" || kind == "model"
+    ; Preserve provider/index cleanup authority; model/fit acceptance expires.
+    If _automaticLifecycle[index] != kind
+      helper.MarkModelGenerationChanged()
+      _automaticLifecycle[index] = kind
+    EndIf
+    Int cleanup = helper.Cleanup()
+    If cleanup != 8 && helper.GetAcceptedLedgerCount() == 0
+      CLAWPhysicsNative.AcknowledgeLifecycle(target, kind)
+      If kind == "model"
+        ; A changed model is never automatically qualified by the old policy.
+        DisableAutomatic(index)
+      EndIf
+      If _populationSlots[index]
+        ReleaseInternal(index)
+      EndIf
+    EndIf
+  Else
+    If kind == "identity" || kind == "provider"
+      helper.ProviderQualified = False
+      helper.ExclusiveIndexRange = False
+    EndIf
+    helper.MarkModelGenerationChanged()
+    helper.Cleanup()
+    DisableAutomatic(index)
+    If _populationSlots[index] && helper.GetAcceptedLedgerCount() == 0
+      ReleaseInternal(index)
+    EndIf
+    Fail(-5, "Native observer refused the current identity/provider/fitted domain")
+  EndIf
 EndFunction
 
 CLAWPhysicsActor Function SlotAt(Int index)
@@ -177,9 +451,13 @@ Int Function AssignInternal(Int index, Actor target)
   If helper.GetActorReference() == target
     Return 0
   EndIf
+  Bool wasNative = DisableAutomatic(index)
   Int cleanup = helper.Cleanup()
   If cleanup == 8 || helper.GetAcceptedLedgerCount() > 0
     Return Fail(-3, "Previous actor cleanup pending; alias has not been cleared or retargeted")
+  EndIf
+  If wasNative
+    CLAWPhysicsNative.UnregisterActor(helper.GetQualifiedActor())
   EndIf
   Revoke(helper)
   helper.Clear()
@@ -208,15 +486,20 @@ Int Function ReleaseInternal(Int index)
   If helper == None
     Return Fail(-1, "Invalid slot")
   EndIf
+  Bool wasNative = DisableAutomatic(index)
   Int cleanup = helper.Cleanup()
   If cleanup == 8 || helper.GetAcceptedLedgerCount() > 0
     Return Fail(-3, "Cleanup pending; alias and ledger retained")
+  EndIf
+  If wasNative
+    CLAWPhysicsNative.UnregisterActor(helper.GetQualifiedActor())
   EndIf
   Revoke(helper)
   helper.Clear()
   If helper.GetReference() != None
     Return Fail(-4, "Alias Clear failed; configure it Optional before integration")
   EndIf
+  _populationSlots[index] = False
   Return 0
 EndFunction
 
@@ -315,12 +598,17 @@ Function NotifySessionChanged()
   ; Deliberately allowed while busy: in-flight helper sees generation invalidation.
   ; Retains all accepted ledgers. No assumption that native containers survived.
   IntegrationOptIn = False
+  If _populationEnabled
+    CLAWPhysicsNative.SetPopulationEnabled(False)
+  EndIf
+  _populationEnabled = False
   _sessionGeneration += 1
   If !Initialize()
     Return
   EndIf
   Int slot = 0
   While slot < _slotCount
+    DisableAutomatic(slot)
     Revoke(_slots[slot])
     slot += 1
   EndWhile

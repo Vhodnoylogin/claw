@@ -1,4 +1,93 @@
-# CLAW.Physics: isolated CBPC ear/tail candidate
+# CLAW.Physics: CBPC ear/tail candidate
+
+## Current automatic source integration
+
+The optional Distribution DLL now observes the provider's actual effective
+`IBodyMorphInterface::GetBodyMorphs` result for the generated ordered morph list.
+It never substitutes a Papyrus sum of keys or the Distribution key. Six own
+scripts (including `CLAWPhysicsNative`) supply the finite host and bridge.
+This source integration is built offline; it has no new game acceptance.
+
+The schema-3 current-vector model deforms the measured support points first and
+refits each capsule for that vector. Build Distribution with the exact external
+generated header through `-PhysicsModelHeader`; build this host with the matching
+`--fitted-capsules` JSON. Host and DLL compare complete model identity and ordered
+names before observation. Schema-3 data cannot use the older affine Papyrus path.
+The ledger supports 128 slots and preserves older short ledgers until resolved.
+
+Explicit activation is `BeginSession(True, evidence)`, `RegisterActor(slot, actor)`
+then `EnableAutomaticActor(slot, actor, evidence, True, True, True)`. The three
+assertions qualify the actual provider/API and effective configuration, exclusive
+reserved indices, and the pinned actor resources and fitted domain. They must be
+established by the caller; successful compilation, DLL loading, a nonempty string
+or a CBPC bool cannot establish them. Defaults remain disabled. Alternatively
+call `EnableAutomaticPopulation(evidence, True, True, True)` once per session after
+qualifying the actual resources for the matching population. Distribution then
+offers at most 16 known loaded current beasts per scan; the host uses only empty
+aliases and never evicts a remembered actor or pending cleanup. Human return or
+unload releases a population alias only after reported cleanup. A changed model
+blocks rediscovery until a fresh explicit qualification. This reuses Distribution's
+actor registry and adds no independent world search.
+
+Human morph family defaults are a separate explicit resource declaration in
+`SKSE/Plugins/CLAW/MorphLinks.xml`. The shipped catalog has no defaults. An optional
+`Defaults` declaration can name the installed male/female resource profiles; it
+does not infer a family from sex or a preset name. Only fresh automatic state
+adopts such a profile, after a complete current SKEE source capture. Restored,
+existing empty, suppressed, quarantined and manual states retain their policy.
+
+At most 16 explicitly registered actors are sampled on main tasks, with a
+coalesced two-second fallback. On coefficient changes the observer asks SKEE to
+apply current morphs synchronously on the main task, then requires two stable
+sampling passes. Its immutable snapshot token binds the actor runtime identity,
+world epoch, alias generation, root, model, independent weight and ordered aggregate. The host's
+registered callback consumes the values and, for schema 3, per-slot fitted
+capsules. Numeric fitting uses a bounded worker queue with no actor/engine objects.
+The main task rechecks identity, root, sex, weight and every provider aggregate
+before publication. A changed vector immediately invalidates old snapshots and
+requests scoped old-capsule cleanup while fitting is pending. Delayed cleanup
+receipts cannot erase a newer accepted snapshot. Every append rechecks snapshot
+currency after data reads. External
+same-root coefficient changes are detected by the fallback without mod events.
+The public API exposes no general provider queue-completion fence; the inspected
+SKEE implementation joins its workers and executes partition updates before its
+main-thread call returns. Equivalent behavior of the selected runtime provider
+still requires qualification.
+
+Human return, unload and a changed root invalidate the snapshot and request
+scoped cleanup. Busy or unresolved cleanup is retried at the bounded fallback;
+the host renews an unchanged-resource generation only after the remembered ledger
+is empty. A changed model requires fresh explicit qualification.
+Provider/configuration replacement requires suspension and
+fresh qualification. Save/load and new game clear native registrations and
+revoke host authority; opt in again explicitly. False detach never acknowledges
+a discarded provider container. Pending old ledgers need reported removals or
+the existing separately verified reset acknowledgment. Foreign morph keys,
+collider indices and node configurations are preserved.
+
+The observer reads the actual same-reference NPC weight, validates 0..100, and
+passes its normalized 0..1 ratio as an independent base-geometry input. A weighted
+model interpolates base vertices first, then applies absolute TRI deltas. It never
+multiplies effective SKEE coefficients by weight again or calls `SetWeight`.
+`CLAWPhysicsNative.GetWeight` returns the cached current snapshot input;
+Distribution's `GetHumanWeight`/`GetBeastWeight` return last actually observed
+normalized values in each form, or -1 when unknown. Co-save v4 preserves these
+observations; v1/v2/v3 remain readable. A different actor reference is never
+assumed to share another actor's human weight.
+
+The optional `--with-breast-contact` source variant is distinct from the older
+zero-collision motion trial. It uses original 0.05/0.01 contact response, bounded
+P1 displacement/rotation and the exact female vanilla-werewolf condition. It
+requires a clear explicit provider snapshot, a matching schema-3 weighted P1
+model, both pinned female body endpoints and an explicit `--breast-profile` JSON
+binding its model identity, body hashes, XP32 hash and two existing P1 bone names.
+Female-only slots retain global indices and are skipped on males. The profile
+records an externally reviewed resource binding; no file hash or response value
+alone certifies simulation/contact. The host package still excludes file-loaded
+motion configs; selecting that optional source remains explicit.
+
+The older static/manual contracts below remain supported. They describe their
+original eight-capsule rest-pose candidate, rather than schema-3 surface fit.
 
 This is an **uninstalled development candidate**, separate from the frozen
 distribution companion and its quest/plugin records. It retains XP32 and uses
@@ -7,7 +96,7 @@ configs, pinned rest-pose capsule data, a generator/validator, an actor-scoped
 Papyrus helper and an optional finite host. An original wiring recipe builds
 `CLAW - Physics.esp` with one quest, 16 actor aliases and a separate player load
 relay. The dedicated offline build verifies record/VMAD wiring by binary readback
-and Spriggit round-trip, and compiles five own scripts. It is an **uninstalled
+and Spriggit round-trip, and compiles six own scripts. It is an **uninstalled
 development candidate**: quest startup, alias fill, Papyrus event delivery,
 provider behavior and visible/contact acceptance remain unqualified.
 

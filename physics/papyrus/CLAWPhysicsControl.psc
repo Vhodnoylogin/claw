@@ -58,6 +58,36 @@ Int Function PulseActor(Int slot, Actor expectedActor) Global
   Return host.Pulse(slot, expectedActor)
 EndFunction
 
+Int Function EnableAutomaticActor(Int slot, Actor expectedActor, String evidence, Bool provider, Bool exclusiveIndices, Bool fittedDomain) Global
+  CLAWPhysicsHost host = GetHost()
+  If host == None
+    Return -1
+  EndIf
+  Return host.EnableAutomatic(slot, expectedActor, evidence, provider, exclusiveIndices, fittedDomain)
+EndFunction
+
+Function DisableAutomaticActor(Int slot) Global
+  CLAWPhysicsHost host = GetHost()
+  If host != None
+    host.DisableAutomatic(slot)
+  EndIf
+EndFunction
+
+Int Function EnableAutomaticPopulation(String evidence, Bool provider, Bool exclusiveIndices, Bool fittedDomain) Global
+  CLAWPhysicsHost host = GetHost()
+  If host == None
+    Return -1
+  EndIf
+  Return host.EnableAutomaticPopulation(evidence, provider, exclusiveIndices, fittedDomain)
+EndFunction
+
+Function DisableAutomaticPopulation() Global
+  CLAWPhysicsHost host = GetHost()
+  If host != None
+    host.DisableAutomaticPopulation()
+  EndIf
+EndFunction
+
 Int Function GetMorphCount() Global
   Return CLAWPhysicsData.MorphCount()
 EndFunction

@@ -2,6 +2,7 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from types import SimpleNamespace
 import numpy as np
 
 PATH=Path(__file__).resolve().parents[1]/"fit-capsules.py"
@@ -15,6 +16,35 @@ def cylinder():
 
 
 class CapsuleFitTests(unittest.TestCase):
+    def test_minority_p1_mobility_support_is_not_lost_by_dominant_threshold(self):
+        def transform(x=0):return SimpleNamespace(rotation=np.eye(3),scale=1.,translation=[x,0,0])
+        node=fit.P1_NODES[0];other='NPC Head [Head]'
+        shape=SimpleNamespace(name='head',verts=[[1,0,0],[2,0,0],[1,1,0]],tris=[[0,1,2]],
+            global_to_skin=transform(),bone_weights={node:[(0,.3),(1,.3),(2,.3)],other:[(0,.7),(1,.7),(2,.7)]},
+            get_shape_skin_to_bone=lambda _:transform())
+        skeleton=SimpleNamespace(nodes={node:SimpleNamespace(global_transform=transform(2)),other:SimpleNamespace(global_transform=transform())})
+        result=fit.triangle_regions(shape,skeleton,{},nodes=fit.NODES+fit.P1_NODES)
+        self.assertEqual(result[node][2]['fullRegionTriangles'],[[0,1,2]])
+        self.assertEqual(result[node][2]['selectionRule'],'actual positive side-matched minority P1 skin support')
+        self.assertTrue(np.allclose(result[node][0][:,0],[-.4,.6,-.4]))
+
+    def test_mixed_face_retains_all_three_full_lbs_vertices_and_actual_delta(self):
+        def transform(z=0):return SimpleNamespace(rotation=np.eye(3),scale=1.,translation=[0,0,z])
+        node='TailBone03';other='NPC Head [Head]'
+        shape=SimpleNamespace(name='body',verts=[[0,0,0],[1,0,0],[0,1,0],[1,1,0]],
+            tris=[[0,1,2],[1,2,3]],global_to_skin=transform(),
+            bone_weights={node:[(0,.6),(1,.2),(2,.4)],other:[(0,.4),(1,.8),(2,.6),(3,1.)]},
+            get_shape_skin_to_bone=lambda _:transform())
+        skeleton=SimpleNamespace(nodes={node:SimpleNamespace(global_transform=transform(10)),other:SimpleNamespace(global_transform=transform())})
+        rows=fit.triangle_regions(shape,skeleton,{('body','grow',2):SimpleNamespace(packed=[1,0,0],scale=1.)})
+        points,deltas,source=rows[node]
+        self.assertEqual(source['vertices'],[0,1,2])
+        self.assertEqual(source['fullRegionTriangles'],[[0,1,2]])
+        self.assertEqual(source['boundaryTrianglesExcluded'],0)
+        self.assertEqual(source['mixedOwnershipTrianglesIncluded'],1)
+        self.assertTrue(np.allclose(points[:,2],[-4,-8,-6]))
+        self.assertTrue(np.allclose(deltas['grow'],[[0,0,0],[0,0,0],[1,0,0]]))
+
     def test_encloses_every_vertex_and_survives_two_morph_mixtures(self):
         points=cylinder()
         stretch=points*np.array([.3,.3,.5])

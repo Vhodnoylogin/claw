@@ -348,3 +348,114 @@ detached-normal protection and an independently solved covariance example.
 The first local diagnostic used weaker acceptance and incomplete source pinning;
 its output is retained as historical diagnostic evidence, not the current candidate.
 Neither output is installed or accepted for physics, animation or visible seams.
+
+## Canonical SE carrier and further fur work
+
+The 26 October canonical SE carrier is female `_0/_1`
+`3d14a68f1683d8a9362bfda19b1a8fc74a8a792036f08bb9917dc9c3ea42e2be`,
+with moderate TRI `18840924...b15`. Independent native comparison confirms that
+all 15 shapes have exactly the same geometry and packed weights as the earlier
+`608448b9...18d65` collar-weight repair. Thus the canonical carrier already
+contains that actual attachment-weight correction; it is not the raw unrepaired
+published female. This does not close its disclosed residual normal-gap gate.
+
+`recipes/breast-rig-canonical.json` explicitly pins this carrier. The actual
+`rig-breast.py` rebuild recomputed its mask, capacity, P1 weights and existing-XP32
+binds, then passed the unchanged 151-pose/readback checks. It reproduced
+`6792fc6c...e33d` exactly. Running the original bounded belly follower on that
+actual rebuild reproduced `d99a1180...276d` exactly. Results are retained in
+`Builds/claw-anatomical-split-20261026/canonical-p1/` and `canonical-belly/`.
+The installed canonical bodies, XP32 skeleton and default recipes remain unchanged.
+
+`scripts/continue-fur-motion.py` with `recipes/fur-motion-continuation.json` now
+continues the actual `d99a1180` carrier into full-weight chest and shoulder cards.
+It uses the same numeric fitter, 151 poses, BreastSize0/0.5/1 and unchanged
+raw-packed/normalized pure-P1, ordinary-motion and card-strain acceptance gates.
+It is a separate explicit input contract; the earlier belly builder's frozen
+contract is unchanged. No unrelated influence, skin surface, TRI delta, skeleton
+node, bind, shader, normal, UV, partition or BODYTRI field may change. Actual
+readback uses detached snapshots for every layer stage. Only the accepted card's
+existing Spine2/P1 pool is redistributed with exact original packed sums.
+
+Chest admits **no** card under those gates and stays unchanged. One shoulder
+card admits two changed stored vertices: normalized pure-P1 transported-root
+residual improves from0.000383410 to0.000269111 units; raw-packed residual changes
+from0.000383597 to0.000269306. Ordinary-pose deviation remains below1.5e-9 and
+maximum edge-strain change is0.000072084. These measurements concern that single
+accepted card, not all shoulder or chest fur. This is a small actual continuation,
+not a breast-gap closure or a new visual acceptance result.
+
+The final raw 91-node NIF is
+`da12437b16953eae0da2dcd841715a4110163702991b9a0912c17559a0a8f1d5`,
+with unchanged moderate TRI. Both endpoint copies are staged under
+`D:/Skyrim VR Modding/Builds/claw-anatomical-split-20261026/extended-fur/`;
+its `report.json` contains pins, frozen roots/bindings, accepted-card metrics and
+actual readback status. It retains the raw rig export's static bounds; a separate
+bounds copy is required before any later install. No live files were written.
+Chest/fade/ChestBlend coupling, the collar normal gap, other morph combinations,
+animation, effective physics-driver ownership and appearance remain open.
+
+```powershell
+python scripts/rig-breast.py --body '<canonical-female_0.nif>' `
+  --tri '<moderate-female.tri>' --skeleton '<existing-XP32-skeleton.nif>' `
+  --profile recipes/breast-rig-canonical.json --out '<new-P1-directory>'
+python scripts/follow-fur-motion.py --body '<new-P1/femalebodywerewolf.nif>' `
+  --tri '<moderate-female.tri>' --skeleton '<existing-XP32-skeleton.nif>' `
+  --profile recipes/fur-motion.json --out '<new-belly-directory>'
+python scripts/continue-fur-motion.py --body '<new-belly/femalebodywerewolf.nif>' `
+  --tri '<moderate-female.tri>' --skeleton '<existing-XP32-skeleton.nif>' `
+  --out '<new-extended-fur-directory>'
+```
+
+The existing breast-rig and fur-motion suites pass12and7checks respectively.
+The anatomical head/torso split is independently serialized and qualified against
+the canonical 85-node carrier in [vr-head-policy.md](vr-head-policy.md); these
+91-node fur outputs have not silently replaced that split's input pins.
+
+## Selected localized chest-root correction and full composition
+
+The subsequent selected carrier is `d04aced0...f1c33`, retained in
+`Builds/claw-anatomical-split-20261026/chest-attachment-003/`. This is a new
+localized attachment stage in `scripts/chest_attachment.py` /
+`repair-chest-attachment.py` with `recipes/chest-attachment.json`, not a weakening
+of the older belly experiment's frozen contract.
+
+The old full-card P1 fitter had no useful chest update because those roots
+already followed pure P1 closely; considering the 56 fade cards also admitted
+no P1 change under its existing gates. The larger mismatch was ordinary
+Spine/Head/Jaw/Clavicle ownership at fur roots. The new stage fits only actual
+root-related palette pairs against the posed frozen skin barypoint plus its
+transported rest offset. Every stored P1 weight remains exact. All other shapes,
+skin geometry/weights, skeleton nodes, binds, TRI, UVs, normals, materials and
+partitions remain protected by detached native readback.
+
+A common normalized pair correction is applied within each card. Scaling by
+each vertex's pair pool was rejected as an unnecessary tip-motion amplifier.
+An explicit line search reduces an infeasible correction while retaining the
+same 0.01 card-strain ceiling, exact packed sums and the four-slot limit. Fitting
+uses ordinary controls; held-out combinations and P1 states remain measurements.
+The old-motion change is disclosed separately: an attachment repair intentionally
+changes motion toward the actual skin target instead of treating every source
+motion as correct. Related fitted support transfers are reported, with a maximum
+removed support mass of 0.02734375; this is not silent capacity pruning.
+
+The selected stage admits 97 cards and changes 389 stored chest vertices.
+Changed-card normalized root squared error decreases 173.89325 -> 109.44056
+(37.06%); raw-packed decreases 172.51604 -> 108.23192 (37.26%). The maximum
+normalized card-strain change is 0.009985 and maximum old ordinary-motion change
+is 0.234337 units. These selected-card improvements do not establish all-layer
+common motion or a visually closed seam. The independent all-root audit retains
+larger residuals, source stand-off/interior depths and `ChestBlend` limitations.
+Its signed outside/interior results are summarized in
+[vr-head-policy.md](vr-head-policy.md).
+
+This selected 91-node carrier is actually composed with distinct calibrated
+neutral weight endpoints, additive/weight/declared-pose bounds and the chosen
+anatomical split in `final-composed-004/`. The final female has 97 total nodes
+because six split shape pieces are added; its six existing XP32 ancestry nodes
+and P1 weights remain the same. Exact final endpoint/TRI pins are recorded in
+`Builds/claw-anatomical-split-20261026/final-resource-manifest.json`.
+The 85-node split and raw 91-node experiments above remain historical independent
+stages; they are not the selected final composition. No live files or skeleton
+were written, and actual physics-driver, animation and appearance acceptance
+remain open.

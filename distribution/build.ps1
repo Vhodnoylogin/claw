@@ -7,6 +7,9 @@ param(
     [ValidateSet('VR','SE')][string]$Runtime = 'VR',
     [string]$DependencyPrefix,
     [string]$ToolchainFile,
+    [string]$PhysicsModelHeader,
+    [string]$PhysicsFixtureHeader,
+    [string]$OBodyHeader,
     [int]$Parallel = 8,
     [switch]$BuildTests,
     [hashtable]$FetchSources = @{}
@@ -57,6 +60,9 @@ $clawConfigure = @('-S', $clawSource, '-B', $clawOutput, '-G', $Generator, '-A',
     "-DCLAW_BUILD_TESTS=$($BuildTests.IsPresent.ToString().ToUpperInvariant())")
 if ($DependencyPrefix) { $clawConfigure += "-DCMAKE_PREFIX_PATH=$([IO.Path]::GetFullPath($DependencyPrefix))" }
 if ($ToolchainFile) { $clawConfigure += "-DCMAKE_TOOLCHAIN_FILE=$([IO.Path]::GetFullPath($ToolchainFile))" }
+if ($PhysicsModelHeader) { $clawConfigure += "-DCLAW_PHYSICS_MODEL_HEADER=$([IO.Path]::GetFullPath($PhysicsModelHeader))" }
+if ($PhysicsFixtureHeader) { $clawConfigure += "-DCLAW_PHYSICS_FIXTURE_HEADER=$([IO.Path]::GetFullPath($PhysicsFixtureHeader))" }
+if ($OBodyHeader) { $clawConfigure += "-DCLAW_OBODY_HEADER=$([IO.Path]::GetFullPath($OBodyHeader))" }
 foreach ($clawName in $FetchSources.Keys) {
     if ($clawName -notin @('PUGIXML','FMT','SPDLOG','RAPIDCSV')) { throw "Unknown external dependency: $clawName" }
     $clawConfigure += "-DFETCHCONTENT_SOURCE_DIR_$($clawName.ToUpperInvariant())=$([IO.Path]::GetFullPath($FetchSources[$clawName]))"
@@ -65,7 +71,7 @@ foreach ($clawName in $FetchSources.Keys) {
 if ($LASTEXITCODE) { throw 'CMake configuration failed.' }
 $clawPluginTarget = if ($Runtime -eq 'SE') { 'CLAWDistributionSE' } else { 'CLAWDistribution' }
 $clawTargets = @($clawPluginTarget,'claw-preset-tool')
-if ($BuildTests) { $clawTargets += 'claw-preset-tests' }
+if ($BuildTests) { $clawTargets += 'claw-preset-tests','claw-physics-observer-tests','claw-physics-fit-tests','claw-source-bootstrap-tests' }
 & $CMakeExe --build $clawOutput --config Release --target @clawTargets --parallel $Parallel
 if ($LASTEXITCODE) { throw 'Native compilation failed.' }
 Write-Output "Compiled into $clawOutput. This command never runs tests or installs files."

@@ -28,11 +28,27 @@ interpolate a beast preset. No CLAW preset XML, including a neutral preset, is
 required for a linked actor. An absent or invalid independent catalog does not
 block this mode.
 
-There is no universal calibrated default profile in this candidate.
-`recipes/distribution.json` contains illustrative equations, not accepted CBBE or
-HIMBO geometry calibration. Author-chosen mappings require visual acceptance at
-neutral, individual extremes and combinations. Do not infer a body profile from
-sex, matching slider names or a preset name.
+`distribution/profiles/MorphLinks.xml` contains measured candidate conversions
+for CBBE2.0.3, 3BA2.48 and HIMBO5.8. The calibrator reads actual human OSD
+deformations and wolf TRI deformations, projects them onto frozen anatomical
+regions, and compares logical combinations against a single-target baseline.
+Its explicit final skin selection includes the separated head. Exact duplicate
+physical responses with the same skin frame are counted once, preserving the
+regional metric when a split duplicates seam vertices.
+Multiple human fields can drive a target and one field can drive several targets.
+Signs come from actual geometry: increasing human `Arms`, for example, narrows
+the measured limb rather than widening it. Signed contributions combine before
+the final target clamp. Unsupported opposed directions and residuals are reported.
+This is an explicit numerical objective, not proof of the best artistic result.
+
+The shipped file has no universal default. Bind the actual body resource through
+`ConfigureMorphFamily` or an explicit setup-level `Defaults` declaration, described
+in [the family catalog](../distribution/profiles/README.md). Automatic adoption
+applies only to newly discovered states after successful source capture. It does
+not overwrite existing, restored, suppressed or manually chosen states. Preset
+names and actor sex alone never infer the installed body family. Combined
+appearance still needs visual acceptance at neutral, extremes and combinations.
+The older equations in `recipes/distribution.json` remain illustrative references.
 
 ## Native developer API
 
@@ -41,18 +57,23 @@ sex, matching slider names or a preset name.
 | Function | Meaning |
 |---|---|
 | `ConfigureMorphLink(actor, profile, sources[], targets[], gains[], caps[])` | Queue replacement of this reference's explicit mapping |
+| `GetMorphFamilies(female)` | Enumerate the validated typed resource-family IDs for this sex |
+| `ConfigureMorphFamily(actor, profileId)` | Capture current source values and bind a loaded resource-family mapping |
+| `GetHumanWeight(actor)` / `GetBeastWeight(actor)` | Last actually observed normalized NPC weight in each form; `-1` means unknown |
 | `DisableMorphLink(actor)` | Queue return to the retained independent choice |
 
-The four arrays must have identical lengths between 1 and 32. Profile and source
+The four arrays must have identical lengths between 1 and 128. Profile and source
 identifiers are bounded to 160 UTF-8 bytes. Sources beginning with `CLAW` are
 rejected to prevent feedback from our own beast coefficients. Targets must be
-recognized base morphs in the body domain: torso except breast, arm girth, thigh
-girth and calf girth. Gains must be finite; caps must be finite in `(0, 1]`.
+recognized base morphs in the body domain: torso, arm girth, thigh girth and calf
+girth. `CLAWTorsoBreastSize` is allowed only for females. Gains must be finite;
+caps must be finite in `(0, 1]`.
 Duplicate source/target rows and inconsistent caps for one target are rejected.
 
 Only configured targets become nonzero. Unmapped torso traits, ears, muzzle,
 head, tail, paws, claws and digitigrade traits stay zero. Female breast linkage
-stays zero pending shape qualification. For the same sex, profile and applied
+requires an explicit matching resource family; the generated female profiles
+include measured breast fields. For the same sex, profile and applied
 source values, the complete own morph vector is identical regardless of former
 beast assignments or actor weight. Clamping and unmapped source differences can
 still make different human presets produce the same vector; distinct appearance
@@ -61,9 +82,27 @@ No adult target is accepted. No OBody assignment or setting is written.
 `GetBodyMorphs` is the provider's actual aggregation API; the implementation never
 substitutes a sum of foreign keys or assumes all SKEE contributions add linearly.
 
-The caller supplies the profile explicitly; configuring it does not prove that
-the installed human resource matches the profile. This candidate has no automatic
-profile discovery or user configuration menu. Those remain release work.
+The caller or setup declares the profile explicitly; configuring it does not
+prove that the installed human resource matches the profile. There is no automatic
+body-resource discovery or user configuration menu.
+
+## Shared actor weight and separate geometry interpolation
+
+For an ordinary same-reference race transformation, human and beast use the same
+NPC weight property. CLAW does not call `SetWeight`, change a base NPC, or choose
+a second wolf weight. A human weight of 30 therefore selects wolf `u=0.30`.
+The distinct body resources interpolate as
+`P0 + u*(P1-P0) + sum(effectiveMorph*absoluteTRIdelta)`. Named TRI fields remain
+absolute displacements and their already effective SKEE coefficients receive no
+second weight multiplication. Equal named morph vectors can consequently produce
+different neutral body proportions at different weights, as intended.
+
+The native coordinator records an observed weight independently in each form for
+diagnostics. An actor first seen as a beast has no invented human observation.
+These cached observations do not override the actual current weight used by the
+physics fit. A separate-reference transformation, or another mod deliberately
+changing the NPC property, needs its own integration; it is not covered by the
+same-reference guarantee.
 
 ## One writer and lifecycle
 
@@ -99,13 +138,14 @@ Human return clears only this
 companion's own beast contributions; foreign keys and human provider state remain
 unchanged. A later beast transformation resumes the same identity and traits.
 
-Actor co-save record v2 stores the explicit mapping and last captured sources.
-The record layout is unchanged; development v2 linked records use these direct
-neutral-baseline semantics on refresh, ignoring any retained independent choice.
-Version 1 records migrate to independent mode; an old preset name never creates
-an opt-in. Actual engine save/load migration has not been accepted from code
-inspection. Source snapshots are audit/persistence data, not permission to skip
-a fresh source read when SKEE is available.
+Actor co-save v4 stores the mapping, captured sources and optional actual weight
+observations. Readers preserve v1/v2/v3: v2 retains its original 32-row budget;
+v3/v4 support 128 rows. Version1 records migrate to independent mode; an old
+preset name never creates an opt-in. Development linked records use the direct
+neutral-baseline semantics on refresh, ignoring a retained independent choice.
+Actual engine save/load migration still needs a game test. Source/weight
+observations are diagnostic persistence data, not permission to skip current
+provider or NPC reads.
 
 ## Release checks still required
 

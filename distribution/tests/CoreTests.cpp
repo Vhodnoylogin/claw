@@ -2,6 +2,7 @@
 #include "claw/Preset.h"
 #include "claw/RequestOwnership.h"
 #include "claw/MorphLink.h"
+#include "claw/MorphProfiles.h"
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -81,7 +82,8 @@ int main() {
             link.rules[0] = {"Human", "CLAWHeadEarSize", 1, .25F};
             require(!link.valid(claw::Sex::male), "individual head trait entered linked body domain");
             link.rules[0].target = "CLAWTorsoBreastSize";
-            require(!link.valid(claw::Sex::female), "unqualified breast link accepted");
+            require(link.valid(claw::Sex::female), "explicit female body-resource breast link refused");
+            require(!link.valid(claw::Sex::male), "female breast target accepted for male");
         }},
         {"morph linkage rejects ambiguous or unbounded profiles", [] {
             claw::MorphLink link{"Explicit-v1", {{"HumanA", "CLAWTorsoGirth", 1, .25F}, {"HumanB", "CLAWTorsoGirth", 1, .5F}}, {}, false};
@@ -91,6 +93,44 @@ int main() {
             link.rules.resize(1); link.rules[0].gain = std::numeric_limits<float>::infinity();
             require(!link.valid(claw::Sex::male), "nonfinite gain accepted");
             require(claw::morphLinkIdentifier("\xD0\x92\xD0\xBE\xD0\xBB\xD0\xBA"), "valid UTF8 identifier rejected");
+        }},
+        {"resource families are explicit and retain sparse many-to-many signed rules", [] {
+            claw::MorphProfileCatalog families;
+            const std::string input = "<MorphLinkProfiles schemaVersion=\"1\"><Profile id=\"3BA-2.48-v1\" family=\"3BA\" version=\"2.48\" sex=\"female\" calibration=\"measured-v1\">"
+                "<Rule source=\"Arms\" target=\"CLAWArmGirth\" gain=\"-0.5\" cap=\"1\"/>"
+                "<Rule source=\"ChubbyArms\" target=\"CLAWArmGirth\" gain=\"0.2\" cap=\"1\"/>"
+                "<Rule source=\"Breasts\" target=\"CLAWTorsoBreastSize\" gain=\"0.6\" cap=\"1\"/></Profile></MorphLinkProfiles>";
+            require(families.loadXml(input), "typed resource profile rejected");
+            require(!families.find("3BA-2.48-v1", claw::Sex::male), "family guessed from mismatched sex");
+            require(!families.defaultFor(claw::Sex::female), "undeclared resource default guessed");
+            auto link = families.find("3BA-2.48-v1", claw::Sex::female)->link;
+            link.capture([](std::string_view source) { return source == "Arms" ? -1.F : .5F; });
+            const auto values = link.compose(claw::Sex::female);
+            require(std::abs(values.at("CLAWArmGirth") - .6F) < 1e-6F, "source geometry sign or many-to-one composition lost");
+            require(std::abs(values.at("CLAWTorsoBreastSize") - .3F) < 1e-6F, "female resource breast coefficient lost");
+            require(values.at("CLAWHeadEarSize") == 0, "unmeasured human ear source fabricated");
+            require(!families.loadXml(input + input) && !families.valid(), "malformed family reload exposed old policies");
+            require(!families.loadXml("<!DOCTYPE MorphLinkProfiles>" + input), "family DTD accepted");
+            auto bad = input; bad.replace(bad.find("-0.5"), 4, "nan");
+            require(!families.loadXml(bad), "nonfinite family gain accepted");
+            auto bound = input;
+            bound.insert(bound.find('>') + 1, "<Defaults male=\"\" female=\"3BA-2.48-v1\"/>");
+            require(families.loadXml(bound) && families.defaultFor(claw::Sex::female), "declared family default refused");
+            require(!families.defaultFor(claw::Sex::male), "empty male resource binding guessed");
+            auto wrong = input;
+            wrong.insert(wrong.find('>') + 1, "<Defaults male=\"3BA-2.48-v1\" female=\"\"/>");
+            require(!families.loadXml(wrong) && !families.defaultFor(claw::Sex::female), "wrong-sex default partially activated");
+        }},
+        {"expanded family maps remain finitely bounded", [] {
+            claw::MorphLink link;
+            link.profile = "family-128";
+            for (int index = 0; index < 128; ++index)
+                link.rules.push_back({"Human" + std::to_string(index), "CLAWTorsoGirth", .001F, 1.F});
+            require(link.valid(claw::Sex::male), "128-row resource map rejected");
+            link.capture([](std::string_view) { return .5F; });
+            require(std::abs(link.compose(claw::Sex::male).at("CLAWTorsoGirth") - .064F) < 1e-6F, "family expansion changed scalar composition");
+            link.rules.push_back({"Excess", "CLAWTorsoGirth", 1, 1});
+            require(!link.valid(claw::Sex::male), "family rule bound bypassed");
         }},
         {"failed source read preserves the last complete snapshot", [] {
             claw::MorphLink link{"Explicit-v1", {{"Human", "CLAWTorsoGirth", 1, .25F}}, {}, false};

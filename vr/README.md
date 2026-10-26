@@ -1,5 +1,13 @@
 # CLAW VR body resource prototype
 
+The newer anatomical/composed builders live in `scripts/split-vr-body.py` and
+`scripts/compose-vr-body.py`; they preserve the head-textured torso as a separate
+material part and support the corrected body carrier. The optional
+`prepare_ik_aliases.py` produces a names-only XP32 alias compatibility experiment
+in a new external directory. It preserves every block and node, but is not
+installed or runtime-qualified. See [the current VR analysis](../docs/vr-body.md)
+before using the retained initial visibility-only prototype below.
+
 The standalone builder prepares both-sex first-person body resources from the
 hash-pinned published 0.6.2.0 bodies. It sets five verified face-only shapes hidden
 and proves that every other NIF byte and every TRI byte remains unchanged. The

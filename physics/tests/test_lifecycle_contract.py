@@ -83,11 +83,11 @@ class LifecycleSourceContracts(unittest.TestCase):
             self.assertIn(requirement, context)
         sync = body(self.actor, "SynchronizeInternal")
         append = sync.index("Bool accepted = CBPCPluginScript.AttachColliderCapsule(")
-        recheck = sync.rindex("If !AttachmentContextCurrent(target, synchronizationGeneration, node)", 0, append)
+        recheck = sync.rindex("If failed || !AttachmentContextCurrent(target, synchronizationGeneration, node)", 0, append)
         for read in ("CBPCPluginScript.DetachCollider(", "CLAWPhysicsData.Point(slot, female, False)",
                      "CLAWPhysicsData.Point(slot, female, True)", "CLAWPhysicsData.Radius(slot, female)"):
             self.assertLess(sync.index(read), recheck)
-        self.assertRegex(sync[recheck:append], r"^If !AttachmentContextCurrent\(target, synchronizationGeneration, node\)\s+failed = True\s+Else\s+$")
+        self.assertRegex(sync[recheck:append], r"^If failed \|\| !AttachmentContextCurrent\(target, synchronizationGeneration, node\)\s+failed = True\s+Else\s+$")
         self.assertNotIn("CLAWPhysicsData.", sync[append:sync.index("_accepted[slot] = accepted", append)])
 
     def test_accepted_append_is_recorded_before_changed_context_rollback(self):

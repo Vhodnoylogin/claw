@@ -1,4 +1,73 @@
-# First-person VR body: bounded offline resource prototype
+# First-person VR body: composed resources and engine qualification
+
+## Current implementation
+
+The selected anatomical split now separates actual head-only triangles from the
+upper torso while retaining the original shader, textures, UVs, skin binds and
+absolute TRI fields. The torso cut from `head` keeps its original head-texture
+material; it is not merged into a differently textured body shape. The selected
+seam duplicates boundary vertices with the same position, weights and morph
+offsets on both sides. Separate composed exports apply this split to the corrected
+body/physics carrier and distinct weight endpoints. The builder and exact
+preservation checks are described in [the head policy](vr-head-policy.md).
+These offline resources still require actual VR graph/camera qualification.
+
+### XP32 aliases and the actual weighted arm
+
+The inspected VRIK0.8.7 reconstruction searches a preferred human node name
+before a werewolf fallback, then searches the next arm bone below that result.
+In the pinned XP32 skeleton, `NPC L Clavicle [LClv]` is an empty leaf alias below
+`NPC L Clavicle [RClv]`, which carries the beast arm. Selecting the leaf makes
+the subsequent upper-arm search fail. The same empty preferred aliases exist
+for the upper arm, forearm, hand and fifteen finger nodes. The installed
+Werewolf Body for VR reference omits those nineteen aliases.
+
+`vr/prepare_ik_aliases.py` implements a smaller optional compatibility candidate:
+rename the nineteen **unweighted leaf aliases**, preserving every node and all
+their parent relationships. Each name changes one ASCII character in the
+existing header string, with the same length. Morphbench supplies the block
+table and public PyNifly independently supplies node ids and names. Serialized
+readback checks the complete graph, and exact byte comparison proves that all
+block/footer bytes remain unchanged. Thus all original XP32 transforms,
+collisions, constraints and skin data are retained. No additional bones or
+reference skeleton are copied into CLAW.
+
+The 26October candidate at
+`D:/Skyrim VR Modding/Builds/claw-vr-ik-20261026/aliases-004-final-body/`
+changes nineteen bytes, retains all345nodes and resolves the left arm and all
+fifteen fingers to branches with observed body influences. The report compares
+the original, candidate and reference graph separately. This reproduces the
+lookup mechanism offline; it does not establish equivalence between a source
+reconstruction and the installed VRIK binary. An animation or another mod that
+looks up the renamed empty aliases can be affected. The skeleton is not installed
+or accepted for distribution. Retaining unmodified XP32 remains preferable if a
+qualified VRIK-side resolver can avoid these aliases instead.
+
+```powershell
+python vr/prepare_ik_aliases.py --skeleton '<XP32>/skeleton.nif' `
+  --skeleton-sha256 '<reviewed SHA256>' `
+  --body '<male>/body_0.nif' --body '<female>/body_0.nif' `
+  --reference '<optional reference>/skeleton.nif' --out-dir '<new external folder>'
+```
+
+### One actor morph vector, both loaded graphs
+
+The pinned RaceMenu source's
+[`VisitBipedNodes`](https://github.com/expired6978/SKSE64Plugins/blob/9ebcb733e17be695f994cd2e9cc383043446bc02/skee64/NifUtils.cpp#L888)
+visits both biped roots and their current/buffered slot objects.
+[`BodyMorphInterface`](https://github.com/expired6978/SKSE64Plugins/blob/9ebcb733e17be695f994cd2e9cc383043446bc02/skee64/BodyMorphInterface.cpp)
+then locates BODYTRI data and applies the same actor aggregate to eligible shapes.
+The intended VR route therefore reuses the actor's linked coefficients and
+matching BODYTRI shape names, without a second set of beast presets or a copied
+coefficient cache. The actual installed VR provider and loaded resources still
+need observation; this source evidence alone is not a VR runtime pass.
+
+VRIK's head visibility adjustment can move or scale the Head bone. Separating
+head triangles alone cannot prevent its remaining weighted influence on torso
+or fur. The composed carrier's attachment weights, camera clearance, hands,
+sex/weight dispatch and physical contacts must consequently be verified together.
+
+## Retained initial resource prototype
 
 Status, revised 26 October 2026: both-sex resources are built and verified offline. They
 are **not an installable CLAW VR mod**. No game, headset, profile, installed mod,

@@ -90,6 +90,7 @@ def main(argv=None):
         source = out / "source-package/Scripts/Source"
         for name in ("CLAWPhysicsData.psc", *build.SCRIPTS):
             command = [str(args.compiler.resolve()), "--game", "skyrim", "--async-read", "0", "--async-write", "0",
+                       "--allow-unknown-events", "1",
                        "--flags", str(args.flags.resolve()), "--output", str(scripts)]
             for folder in imports:
                 command += ["--import", str(folder)]
@@ -121,6 +122,11 @@ def main(argv=None):
                       startGameEnabled=False, automaticAssignment=False, defaultIntegrationOptIn=False,
                       defaultProviderQualified=False, lifecycleDeliveryValidated=False,
                       motionConfigsBundled=False, separateMotionSource="source-package/SKSE/Plugins")
+        report["automaticObserver"] = {"available":True, "defaultEnabled":False,
+            "actorBound":True, "maximumActors":16, "mainTaskRefreshSeconds":2,
+            "sourceAPI":"IBodyMorphInterface::GetBodyMorphs", "stableSamplingPasses":2,
+            "nativeDistributionRequired":True, "providerQualified":False,
+            "nativeModelRequired":fitted is not None and fitted["model"]["schemaVersion"] == 3}
         report["fittedCapsules"] = None if fitted is None else fitted["input"]
         report["artifacts"] = [{"path": p.relative_to(package).as_posix(), "sha256": sha(p), "bytes": p.stat().st_size}
                                for p in sorted(package.rglob("*")) if p.is_file()]

@@ -74,7 +74,40 @@ forward ray on head turn, and invariance under a common rigid camera/body move.
 Imported eye frames remain geometry evidence; real VRIK/HIGGS/runtime visibility
 requires separate VR acceptance.
 
-## Delivery boundaries
+## 6. Import actual runtime CBPC observations
+
+The owner requested this integration on26October. Morphbench should consume and
+compare immutable game observations; a qualified in-game observer must collect
+provider-owned CBPC state at a declared update phase. NIF/HKX capsules, configuration
+files, Attach success and CLAW's requested-output ledger remain separate evidence.
+
+Reuse `Capsule.mesh/transformed`, facade collider methods and the Web/PNG overlay,
+but keep observed, predicted and offline-reference layers distinct. An observation
+must retain raw precision rather than the three-decimal authoring serialization.
+Do not reinterpret a CBPC node frame as a Havok ragdoll frame, silently substitute
+an identity for a missing node, or filter observations through dominant-weight
+visibility. Observed records must not enter skeleton saving/editing implicitly.
+
+The capture contract needs actor/runtime/root generation, perspective, provider
+DLL/config and collector identities, qualification reference, frame/phase/sequence,
+units/axes/space/matrix convention, applied transforms/scales, effective morphs,
+actual raw/normalized weight, resource hashes and completeness/truncation. Each
+capsule retains its provider-scoped id, node, enabled state, endpoints and radius.
+Predictions retain their own model/input identity. Schema details remain a proposal
+to agree with the observer implementation, not an invented existing endpoint.
+
+The current model adds TRI offsets but does not retain complete bind matrices,
+posed LBS or independent weight-endpoint interpolation. Initially accept captured
+skin from the same phase; otherwise show an explicitly labelled reference mesh
+and withhold actual capsule-to-rendered-skin fit results. Capsule geometry alone
+does not establish contact or solver participation. Neither Blender nor MO2 can
+replace in-game provider-state collection.
+
+Read-only review at Morphbench main4bc01e4: `morphbench/colliders.py`, `api.py`,
+`model.py`, `placements.py`, `presenters/cbpc.py`, `presenters/web.py`,
+`presenters/raster.py` and `web/js/render.js`. No Morphbench source was modified.
+
+## Delivery sequence
 
 Implement numerical operations in the existing public facade/CLI first, with
 source-pinned inputs and new-file output rules. The current HTTP interface exposes
