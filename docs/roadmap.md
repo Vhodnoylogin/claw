@@ -1,6 +1,6 @@
 # CLAW — future plans
 
-Owner-defined priorities, revised 25 October 2026. No release dates are promised.
+Owner-defined priorities, revised 26 October 2026. No release dates are promised.
 
 1. Make working CLAW presets distributable as independent mods, as with human
    bodies. Determine whether stock OBody is sufficient; implement an optional
@@ -8,6 +8,10 @@ Owner-defined priorities, revised 25 October 2026. No release dates are promised
 2. Repair geometry gaps, including the known underside breast/body separation.
 3. Add motion and collision physics for ears and tail. Correct the female breast
    shape and rig before adding its physics. Prefer existing XP32 bones.
+   Alongside this stage, add distinct low/high-weight body shapes for both sexes
+   (`_0` and `_1`). This is a low-priority enhancement, not a blocker for the next
+   preset/distribution, geometry and transformation release. Verify intermediate
+   weights, morph combinations, seams and physics against both endpoints.
 4. Link human and beast morphology during transformation, preserving both forms
    and other mods' contributions.
 
@@ -31,8 +35,10 @@ demonstrated requirement cannot be met otherwise.
   stable individual traits and transformation action plans; game controller pending.
 - [Independent presets](presets.md): typed XML, optional VR native distributor,
   selector and authoring resources built; runtime acceptance pending.
-- [Human/beast pairs](transformation.md): exact-pair resolver and exclusive-key
-  policy planner implemented offline; native integration remains disabled.
+- [Human/beast morph linkage](transformation.md): native signed coefficient
+  conversion is implemented as a development candidate. Preset names do not
+  select paired beast presets; real body-profile calibration and runtime
+  transformation/persistence acceptance remain pending.
 - [Surface attachment repair](geometry-repair.md): opt-in female candidate built
   with topology/UV data retained. A separate post-export stage repairs the narrow
   head/body skin-weight collar; controlled pose errors improve, while actual
@@ -51,3 +57,25 @@ demonstrated requirement cannot be met otherwise.
   visual/game acceptance remain separate gates.
 
 These development results do not change or requalify the published0.6.2.0 package.
+
+## Remaining acceptance for the next functional release
+
+The first bounded SE mechanics run on 26 October passed 21 of 68 required checks,
+then stopped on a source-change read before the two-second refresh interval could
+be guaranteed. One assertion mismatched and 46 checks were not run. This is not
+evidence of a persistent mod defect or full runtime acceptance. A corrected
+scenario must use bounded read-only polling for asynchronous results.
+
+- Finish both-sex preset/link checks, clearing, suppression/resume, manual
+  overrides and human/beast return transitions with independent keyed readback.
+- Check several actor references, including shared NPC bases, stable population
+  assignment, the selector, and save/load persistence without unintended rerolls.
+- Check actual human OBody coexistence and calibrated human morph mapping;
+  synthetic source values alone do not qualify a real body-resource profile.
+- Inspect the repaired geometry in game for both sexes, representative poses and
+  strong morph combinations, including breast underside, collar and fur seams.
+- Verify the intended SE/VR runtime builds, final archives, fresh installation
+  and upgrade behavior. Offline builds and mesh bounds do not replace game checks.
+
+New physics, distinct weight-endpoint geometry, VR first-person body and adult
+Anatomy remain later work; they do not block this functional release.
