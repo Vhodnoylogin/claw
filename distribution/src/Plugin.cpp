@@ -271,24 +271,29 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     const auto sex = actor->GetActorBase()->GetSex();
     if (sex != RE::SEX::kMale && sex != RE::SEX::kFemale) { logError(*state, "actor has no readable NPC sex"); return; }
     const auto desiredSex = sex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
-    if (!catalog.valid()) { logError(*state, "CLAW preset catalog is invalid or empty"); return; }
-    if (state->preset.empty() || state->sex != desiredSex) {
-        const auto identity = std::to_string(saveNamespace) + "/" + std::to_string(state->identity);
-        const auto* preset = catalog.choose(identity, desiredSex);
-        if (!preset) { logError(*state, "no presets for this actor's sex"); return; }
-        state->preset = preset->name; state->sex = desiredSex; state->dirty = true;
-    }
-    const auto* preset = catalog.find(state->preset, desiredSex);
-    if (!preset) { logError(*state, "saved preset missing or has wrong family: " + state->preset); return; }
-    const float weight = actor->GetActorBase()->weight;
+    const bool linked = state->link.enabled();
+    float weight = -1; // Linked mode never reads or interpolates actor weight.
     claw::Morphs expected;
     try {
-        expected = claw::interpolate(*preset, weight);
-        if (state->link.enabled()) expected = state->link.compose(std::move(expected), desiredSex);
+        expected = claw::resolveMorphs(state->link, desiredSex, [&] {
+            if (!catalog.valid()) throw std::runtime_error("CLAW preset catalog is invalid or empty");
+            const auto otherSex = desiredSex == claw::Sex::male ? claw::Sex::female : claw::Sex::male;
+            // A retained independent choice can predate a sex change in linked mode.
+            if (state->preset.empty() || state->sex != desiredSex || catalog.find(state->preset, otherSex)) {
+                const auto identity = std::to_string(saveNamespace) + "/" + std::to_string(state->identity);
+                const auto* preset = catalog.choose(identity, desiredSex);
+                if (!preset) throw std::runtime_error("no presets for this actor's sex");
+                state->preset = preset->name; state->sex = desiredSex; state->dirty = true;
+            }
+            const auto* preset = catalog.find(state->preset, desiredSex);
+            if (!preset) throw std::runtime_error("saved preset missing or has wrong family: " + state->preset);
+            weight = actor->GetActorBase()->weight;
+            return claw::interpolate(*preset, weight);
+        });
     }
     catch (const std::exception& error) { logError(*state, error.what()); return; }
     const bool matching = readback(actor, expected);
-    if (force || state->dirty || state->lastRoot != root || state->lastWeight != weight || !matching) {
+    if (force || state->dirty || state->lastRoot != root || (!linked && state->lastWeight != weight) || !matching) {
         state->status = Status::pending;
         if (!clearOwn(actor)) { logError(*state, "own-key preparation readback failed"); return; }
         // Recheck race/model immediately before writes; all operations stay on this main-thread task.
@@ -300,7 +305,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         morphs->ApplyBodyMorphs(skeeReference(actor), false);
         if (!readback(actor, expected)) { logError(*state, "SKEE own morph readback differs from requested values"); return; }
     }
-    state->cache = std::move(expected); state->lastRoot = root; state->lastWeight = weight;
+    state->sex = desiredSex; state->cache = std::move(expected); state->lastRoot = root; state->lastWeight = weight;
     state->dirty = false; state->status = Status::applied; state->error.clear();
 }
 
@@ -607,7 +612,7 @@ const State* cachedState(RE::Actor* actor) {
 RE::BSFixedString assigned(RE::StaticFunctionTag*, RE::Actor* actor) {
     std::lock_guard lock(mutex);
     const auto* state = cachedState(actor);
-    return state && !state->quarantined ? RE::BSFixedString(state->preset) : RE::BSFixedString{};
+    return state && !state->quarantined && !state->link.enabled() ? RE::BSFixedString(state->preset) : RE::BSFixedString{};
 }
 std::int32_t getStatus(RE::StaticFunctionTag*, RE::Actor* actor) {
     std::lock_guard lock(mutex);

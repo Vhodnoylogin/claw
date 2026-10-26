@@ -3,8 +3,9 @@
 Development candidate, 26 October 2026. The intended link is **morph to morph**:
 actual applied human coefficients determine the corresponding beast proportions.
 A preset supplies coefficients; its name does not select a paired wolf preset.
-The native implementation is a candidate until compilation, provider behavior,
-save/load and actual SE/VR transformations have been verified independently.
+The native implementation remains a development candidate. This direct linked
+mode has not been game-tested; provider behavior, save/load and actual SE/VR
+transformations require independent verification.
 
 ## Explicit calibrated mapping
 
@@ -20,8 +21,12 @@ beast[target] = clamp(sum(appliedHuman[source] * gain), 0, 1) * cap
 Source values are signed, finite **already applied SKEE coefficients**. They are
 not XML percentages or low/high endpoints. Combine signed contributions before
 clamping. The native conversion applies no actor weight factor: the human
-provider has already performed its weight interpolation. The independent beast
-preset still uses its ordinary single interpolation for unrelated traits.
+provider has already performed its weight interpolation. Linked mode starts from
+the complete neutral public morph vector for the actor's sex, then replaces only
+the configured targets. It does not read actor weight or select, load or
+interpolate a beast preset. No CLAW preset XML, including a neutral preset, is
+required for a linked actor. An absent or invalid independent catalog does not
+block this mode.
 
 There is no universal calibrated default profile in this candidate.
 `recipes/distribution.json` contains illustrative equations, not accepted CBBE or
@@ -45,9 +50,13 @@ recognized base morphs in the body domain: torso except breast, arm girth, thigh
 girth and calf girth. Gains must be finite; caps must be finite in `(0, 1]`.
 Duplicate source/target rows and inconsistent caps for one target are rejected.
 
-Only configured targets are replaced. Independent ears, muzzle, head, tail,
-paws, claws and digitigrade traits remain unchanged; they are not rerolled by a
-human morph change. Female breast linkage stays zero pending shape qualification.
+Only configured targets become nonzero. Unmapped torso traits, ears, muzzle,
+head, tail, paws, claws and digitigrade traits stay zero. Female breast linkage
+stays zero pending shape qualification. For the same sex, profile and applied
+source values, the complete own morph vector is identical regardless of former
+beast assignments or actor weight. Clamping and unmapped source differences can
+still make different human presets produce the same vector; distinct appearance
+for every possible preset is not guaranteed.
 No adult target is accepted. No OBody assignment or setting is written.
 `GetBodyMorphs` is the provider's actual aggregation API; the implementation never
 substitutes a sum of foreign keys or assumes all SKEE contributions add linearly.
@@ -78,17 +87,21 @@ Every API Boolean means queue admission. Wait for `GetStatus` to leave pending
 and inspect `GetLastError` before issuing the next request; existing coalescing
 can supersede an earlier unfinished request. `GetOwnMorph` retains its verified
 cache semantics and is not an independent rendering oracle. `GetAssigned`
-continues reporting the independent preset choice, not a fabricated linked
-preset name.
+returns an empty string in linked mode: there is no assigned beast preset.
 
 Normal `AssignPreset` disables linkage, expressing a manual independent choice.
 `ClearOwn` suppresses the actor while retaining the mapping. A valid explicit
 configuration resumes linkage; disabling a mapping does not clear suppression.
+An older independent choice may remain stored solely for `DisableMorphLink` to
+resume the optional independent route; it never contributes to linked output.
+That independent route still requires its catalog and uses actor weight once.
 Human return clears only this
 companion's own beast contributions; foreign keys and human provider state remain
 unchanged. A later beast transformation resumes the same identity and traits.
 
 Actor co-save record v2 stores the explicit mapping and last captured sources.
+The record layout is unchanged; development v2 linked records use these direct
+neutral-baseline semantics on refresh, ignoring any retained independent choice.
 Version 1 records migrate to independent mode; an old preset name never creates
 an opt-in. Actual engine save/load migration has not been accepted from code
 inspection. Source snapshots are audit/persistence data, not permission to skip

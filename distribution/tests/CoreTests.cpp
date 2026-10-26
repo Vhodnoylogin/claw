@@ -34,14 +34,46 @@ int main() {
             claw::MorphLink link{"Explicit-v1", {{"HumanA", "CLAWTorsoGirth", .5F, .25F}, {"HumanB", "CLAWTorsoGirth", .5F, .25F}}, {}, false};
             require(link.valid(claw::Sex::female), "explicit scalar profile rejected");
             link.capture([](std::string_view name) { return name == "HumanA" ? 10.0F : -10.0F; });
-            auto result = link.compose({{"CLAWHeadEarSize", .23F}, {"CLAWTailLength", .37F}}, claw::Sex::female);
+            auto result = link.compose(claw::Sex::female);
             require(result.at("CLAWTorsoGirth") == 0, "sources clamped separately or cancellation lost");
-            require(result.at("CLAWHeadEarSize") == .23F && result.at("CLAWTailLength") == .37F, "independent traits rerolled");
+            require(result.at("CLAWHeadEarSize") == 0 && result.at("CLAWTailLength") == 0, "unmapped traits were not neutral");
             link.capture([](std::string_view) { return .5F; });
-            result = link.compose({}, claw::Sex::female);
+            result = link.compose(claw::Sex::female);
             require(result.at("CLAWTorsoGirth") == .125F && result.at("CLAWTorsoBreastSize") == 0, "weight applied twice or female exclusion lost");
             link.capture([](std::string_view) { return 0.0F; });
-            require(link.compose({}, claw::Sex::male).at("CLAWTorsoGirth") == 0, "cleared human source resurrected cache");
+            require(link.compose(claw::Sex::male).at("CLAWTorsoGirth") == 0, "cleared human source resurrected cache");
+        }},
+        {"linked output ignores old independent choices weights and absent catalog", [] {
+            claw::Catalog catalog;
+            require(catalog.loadXml(xml(small + big + "<SetSlider name=\"CLAWHeadEarSize\" size=\"small\" value=\"30\"/>", "Old A"), "a"), "old A rejected");
+            require(catalog.loadXml(xml(big + "<SetSlider name=\"CLAWTailLength\" size=\"big\" value=\"70\"/>", "Old B"), "b"), "old B rejected");
+            std::size_t independentCalls{};
+            auto oldA = [&] { ++independentCalls; return claw::interpolate(*catalog.find("Old A", claw::Sex::male), 0); };
+            auto oldB = [&] { ++independentCalls; return claw::interpolate(*catalog.find("Old B", claw::Sex::male), 100); };
+            require(oldA() != oldB(), "old choices/weights do not distinguish regression inputs");
+            independentCalls = 0;
+            claw::MorphLink link{"Explicit-v1", {{"Human", "CLAWTorsoGirth", 1, .25F}}, {}, false};
+            link.capture([](std::string_view) { return .5F; });
+            const auto first = claw::resolveMorphs(link, claw::Sex::male, oldA);
+            require(first == claw::resolveMorphs(link, claw::Sex::male, oldB), "old independent choice/weight changed linked output");
+            claw::Catalog absent;
+            require(!absent.valid(), "absent catalog unexpectedly valid");
+            const auto noCatalog = claw::resolveMorphs(link, claw::Sex::male, [&]() -> claw::Morphs {
+                ++independentCalls;
+                throw std::runtime_error("absent catalog and saved preset must not be read");
+            });
+            require(first == noCatalog && independentCalls == 0, "linked mode consulted independent catalog/weight");
+            require(first.size() == claw::recognizedMorphs(claw::Sex::male).size(), "linked cache omitted neutral public morphs");
+            for (const auto name : claw::recognizedMorphs(claw::Sex::male))
+                require(first.at(std::string(name)) == (name == "CLAWTorsoGirth" ? .125F : 0.F), "unmapped linked trait was nonzero");
+            const auto female = claw::resolveMorphs(link, claw::Sex::female, oldA);
+            require(female.size() == 25 && female.at("CLAWTorsoBreastSize") == 0, "female neutral breast/cache lost");
+            require(claw::verifyOwnMorphs(first, [&](std::string_view name) {
+                const auto found = first.find(name); return found == first.end() ? 0.F : found->second;
+            }), "complete male own-key readback failed");
+            claw::MorphLink disabled;
+            require(claw::resolveMorphs(disabled, claw::Sex::male, oldA) != first && independentCalls == 1,
+                    "disabled linkage did not restore independent selection/interpolation");
         }},
         {"morph linkage cannot feed back its own beast values", [] {
             claw::MorphLink link{"Explicit-v1", {{"CLAWTorsoGirth", "CLAWTorsoGirth", 1, .25F}}, {}, false};

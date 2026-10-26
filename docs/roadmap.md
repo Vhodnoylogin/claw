@@ -2,9 +2,10 @@
 
 Owner-defined priorities, revised 26 October 2026. No release dates are promised.
 
-1. Make working CLAW presets distributable as independent mods, as with human
-   bodies. Determine whether stock OBody is sufficient; implement an optional
-   companion when its family filtering/distribution APIs are insufficient.
+1. Use real human preset mods and OBody to define each actor's beast morphology
+   through shared body-resource conversion rules. The latest owner direction
+   requires no separate beast presets. Retain independent beast assignment only
+   as an optional compatibility route; qualify the human-driven route first.
 2. Repair geometry gaps, including the known underside breast/body separation.
 3. Add motion and collision physics for ears and tail. Correct the female breast
    shape and rig before adding its physics. Prefer existing XP32 bones.
@@ -26,8 +27,10 @@ future work.
 ## Development priorities and first work
 
 The 25 October order supersedes the 11 October sequence that placed VR second.
-Preset interoperability and a usable independent preset ecosystem come first;
-human-to-beast coefficient mapping is fourth, not a prerequisite for distribution.
+The 26 October manual-session request refines preset interoperability: ordinary
+human presets must determine the wolf through morph-to-morph conversion, without
+an additional beast preset. Resource-specific mapping is therefore part of this
+session's preparation. The earlier independent beast route remains optional.
 Prefer keeping XP32 and its existing bones. Replace the skeleton only if a
 demonstrated requirement cannot be met otherwise.
 
@@ -36,8 +39,9 @@ demonstrated requirement cannot be met otherwise.
 - [Independent presets](presets.md): typed XML, optional VR native distributor,
   selector and authoring resources built; runtime acceptance pending.
 - [Human/beast morph linkage](transformation.md): native signed coefficient
-  conversion is implemented as a development candidate. Preset names do not
-  select paired beast presets; real body-profile calibration and runtime
+  conversion is implemented as a development candidate. Linked actors start
+  from neutral owned coefficients and bypass beast catalogs, saved choices and
+  actor-weight interpolation. Real body-profile calibration and runtime
   transformation/persistence acceptance remain pending.
 - [Surface attachment repair](geometry-repair.md): opt-in female candidate built
   with topology/UV data retained. A separate post-export stage repairs the narrow
@@ -66,16 +70,18 @@ be guaranteed. One assertion mismatched and 46 checks were not run. This is not
 evidence of a persistent mod defect or full runtime acceptance. A corrected
 scenario must use bounded read-only polling for asynchronous results.
 
-- Finish both-sex preset/link checks, clearing, suppression/resume, manual
-  overrides and human/beast return transitions with independent keyed readback.
-- Check several actor references, including shared NPC bases, stable population
-  assignment, the selector, and save/load persistence without unintended rerolls.
+- Finish both-sex direct link checks, clearing, suppression/resume and human/beast
+  return transitions with independent keyed readback. Keep optional independent
+  preset compatibility checks separate from the human-driven acceptance.
+- Check several actor references, including shared NPC bases, human OBody
+  assignment/selection and save/load persistence without unintended rerolls.
 - Check actual human OBody coexistence and calibrated human morph mapping;
   synthetic source values alone do not qualify a real body-resource profile.
 - Inspect the repaired geometry in game for both sexes, representative poses and
   strong morph combinations, including breast underside, collar and fur seams.
-- Verify the intended SE/VR runtime builds, final archives, fresh installation
-  and upgrade behavior. Offline builds and mesh bounds do not replace game checks.
+- Verify the SE runtime build, final archive, fresh installation and upgrade
+  behavior in this round. The owner excluded VR testing from this session.
+  Offline builds and mesh bounds do not replace game checks.
 
 New physics, distinct weight-endpoint geometry, VR first-person body and adult
 Anatomy remain later work; they do not block this functional release.

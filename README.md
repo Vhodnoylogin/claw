@@ -19,8 +19,10 @@ is the primary goal. The 25 October order is independent presets, geometry repai
 ear/tail and breast physics, then human/beast linkage; VR follows afterwards.
 The optional [typed preset companion and authoring resources](docs/presets.md)
 are development candidates; runtime acceptance is pending.
-The [exact human/beast pairing planner](docs/transformation.md) remains offline;
-it is not a second live morph writer.
+The native [human/beast morph link](docs/transformation.md) derives a neutral
+beast morph vector from actual applied human coefficients. Linked actors need
+no beast preset files; real OBody/profile calibration and game acceptance remain
+pending. The older exact preset-pairing experiment is historical.
 The [ear/tail physics source candidate](physics/README.md) uses existing XP32
 chains and keeps collision attachment behind explicit provider qualification.
 
@@ -43,7 +45,7 @@ the others go by the short name and still read as one group and sit together in 
 | Component | Scope |
 |---|---|
 | `CLAW - Configurable Lycanthrope Anatomy and Weight` | bodies of both sexes with identical low/high weight endpoints per sex, a morph file **without adult sliders**, and a plugin with the weight slider and the female model |
-| `CLAW - Distribution` | development candidate: independent typed preset mods, automatic beast assignment and a selector; game acceptance pending |
+| `CLAW - Distribution` | development candidate: human morph linkage without beast presets; optional legacy independent assignment; game acceptance pending |
 | `CLAW - Anatomy` | the adult add-on: **morph files only**, five megabytes |
 | `CLAW - VR` | what only makes sense in a headset: dense capsules for the hands, a beast body for the player, HIGGS, PLANCK and swinging-physics settings |
 

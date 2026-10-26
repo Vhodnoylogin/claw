@@ -5,6 +5,7 @@
 #include <functional>
 #include <set>
 #include <stdexcept>
+#include <utility>
 
 namespace claw {
 struct MorphLinkRule {
@@ -53,8 +54,12 @@ struct MorphLink {
         }
         sourceValues = std::move(observed); captured = true;
     }
-    [[nodiscard]] Morphs compose(Morphs independent, Sex sex) const {
+    [[nodiscard]] Morphs compose(Sex sex) const {
         if (!valid(sex) || !captured) throw std::runtime_error("morph link profile/source is unavailable or invalid");
+        // Linked output starts neutral. Independent presets, actor weight and
+        // unmapped traits cannot contribute to this mode.
+        Morphs result;
+        for (const auto name : recognizedMorphs(sex)) result.emplace(name, 0.F);
         std::map<std::string, double> sums;
         std::map<std::string, float> caps;
         for (const auto& rule : rules) {
@@ -63,10 +68,17 @@ struct MorphLink {
         }
         for (const auto& [target, sum] : sums) {
             if (!std::isfinite(sum)) throw std::runtime_error("morph link arithmetic overflow");
-            independent[target] = static_cast<float>(std::clamp(sum, 0.0, 1.0) * caps.at(target));
+            result[target] = static_cast<float>(std::clamp(sum, 0.0, 1.0) * caps.at(target));
         }
-        if (sex == Sex::female) independent["CLAWTorsoBreastSize"] = 0;
-        return independent;
+        return result;
     }
 };
+
+// Keep catalog lookup, selection and weight interpolation lazy: linked actors
+// need none of them, including when the independent catalog is absent/invalid.
+template <class Independent>
+[[nodiscard]] Morphs resolveMorphs(const MorphLink& link, Sex sex, Independent&& independent) {
+    if (link.enabled()) return link.compose(sex);
+    return std::forward<Independent>(independent)();
+}
 }

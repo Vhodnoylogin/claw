@@ -1,12 +1,19 @@
 # CLAW Distribution development companion
 
-This optional native SKSE companion reads third-party **CLAW** presets, assigns
-them to currently loaded werewolves and writes only the `CLAW.Distribution` morph
-key. The preserved first compiled candidate targets **Skyrim VR 1.4.15**. A
-separate **Skyrim SE 1.7.104.0** development build is now the flat-game test target.
+This optional native SKSE companion writes only the `CLAW.Distribution` morph
+key. Its independent mode reads third-party **CLAW** presets and assigns them to
+currently loaded werewolves. Explicit human morph linkage instead derives the
+whole owned coefficient vector from a neutral baseline and applied human morphs;
+it requires no beast preset files. The preserved first compiled candidate targets
+**Skyrim VR 1.4.15**. A separate **Skyrim SE 1.7.104.0** development build is now the
+flat-game test target.
 It does not fork
 OBody, rename beast presets to human families, or change OBody's human assignments.
-It has not been installed or run in the game. Compilation is not runtime acceptance.
+The earlier SE mechanics candidate at `f42e0f2` completed a first bounded game run:
+21 checks passed, one assertion mismatched with ambiguous timing and 46 checks
+were not run. Those results do not accept this direct linked-mode revision or
+rendered geometry. The current linked revision is not game-tested. Compilation
+is not runtime acceptance.
 The SE build requires **SKSE 2.3.1**, the matching **Address Library v13** data,
 and a RaceMenu/SKEE build qualified for that runtime. RaceMenu/SKEE runtime
 compatibility remains a separate gate; the pinned interface header alone does
@@ -18,6 +25,9 @@ Distribution mod. Older SE/AE variants require their SDK/API review and dependen
 qualification, and untested AE is not reported as a game pass.
 
 ## Preset contract
+
+This catalog is required only for independent beast assignment. Linked actors
+bypass catalog validity, selection and interpolation entirely.
 
 Install standalone XML beneath:
 
@@ -83,8 +93,9 @@ the launcher's working directory. After new-game/post-load readiness a task emit
 the `CLAWDistribution_Loaded` mod event for the optional menu bootstrap.
 
 Each actor reference gets an identity inside a randomized save namespace. A
-stable FNV-1a selector chooses among sorted presets of the correct sex; the actual
-assignment is saved, so adding presets never rerolls existing actors. SKSE
+stable FNV-1a selector in independent mode chooses among sorted presets of the
+correct sex; the actual assignment is saved, so adding presets never rerolls
+existing actors. Linked mode never invokes that selector. SKSE
 serialization records namespace, identity, selected name, family, suppression,
 VM deletion identity and verified coefficient cache. `ResolveFormID` and
 `ResolveHandle` remap actor references/VM identities on load,
@@ -135,7 +146,7 @@ deletion ordering and pool lifetime still require qualification in the selected
 game runtime.
 
 Returning to human form clears only known base morphs under this companion's key,
-retaining the assignment for later beast form. Human OBody assignments and other
+retaining the independent assignment or explicit linked profile for later beast form. Human OBody assignments and other
 morph keys are left intact. Explicit `ClearOwn` also saves a suppression flag,
 so periodic automatic assignment stays off until `AssignPreset` or an explicit
 valid `ConfigureMorphLink` request is called.
@@ -163,7 +174,7 @@ The coordinator owns the user menu and optional human OBody route.
 |---|---|
 | `GetPresetNames(female)` | Sorted valid catalog names for that family |
 | `AssignPreset(actor, name)` | False if invalid/unavailable; true means queued |
-| `GetAssigned(actor)` | Saved selected name; does not imply application |
+| `GetAssigned(actor)` | Saved independent name, or empty in linked mode; does not imply application |
 | `GetStatus(actor)` | Enum below; queued native requests report pending immediately |
 | `GetLastError(actor)` | Most recent application/request error |
 | `GetOwnMorph(actor, name)` | Last verified own coefficient, zero unless status is applied |
@@ -184,13 +195,18 @@ The optional [morph-to-morph bridge](../docs/transformation.md) reads actual
 applied signed human coefficients through SKEE in main-thread tasks. It sums
 configured source values times gains, clamps each target sum once to 0..1 and
 multiplies by its configured cap; it never reapplies actor weight to those human
-values. Independent ears and tail remain unchanged. The profile is explicit;
+values. Linked output starts with all public own morphs neutral for the actor's
+sex; every unmapped trait, including ears and tail, stays zero. Female breast
+stays zero pending shape qualification. No independent preset, catalog or actor
+weight contributes, even if an older independent assignment is retained for
+`DisableMorphLink`. `GetAssigned` is empty while linkage is enabled. The profile is explicit;
 there is no universally calibrated default or automatic body-family detection.
 Normal `AssignPreset` disables linkage. `ClearOwn` retains the mapping while
 suppressing distribution; a valid explicit configuration resumes it. Disabling
 linkage does not clear suppression. The existing
 single own key is retained. Actor record v2 stores the mapping/source snapshot;
-v1 migrates independent. Native compilation, real source aggregation and actual
+v1 migrates independent. The v2 layout is unchanged, and its linked records use
+the direct neutral-baseline semantics after refresh. Real source aggregation and actual
 save/load/transform behavior require separate acceptance evidence. The API queues
 work: wait for the previous request to complete before submitting the next one.
 
@@ -270,8 +286,12 @@ cmake --build <external-build> --config Release
 After the coordinator confirms testing readiness, explicitly configure
 `CLAW_BUILD_TESTS=ON`, compile `claw-preset-tests` and run it or CTest. No post-build
 command executes tests. Offline cases cover endpoints, sparse BodySlide exports,
-typed families, exclusions, duplicate catalogs, bad input, stable selection and
-nested third-party files. Runtime acceptance still needs a separately authorized
+typed families, exclusions, duplicate catalogs, bad input, stable selection,
+nested third-party files and direct linked output with neutral unmapped traits
+and no independent catalog/weight access. The SE DLL compiled and all 28 offline
+contract cases passed for this direct linked revision. Runtime acceptance still
+needs a separately authorized
 game test: multiple male/female beasts, UI assignment, human key preservation,
 transform/race events, delayed/reloaded 3D, external OBody updates, saved dynamic
-references and save/load. This candidate contains no live test evidence.
+references and save/load. The earlier bounded SE mechanics run described above
+does not qualify this revised linked behavior.
