@@ -244,13 +244,69 @@ python physics/build.py --out '<new-external-staging-directory>'
 
 `--measurements <node-capsule-candidates.json>` checks the exact pinned source
 hash and coordinates. `--check-provider <effective-SKSE/Plugins-snapshot>` refuses
-another master mapping of these bones. It does not guess MO2 winners and cannot
-prove loaded SMP ownership. Supply the baseline before adding this candidate;
-all matching `.txt`/`.ini` masters are checked, including CLAW-looking filenames.
-A filename alone never establishes ownership. The build emits only the two configs,
+another master mapping of these bones, reuse of private aliases in master/bounce
+files, and exact node references in supplied SMP XML. It preserves every matching
+declaration, line and condition; it never guesses a duplicate winner or treats
+apparently disjoint conditions as exclusive ownership. Unreadable configs/XML or
+DTD/entity declarations leave the audit unresolved. The build records every
+supplied matching config/XML/provider-DLL hash and rechecks the complete inventory
+before reporting success. File addition/removal also expires the receipt.
+
+It does not guess MO2 winners or certify archives, NIF-selected XML, generated
+bindings, the actual process VFS, loaded SMP ownership or reserved native indices.
+Supply the baseline before adding this candidate; all matching `.txt`/`.ini`
+masters are checked, including CLAW-looking filenames. A filename alone never
+establishes ownership. `python physics/audit-provider.py --snapshot '<snapshot>'
+--out '<new-external-directory>'` retains the report even when conflicts block a
+build. The same audit runs inside `build.py --check-provider`; its receipt is
+embedded in a successful source manifest. The default build emits the two configs,
 own actor/host/load-relay/control PSCs, generated `CLAWPhysicsData.psc` and a hash manifest—no NIF, shared collision file,
 plugin, native DLL or release metadata. Outputs must be new external directories
 or ignored `work/` descendants; live/source/archive destinations are refused.
+
+## Explicit breast P1 motion source trial
+
+The separate `breast-motion.json` recipe supplies original small-displacement
+trial values for **only** existing `NPC L/R Breast P1`, using private
+`CLAW_BreastL/R` aliases and the exact female + vanilla-werewolf condition.
+It retains XP32 and writes no skeleton or body. This remains an uninstalled
+source trial, with no visible motion, race rebinding, single-provider ownership
+or runtime acceptance. Ordinary human Breast/3BA aliases are separate XP32
+branches; their presence alone does not establish P1 motion.
+
+Opt in only with the exact raw collar+P1 body `6792fc6c...e33d` and reviewed XP32
+`b64b614d...2dd0`. The generator reads both hashes, requires a supplied baseline
+provider audit and refuses known P1/pre-P1/parent mappings, private alias reuse
+or matching SMP XML references. This includes the complete pinned ancestry to
+Spine2, Spine1, Spine, COM and root: a configured ancestor simulation could move
+P1 by inheritance. Ordinary skeletal animation is not a provider mapping. It
+rechecks input bytes and the snapshot after
+writing. Those static gates are prerequisites, not proof that an unseen loaded
+provider cannot own P1. Actual loaded-node ownership must be qualified before
+any later deployment; do not add a second writer to an already owned branch.
+
+```powershell
+python physics/build.py --out '<new-external-source-directory>' `
+  --check-provider '<explicit-baseline-SKSE/Plugins-snapshot>' `
+  --with-breast-motion --breast-body '<reviewed-raw-91-node-body.nif>' `
+  --skeleton '<reviewed-existing-XP32-skeleton.nif>'
+```
+
+This adds `CBPCMasterConfig_CLAWBreastPhysics.txt` and
+`CBPConfig_CLAWBreastPhysics.txt` to the independent source candidate. Force is
+0.03, translation clamps are +/-0.15, rotation offset clamps +/-0.1 and rotation
+factors 0.005. These are original trial parameters, not measured safe envelopes.
+Both contact multipliers are zero: this trial adds no P1 capsule/contact model.
+The optional finite host still handles only the eight ear/tail capsule slots;
+host opt-in cannot gate any file-loaded motion. The host-only ESP/PEX package
+continues to exclude every motion config. No production/default rig or recipe
+is enabled by this option. A completed source manifest confirms only the stated
+offline checks; an incomplete build retains `FAILED-unverified-do-not-install`.
+The newer fur follower `d99a1180...276d` and its bounds variants remain separate
+inputs. This first motion recipe deliberately refuses them; they require a new
+explicit geometry pin and motion/bounds requalification, not a silent pin update.
+
+## Compilation and host package
 
 Compile all five emitted PSCs with Caprica `--game skyrim`, from their `Scripts/Source`
 directory, importing installed SKSE, base-game sources and CBPC's public source

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "namespace": "CLAW.Physics.Breast",
+  "status": "uninstalled-original-P1-motion-source-trial",
+  "inputs": {
+    "bodyNifSha256": "6792fc6c28c849c7a6279dedf2a7681abd154e7ad1327b4b4826285e1353e33d",
+    "skeletonSha256": "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0"
+  },
+  "raceCondition": "IsRaceFormId(Skyrim.esm|000CDD84) AND IsFemale()",
+  "commonOverrides": {
+    "forceMultipler": 0.03,
+    "rotationalX": 0.005,
+    "rotationalY": 0.005,
+    "rotationalZ": 0.005,
+    "collisionMultipler": 0.0,
+    "collisionMultiplerRot": 0.0
+  },
+  "groups": [
+    {"alias": "CLAW_BreastL", "nodes": ["NPC L Breast P1"], "maxOffset": 0.15, "maxOffsetRot": 0.1},
+    {"alias": "CLAW_BreastR", "nodes": ["NPC R Breast P1"], "maxOffset": 0.15, "maxOffsetRot": 0.1}
+  ]
+}

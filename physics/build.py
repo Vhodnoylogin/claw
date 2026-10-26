@@ -6,15 +6,32 @@ import json
 import math
 from pathlib import Path
 import re
-import shutil
 import sys
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent
+# Anchor provenance to the code actually loaded, including when a stale .pyc was
+# used or the builder was edited after import. Compile from captured bytes and
+# compare with the live module code, rather than hashing whatever is on disk later.
+BUILDER_BYTES = Path(__file__).read_bytes()
+if compile(BUILDER_BYTES, sys._getframe().f_code.co_filename, "exec", dont_inherit=True,
+           optimize=sys.flags.optimize) != sys._getframe().f_code:
+    raise ValueError("Builder source bytes do not match the loaded code")
 NODES = ("NPC EarL [EarL]Bone01", "NPC EarL [EarL]Bone02",
          "NPC EarR [EarR]Bone01", "NPC EarR [EarR]Bone02",
          "TailBone01", "TailBone02", "TailBone03", "TailBone04", "TailBone05")
 ALIASES = ("CLAW_EarL", "CLAW_EarR", "CLAW_Tail")
+BREAST_NODES = ("NPC L Breast P1", "NPC R Breast P1")
+# Exact ancestor union in the pinned b64b614d XP32 donor. A configured simulation
+# on these nodes can move P1 by inheritance; ordinary animation is not scanned.
+BREAST_ANCESTORS = ("NPC L PreBreast P1", "NPC R PreBreast P1", "Breast P1", "CME Spine2 [Spn2]",
+                    "NPC Spine2 [Spn2]", "CME Spine1 [Spn1]", "NPC Spine1 [Spn1]", "CME Spine [Spn0]",
+                    "NPC Spine [Spn0]", "CME UBody [UBody]", "CME Body [Body]", "NPC COM [COM ]",
+                    "NPC Root [Root]", "NPC", "skeleton.nif")
+BREAST_ALIASES = ("CLAW_BreastL", "CLAW_BreastR")
+ORDINARY_BREAST_NODES = tuple(f"NPC {side} {part}" for side in ("L", "R") for part in ("Breast", "Breast01")) + tuple(
+    f"{side} Breast0{part}" for side in ("L", "R") for part in (1, 2, 3))
 SCRIPTS = ("CLAWPhysicsActor.psc", "CLAWPhysicsHost.psc", "CLAWPhysicsLoadRelay.psc", "CLAWPhysicsControl.psc")
 PARAMETERS = {
     "stiffness", "stiffness2", "damping", "timetick", "timeStep", "timeStepRot", "forceMultipler",
@@ -24,6 +41,37 @@ PARAMETERS = {
     *(f"linear{axis}rotation{other}" for axis in "XYZ" for other in "XYZ"),
     *(f"collision{axis}{side}offset" for axis in "XYZ" for side in ("min", "max"))
 }
+
+
+class SourceInputs:
+    """Read once, consume these exact bytes, and reject subsequent disk changes."""
+    def __init__(self, breast=False):
+        self.root = ROOT
+        names = ["recipe.json", "capsules.json", "sources.json", "README.md", "build.py",
+                 *("papyrus/" + name for name in SCRIPTS)]
+        if breast: names.append("breast-motion.json")
+        self.payloads = {name:(self.root / name).read_bytes() for name in names}
+        if self.payloads["build.py"] != BUILDER_BYTES:
+            raise ValueError("Builder source changed since its code was loaded")
+
+    def json(self, name):
+        return json.loads(self.payloads[name])
+
+    def rows(self):
+        return [{"path":name, "sha256":hashlib.sha256(payload).hexdigest()}
+                for name, payload in self.payloads.items()]
+
+    def verify(self):
+        for name, payload in self.payloads.items():
+            if (self.root / name).read_bytes() != payload:
+                raise ValueError("Source input changed after consumption: " + name)
+
+
+class NoDoctypeTreeBuilder(ET.TreeBuilder):
+    def doctype(self, name, pubid, system):
+        # Expat reports DOCTYPE after decoding XML's declared encoding, so UTF-16
+        # cannot bypass this guard and entity declarations are never consumed.
+        raise ValueError("DTD/entity declarations are unsupported")
 
 def number(value, low=-100, high=100):
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not low <= value <= high:
@@ -130,20 +178,148 @@ def destination(path):
     return out
 
 def check_master_conflicts(directory):
-    """Inspect an explicitly supplied effective provider snapshot, never guess MO2 winners."""
+    """Check known static ownership; absence never qualifies a loaded provider."""
+    audit = audit_provider(directory)
+    require_provider_clear(audit)
+    return audit
+
+
+def provider_inputs(directory):
+    directory = directory.resolve()
     if not directory.is_dir(): raise ValueError("Provider snapshot directory is missing")
-    paths = sorted(p for p in directory.iterdir() if p.is_file()
-                   and p.name.lower().startswith("cbpcmasterconfig") and p.suffix.lower() in {".txt", ".ini"})
-    if not paths: raise ValueError("Provider snapshot contains no master config")
-    conflicts = []
-    for path in paths:
+    paths = []
+    for path in sorted(directory.rglob("*")):
+        if not path.is_file(): continue
+        relative = path.relative_to(directory)
+        name = path.name.lower()
+        relevant = path.suffix.lower() == ".xml" or (len(relative.parts) == 1 and (
+            name in {"cbp.dll", "hdtsmp64.dll"} or
+            name.startswith(("cbpconfig", "cbpcmasterconfig", "cbpcollisionconfig"))
+            and path.suffix.lower() in {".txt", ".ini"}))
+        if relevant:
+            if directory not in path.resolve().parents:
+                raise ValueError("Provider snapshot input escapes its directory")
+            payload = path.read_bytes()
+            paths.append((path, payload, {"path":relative.as_posix(), "bytes":len(payload),
+                                       "sha256":hashlib.sha256(payload).hexdigest()}))
+    return paths
+
+
+def audit_provider(directory):
+    """Inventory supplied winning bytes, preserving all declarations and conditions.
+
+    We deliberately do not choose between duplicate rows, evaluate conditions,
+    infer SMP selection, or infer loaded native ownership from a text search.
+    """
+    inputs = provider_inputs(directory)
+    report = {"schemaVersion":1, "snapshot":str(directory.resolve()),
+              "status":"static-audit-only", "runtimeQualified":False,
+              "files":[row for _, _, row in inputs], "mappings":[],
+              "privateAliasDefinitions":[], "smpReferences":[], "uncertainties":[],
+              "scope":"Explicit SKSE/Plugins snapshot only; no VFS/archive, NIF extra-data, loaded-module, generated-binding or native-index proof"}
+    all_nodes = set(NODES + BREAST_NODES + BREAST_ANCESTORS + ORDINARY_BREAST_NODES)
+    all_aliases = set(ALIASES + BREAST_ALIASES)
+    masters = 0
+    for path, payload, record in inputs:
+        name = path.name.lower()
+        if path.suffix.lower() == ".xml":
+            try:
+                tree = ET.fromstring(payload, parser=ET.XMLParser(target=NoDoctypeTreeBuilder()))
+                for element in tree.iter():
+                    for attribute, value in [("#text", element.text or ""), *element.attrib.items()]:
+                        if value.strip() in all_nodes:
+                            report["smpReferences"].append({"path":record["path"], "element":element.tag,
+                                                           "attribute":attribute, "node":value.strip()})
+            except (ValueError, ET.ParseError) as error:
+                report["uncertainties"].append({"path":record["path"], "error":str(error)})
+            continue
+        if path.suffix.lower() not in {".txt", ".ini"}: continue
+        is_master = name.startswith("cbpcmasterconfig")
+        if is_master: masters += 1
+        try:
+            text = payload.decode("utf-8-sig")
+        except UnicodeError as error:
+            report["uncertainties"].append({"path":record["path"], "error":str(error)})
+            continue
         active = False
-        for raw in path.read_text(encoding="utf-8-sig").splitlines():
-            line = raw.split("#", 1)[0].strip()
-            if line.startswith("["): active = line == "[ConfigMap]"
-            elif active and line.split("=", 1)[0].strip() in NODES:
-                conflicts.append({"path":str(path),"mapping":line})
-    if conflicts: raise ValueError("Existing ear/tail driver mapping: " + json.dumps(conflicts))
+        for line_number, raw in enumerate(text.splitlines(), 1):
+            line = raw.split("#", 1)[0].strip()  # CBPC Utility.hpp:skipComments only strips '#'.
+            if is_master:
+                if line.startswith("["): active = line == "[ConfigMap]"
+                elif active and line and not line.startswith(("<", ">")):
+                    # Pinned provider reads the first three '=' fields, not an arbitrary expression.
+                    fields = [field.strip() for field in line.split("=")]
+                    node = fields[0]
+                    alias = fields[1] if len(fields) > 1 else ""
+                    if node in all_nodes or alias in all_aliases:
+                        report["mappings"].append({"path":record["path"], "line":line_number,
+                            "node":node, "alias":alias, "condition":fields[2] if len(fields) > 2 else ""})
+            elif name.startswith("cbpconfig") and line and not line.startswith("#"):
+                token = line.split()[0]
+                alias = token.split(".", 1)[0]
+                if alias in all_aliases:
+                    report["privateAliasDefinitions"].append({"path":record["path"], "line":line_number,
+                                                              "alias":alias, "parameter":token})
+    if not masters: report["uncertainties"].append({"error":"Provider snapshot contains no master config"})
+    report["earTailConflicts"] = provider_conflicts(report, NODES, ALIASES)
+    report["breastConflicts"] = provider_conflicts(report, BREAST_NODES + BREAST_ANCESTORS, BREAST_ALIASES)
+    report["ordinaryBreastMappings"] = [row for row in report["mappings"] if row["node"] in ORDINARY_BREAST_NODES]
+    report["ordinaryBreastMeaning"] = "These are separate XP32 branches; ordinary breast mappings alone establish neither P1 ownership nor P1 motion"
+    return report
+
+
+def provider_conflicts(report, nodes, aliases):
+    return ([{"kind":"CBPC mapping", **row} for row in report["mappings"]
+             if row["node"] in nodes or row["alias"] in aliases] +
+            [{"kind":"private alias parameter", **row} for row in report["privateAliasDefinitions"] if row["alias"] in aliases] +
+            [{"kind":"potential SMP reference", **row} for row in report["smpReferences"] if row["node"] in nodes])
+
+
+def require_provider_clear(report, breast=False):
+    conflicts = report["earTailConflicts"] + (report["breastConflicts"] if breast else [])
+    if report["uncertainties"] or conflicts:
+        raise ValueError("Provider snapshot unresolved: " + json.dumps({"conflicts":conflicts, "uncertainties":report["uncertainties"]}))
+
+
+def verify_provider_unchanged(report):
+    current = [row for _, _, row in provider_inputs(Path(report["snapshot"]))]
+    if current != report["files"]:
+        raise ValueError("Provider snapshot changed after audit")
+
+
+def read_breast_recipe(source_inputs):
+    recipe = source_inputs.json("breast-motion.json")
+    expected_nodes = tuple(group["nodes"][0] for group in recipe["groups"])
+    if expected_nodes != BREAST_NODES or tuple(group["alias"] for group in recipe["groups"]) != BREAST_ALIASES:
+        raise ValueError("Breast motion must retain isolated existing XP32 P1 nodes/aliases")
+    if recipe["raceCondition"] != "IsRaceFormId(Skyrim.esm|000CDD84) AND IsFemale()":
+        raise ValueError("Breast motion must remain female and vanilla-werewolf gated")
+    for group in recipe["groups"]:
+        if len(group["nodes"]) != 1: raise ValueError("Breast motion cannot drive ancestors")
+        number(group["maxOffset"], 0.001, 0.15)
+        number(group["maxOffsetRot"], 0.001, 0.1)
+    if set(recipe["commonOverrides"]) != {"forceMultipler", "rotationalX", "rotationalY", "rotationalZ",
+                                          "collisionMultipler", "collisionMultiplerRot"}:
+        raise ValueError("Unexpected breast trial parameter override")
+    for key, value in recipe["commonOverrides"].items():
+        number(value, 0, 0.03 if key == "forceMultipler" else 0.005)
+    if recipe["commonOverrides"]["collisionMultipler"] != 0 or recipe["commonOverrides"]["collisionMultiplerRot"] != 0:
+        raise ValueError("This breast source trial has no qualified contact model")
+    recipe["common"] = {**source_inputs.json("recipe.json")["common"], **recipe["commonOverrides"]}
+    return recipe
+
+
+def breast_motion_inputs(body, skeleton, source_inputs=None):
+    source_inputs = source_inputs or SourceInputs(breast=True)
+    recipe = read_breast_recipe(source_inputs)
+    pins = []
+    for label, path, expected in (("body", body, recipe["inputs"]["bodyNifSha256"]),
+                                  ("skeleton", skeleton, recipe["inputs"]["skeletonSha256"])):
+        if path is None: raise ValueError("Breast motion requires explicit pinned body and XP32 skeleton inputs")
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        if digest != expected: raise ValueError("Breast motion " + label + " hash differs from reviewed rig")
+        pins.append({"kind":label, "path":str(path.resolve()), "sha256":digest})
+    return recipe, pins
 
 def verify_measurements(capsules, path):
     payload=path.read_bytes()
@@ -159,29 +335,58 @@ def verify_measurements(capsules, path):
                     "p1":cap["p1"],"p2":cap["p2"],"radius":cap["radius"],"points":link["points"]}
         if extracted!=capsules[sex]: raise ValueError("Capsule source data differs from the measurements")
 
-def build(out, recipe, capsules):
+def build(out, recipe, capsules, provider_audit=None, breast=None, source_inputs=None):
     out = destination(out)
-    master, bounce = render_motion(recipe)
+    if breast and provider_audit is None: raise ValueError("Breast motion requires an explicit provider snapshot audit")
+    source_inputs = source_inputs or SourceInputs(breast=breast is not None)
+    if recipe != source_inputs.json("recipe.json") or capsules != source_inputs.json("capsules.json"):
+        raise ValueError("Parsed recipe/capsules differ from captured source inputs")
+    if breast and breast[0] != read_breast_recipe(source_inputs):
+        raise ValueError("Parsed breast recipe differs from captured source inputs")
+    source_inputs.verify()
+    if provider_audit is not None:
+        require_provider_clear(provider_audit, breast=breast is not None)
+        verify_provider_unchanged(provider_audit)
     out.mkdir(parents=True, exist_ok=False)
+    pending = out / "FAILED-unverified-do-not-install"
+    pending.write_text("Build incomplete; only a completed manifest establishes offline checks.\n", encoding="utf-8")
+    master, bounce = render_motion(recipe)
     plugins = out / "SKSE/Plugins"; plugins.mkdir(parents=True)
     source = out / "Scripts/Source"; source.mkdir(parents=True)
     (plugins / "CBPCMasterConfig_CLAWPhysics.txt").write_text(master, encoding="utf-8")
     (plugins / "CBPConfig_CLAWPhysics.txt").write_text(bounce, encoding="utf-8")
+    if breast:
+        breast_recipe, pins = breast
+        for pin in pins:
+            if hashlib.sha256(Path(pin["path"]).read_bytes()).hexdigest() != pin["sha256"]:
+                raise ValueError("Breast input changed after validation")
+        breast_master, breast_bounce = render_motion(breast_recipe)
+        (plugins / "CBPCMasterConfig_CLAWBreastPhysics.txt").write_text(breast_master, encoding="utf-8")
+        (plugins / "CBPConfig_CLAWBreastPhysics.txt").write_text(breast_bounce, encoding="utf-8")
     (source / "CLAWPhysicsData.psc").write_text(render_data(recipe, capsules), encoding="utf-8")
     for name in SCRIPTS:
-        shutil.copyfile(ROOT / "papyrus" / name, source / name)
-    shutil.copyfile(ROOT / "README.md", out / "README.md")
+        (source / name).write_bytes(source_inputs.payloads["papyrus/" + name])
+    (out / "README.md").write_bytes(source_inputs.payloads["README.md"])
     manifest = {"schemaVersion":1, "namespace":"CLAW.Physics", "status":"source-candidate", "releaseReady":False,
-        "gameValidated":False, "capsuleSlots":8, "motionNodes":9,
+        "gameValidated":False, "capsuleSlots":8, "motionNodes":11 if breast else 9,
         "host":{"included":"optional-source-only", "maximumActorSlots":16, "automaticAssignment":False,
                 "pluginRecordsIncluded":False, "lifecycleDeliveryValidated":False},
         "recipe":recipe, "measurementProvenance":capsules["provenance"],
-        "sourceInputs":[{"path":str(path.relative_to(ROOT)),"sha256":hashlib.sha256(path.read_bytes()).hexdigest()}
-                        for path in (ROOT/"recipe.json",ROOT/"capsules.json",ROOT/"sources.json",ROOT/"README.md",Path(__file__),
-                                     *(ROOT/"papyrus"/name for name in SCRIPTS))],
+        "providerAudit":provider_audit,
+        "breastMotion":None if breast is None else {"status":"uninstalled-source-trial", "recipe":breast[0],
+             "inputs":breast[1], "runtimeOwnershipQualified":False, "contactQualified":False,
+             "skeletonWritten":False, "capsulesAdded":False},
+        "sourceInputs":source_inputs.rows(),
         "outputs":[{"path":str(path.relative_to(out)),"sha256":hashlib.sha256(path.read_bytes()).hexdigest()}
-                   for path in sorted(out.rglob("*")) if path.is_file()]}
+                   for path in sorted(out.rglob("*")) if path.is_file() and path != pending]}
+    if provider_audit is not None: verify_provider_unchanged(provider_audit)
+    if breast:
+        for pin in breast[1]:
+            if hashlib.sha256(Path(pin["path"]).read_bytes()).hexdigest() != pin["sha256"]:
+                raise ValueError("Breast input changed during build")
+    source_inputs.verify()
     (out / "claw-physics-source.json").write_text(json.dumps(manifest,indent=2)+"\n",encoding="utf-8")
+    pending.unlink()
     return manifest
 
 def main(argv=None):
@@ -189,14 +394,27 @@ def main(argv=None):
     parser.add_argument("--out",type=Path,help="new offline staging directory; omission validates only")
     parser.add_argument("--check-provider",type=Path,help="explicit effective SKSE/Plugins snapshot; check duplicate motion drivers")
     parser.add_argument("--measurements",type=Path,help="verify exact pinned Morphbench measurement data")
+    parser.add_argument("--with-breast-motion",action="store_true",help="explicit uninstalled female P1 motion source trial; requires provider/body/skeleton pins")
+    parser.add_argument("--breast-body",type=Path,help="exact reviewed raw 91-node collar+P1 body candidate")
+    parser.add_argument("--skeleton",type=Path,help="read-only exact reviewed XP32 skeleton for breast source trial")
     args = parser.parse_args(argv)
     try:
-        recipe=json.loads((ROOT/"recipe.json").read_text()); capsules=json.loads((ROOT/"capsules.json").read_text())
+        source_inputs = SourceInputs(breast=args.with_breast_motion)
+        recipe=source_inputs.json("recipe.json"); capsules=source_inputs.json("capsules.json")
         validate(recipe,capsules)
-        if args.check_provider: check_master_conflicts(args.check_provider)
+        audit = check_master_conflicts(args.check_provider) if args.check_provider else None
+        breast = None
+        if args.with_breast_motion:
+            if audit is None: raise ValueError("Breast motion requires --check-provider with explicit winning bytes")
+            require_provider_clear(audit, breast=True)
+            breast = breast_motion_inputs(args.breast_body, args.skeleton, source_inputs)
+        elif args.breast_body or args.skeleton:
+            raise ValueError("Breast inputs require explicit --with-breast-motion")
         if args.measurements: verify_measurements(capsules,args.measurements)
-        if args.out: build(args.out,recipe,capsules)
-        print(json.dumps({"status":"source-candidate" if args.out else "valid", "motionNodes":9,"capsuleSlots":8,"gameValidated":False}))
+        if args.out: build(args.out,recipe,capsules,audit,breast,source_inputs)
+        else: source_inputs.verify()
+        print(json.dumps({"status":"source-candidate" if args.out else "valid", "motionNodes":11 if breast else 9,
+                          "capsuleSlots":8,"providerAudited":audit is not None,"gameValidated":False}))
         return 0
     except (OSError,KeyError,TypeError,ValueError) as error:
         print("CLAW physics: "+str(error),file=sys.stderr); return 2
