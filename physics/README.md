@@ -364,3 +364,65 @@ grabbing, force response or simulation correctness. No runtime success is claime
 Primary contracts: [CBPC scan/API](https://github.com/Acro748/CBPCSSE/blob/fabd56ce8f8ac10cde17325f0bd61ecc8cbcda20/CBPC/scan.cpp),
 [simulation binding](https://github.com/Acro748/CBPCSSE/blob/fabd56ce8f8ac10cde17325f0bd61ecc8cbcda20/CBPC/SimObj.cpp),
 [parameter reads](https://github.com/Acro748/CBPCSSE/blob/fabd56ce8f8ac10cde17325f0bd61ecc8cbcda20/CBPC/Thing.cpp).
+
+## Optional morph-responsive capsule bundles for SE and VR
+
+The public `AttachColliderCapsule`/`DetachCollider` declarations and inspected
+implementation are shared by SE and VR; these calls are outside the VR-only
+branches. Basic CBPC ear/tail motion and CBPC contact therefore need no headset,
+HIGGS or PLANCK. This source inspection does not qualify a particular game/DLL.
+SE needs its own matching provider, exact installed inputs and a separate game
+acceptance run. CBPC capsules do not replace Havok movement, ragdoll or strike
+collision bodies; an SE weapon hit is not proof of CBPC contact.
+
+`fit-capsules.py` builds a separate affine node-local fit from explicit regional
+geometry evidence. Schema 1 retains the eight measured capsules; schema 2 permits
+**1..32 stable capsule slots**, including several capsules on one existing bone.
+Each has its own reserved `indexBase + slot`. The current 32-slot bundle covers
+selected dominant-skin regions and fully assigned regional triangles over its
+closed morph box, using full normalized rest skinning. Unassigned boundaries,
+fur, animated poses and altered bone/actor scale remain outside that proof.
+Its quality report still says `surfaceFitAccepted=False`: enclosing selected
+geometry is not proof of a close visible fit or acceptable contact onset.
+
+```powershell
+python physics/build.py --fitted-capsules '<explicit-fitted-capsules.json>' `
+  --out '<new-external-source-directory>'
+python physics/build-host.py --fitted-capsules '<explicit-fitted-capsules.json>' `
+  --out '<new-external-host-directory>' --compiler '<Caprica.exe>' `
+  --spriggit '<spriggit.exe>' --flags '<TESV_Papyrus_Flags.flg>' `
+  --import-path '<explicit-public-source-imports>'
+```
+
+This option consumes the exact fitted endpoints/radii and their signed
+coefficients. It **does not** apply the legacy half-radius or two-unit cap.
+It captures and rechecks the fit file, records its hash and original geometry
+source pins, and emits a generated model identity. The default static eight-slot
+candidate remains a distinct build. File-loaded motion still has nine bones;
+capsule slot count does not change simulation ownership or the skeleton.
+
+The optional host exposes `CLAWPhysicsControl.GetMorphCount()` and
+`GetMorphName(index)`. A coordinator must read the **effective aggregate across
+all SKEE keys** for those exact TRI names, wait for the corresponding model update,
+and call `PulseMorphActor(slot, actor, values, evidence)`. The inspected public
+Papyrus NiOverride API has per-key reads and key enumeration but no equivalent
+of native `IBodyMorphInterface::GetBodyMorphs`; blindly summing keys can disagree
+with SKEE aggregation policy. The caller must provide a qualified aggregate
+reader. This candidate does not yet include that observer or automatically
+subscribe to Distribution changes.
+
+The current ordered ten inputs include head/muzzle and torso fields affecting
+ear/tail bases, as well as the obvious ear/tail fields. Values must be finite
+and inside **[0,1]**, without silent clamping. Caller snapshots must be serialized
+and immutable while copied. The helper makes a private copy, checks generation,
+and uses signed affine changes, so a related value can expand or shrink both
+endpoints and radius. An unchanged vector skips append; a changed vector first
+removes remembered own indices, then appends the new set. Invalid domain values
+request scoped cleanup and block append; unresolved cleanup is retained.
+
+Model/load/race changes revoke morph qualification. Old saved nine-slot ledgers
+remain readable; larger capacity is adopted only after all old bits are resolved.
+A different model identity with remembered slots refuses native mutation rather
+than interpreting old indices using a new layout. No new/read-only status call
+discards a remembered slot. These source/compilation checks do not establish
+native presence, race rebinding, atomic Papyrus scheduling, motion or contact.

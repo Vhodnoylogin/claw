@@ -35,6 +35,7 @@ def main(argv=None):
     parser.add_argument("--spriggit", type=Path, required=True)
     parser.add_argument("--flags", type=Path, required=True)
     parser.add_argument("--import-path", type=Path, action="append", required=True)
+    parser.add_argument("--fitted-capsules", type=Path, help="explicit node-local affine capsule fit; never install")
     args = parser.parse_args(argv)
     owned = None
     report = {"status": "incomplete", "gameValidated": False, "runtimeEventsExecuted": False, "commands": []}
@@ -52,6 +53,7 @@ def main(argv=None):
         recipe = json.loads((ROOT / "recipe.json").read_text())
         capsules = json.loads((ROOT / "capsules.json").read_text())
         build.validate(recipe, capsules)
+        fitted = build.fitted_model(args.fitted_capsules) if args.fitted_capsules else None
         inputs = input_hashes()
         out.mkdir(parents=True, exist_ok=False)
         owned = out
@@ -78,7 +80,7 @@ def main(argv=None):
             if result.returncode:
                 raise ValueError(name + " failed; inspect retained logs")
 
-        build.build(out / "source-package", recipe, capsules)
+        build.build(out / "source-package", recipe, capsules, fitted=fitted)
         tree = out / "plugin-source" / Path(wiring.PLUGIN).stem
         wiring.write_sources(tree, contract)
         wiring.validate_source_tree(tree, contract)
@@ -110,6 +112,7 @@ def main(argv=None):
         run([sys.executable, "-m", "unittest", "discover", "-s", "physics/tests", "-v"], ROOT.parent, "offline-tests")
         if inputs != input_hashes():
             raise ValueError("Physics sources changed while building; candidate is not a verified snapshot")
+        build.verify_fitted_unchanged(fitted)
         shutil.copytree(source, scripts / "Source")
         shutil.copyfile(ROOT / "README.md", package / "README.md")
         wiring.validate_host_package(package, ("CLAWPhysicsData.psc", *build.SCRIPTS))
@@ -118,6 +121,7 @@ def main(argv=None):
                       startGameEnabled=False, automaticAssignment=False, defaultIntegrationOptIn=False,
                       defaultProviderQualified=False, lifecycleDeliveryValidated=False,
                       motionConfigsBundled=False, separateMotionSource="source-package/SKSE/Plugins")
+        report["fittedCapsules"] = None if fitted is None else fitted["input"]
         report["artifacts"] = [{"path": p.relative_to(package).as_posix(), "sha256": sha(p), "bytes": p.stat().st_size}
                                for p in sorted(package.rglob("*")) if p.is_file()]
         print(json.dumps({"status": report["status"], "package": str(package), "gameValidated": False}))

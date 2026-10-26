@@ -66,8 +66,8 @@ class LifecycleSourceContracts(unittest.TestCase):
             self.assertIn(requirement, context)
         self.assertNotIn("GetActorReference", context)  # old alias actor still needs its own cleanup
         cleanup = body(self.actor, "CleanupInternal")
-        self.assertLess(cleanup.index("Actor cleanupActor = _tracked"), cleanup.index("While slot < 9"))
-        self.assertLess(cleanup.index("Int cleanupGeneration = _modelGeneration"), cleanup.index("While slot < 9"))
+        self.assertLess(cleanup.index("Actor cleanupActor = _tracked"), cleanup.index("While slot < CLAWPhysicsData.SlotCount()"))
+        self.assertLess(cleanup.index("Int cleanupGeneration = _modelGeneration"), cleanup.index("While slot < CLAWPhysicsData.SlotCount()"))
         call = "Bool removed = CBPCPluginScript.DetachCollider(cleanupActor, node, 1, colliderIndex, True)"
         self.assertIn(call, cleanup)
         # No data/native query may be inserted between the final guard and detach.

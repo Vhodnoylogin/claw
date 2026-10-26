@@ -17,9 +17,14 @@ Actor _qualifiedActor
 String _qualificationEvidence = ""
 Int _status = 0
 String _error = ""
+Float[] _morphValues
+Bool _morphValuesQualified = False
+Bool _morphRefresh = False
+String _morphEvidence = ""
+String _acceptedModel = ""
 
 ; 0 dormant, 1 capability blocked, 2 not beast, 3 unloaded,
-; 4 eight native appends accepted (NO readback), 5 attach failed/rolled back,
+; 4 requested native appends accepted (NO readback), 5 attach failed/rolled back,
 ; 6 cleanup pending/unknown, 7 matching removals reported,
 ; 8 busy (returned only), 9 provider reset acknowledged by host.
 Int Function GetStatus()
@@ -81,10 +86,14 @@ String Function OwnershipNamespace()
 EndFunction
 
 Int Function GetAcceptedLedgerCount()
-  EnsureLedger()
+  ; Read-only: a status query must never replace an in-flight ledger array.
+  If _accepted == None
+    Return 0
+  EndIf
   Int count = 0
   Int slot = 0
-  While slot < 9
+  ; Scan the remembered array, including an older nine-slot serialized ledger.
+  While slot < _accepted.Length
     If _accepted[slot]
       count += 1
     EndIf
@@ -110,6 +119,66 @@ Int Function Synchronize()
   Return outcome
 EndFunction
 
+; Values must be the effective aggregate of ALL SKEE keys for each generated
+; MorphName, after its model update completes. Never pass only CLAW's own key.
+; The coordinator calls this after a morph change; no world scan or timer runs.
+Int Function SynchronizeMorphs(Actor expectedActor, Float[] values, String evidence)
+  If _busy
+    Return 8
+  EndIf
+  _busy = True
+  Int snapshotGeneration = _modelGeneration
+  If expectedActor == None || expectedActor != GetActorReference() || evidence == ""
+    _busy = False
+    Return SetStatus(1, "Effective morph snapshot actor/evidence missing; no append attempted")
+  EndIf
+  If !CLAWPhysicsData.MorphValuesValid(values)
+    ; Once a known requested shape leaves the fitted domain, do not knowingly
+    ; keep its previous mismatching capsules. Scoped cleanup may remain pending.
+    CleanupInternal()
+    _morphValuesQualified = False
+    _morphRefresh = True
+    _busy = False
+    If GetAcceptedLedgerCount() > 0
+      Return SetStatus(6, "Morph vector outside fitted domain; previous capsule cleanup remains unresolved")
+    EndIf
+    Return SetStatus(1, "Morph vector outside fitted domain; old own capsules removed and no append attempted")
+  EndIf
+  Int count = CLAWPhysicsData.MorphCount()
+  ; A private copy prevents later caller array edits from changing an append.
+  Float[] prepared = new Float[32]
+  Int index = 0
+  While index < count
+    prepared[index] = values[index]
+    index += 1
+  EndWhile
+  If !CLAWPhysicsData.MorphValuesValidCopy(prepared) || expectedActor != GetActorReference() || snapshotGeneration != _modelGeneration
+    _morphValuesQualified = False
+    _morphRefresh = True
+    _busy = False
+    Return SetStatus(1, "Morph snapshot changed or became invalid while copying; no append attempted")
+  EndIf
+  Bool changed = !_morphValuesQualified
+  index = 0
+  While index < count
+    If _morphValues == None || _morphValues[index] != prepared[index]
+      changed = True
+    EndIf
+    index += 1
+  EndWhile
+  _morphValues = prepared
+  _morphValuesQualified = True
+  _morphRefresh = _morphRefresh || changed
+  _morphEvidence = evidence
+  Int outcome = SynchronizeInternal()
+  _busy = False
+  Return outcome
+EndFunction
+
+String Function GetMorphEvidence()
+  Return _morphEvidence
+EndFunction
+
 Int Function Cleanup()
   If _busy
     Return 8
@@ -121,9 +190,9 @@ Int Function Cleanup()
 EndFunction
 
 Function MarkModelGenerationChanged()
-  EnsureLedger()
   _modelGeneration += 1
   StaticPoseAccepted = False
+  _morphValuesQualified = False
   _generationUnknown = True
   If GetAcceptedLedgerCount() > 0
     SetStatus(6, "Model/provider generation changed; previous container presence is unknown")
@@ -137,11 +206,12 @@ Bool Function AcknowledgeProviderReset(Actor previousActor, Bool previousContain
   EndIf
   EnsureLedger()
   Int slot = 0
-  While slot < 9
+  While slot < _accepted.Length
     _accepted[slot] = False
     slot += 1
   EndWhile
   _tracked = None
+  _acceptedModel = ""
   _generationUnknown = False
   SetStatus(9, "Host acknowledged old CBPC containers discarded; not independently read back")
   Return True
@@ -149,7 +219,7 @@ EndFunction
 
 Function EnsureLedger()
   If _accepted == None
-    _accepted = new Bool[9]
+    _accepted = new Bool[32]
   EndIf
 EndFunction
 
@@ -173,6 +243,12 @@ Int Function CleanupInternal()
     _tracked = None
     Return SetStatus(0)
   EndIf
+  If _accepted.Length > 32
+    Return SetStatus(6, "Unsupported saved ledger length; entries retained and no native cleanup attempted")
+  EndIf
+  If _acceptedModel != CLAWPhysicsData.ModelIdentity()
+    Return SetStatus(6, "Capsule data changed while old slots remain; old node/index layout must not be guessed")
+  EndIf
   If !ProviderQualified || !ExclusiveIndexRange
     Return SetStatus(6, "Cannot safely call scoped detach without provider/index ownership qualification")
   EndIf
@@ -182,7 +258,7 @@ Int Function CleanupInternal()
     Return SetStatus(6, "Tracked actor is unavailable/unloaded; cleanup has not been proven")
   EndIf
   Int slot = 0
-  While slot < 9
+  While slot < CLAWPhysicsData.SlotCount()
     If _accepted[slot]
       String node = CLAWPhysicsData.Node(slot)
       Int colliderIndex = CLAWPhysicsData.ColliderIndex(slot)
@@ -216,6 +292,9 @@ EndFunction
 Int Function SynchronizeInternal()
   EnsureLedger()
   Int synchronizationGeneration = _modelGeneration
+  If GetAcceptedLedgerCount() > 0 && _acceptedModel != CLAWPhysicsData.ModelIdentity()
+    Return SetStatus(6, "Capsule model identity changed with remembered slots; cleanup/reset must be resolved under its original layout")
+  EndIf
   If GetAcceptedLedgerCount() > 0 && _tracked == None
     Return SetStatus(6, "Remembered capsules have an unresolved former actor; retargeted attachment refused")
   EndIf
@@ -239,6 +318,9 @@ Int Function SynchronizeInternal()
   If !AttachmentQualified(target)
     Return SetStatus(1, "Provider, exclusive index range and static measurement pose need explicit qualification")
   EndIf
+  If CLAWPhysicsData.MorphCount() > 0 && !_morphValuesQualified
+    Return SetStatus(1, "This fitted model requires a current effective morph snapshot through SynchronizeMorphs")
+  EndIf
   If _generationUnknown && GetAcceptedLedgerCount() > 0
     Return SetStatus(6, "Rebuilt/reloaded provider generation needs cleanup or qualified reset acknowledgment")
   EndIf
@@ -257,7 +339,7 @@ Int Function SynchronizeInternal()
       Return SetStatus(6, "Previous sex capsule cleanup pending")
     EndIf
   EndIf
-  If GetAcceptedLedgerCount() == 8
+  If GetAcceptedLedgerCount() == CLAWPhysicsData.ExpectedCapsuleCount() && !_morphRefresh
     If GetActorReference() != target || _modelGeneration != synchronizationGeneration || !AttachmentQualified(target) || _generationUnknown
       Return SetStatus(6, "Accepted ledger context changed during synchronization; no append attempted")
     EndIf
@@ -269,12 +351,21 @@ Int Function SynchronizeInternal()
       Return SetStatus(6, "Partial previous capsule ledger cannot be replaced safely")
     EndIf
   EndIf
+  ; An older serialized nine-slot array stays untouched until every old bit is
+  ; resolved. Only an empty ledger may be replaced with the larger capacity.
+  If _accepted.Length < 32
+    If GetAcceptedLedgerCount() > 0
+      Return SetStatus(6, "Old short ledger still has unresolved slots; capacity migration refused")
+    EndIf
+    _accepted = new Bool[32]
+  EndIf
   _tracked = target
+  _acceptedModel = CLAWPhysicsData.ModelIdentity()
   _female = female
   _generationUnknown = False
   Int slot = 0
   Bool failed = False
-  While slot < 9 && !failed
+  While slot < CLAWPhysicsData.SlotCount() && !failed
     If CLAWPhysicsData.HasCapsule(slot)
       String node = CLAWPhysicsData.Node(slot)
       Int colliderIndex = CLAWPhysicsData.ColliderIndex(slot)
@@ -287,6 +378,11 @@ Int Function SynchronizeInternal()
         Float[] point1 = CLAWPhysicsData.Point(slot, female, False)
         Float[] point2 = CLAWPhysicsData.Point(slot, female, True)
         Float radius = CLAWPhysicsData.Radius(slot, female)
+        If CLAWPhysicsData.MorphCount() > 0
+          point1 = CLAWPhysicsData.PointForMorphs(slot, female, False, _morphValues)
+          point2 = CLAWPhysicsData.PointForMorphs(slot, female, True, _morphValues)
+          radius = CLAWPhysicsData.RadiusForMorphs(slot, female, _morphValues)
+        EndIf
         ; Data access/preclean may yield. Recheck AFTER them, immediately before append.
         If !AttachmentContextCurrent(target, synchronizationGeneration, node)
           failed = True
@@ -313,7 +409,8 @@ Int Function SynchronizeInternal()
     EndIf
     Return SetStatus(5, "Attach rejected or lifecycle changed; accepted subset was removed")
   EndIf
-  Return SetStatus(4, "Eight native appends accepted; TailBone04 motion only; simulation/contact readback unavailable")
+  _morphRefresh = False
+  Return SetStatus(4, "All requested native appends accepted; TailBone04 motion only; simulation/contact readback unavailable")
 EndFunction
 
 Event OnUnload()

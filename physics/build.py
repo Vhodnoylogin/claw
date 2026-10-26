@@ -136,19 +136,155 @@ def render_motion(recipe):
         bounce.extend(f'{group["alias"]}.{name} {value:g}' for name, value in sorted(parameters.items()))
     return "\n".join(master) + "\n", "\n".join(bounce) + "\n"
 
-def render_data(recipe, capsules):
+def fitted_model(path):
+    """Consume an explicit offline fit, never infer a mesh from a live profile."""
+    payload = path.read_bytes()
+    model = json.loads(payload)
+    validate_fitted_model(model)
+    return {"model": model, "input": {"path":str(path.resolve()), "bytes":len(payload),
+                                       "sha256":hashlib.sha256(payload).hexdigest()}}
+
+
+def validate_fitted_model(model):
+    if type(model.get("schemaVersion")) is not int or model["schemaVersion"] not in (1, 2) or model.get("frame") != "node-local-game-units":
+        raise ValueError("Unsupported fitted capsule model/frame")
+    if model.get("domain") != [0, 1] or any(isinstance(value, bool) for value in model["domain"]):
+        raise ValueError("Fitted morph domain must be the explicit closed [0,1] box")
+    names = model.get("morphs")
+    if not isinstance(names, list) or not 1 <= len(names) <= 32 or not all(isinstance(name, str) for name in names) or len(set(names)) != len(names):
+        raise ValueError("Fitted model needs 1..32 distinct ordered effective morph names")
+    if not all(isinstance(name, str) and re.fullmatch(r"CLAW[A-Za-z0-9_]{1,64}", name) for name in names):
+        raise ValueError("Invalid fitted morph name")
+    if model["schemaVersion"] == 2:
+        slots = model.get("slots")
+        if not isinstance(slots, list) or not 1 <= len(slots) <= 32 or not all(isinstance(row, dict) for row in slots):
+            raise ValueError("Fitted bundle must supply 1..32 stable capsule slots")
+        if set(row.get("node") for row in slots) != set(NODES) - {"TailBone04"}:
+            raise ValueError("Bundle must retain the eight measured nodes and omit unmeasured TailBone04")
+    else:
+        for sex in ("male", "female"):
+            if not isinstance(model.get(sex), dict) or set(model[sex]) != set(NODES) or model[sex]["TailBone04"] is not None:
+                raise ValueError("Fitted node list must retain the exact nine existing XP32 nodes; no fabricated TailBone04")
+    for sex in ("male", "female"):
+        for index, node in enumerate(data_nodes(model)):
+            row = data_row(model, sex, index)
+            if row is None:
+                if model["schemaVersion"] == 2: raise ValueError("Each bundle slot requires both measured sexes")
+                continue
+            if not isinstance(row, dict) or not isinstance(row.get("coefficients"), dict) or not set(row["coefficients"]) <= set(names):
+                raise ValueError("Invalid fitted capsule coefficients")
+            for part in [row.get("base"), *row["coefficients"].values()]:
+                if not isinstance(part, dict) or not {"p1", "p2", "radius"} <= set(part):
+                    raise ValueError("Incomplete fitted capsule vector")
+                for key in ("p1", "p2"):
+                    if not isinstance(part[key], list) or len(part[key]) != 3: raise ValueError("Fitted endpoint requires xyz")
+                    for value in part[key]: number(value)
+                number(part["radius"])
+            # The serialized affine radius is bounded analytically over the box.
+            low = row["base"]["radius"] + sum(min(0, p["radius"]) for p in row["coefficients"].values())
+            high = row["base"]["radius"] + sum(max(0, p["radius"]) for p in row["coefficients"].values())
+            if not 0.001 <= low <= high <= 100:
+                raise ValueError("Fitted capsule radius becomes invalid inside its morph domain")
+
+
+def data_nodes(model=None):
+    return NODES if model is None or model["schemaVersion"] == 1 else tuple(row["node"] for row in model["slots"])
+
+
+def data_row(model, sex, index):
+    return model[sex][NODES[index]] if model["schemaVersion"] == 1 else model["slots"][index].get(sex)
+
+
+def capsule_slot_count(model=None):
+    return len(data_nodes(model))
+
+
+def expected_capsule_count(model=None):
+    return 8 if model is None or model["schemaVersion"] == 1 else capsule_slot_count(model)
+
+
+def verify_fitted_unchanged(fitted):
+    if fitted is not None:
+        pin = fitted["input"]
+        payload = Path(pin["path"]).read_bytes()
+        if hashlib.sha256(payload).hexdigest() != pin["sha256"] or json.loads(payload) != fitted["model"]:
+            raise ValueError("Fitted capsule model changed after consumption")
+
+
+def render_morph_data(model=None):
+    names = [] if model is None else model["morphs"]
+    lines = ["", "Int Function MorphCount() Global", f"  Return {len(names)}", "EndFunction", "",
+             "String Function MorphName(Int index) Global"]
+    for index, name in enumerate(names):
+        lines += [("  If" if index == 0 else "  ElseIf") + f" index == {index}", f'    Return "{name}"']
+    if names: lines += ["  EndIf"]
+    lines += ['  Return ""', "EndFunction", "", "Bool Function MorphValuesValid(Float[] values) Global"]
+    if names:
+        lines += [f"  If values == None || values.Length != {len(names)}", "    Return False", "  EndIf",
+                  "  Return MorphValuesValidCopy(values)"]
+    else:
+        lines += ["  Return values == None || values.Length == 0"]
+    lines += ["EndFunction", "", "Bool Function MorphValuesValidCopy(Float[] values) Global"]
+    if names:
+        lines += [f"  If values == None || values.Length < {len(names)}", "    Return False", "  EndIf", "  Int index = 0",
+                  f"  While index < {len(names)}", "    If !(values[index] >= 0.0 && values[index] <= 1.0)",
+                  "      Return False", "    EndIf", "    index += 1", "  EndWhile"]
+    lines += ["  Return True", "EndFunction", "",
+              "Float[] Function PointForMorphs(Int slot, Bool female, Bool second, Float[] values) Global",
+              "  Float[] result = Point(slot, female, second)"]
+    if model:
+        first = True
+        for sex in ("male", "female"):
+            for slot, node in enumerate(data_nodes(model)):
+                row = data_row(model, sex, slot)
+                if row is None: continue
+                for second in (False, True):
+                    part = "p2" if second else "p1"
+                    changes = [(names.index(name), vector[part]) for name, vector in row["coefficients"].items() if any(vector[part])]
+                    if not changes: continue
+                    lines += [("  If " if first else "  ElseIf ") + f"slot == {slot} && female == {str(sex == 'female')} && second == {str(second)}"]
+                    first = False
+                    for index, vector in changes:
+                        for axis, value in enumerate(vector):
+                            if value: lines += [f"    result[{axis}] += {value:.9f} * values[{index}]"]
+        if not first: lines += ["  EndIf"]
+    lines += ["  Return result", "EndFunction", "",
+              "Float Function RadiusForMorphs(Int slot, Bool female, Float[] values) Global", "  Float result = Radius(slot, female)"]
+    if model:
+        first = True
+        for sex in ("male", "female"):
+            for slot, node in enumerate(data_nodes(model)):
+                row = data_row(model, sex, slot)
+                if row is None: continue
+                changes = [(names.index(name), vector["radius"]) for name, vector in row["coefficients"].items() if vector["radius"]]
+                if not changes: continue
+                lines += [("  If " if first else "  ElseIf ") + f"slot == {slot} && female == {str(sex == 'female')}"]
+                first = False
+                for index, value in changes: lines += [f"    result += {value:.9f} * values[{index}]"]
+        if not first: lines += ["  EndIf"]
+    lines += ["  Return result", "EndFunction"]
+    return "\n".join(lines) + "\n"
+
+
+def render_data(recipe, capsules, model=None):
+    identity = hashlib.sha256(json.dumps(model if model is not None else
+        {"capsules":capsules,"policy":recipe["capsulePolicy"]}, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     lines = ['Scriptname CLAWPhysicsData Hidden', '; Generated from pinned own measurements; no NIF edits.',
+             'String Function ModelIdentity() Global', f'  Return "{identity}"', 'EndFunction', '',
              'String Function Node(Int slot) Global']
-    for index, name in enumerate(NODES):
+    for index, name in enumerate(data_nodes(model)):
         lines += [("  If" if index == 0 else "  ElseIf") + f" slot == {index}", f'    Return "{name}"']
     lines += ['  EndIf', '  Return ""', 'EndFunction', '',
               'Int Function ColliderIndex(Int slot) Global', f'  Return {recipe["indexBase"]} + slot', 'EndFunction', '',
-              'Bool Function HasCapsule(Int slot) Global', '  Return slot >= 0 && slot < 9 && slot != 7', 'EndFunction', '',
+              'Int Function SlotCount() Global', f'  Return {capsule_slot_count(model)}', 'EndFunction', '',
+              'Int Function ExpectedCapsuleCount() Global', f'  Return {expected_capsule_count(model)}', 'EndFunction', '',
+              'Bool Function HasCapsule(Int slot) Global', f'  Return slot >= 0 && slot < {capsule_slot_count(model)}' + (' && slot != 7' if model is None or model['schemaVersion'] == 1 else ''), 'EndFunction', '',
               'Float[] Function Point(Int slot, Bool female, Bool second) Global', '  Float[] result = new Float[3]']
     first = True
     for sex in ("male", "female"):
-        for index, name in enumerate(NODES):
-            cap = capsules[sex][name]
+        for index, name in enumerate(data_nodes(model)):
+            row = None if model is None else data_row(model, sex, index)
+            cap = capsules[sex][name] if model is None else (None if row is None else row["base"])
             if cap is None: continue
             for second in (False, True):
                 clause = f'slot == {index} && female == {str(sex == "female")} && second == {str(second)}'
@@ -157,13 +293,14 @@ def render_data(recipe, capsules):
     lines += ['  EndIf', '  Return result', 'EndFunction', '', 'Float Function Radius(Int slot, Bool female) Global']
     first = True
     for sex in ("male", "female"):
-        for index, name in enumerate(NODES):
-            cap = capsules[sex][name]
+        for index, name in enumerate(data_nodes(model)):
+            row = None if model is None else data_row(model, sex, index)
+            cap = capsules[sex][name] if model is None else (None if row is None else row["base"])
             if cap is None: continue
-            radius = min(cap["radius"] * recipe["capsulePolicy"]["radiusScale"], recipe["capsulePolicy"]["maximumRadius"])
+            radius = cap["radius"] if model else min(cap["radius"] * recipe["capsulePolicy"]["radiusScale"], recipe["capsulePolicy"]["maximumRadius"])
             lines += [('  If ' if first else '  ElseIf ') + f'slot == {index} && female == {str(sex == "female")}', f'    Return {radius:.6f}']; first = False
     lines += ['  EndIf', '  Return 0.0', 'EndFunction']
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines) + "\n" + render_morph_data(model)
 
 def destination(path):
     out = path.resolve()
@@ -335,7 +472,7 @@ def verify_measurements(capsules, path):
                     "p1":cap["p1"],"p2":cap["p2"],"radius":cap["radius"],"points":link["points"]}
         if extracted!=capsules[sex]: raise ValueError("Capsule source data differs from the measurements")
 
-def build(out, recipe, capsules, provider_audit=None, breast=None, source_inputs=None):
+def build(out, recipe, capsules, provider_audit=None, breast=None, source_inputs=None, fitted=None):
     out = destination(out)
     if breast and provider_audit is None: raise ValueError("Breast motion requires an explicit provider snapshot audit")
     source_inputs = source_inputs or SourceInputs(breast=breast is not None)
@@ -344,6 +481,7 @@ def build(out, recipe, capsules, provider_audit=None, breast=None, source_inputs
     if breast and breast[0] != read_breast_recipe(source_inputs):
         raise ValueError("Parsed breast recipe differs from captured source inputs")
     source_inputs.verify()
+    verify_fitted_unchanged(fitted)
     if provider_audit is not None:
         require_provider_clear(provider_audit, breast=breast is not None)
         verify_provider_unchanged(provider_audit)
@@ -363,16 +501,19 @@ def build(out, recipe, capsules, provider_audit=None, breast=None, source_inputs
         breast_master, breast_bounce = render_motion(breast_recipe)
         (plugins / "CBPCMasterConfig_CLAWBreastPhysics.txt").write_text(breast_master, encoding="utf-8")
         (plugins / "CBPConfig_CLAWBreastPhysics.txt").write_text(breast_bounce, encoding="utf-8")
-    (source / "CLAWPhysicsData.psc").write_text(render_data(recipe, capsules), encoding="utf-8")
+    (source / "CLAWPhysicsData.psc").write_text(render_data(recipe, capsules, None if fitted is None else fitted["model"]), encoding="utf-8")
     for name in SCRIPTS:
         (source / name).write_bytes(source_inputs.payloads["papyrus/" + name])
     (out / "README.md").write_bytes(source_inputs.payloads["README.md"])
     manifest = {"schemaVersion":1, "namespace":"CLAW.Physics", "status":"source-candidate", "releaseReady":False,
-        "gameValidated":False, "capsuleSlots":8, "motionNodes":11 if breast else 9,
+        "gameValidated":False, "capsuleSlots":expected_capsule_count(None if fitted is None else fitted["model"]), "motionNodes":11 if breast else 9,
         "host":{"included":"optional-source-only", "maximumActorSlots":16, "automaticAssignment":False,
                 "pluginRecordsIncluded":False, "lifecycleDeliveryValidated":False},
-        "recipe":recipe, "measurementProvenance":capsules["provenance"],
+        "recipe":recipe, "measurementProvenance":capsules["provenance"] if fitted is None else fitted["model"].get("sourceInputs"),
         "providerAudit":provider_audit,
+        "fittedCapsules":None if fitted is None else {"input":fitted["input"], "model":fitted["model"],
+             "effectiveAggregateRequired":True, "automaticMorphObserver":False, "runtimeFitQualified":False,
+             "legacyRadiusHalvingApplied":False, "coordinateFrame":"node-local-game-units"},
         "breastMotion":None if breast is None else {"status":"uninstalled-source-trial", "recipe":breast[0],
              "inputs":breast[1], "runtimeOwnershipQualified":False, "contactQualified":False,
              "skeletonWritten":False, "capsulesAdded":False},
@@ -385,6 +526,7 @@ def build(out, recipe, capsules, provider_audit=None, breast=None, source_inputs
             if hashlib.sha256(Path(pin["path"]).read_bytes()).hexdigest() != pin["sha256"]:
                 raise ValueError("Breast input changed during build")
     source_inputs.verify()
+    verify_fitted_unchanged(fitted)
     (out / "claw-physics-source.json").write_text(json.dumps(manifest,indent=2)+"\n",encoding="utf-8")
     pending.unlink()
     return manifest
@@ -397,11 +539,13 @@ def main(argv=None):
     parser.add_argument("--with-breast-motion",action="store_true",help="explicit uninstalled female P1 motion source trial; requires provider/body/skeleton pins")
     parser.add_argument("--breast-body",type=Path,help="exact reviewed raw 91-node collar+P1 body candidate")
     parser.add_argument("--skeleton",type=Path,help="read-only exact reviewed XP32 skeleton for breast source trial")
+    parser.add_argument("--fitted-capsules",type=Path,help="explicit affine node-local ear/tail fit; requires effective morph snapshots at runtime")
     args = parser.parse_args(argv)
     try:
         source_inputs = SourceInputs(breast=args.with_breast_motion)
         recipe=source_inputs.json("recipe.json"); capsules=source_inputs.json("capsules.json")
         validate(recipe,capsules)
+        fitted = fitted_model(args.fitted_capsules) if args.fitted_capsules else None
         audit = check_master_conflicts(args.check_provider) if args.check_provider else None
         breast = None
         if args.with_breast_motion:
@@ -411,10 +555,10 @@ def main(argv=None):
         elif args.breast_body or args.skeleton:
             raise ValueError("Breast inputs require explicit --with-breast-motion")
         if args.measurements: verify_measurements(capsules,args.measurements)
-        if args.out: build(args.out,recipe,capsules,audit,breast,source_inputs)
+        if args.out: build(args.out,recipe,capsules,audit,breast,source_inputs,fitted)
         else: source_inputs.verify()
         print(json.dumps({"status":"source-candidate" if args.out else "valid", "motionNodes":11 if breast else 9,
-                          "capsuleSlots":8,"providerAudited":audit is not None,"gameValidated":False}))
+                          "capsuleSlots":expected_capsule_count(None if fitted is None else fitted["model"]),"providerAudited":audit is not None,"gameValidated":False}))
         return 0
     except (OSError,KeyError,TypeError,ValueError) as error:
         print("CLAW physics: "+str(error),file=sys.stderr); return 2

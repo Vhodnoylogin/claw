@@ -58,6 +58,22 @@ Int Function PulseActor(Int slot, Actor expectedActor) Global
   Return host.Pulse(slot, expectedActor)
 EndFunction
 
+Int Function GetMorphCount() Global
+  Return CLAWPhysicsData.MorphCount()
+EndFunction
+
+String Function GetMorphName(Int index) Global
+  Return CLAWPhysicsData.MorphName(index)
+EndFunction
+
+Int Function PulseMorphActor(Int slot, Actor expectedActor, Float[] effectiveMorphs, String evidence) Global
+  CLAWPhysicsHost host = GetHost()
+  If host == None
+    Return -1
+  EndIf
+  Return host.PulseMorphs(slot, expectedActor, effectiveMorphs, evidence)
+EndFunction
+
 Int Function ReleaseActor(Int slot) Global
   CLAWPhysicsHost host = GetHost()
   If host == None

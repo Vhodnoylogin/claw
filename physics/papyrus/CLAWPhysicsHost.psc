@@ -269,6 +269,30 @@ Int Function PulseInternal(Int index, Actor expectedActor)
   Return helper.Synchronize()
 EndFunction
 
+Int Function PulseMorphs(Int index, Actor expectedActor, Float[] effectiveMorphs, String evidence)
+  If _busy
+    Return -8
+  EndIf
+  _busy = True
+  Int outcome = PulseMorphsInternal(index, expectedActor, effectiveMorphs, evidence)
+  _busy = False
+  Return outcome
+EndFunction
+
+Int Function PulseMorphsInternal(Int index, Actor expectedActor, Float[] effectiveMorphs, String evidence)
+  If !IntegrationEnabled()
+    Return Fail(-6, "Explicit current-session integration opt-in is required")
+  EndIf
+  CLAWPhysicsActor helper = SlotAt(index)
+  If helper == None || expectedActor == None || helper.GetActorReference() != expectedActor
+    Return Fail(-1, "Morph pulse actor no longer matches the alias")
+  EndIf
+  If ActorInOtherSlot(index, expectedActor)
+    Return Fail(-2, "Duplicate actor ownership; morph pulse refused")
+  EndIf
+  Return helper.SynchronizeMorphs(expectedActor, effectiveMorphs, evidence)
+EndFunction
+
 Bool Function AcknowledgeReset(Int index, Actor previousActor, String resetEvidence, Bool previousContainersDiscarded)
   If _busy || resetEvidence == ""
     Return False

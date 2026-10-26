@@ -101,3 +101,44 @@ Run offline safety checks with:
 ```powershell
 python -m unittest discover -s tests -p test_collider_recipe.py
 ```
+
+## Morph-state audit with actual serialized skin frames
+
+`scripts/audit-morph-colliders.py` is a separate offline diagnostic and candidate
+builder. Supply explicit `--body`, `--tri`, `--skeleton`, `--hkx`, `--morphbench`
+(repository), `--pynifly` (dependency directory) and a new external `--out`.
+It preserves the original skeleton and uses only public PyNifly readers and
+Morphbench's facade to inspect, allocate and write candidate capsule bundles.
+The default is two capsules per fitted body at percentile95; these are explicit
+approximation parameters, not a promise of close contact.
+
+Mesh vertex coordinates are not assumed to be skeleton-world coordinates.
+The audit evaluates each selected vertex using all serialized skin weights,
+`restNode * skinToBone * globalToSkin`, with TRI offsets applied before that
+transform. It records normalization, bind frames and unassigned vertices.
+Ragdoll-body transforms are recovered on a disposable facade instance and
+checked independently before converting fitted endpoints into those frames.
+This avoids importing Havok body frames as CBPC node frames. Exact engine
+weight normalization and animated skinning remain separate runtime questions.
+
+Every available field is sampled alone, together with explicit mixed states
+and return to neutral. For each state the report compares original capsules,
+the neutral candidate and a refit to that state's selected skin. Both saved
+neutral and mixed-state skeletons are reopened and their geometry/properties
+checked. Omitted skin, unfitted bodies and observation precision remain explicit.
+Finite state samples do not bound arbitrary morph combinations or animation.
+
+Outside distance and membership in a capsule union are measured directly.
+The minimum of individual signed capsule distances is only an **interior proxy**
+when capsules overlap; it is not the distance to the union's outer boundary.
+Vertex-depth diagnostics therefore do not certify that every capsule surface
+lies close to the skin. A complete contact-fit criterion still needs explicit
+surface sampling/triangle distances and real contact acceptance.
+
+The accompanying `physics/fit-capsules.py` builds a different, node-local CBPC
+ear/tail model using actual TRI dependencies, affine endpoints/radii and fixed
+triangle assignments. Its source candidate can follow coefficient changes
+through the explicit physics-host API, but requires a qualified effective-morph
+reader/coordinator. See [physics/README.md](../physics/README.md). It changes no
+Havok ragdoll, movement cylinder or weapon collision body. Neither experiment
+installs a skeleton, changes a live profile or establishes release readiness.
