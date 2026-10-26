@@ -1,6 +1,6 @@
 Scriptname CLAWPhysicsActor extends ReferenceAlias
 
-; Source-only helper. A future host supplies ONE serialized alias per actor.
+; Source-only helper. CLAWPhysicsHost supplies ONE serialized alias per actor.
 ; Gates are acknowledgments from qualified preflight, not provider readback.
 Bool Property ProviderQualified = False Auto
 Bool Property ExclusiveIndexRange = False Auto
@@ -11,6 +11,10 @@ Bool[] _accepted
 Bool _female
 Bool _busy = False
 Bool _generationUnknown = False
+Int _modelGeneration = 0
+Int _qualifiedGeneration = -1
+Actor _qualifiedActor
+String _qualificationEvidence = ""
 Int _status = 0
 String _error = ""
 
@@ -27,6 +31,49 @@ EndFunction
 
 String Function GetLastError()
   Return _error
+EndFunction
+
+Actor Function GetTrackedActor()
+  Return _tracked
+EndFunction
+
+Int Function GetModelGeneration()
+  Return _modelGeneration
+EndFunction
+
+String Function GetQualificationEvidence()
+  Return _qualificationEvidence
+EndFunction
+
+Bool Function QualifyForActor(Actor expectedActor, Int expectedGeneration, String evidence, Bool provider, Bool exclusiveIndices, Bool staticPose)
+  ; These are external assertions, never inferred from a CBPC bool/version.
+  If _busy || expectedActor == None || evidence == "" || expectedActor != GetActorReference() || expectedGeneration != _modelGeneration
+    Return False
+  EndIf
+  ProviderQualified = provider
+  ExclusiveIndexRange = exclusiveIndices
+  StaticPoseAccepted = staticPose
+  _qualifiedActor = expectedActor
+  _qualifiedGeneration = expectedGeneration
+  _qualificationEvidence = evidence
+  Return expectedGeneration == _modelGeneration
+EndFunction
+
+Bool Function AttachmentQualified(Actor target)
+  Return ProviderQualified && ExclusiveIndexRange && StaticPoseAccepted && _qualifiedActor == target && _qualifiedGeneration == _modelGeneration
+EndFunction
+
+Bool Function CleanupContextCurrent(Actor target, Int generation)
+  ; No native queries here: recheck the captured ledger/authority after data reads.
+  Return target != None && _tracked == target && ProviderQualified && ExclusiveIndexRange && _modelGeneration == generation
+EndFunction
+
+Bool Function AttachmentContextCurrent(Actor target, Int generation, String node)
+  ; The check and the following native mutation are NOT an atomic operation.
+  If !IsCurrentBeast(target) || !target.Is3DLoaded() || !NetImmerse.HasNode(target, node, False) || GetActorReference() != target
+    Return False
+  EndIf
+  Return !_generationUnknown && _tracked == target && _modelGeneration == generation && AttachmentQualified(target)
 EndFunction
 
 String Function OwnershipNamespace()
@@ -75,6 +122,8 @@ EndFunction
 
 Function MarkModelGenerationChanged()
   EnsureLedger()
+  _modelGeneration += 1
+  StaticPoseAccepted = False
   _generationUnknown = True
   If GetAcceptedLedgerCount() > 0
     SetStatus(6, "Model/provider generation changed; previous container presence is unknown")
@@ -83,7 +132,7 @@ EndFunction
 
 Bool Function AcknowledgeProviderReset(Actor previousActor, Bool previousContainersDiscarded)
   ; No public CBPC readback proves a reset. Only a qualified host may assert it.
-  If _busy || !previousContainersDiscarded || previousActor == None || previousActor != _tracked
+  If _busy || !ProviderQualified || !ExclusiveIndexRange || !previousContainersDiscarded || previousActor == None || previousActor != _tracked
     Return False
   EndIf
   EnsureLedger()
@@ -127,16 +176,25 @@ Int Function CleanupInternal()
   If !ProviderQualified || !ExclusiveIndexRange
     Return SetStatus(6, "Cannot safely call scoped detach without provider/index ownership qualification")
   EndIf
-  If _tracked == None || !_tracked.Is3DLoaded()
+  Actor cleanupActor = _tracked
+  Int cleanupGeneration = _modelGeneration
+  If cleanupActor == None || !cleanupActor.Is3DLoaded()
     Return SetStatus(6, "Tracked actor is unavailable/unloaded; cleanup has not been proven")
   EndIf
   Int slot = 0
   While slot < 9
     If _accepted[slot]
       String node = CLAWPhysicsData.Node(slot)
-      If NetImmerse.HasNode(_tracked, node, False)
+      Int colliderIndex = CLAWPhysicsData.ColliderIndex(slot)
+      If NetImmerse.HasNode(cleanupActor, node, False)
+        If !CleanupContextCurrent(cleanupActor, cleanupGeneration)
+          Return SetStatus(6, "Cleanup actor/authority/generation changed; remaining ledger retained")
+        EndIf
         ; type=1 is capsule; True selects the affected-node bucket only.
-        Bool removed = CBPCPluginScript.DetachCollider(_tracked, node, 1, CLAWPhysicsData.ColliderIndex(slot), True)
+        Bool removed = CBPCPluginScript.DetachCollider(cleanupActor, node, 1, colliderIndex, True)
+        If !CleanupContextCurrent(cleanupActor, cleanupGeneration)
+          Return SetStatus(6, "Cleanup context changed during native detach; result not used to erase ledger")
+        EndIf
         If removed
           _accepted[slot] = False
         EndIf
@@ -147,6 +205,9 @@ Int Function CleanupInternal()
   If GetAcceptedLedgerCount() > 0
     Return SetStatus(6, "Detach false/missing node conflates absent and unavailable; ledger retained")
   EndIf
+  If !CleanupContextCurrent(cleanupActor, cleanupGeneration)
+    Return SetStatus(6, "Cleanup context changed before completion; tracked actor retained")
+  EndIf
   _tracked = None
   _generationUnknown = False
   Return SetStatus(7, "Native reported matching-index removals; no collider enumeration exists")
@@ -154,6 +215,7 @@ EndFunction
 
 Int Function SynchronizeInternal()
   EnsureLedger()
+  Int synchronizationGeneration = _modelGeneration
   If GetAcceptedLedgerCount() > 0 && _tracked == None
     Return SetStatus(6, "Remembered capsules have an unresolved former actor; retargeted attachment refused")
   EndIf
@@ -174,7 +236,7 @@ Int Function SynchronizeInternal()
   If !target.Is3DLoaded()
     Return SetStatus(3, "No loaded 3D; no attachment attempted")
   EndIf
-  If !ProviderQualified || !ExclusiveIndexRange || !StaticPoseAccepted
+  If !AttachmentQualified(target)
     Return SetStatus(1, "Provider, exclusive index range and static measurement pose need explicit qualification")
   EndIf
   If _generationUnknown && GetAcceptedLedgerCount() > 0
@@ -196,6 +258,9 @@ Int Function SynchronizeInternal()
     EndIf
   EndIf
   If GetAcceptedLedgerCount() == 8
+    If GetActorReference() != target || _modelGeneration != synchronizationGeneration || !AttachmentQualified(target) || _generationUnknown
+      Return SetStatus(6, "Accepted ledger context changed during synchronization; no append attempted")
+    EndIf
     Return SetStatus(4)
   EndIf
   If GetAcceptedLedgerCount() > 0
@@ -212,25 +277,33 @@ Int Function SynchronizeInternal()
   While slot < 9 && !failed
     If CLAWPhysicsData.HasCapsule(slot)
       String node = CLAWPhysicsData.Node(slot)
-      If _generationUnknown || !IsCurrentBeast(target) || !target.Is3DLoaded() || !NetImmerse.HasNode(target, node, False)
+      Int colliderIndex = CLAWPhysicsData.ColliderIndex(slot)
+      If !AttachmentContextCurrent(target, synchronizationGeneration, node)
         failed = True
       Else
         ; Append is not replacement. Exclusivity lets us remove stale own duplicates.
         ; A false detach is NOT treated as proof that an old generation is clean.
-        CBPCPluginScript.DetachCollider(target, node, 1, CLAWPhysicsData.ColliderIndex(slot), True)
+        CBPCPluginScript.DetachCollider(target, node, 1, colliderIndex, True)
         Float[] point1 = CLAWPhysicsData.Point(slot, female, False)
         Float[] point2 = CLAWPhysicsData.Point(slot, female, True)
         Float radius = CLAWPhysicsData.Radius(slot, female)
-        Bool accepted = CBPCPluginScript.AttachColliderCapsule(target, node, point1, radius, point2, radius, 0.0, CLAWPhysicsData.ColliderIndex(slot), True)
-        _accepted[slot] = accepted
-        If !accepted
+        ; Data access/preclean may yield. Recheck AFTER them, immediately before append.
+        If !AttachmentContextCurrent(target, synchronizationGeneration, node)
           failed = True
+        Else
+          Bool accepted = CBPCPluginScript.AttachColliderCapsule(target, node, point1, radius, point2, radius, 0.0, colliderIndex, True)
+          ; Record an accepted append even if a concurrent event invalidated it.
+          ; The failure path must roll it back or retain it as unresolved cleanup.
+          _accepted[slot] = accepted
+          If !accepted
+            failed = True
+          EndIf
         EndIf
       EndIf
     EndIf
     slot += 1
   EndWhile
-  If _generationUnknown || !IsCurrentBeast(target) || !target.Is3DLoaded()
+  If !IsCurrentBeast(target) || !target.Is3DLoaded() || GetActorReference() != target || _generationUnknown || _modelGeneration != synchronizationGeneration || !AttachmentQualified(target)
     failed = True
   EndIf
   If failed
@@ -244,5 +317,13 @@ Int Function SynchronizeInternal()
 EndFunction
 
 Event OnUnload()
+  MarkModelGenerationChanged()
+EndEvent
+
+Event OnLoad()
+  MarkModelGenerationChanged()
+EndEvent
+
+Event OnRaceSwitchComplete()
   MarkModelGenerationChanged()
 EndEvent

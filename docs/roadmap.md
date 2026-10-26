@@ -59,6 +59,18 @@ demonstrated requirement cannot be met otherwise.
   A separate pinned composition with the repaired collar passes the offline
   pose checks. Common fur motion, effective physics driver ownership and
   visual/game acceptance remain separate gates.
+- [Human-driven morph expansion](morph-expansion.md): proposed localized forearm,
+  glute, abdomen and thorax targets have real 3BA/HIMBO sources. Additional head/
+  ear conversion needs a separate readable human head-data contract.
+- [Morphbench needs](morphbench-needs.md): pose-aware binds, frozen skin/fur joins,
+  seam/intersection reports and perspective camera clearance are proposed tool
+  improvements, rather than claimed existing measurements.
+
+The owner added first-person VR body work to parallel development on 26 October.
+It can proceed beside the remaining source candidates without changing the frozen
+SE test environment. The separate [VR body prototype](vr-body.md) records its
+resource and runtime-integration boundaries. No manual game or microphone launch
+is implied; that still waits for the owner's direct command.
 
 These development results do not change or requalify the published0.6.2.0 package.
 
@@ -69,6 +81,15 @@ then stopped on a source-change read before the two-second refresh interval coul
 be guaranteed. One assertion mismatched and 46 checks were not run. This is not
 evidence of a persistent mod defect or full runtime acceptance. A corrected
 scenario must use bounded read-only polling for asynchronous results.
+
+A later core run on the current direct-link build performed one of ten checks:
+catalogs passed, the real male OBody assignment was observed, and source-key
+reading became unavailable because the origin/platform binding used the wrong
+native function name (`GetBodyMorphKeys` rather than observed `GetMorphKeys`).
+Eight checks did not run; no coefficient conversion or race change was reached.
+The game ended and restoration was verified. Its later crash exit has an unknown
+cause and is not attributed to CLAW. A data-only binding correction is prepared;
+the original attempt remains consumed, with no automatic replay or acceptance.
 
 - Finish both-sex direct link checks, clearing, suppression/resume and human/beast
   return transitions with independent keyed readback. Keep optional independent

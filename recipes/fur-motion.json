@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "name": "collar-p1-full-belly-motion-follow-v1",
+  "inputs": {
+    "bodyNifSha256": "6792fc6c28c849c7a6279dedf2a7681abd154e7ad1327b4b4826285e1353e33d",
+    "triSha256": "18840924604e974d166ab4f489311e66bcbff1852427eb0924b1242909099b15",
+    "skeletonSha256": "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0"
+  },
+  "rigProfile": "breast-rig-collar.json",
+  "layer": "fur_belly",
+  "maximumCardStrainChange": 0.01,
+  "normalizedOrdinaryMaxError": 0.005,
+  "rawOrdinaryMaxError": 0.075,
+  "outputRelativeNif": "meshes/actors/werewolfbeast/character assets/femalebodywerewolf.nif"
+}

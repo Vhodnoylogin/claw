@@ -293,3 +293,58 @@ skin data, is retained. The bounded copy is
 `05891e72862b5081e275f5360624860a95d549d27005b701c90cc4fe7838177f`.
 The raw candidate and explicit TRI remain unchanged. This is the configured
 additive file-space envelope, not a bound for P1/animation/physics displacement.
+
+## Layer-only motion follower experiment
+
+`scripts/follow-fur-motion.py`, with `recipes/fur-motion.json`, is a separate
+post-export stage on the raw 91-node composition `6792fc6c...e33d`. It leaves the
+repaired skin fixed and only considers full-weight `fur_belly` cards. Default
+recipes, live assets, the static-bounds copy and the pending SE acceptance inputs
+are unchanged. Use explicit `--body`, `--tri`, `--skeleton`, `--profile` and `--out`
+arguments; the destination must be a new external directory. No install switch or
+runtime controller is provided.
+
+The stage freezes neutral card roots and skin triangles/barycentrics using the
+existing Layer contract. Its target is the actual posed skin barypoint plus a
+barycentrically weighted transport of the root's original offset. This permits
+natural offset rotation and includes covariance from differently weighted skin
+vertices. It is an explicit LBS transport model, not a contact or renderer oracle.
+
+For each eligible card, a bounded scalar fit over 24 pure bilateral/independent P1
+poses and BreastSize 0/0.5/1 adjusts the fraction of its existing Spine2/P1 pool.
+No unrelated influence is removed, no bone reference is added and vertices with
+four original influences and no spare P1 slot stay fixed. Exact half-float pairs
+preserve each vertex's **existing packed sum**, including any original sum error;
+this does not silently normalize the whole shape. A candidate card must reduce
+normalized pure-P1 squared root error by more than 1% and an absolute 1e-8, avoid
+raw/normalized pure-P1 maximum/squared regression, retain ordinary-pose budgets
+and keep full-card edge-strain change below the declared experimental 0.01.
+
+Measurements include all 151 poses at the three BreastSize states. Combined-pose
+root values are retained in the whole-pose residual report; no separate combined
+root nonregression rule is claimed. Bounds and other combined morphs are outside
+this stage. Fade/disabled cards, unsupported palettes, chest/shoulder fur and
+ChestBlend remain unchanged; this is not common motion for every layer.
+
+Actual serialized readback checks the exact packed weight plan and detached
+snapshots of all nodes/ancestry/transforms/extra data, vertices/triangles/UVs,
+normals/colors/shape transforms, shaders/textures/alpha, partitions, skin
+references/binds/frames and non-belly weights. TRI bytes are copied exactly.
+This is selected-field protection, not a claim that every NIF byte is identical.
+Executed source/helper/profile/dependency files are pinned before fitting and
+rechecked before success; a changed input/source invalidates the build.
+
+The 26 October second build accepted 138 cards, changing 753 stored belly vertices.
+Among **those changed cards only**, maximum normalized pure-P1 transported-root
+error falls from 0.0426480 to 0.00313483 game units. Maximum card-edge strain change
+is 0.00753422, and normalized ordinary-pose deviation is below 0.000000169.
+These values are not an all-layer improvement or an appearance guarantee.
+The source/output contain the same 91 nodes and all 25 public morph names;
+output NIF is `d99a1180ec4e6ebb0ba54033ecfdd7623b54c29850e60262b46412bcac19276d`,
+with unchanged TRI `18840924...b15`. Seven regressions cover bounded fitting,
+exact packed sums/support, a saturated palette, actual BODYTRI readback rejection,
+detached-normal protection and an independently solved covariance example.
+
+The first local diagnostic used weaker acceptance and incomplete source pinning;
+its output is retained as historical diagnostic evidence, not the current candidate.
+Neither output is installed or accepted for physics, animation or visible seams.

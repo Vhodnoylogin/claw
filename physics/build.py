@@ -15,6 +15,7 @@ NODES = ("NPC EarL [EarL]Bone01", "NPC EarL [EarL]Bone02",
          "NPC EarR [EarR]Bone01", "NPC EarR [EarR]Bone02",
          "TailBone01", "TailBone02", "TailBone03", "TailBone04", "TailBone05")
 ALIASES = ("CLAW_EarL", "CLAW_EarR", "CLAW_Tail")
+SCRIPTS = ("CLAWPhysicsActor.psc", "CLAWPhysicsHost.psc", "CLAWPhysicsLoadRelay.psc")
 PARAMETERS = {
     "stiffness", "stiffness2", "damping", "timetick", "timeStep", "timeStepRot", "forceMultipler",
     "linearX", "linearY", "linearZ", "rotationalX", "rotationalY", "rotationalZ",
@@ -167,12 +168,17 @@ def build(out, recipe, capsules):
     (plugins / "CBPCMasterConfig_CLAWPhysics.txt").write_text(master, encoding="utf-8")
     (plugins / "CBPConfig_CLAWPhysics.txt").write_text(bounce, encoding="utf-8")
     (source / "CLAWPhysicsData.psc").write_text(render_data(recipe, capsules), encoding="utf-8")
-    shutil.copyfile(ROOT / "papyrus/CLAWPhysicsActor.psc", source / "CLAWPhysicsActor.psc")
+    for name in SCRIPTS:
+        shutil.copyfile(ROOT / "papyrus" / name, source / name)
     shutil.copyfile(ROOT / "README.md", out / "README.md")
     manifest = {"schemaVersion":1, "namespace":"CLAW.Physics", "status":"source-candidate", "releaseReady":False,
-        "gameValidated":False, "capsuleSlots":8, "motionNodes":9, "recipe":recipe, "measurementProvenance":capsules["provenance"],
+        "gameValidated":False, "capsuleSlots":8, "motionNodes":9,
+        "host":{"included":"optional-source-only", "maximumActorSlots":16, "automaticAssignment":False,
+                "pluginRecordsIncluded":False, "lifecycleDeliveryValidated":False},
+        "recipe":recipe, "measurementProvenance":capsules["provenance"],
         "sourceInputs":[{"path":str(path.relative_to(ROOT)),"sha256":hashlib.sha256(path.read_bytes()).hexdigest()}
-                        for path in (ROOT/"recipe.json",ROOT/"capsules.json",ROOT/"sources.json",ROOT/"README.md",ROOT/"papyrus/CLAWPhysicsActor.psc",Path(__file__))],
+                        for path in (ROOT/"recipe.json",ROOT/"capsules.json",ROOT/"sources.json",ROOT/"README.md",Path(__file__),
+                                     *(ROOT/"papyrus"/name for name in SCRIPTS))],
         "outputs":[{"path":str(path.relative_to(out)),"sha256":hashlib.sha256(path.read_bytes()).hexdigest()}
                    for path in sorted(out.rglob("*")) if path.is_file()]}
     (out / "claw-physics-source.json").write_text(json.dumps(manifest,indent=2)+"\n",encoding="utf-8")

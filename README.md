@@ -24,7 +24,12 @@ beast morph vector from actual applied human coefficients. Linked actors need
 no beast preset files; real OBody/profile calibration and game acceptance remain
 pending. The older exact preset-pairing experiment is historical.
 The [ear/tail physics source candidate](physics/README.md) uses existing XP32
-chains and keeps collision attachment behind explicit provider qualification.
+chains, an optional finite per-actor host and explicit provider qualification.
+The [breast rig](docs/breast-rig.md) includes a separate layer-only fur motion
+experiment. The owner has added [first-person VR body resources](docs/vr-body.md)
+to parallel development; engine integration and camera/interaction acceptance
+remain pending. [Additional human-driven morphs](docs/morph-expansion.md) and
+[Morphbench improvements](docs/morphbench-needs.md) are researched proposals.
 
 *Эта страница на русском: [README.ru.md](README.ru.md).*
 

@@ -69,6 +69,12 @@ class PhysicsSourceTests(unittest.TestCase):
                 {"CBPCMasterConfig_CLAWPhysics.txt","CBPConfig_CLAWPhysics.txt"})
             self.assertFalse(list(out.rglob("*.nif")))
             self.assertFalse(list(out.rglob("CBPCollisionConfig*")))
+            self.assertEqual({p.name for p in (out/"Scripts/Source").iterdir()},
+                             {"CLAWPhysicsData.psc", *build.SCRIPTS})
+            self.assertFalse(manifest["host"]["automaticAssignment"])
+            self.assertFalse(manifest["host"]["lifecycleDeliveryValidated"])
+            for name in build.SCRIPTS:
+                self.assertEqual((out/"Scripts/Source"/name).read_bytes(), (ROOT/"papyrus"/name).read_bytes())
 
     def test_explicit_provider_snapshot_duplicate_driver_is_refused(self):
         with tempfile.TemporaryDirectory() as folder:
