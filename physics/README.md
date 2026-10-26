@@ -1,12 +1,15 @@
-# CLAW.Physics: source-only CBPC ear/tail candidate
+# CLAW.Physics: isolated CBPC ear/tail candidate
 
 This is an **uninstalled development candidate**, separate from the frozen
-distribution companion and every quest/plugin record. It retains XP32 and uses
+distribution companion and its quest/plugin records. It retains XP32 and uses
 CBPC for both ear chains and the five-link tail. It supplies two original motion
 configs, pinned rest-pose capsule data, a generator/validator, an actor-scoped
-Papyrus helper and an optional finite source host. There is no automatic
-assignment, quest/plugin record patch or installer here. Host record wiring and
-engine lifecycle delivery remain unqualified; none of this is installed.
+Papyrus helper and an optional finite host. An original wiring recipe builds
+`CLAW - Physics.esp` with one quest, 16 actor aliases and a separate player load
+relay. The dedicated offline build verifies record/VMAD wiring by binary readback
+and Spriggit round-trip, and compiles five own scripts. It is an **uninstalled
+development candidate**: quest startup, alias fill, Papyrus event delivery,
+provider behavior and visible/contact acceptance remain unqualified.
 
 ## Inputs and own outputs
 
@@ -23,6 +26,11 @@ The two generated files are:
 - `SKSE/Plugins/CBPConfig_CLAWPhysics.txt`: parameters only for those own aliases.
   It is unconditioned so other conditioned bounce configurations can fall back
   to the unique defaults. It changes no human/shared alias.
+
+CBPC loads these motion mappings independently of the Papyrus host. Host opt-in
+gates our actor-scoped capsule API; it cannot gate file-loaded CBPC motion. The
+dedicated **host-only** ESP/PEX package therefore excludes both configs. They stay
+in the separate offline source candidate for a later explicitly qualified setup.
 
 Values are original small-displacement trial parameters, **not proven safe or
 visibly effective**: force multiplier 0.1, damping 0.4, displacement clamps
@@ -135,9 +143,29 @@ qualification. Status and ledger count do not certify visible physics.
 
 ## Optional finite host contract
 
-`papyrus/CLAWPhysicsHost.psc` extends `Quest`. A future integration must create
-its own persistent quest with **1..16 distinct optional reference aliases**, each
-carrying `CLAWPhysicsActor`, on that same quest. Populate `ActorSlots` explicitly.
+`papyrus/CLAWPhysicsHost.psc` extends `Quest`. The original
+`host-wiring.json` recipe and `wiring.py` generate a Spriggit source tree for the
+optional **ordinary ESP**, with `Skyrim.esm` and `CLAW.esp` as its only masters.
+It contains only our quest `000800`, editor ID `CLAWPhysicsHostQuest`; it adds no
+overrides to other plugins. The quest is **not StartGameEnabled** and has no
+stages, objectives, conditions, packages or automatic actor search.
+
+Actor alias IDs **0..15** are stable and have explicit null forced-reference
+fields (`ALFR=0`), not find-matching conditions. They are Optional and carry
+`CLAWPhysicsActor`. Alias **16** is forced to PlayerRef `000014:Skyrim.esm` and
+carries only `CLAWPhysicsLoadRelay`. All aliases allow reuse within the quest
+so one actor slot may track the player while the load relay also references the
+player; the host still refuses duplicates across actor slots. Runtime alias fill
+and this reuse behavior remain game acceptance checks.
+
+The quest VMAD gives `CLAWPhysicsHost.ActorSlots` an ordered array of same-quest
+alias objects 0..15, and sets `IntegrationOptIn=False`. Every actor helper's three
+provider/index/pose properties are explicitly false. The binary validator checks
+these fields, the optional/reuse flags, all exact alias script attachments and
+the separate player reference. A text or bool alone is not runtime evidence.
+
+The reusable source host also supports **1..16 distinct optional reference
+aliases** on another explicitly configured quest. Populate `ActorSlots` explicitly.
 The host copies that finite list once; changing the property later does not
 replace saved aliases or their cleanup ledgers. Do not stop/reset the quest or
 clear/force its aliases externally while remembered capsules remain. The source
@@ -145,39 +173,56 @@ host has no actor search, update registration, retry loop or population hookup.
 
 The intended manually driven sequence is:
 
-1. Call `NotifySessionChanged()` before operations in a new/load session or
-   after provider replacement. This revokes provider/index/pose authority for
+1. Call `CLAWPhysicsControl.BeginSession(True, evidence)` explicitly. Lookup uses
+   `Game.GetFormFromFile(0x800, "CLAW - Physics.esp")`; lookup alone has no startup
+   effect. BeginSession starts the stopped quest only when it can inspect empty
+   accepted ledgers, revokes old session authority and enables the current host
+   session. False opt-in, empty evidence, unavailable/wrong quest, non-ready
+   startup or a stopped quest with remembered capsules refuses activation. There
+   is no automatic retry. Starting the quest does not qualify a provider or append.
+   A direct host consumer may use `EnableIntegration(sessionGeneration, evidence)`
+   only after forwarding the session signal and confirming the quest is running.
+2. `NotifySessionChanged()` on new/load session or provider replacement disables
+   integration opt-in, increments its session generation and revokes provider/index/pose authority for
    every slot and retains every accepted ledger. Optional
    `CLAWPhysicsLoadRelay` on a separate **player alias of the same quest** forwards
    `OnPlayerLoadGame`; it does not attach anything. Record wiring, event order,
    new-game startup and all provider reset signals still need verification.
-2. `Assign(slot, actor)` selects one actor. It rejects an actor assigned to or
+3. `CLAWPhysicsControl.RegisterActor(slot, actor)` / host `Assign` selects one actor. It rejects an actor assigned to or
    retained by another slot. Before changing an alias it requests cleanup and
    refuses to clear or retarget a pending ledger, including an unloaded former
    actor. Both `Clear()` and `ForceRefTo()` have observed-reference checks because
    those engine operations return no success bool. Assign never attaches.
-3. Read `GetSlotGeneration(slot)`, then externally establish the deployed
+4. Read control `GetGeneration(slot)` / host `GetSlotGeneration(slot)`, then externally establish the deployed
    provider/API/effective-config hashes, exclusive bone and reserved-index
    ownership, actual race binding and the chosen actor's static measurement
-   pose. Call `Qualify(slot, actor, generation, evidence, provider, indices, pose)`.
+   pose. Call control `QualifyActor` / host `Qualify(slot, actor, generation, evidence, provider, indices, pose)`.
    A changed actor/generation, empty evidence or busy helper refuses qualification.
    Provider/index qualification with pose false permits pending cleanup without
    permitting append. No native version or attach/detach bool provides this proof.
-4. `Pulse(slot, actor)` makes one synchronization attempt; it requires that the
+5. Control `PulseActor(slot, actor)` / host `Pulse` makes one synchronization attempt; it requires that the
    expected actor still occupies that slot. It returns the helper status above.
    A lifecycle change expires qualification; repeat the external qualification
    step for the newly observed generation. A pending old ledger still needs
    actual reported cleanup or separately verified container discard.
-5. `Release(slot)` requests cleanup and clears only after the ledger is empty.
+6. Control `ReleaseActor(slot)` / host `Release` requests cleanup and clears only after the ledger is empty.
    If a qualified provider reset truly discarded the old actor's containers,
    `AcknowledgeReset(slot, previousActor, resetEvidence, True)` may explicitly
    acknowledge that fact. It records the last accepted evidence reference;
    false detach is never converted into a reset assertion.
 
+The control API also exposes `GetStatus` and `GetLedgerCount`; these report the
+helper's control ledger, not native presence. `SuspendSession()` disables the
+host and revokes qualification without stopping/resetting its quest, clearing
+aliases or discarding remembered capsules. Cleanup/release remains available
+after suspension; native cleanup still needs separately renewed provider/index
+qualification. To renew it through the host, opt in again first. No API scans
+the world, chooses actors or automatically starts physics.
+
 Host returns 0 for an accepted control operation, helper status 0..9 for Pulse,
 and negative failures: -1 invalid input/topology, -2 duplicate ownership,
 -3 unresolved cleanup, -4 alias operation not observed, -5 stale/missing
-qualification, -8 overlapping host call. Read `GetLastError()` for control
+qualification, -6 integration opt-in missing/stale, -8 overlapping host call. Read `GetLastError()` for control
 failures and the actor helper's error/status for synchronization. These are
 source-level control outcomes, not certification of native collider presence.
 
@@ -185,7 +230,7 @@ The local base-game PSC declarations were inspected for `Alias.GetOwningQuest`,
 `ReferenceAlias.Clear` (fails for non-optional aliases), `ForceRefTo` and forwarded
 load/unload/race/player-load events. Compilation checks those declarations;
 neither it nor source-contract regression tests establishes engine scheduling
-or final quest integration. This host intentionally leaves that acceptance open.
+or engine quest integration. This host intentionally leaves that acceptance open.
 
 ## Build and offline checks
 
@@ -203,11 +248,11 @@ another master mapping of these bones. It does not guess MO2 winners and cannot
 prove loaded SMP ownership. Supply the baseline before adding this candidate;
 all matching `.txt`/`.ini` masters are checked, including CLAW-looking filenames.
 A filename alone never establishes ownership. The build emits only the two configs,
-own actor/host/load-relay PSCs, generated `CLAWPhysicsData.psc` and a hash manifest—no NIF, shared collision file,
+own actor/host/load-relay/control PSCs, generated `CLAWPhysicsData.psc` and a hash manifest—no NIF, shared collision file,
 plugin, native DLL or release metadata. Outputs must be new external directories
 or ignored `work/` descendants; live/source/archive destinations are refused.
 
-Compile all four emitted PSCs with Caprica `--game skyrim`, from their `Scripts/Source`
+Compile all five emitted PSCs with Caprica `--game skyrim`, from their `Scripts/Source`
 directory, importing installed SKSE, base-game sources and CBPC's public source
 declarations. Put PEX output outside Git. Compilation is an offline API/type check,
 not an actor/provider test. Tests cover data/isolation and source safety contracts
@@ -215,9 +260,37 @@ for pending cleanup, alias operation failures, duplicate ownership, qualificatio
 expiry, load revocation and explicit reset acknowledgment. They inspect actual
 shipped PSC guards/call order; they do not execute Papyrus, native calls or events.
 
+To build the optional **host-only ESP + five PEX** candidate, use the separate
+explicit tool entrypoint; all arguments are installed tools/imports, not downloads:
+
+```powershell
+python physics/build-host.py --out '<new-external-directory>' `
+  --compiler '<Caprica.exe>' --spriggit '<spriggit.exe>' --flags '<TESV_Papyrus_Flags.flg>' `
+  --import-path '<SKSE-Scripts-Source>' --import-path '<base-game-Scripts-Source>' `
+  --import-path '<CBPC-public-Scripts-Source>'
+```
+
+This generates three deterministic JSON-syntax `.yaml`/metadata files, a valid
+YAML subset accepted by the pinned installed Spriggit 0.41.0 package. It needs no
+Python YAML dependency. Sources remain in `plugin-source/`, compiler/Spriggit logs
+and tool/source hashes in `physics-host-build.json`, decoded binary wiring in
+`plugin-binary-readback.json`, and the host-only candidate in `package/`. Own PSCs
+are included for coordinator imports. The independent motion configs remain in
+`source-package/SKSE/Plugins/`; the package validator refuses them in `package/`.
+Existing outputs,
+source/live mod destinations and import-directory descendants are refused.
+
+The build independently reads the actual ESP's TES4/QUST/subrecord/VMAD bytes,
+checks identity, masters, stopped quest flags, 17 alias IDs/fills/flags, same-quest
+property objects, helper/relay attachments and false gates. It then serializes
+with Spriggit, rebuilds that text and compares the decoded wiring. This verifies
+the record and property types written by the installed tool, not their runtime
+meaning or Papyrus stack/event behavior. The build preserves all intermediate
+receipts. It installs, starts and tests no game/profile/actor.
+
 ## Separate integration proposal and acceptance
 
-After goals 1/2 are accepted, a future quest integration may wire the optional
+After goals 1/2 are accepted, a coordinator may opt into the optional
 host's finite aliases, qualify effective config/DLL/API hashes and exclusive
 bone/index ownership, then call synchronization for both sexes. It must verify current-race completion,
 3D unload/reload, save/new/load and provider reset events; use bounded retries

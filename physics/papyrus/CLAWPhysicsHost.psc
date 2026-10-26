@@ -1,15 +1,37 @@
 Scriptname CLAWPhysicsHost extends Quest
 
-; Optional SOURCE controller. No quest/plugin record, search, timer or auto-attach.
+; Optional finite controller. The separate wiring recipe supplies the quest.
 ; Configure 1..16 distinct OPTIONAL aliases on this quest, each with our helper.
 ; Configuration is copied once. Keep the quest/aliases alive until all ledgers clear.
 CLAWPhysicsActor[] Property ActorSlots Auto
+Bool Property IntegrationOptIn = False Auto
 
 CLAWPhysicsActor[] _slots
 Int _slotCount = 0
 Bool _busy = False
 String _error = ""
 String _lastResetEvidence = ""
+Int _sessionGeneration = 0
+Int _enabledGeneration = -1
+String _activationEvidence = ""
+
+Int Function GetSessionGeneration()
+  Return _sessionGeneration
+EndFunction
+
+Bool Function IntegrationEnabled()
+  Return IntegrationOptIn && _enabledGeneration == _sessionGeneration && _activationEvidence != ""
+EndFunction
+
+Bool Function EnableIntegration(Int expectedSessionGeneration, String evidence)
+  If _busy || evidence == "" || expectedSessionGeneration != _sessionGeneration || !IsRunning() || !Initialize()
+    Return False
+  EndIf
+  _activationEvidence = evidence
+  _enabledGeneration = expectedSessionGeneration
+  IntegrationOptIn = True
+  Return expectedSessionGeneration == _sessionGeneration
+EndFunction
 
 String Function GetLastError()
   Return _error
@@ -81,6 +103,37 @@ Int Function GetSlotGeneration(Int index)
   Return helper.GetModelGeneration()
 EndFunction
 
+Int Function GetSlotStatus(Int index)
+  CLAWPhysicsActor helper = SlotAt(index)
+  If helper == None
+    Return -1
+  EndIf
+  Return helper.GetStatus()
+EndFunction
+
+Int Function GetSlotLedgerCount(Int index)
+  CLAWPhysicsActor helper = SlotAt(index)
+  If helper == None
+    Return -1
+  EndIf
+  Return helper.GetAcceptedLedgerCount()
+EndFunction
+
+Bool Function HasRememberedCapsules()
+  If !Initialize()
+    ; Failure to inspect aliases is not proof that a stopped quest is empty.
+    Return True
+  EndIf
+  Int slot = 0
+  While slot < _slotCount
+    If _slots[slot].GetAcceptedLedgerCount() > 0
+      Return True
+    EndIf
+    slot += 1
+  EndWhile
+  Return False
+EndFunction
+
 Bool Function ActorInOtherSlot(Int index, Actor target)
   Int slot = 0
   While slot < _slotCount
@@ -111,6 +164,9 @@ Int Function Assign(Int index, Actor target)
 EndFunction
 
 Int Function AssignInternal(Int index, Actor target)
+  If !IntegrationEnabled()
+    Return Fail(-6, "Explicit current-session integration opt-in is required")
+  EndIf
   CLAWPhysicsActor helper = SlotAt(index)
   If helper == None || target == None
     Return Fail(-1, "Invalid slot or actor")
@@ -175,6 +231,9 @@ Int Function Qualify(Int index, Actor expectedActor, Int expectedGeneration, Str
 EndFunction
 
 Int Function QualifyInternal(Int index, Actor expectedActor, Int expectedGeneration, String evidence, Bool provider, Bool exclusiveIndices, Bool staticPose)
+  If !IntegrationEnabled()
+    Return Fail(-6, "Explicit current-session integration opt-in is required")
+  EndIf
   CLAWPhysicsActor helper = SlotAt(index)
   If helper == None || expectedActor == None || ActorInOtherSlot(index, expectedActor)
     Return Fail(-1, "Invalid slot/actor or duplicate actor ownership")
@@ -196,6 +255,9 @@ Int Function Pulse(Int index, Actor expectedActor)
 EndFunction
 
 Int Function PulseInternal(Int index, Actor expectedActor)
+  If !IntegrationEnabled()
+    Return Fail(-6, "Explicit current-session integration opt-in is required")
+  EndIf
   CLAWPhysicsActor helper = SlotAt(index)
   If helper == None || expectedActor == None || helper.GetActorReference() != expectedActor
     Return Fail(-1, "Pulse actor no longer matches the alias")
@@ -228,6 +290,8 @@ Function NotifySessionChanged()
   ; Call on load/new session/provider replacement BEFORE qualifying or pulsing.
   ; Deliberately allowed while busy: in-flight helper sees generation invalidation.
   ; Retains all accepted ledgers. No assumption that native containers survived.
+  IntegrationOptIn = False
+  _sessionGeneration += 1
   If !Initialize()
     Return
   EndIf

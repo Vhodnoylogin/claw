@@ -71,6 +71,8 @@ It can proceed beside the remaining source candidates without changing the froze
 SE test environment. The separate [VR body prototype](vr-body.md) records its
 resource and runtime-integration boundaries. No manual game or microphone launch
 is implied; that still waits for the owner's direct command.
+The [head-bone audit](vr-head-policy.md) additionally finds Head-weighted breast
+and fur vertices: preserving the mixed shape alone does not qualify head hiding.
 
 These development results do not change or requalify the published0.6.2.0 package.
 

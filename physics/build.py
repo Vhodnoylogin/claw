@@ -15,7 +15,7 @@ NODES = ("NPC EarL [EarL]Bone01", "NPC EarL [EarL]Bone02",
          "NPC EarR [EarR]Bone01", "NPC EarR [EarR]Bone02",
          "TailBone01", "TailBone02", "TailBone03", "TailBone04", "TailBone05")
 ALIASES = ("CLAW_EarL", "CLAW_EarR", "CLAW_Tail")
-SCRIPTS = ("CLAWPhysicsActor.psc", "CLAWPhysicsHost.psc", "CLAWPhysicsLoadRelay.psc")
+SCRIPTS = ("CLAWPhysicsActor.psc", "CLAWPhysicsHost.psc", "CLAWPhysicsLoadRelay.psc", "CLAWPhysicsControl.psc")
 PARAMETERS = {
     "stiffness", "stiffness2", "damping", "timetick", "timeStep", "timeStepRot", "forceMultipler",
     "linearX", "linearY", "linearZ", "rotationalX", "rotationalY", "rotationalZ",

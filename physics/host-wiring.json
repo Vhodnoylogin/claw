@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "plugin": "CLAW - Physics.esp",
+  "masters": ["Skyrim.esm", "CLAW.esp"],
+  "questFormId": "000800",
+  "questEditorId": "CLAWPhysicsHostQuest",
+  "actorAliasIds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+  "playerAliasId": 16,
+  "playerReference": "000014:Skyrim.esm",
+  "allowPlayerRelayReuse": true,
+  "startGameEnabled": false,
+  "integrationOptIn": false,
+  "providerQualified": false,
+  "exclusiveIndexRange": false,
+  "staticPoseAccepted": false
+}

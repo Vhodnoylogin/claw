@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "name": "moderate-collar-p1-vr-torso-head-isolation-v1",
+  "inputs": {
+    "bodyNifSha256": "6792fc6c28c849c7a6279dedf2a7681abd154e7ad1327b4b4826285e1353e33d",
+    "triSha256": "18840924604e974d166ab4f489311e66bcbff1852427eb0924b1242909099b15",
+    "skeletonSha256": "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0"
+  },
+  "rigProfile": "breast-rig-collar.json",
+  "region": {
+    "bounds": [[-25, 8, 82], [25, 45, 108]],
+    "faceMinY": 45,
+    "bandWidth": 2.0,
+    "weldDecimals": 5,
+    "minimumRootField": 0.5
+  },
+  "limits": {
+    "coreHideMaxDisplacement": 0.0001,
+    "minimumHideReduction": 0.9,
+    "ordinaryMaxNormalized": 0.25,
+    "ordinaryMaxRawPacked": 0.325,
+    "ordinaryRms": 0.05,
+    "pureP1MaxChange": 0.005,
+    "collarOffsetIncrease": 0.01,
+    "furRootResidualIncrease": 0.02,
+    "maximumCardStrainChange": 0.01
+  },
+  "outputRelativeNif": "meshes/actors/werewolfbeast/character assets/femalebodywerewolf.nif"
+}

@@ -31,6 +31,86 @@ solver distinguishes beast states and handles beast hands/head visibility. No
 reconstructed code is copied or made a build dependency. Its existence does not
 qualify the prototype against the installed VRIK binary.
 
+## Executable offline record resolver
+
+[`vr/engine_audit.py`](../vr/engine_audit.py) now resolves actual records from an
+explicit input order without consulting a live profile. The original read-only
+reader handles master-relative FormKeys, nested groups, compressed records and
+extended subrecord lengths. It verifies the exact installed Skyrim VR master,
+published CLAW ESP and corrected five-byte resource NIF/TRI hashes. An optional
+reference plugin is compared against vanilla separately; it does not silently
+become an effective CLAW override.
+
+The verified vanilla chain is:
+
+`RACE 0CDD84 WerewolfBeastRace` → `WNAM` → `ARMO 0CDD86 SkinNakedWerewolfBeast`
+→ `MODL` → `ARMA 0CDD87 NakedTorsoWerewolfBeast`.
+
+The race, skin armor and addon all carry biped mask **0x00000004**, Body slot **32**.
+The installed Werewolf Body for VR Tamaska patch retains that same addon slot.
+There is no record evidence for changing this to the Hands slot. Spriggit's
+`BodyTemplate.FirstPersonFlags` is the BODT/BOD2 biped mask; its name does not prove
+which first-person filename the native VR branch loads.
+
+| ARMA field | Vanilla | Published CLAW | Installed WBfVR Tamaska reference |
+|---|---|---|---|
+| Biped mask | Body 32, BODT | Body 32, BODT | Body 32, BOD2 |
+| Male/female weight flags | false / false | true / true | false / false |
+| Male world model | MaleBodyWereWolf_1 | MaleBodyWereWolf_1 | MaleBodyWereWolf_1 |
+| Female world model | MaleBodyWereWolf_1 | FemaleBodyWereWolf_1 | FemaleBodyWereWolf_1 |
+| Male first-person record model | 1stPersonMaleBody_1 | same human filename | same human filename |
+| Female first-person record model | 1stPersonFemaleBody_1 | same human filename | same human filename |
+
+The recorded `DNAM` values are `000000000200001700000000` for vanilla/reference
+and `000002020200001700000000` for CLAW. Weight is bit `0x02` of sex-specific
+bytes 2/3 in this checked layout. The auditor reports male/female `MOD2/MOD3`
+world paths separately from stored `MOD4/MOD5` first-person paths; it never labels
+the latter as an observed engine-selected path.
+
+Static `NPC_ 000007 Player` has race `013746`, no explicit WNAM skin and a male
+base flag in the master. These are static defaults, not a transformed player
+snapshot. Runtime race, sex, NPC skin overrides, templates and the actual loaded
+graph cannot be inferred from that base record alone.
+
+The native filename `Actors\Character\Character Assets\1stPerson_Werewolf_Hands.nif`
+exists in the inspected SkyrimVR.exe (SHA256
+`6961efb4f4775a307b0fc9a3d637542c1e090be207d3b09467eab216b7f87971`),
+at file offset `0x15BB6A0`, RVA `0x15BCCA0`. A separate bounded file inspection
+found the executable's ordinary code region packed, with its entry point in
+`.bind`. Missing direct references in that file do **not** prove that this path
+is unused. No launch, unpacking or process-memory inspection was performed.
+CommonLib's `InitWornArmorAddon` and `InitWornArmor` call native engine functions;
+the available source does not expose the VR beast model/weight selection body.
+VRIK's inspected graph setup consumes already-loaded player roots.
+
+Consequently the auditor completes with status
+`refused-unresolved-native-first-person-dispatch` and generates **no plugin and
+no install layout**. Changing MOD4/MOD5 to protected sex-specific paths is not
+justified until the native choice between that record path and the built-in beast
+hands path is established, including weight-bit behavior, slot eligibility and
+`_0/_1` filename construction/interpolation. JSON cannot unlock generation by
+asserting native qualification. World models, sex fields, weight flags and all
+live files remain untouched.
+
+```powershell
+python vr/engine_audit.py --master '<SkyrimVR>/Data/Skyrim.esm' `
+  --resources '<external>/verified-resources-002' `
+  --reference-plugin '<WBfVR>/Tamaska Werewolf.esp' `
+  --out-dir '<new-external>/engine-record-audit'
+```
+
+The optional repeated `--override` arguments declare later input files in order;
+this is not an observed active load order. Missing masters, deleted/ignored winners
+and inherited/additional race selection outside the narrow werewolf resolver are
+refused. Exit **2** means a completed, evidence-backed native-dispatch refusal;
+exit **1** means invalid or unsupported input. A JSON report and refusal marker
+are written only into a new external directory.
+
+The completed 26 October audit is
+`D:/Skyrim VR Modding/Builds/claw-vr-body-20261026/engine-record-audit-003/engine-record-audit.json`.
+It records hashes and exact record offsets for the three compared sources,
+the declared override history, resource pins and the native-dispatch refusal.
+
 ## Actual resource change
 
 [`vr/profile.json`](../vr/profile.json) pins SHA256 for the published male/female
@@ -145,6 +225,10 @@ not be described as headless or camera-safe. VRIK's existing head-bone visibilit
 behavior, or a future measured selective policy, must be qualified against this
 mixed anatomy. No whole head bone/node is hidden by this builder. Runtime
 reattachment may also replace resource flags and must be tested.
+Even a head-bone-only visibility change cannot be assumed to preserve every
+breast-support vertex: some mixed-shape breast morph vertices carry positive
+Head weights. File visibility preservation is the only claim of this prototype;
+head-only pose behavior needs a separate measured skinning audit.
 
 ## XP32 and interaction ownership
 
@@ -208,6 +292,18 @@ the complete mixed-head blocks byte for byte, and check that breast morph suppor
 remains visible in native file attributes. Set `CLAW_VR_NATIVE_TESTS=1` to include
 these dependency-requiring native checks; otherwise the three native checks are
 explicitly skipped. Both actual NIF/TRI pairs also passed the native offline build.
+
+The record auditor adds 17 checks, bringing the complete suite to **45 passing
+checks** when all installed inputs/native dependencies are explicitly supplied.
+Its four installed-record checks verify the exact vanilla record offsets and
+chain, actual CLAW sex/weight/path fields, reference slot compatibility and the
+generation refusal. Its synthetic checks exercise compressed/extended records,
+master remapping, winner/deletion semantics, malformed data and slot/race limits.
+For those installed-record checks, additionally set `CLAW_VR_RECORD_MASTER` to
+the exact Skyrim.esm, `CLAW_VR_RESOURCE_ROOT` to the corrected resource folder and
+optionally `CLAW_VR_REFERENCE_PLUGIN` to the installed reference ESP. These four
+checks are explicitly skipped without the corresponding inputs; the native body
+checks still require `CLAW_VR_NATIVE_TESTS=1`.
 
 The next useful implementation gate is a read-only trace of actual beast engine
 record/path resolution and the loaded first-person graph on a separately authorized

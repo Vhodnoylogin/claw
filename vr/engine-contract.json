@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "sourceRelease": "0.6.2.0",
+  "skyrimMasterSha256": "c6f323113ea79422a52887ac7982b44a13f649c290eb6a6571e3e75dda62b3b3",
+  "clawPluginSha256": "cac9d75760dfda81315c760dd6769958eb125958c93e69806855b3073b768739",
+  "resourceNifSha256": {
+    "male": "2eaeb0d32a740594d7b9418e18461f9f2758a015a058c514b497381ac0ad67a9",
+    "female": "302b5281e09e9b03fbbfe12d3ef223fc2c00bfb8cc79b149d0a87f01dad8a2f3"
+  },
+  "nativeSelectionEstablished": false,
+  "missingNativeBranch": "Skyrim VR beast first-person model dispatch: selection of the built-in 1stPerson_Werewolf_Hands.nif versus ARMA MOD4/MOD5, including DNAM sex-specific weight bit 0x02, slot32 eligibility and _0/_1 construction/interpolation.",
+  "nativeStringObservation": {
+    "executableSha256": "6961efb4f4775a307b0fc9a3d637542c1e090be207d3b09467eab216b7f87971",
+    "asciiString": "Actors\\Character\\Character Assets\\1stPerson_Werewolf_Hands.nif",
+    "fileOffset": 22787744,
+    "rva": 22793376,
+    "meaning": "Read-only string presence, not proof of a caller or engine selection semantics",
+    "staticImageLimitation": "The inspected file image has a high-entropy packed .text region and entry point in .bind. No ordinary direct references were recovered; absence of static references does not prove the filename unused or establish the native dispatch branch. No launch, unpacking or process-memory inspection was performed."
+  }
+}

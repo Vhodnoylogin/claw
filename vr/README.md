@@ -24,3 +24,18 @@ python -m unittest discover -s vr/tests -v
 
 The [mechanism, measured results and remaining gates](../docs/vr-body.md) explain
 why a complete runtime implementation cannot yet be packaged.
+
+The [record auditor](engine_audit.py) reads an explicit Skyrim/CLAW record chain,
+checks the race/skin/addon slots and exact corrected resource hashes, and compares
+an optional reference plugin separately. It refuses plugin/layout generation
+because the native VR beast filename and weight branch remain unresolved.
+
+```powershell
+python vr/engine_audit.py --master '<SkyrimVR>/Data/Skyrim.esm' `
+  --resources '<external>/verified-resources-002' --out-dir '<new-external>/record-audit'
+```
+
+Exit code **2** is the expected completed refusal with a JSON report; code **1**
+means malformed, missing or unsupported input. This command does not read or
+change the active profile. See the full documentation for the optional installed
+record tests and declared override/reference arguments.

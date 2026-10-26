@@ -18,7 +18,7 @@ def source(name):
 
 
 def body(text, name, kind="Function"):
-    match = re.search(r"(?im)^.*\b" + kind + r"\s+" + name + r"\([^\n]*\)\s*$", text)
+    match = re.search(r"(?im)^.*\b" + kind + r"\s+" + name + r"\([^\n]*\)[ \t]*(?:Global[ \t]*)?$", text)
     if not match:
         raise AssertionError("Missing " + name)
     return re.split(r"(?im)^End" + kind + r"\s*$", text[match.end():], maxsplit=1)[0]
@@ -165,6 +165,35 @@ class LifecycleSourceContracts(unittest.TestCase):
             self.assertRegex(code, r"If _busy\s+Return -8\s+EndIf")
             self.assertLess(code.index("_busy = True"), code.index(name + "Internal("))
             self.assertGreater(code.index("_busy = False"), code.index(name + "Internal("))
+
+    def test_opt_in_is_session_scoped_and_never_qualifies_the_provider(self):
+        self.assertIn("Bool Property IntegrationOptIn = False Auto", self.host)
+        enabled = body(self.host, "IntegrationEnabled")
+        self.assertIn("_enabledGeneration == _sessionGeneration", enabled)
+        enable = body(self.host, "EnableIntegration")
+        for condition in ('evidence == ""', "expectedSessionGeneration != _sessionGeneration", "!IsRunning()"):
+            self.assertIn(condition, enable)
+        self.assertNotRegex(enable, r"ProviderQualified|ExclusiveIndexRange|StaticPoseAccepted|Synchronize\(")
+        for name in ("AssignInternal", "QualifyInternal", "PulseInternal"):
+            self.assertRegex(body(self.host, name), r"^\s*If !IntegrationEnabled\(\)\s+Return Fail\(-6,")
+        session = body(self.host, "NotifySessionChanged")
+        self.assertLess(session.index("IntegrationOptIn = False"), session.index("Revoke(_slots[slot])"))
+        self.assertIn("_sessionGeneration += 1", session)
+        self.assertNotIn("IntegrationEnabled()", body(self.host, "ReleaseInternal"))
+
+    def test_coordinator_start_is_explicit_and_register_qualify_pulse_remain_separate(self):
+        control = source("CLAWPhysicsControl.psc")
+        lookup = body(control, "GetHost")
+        self.assertIn('Game.GetFormFromFile(0x000800, "CLAW - Physics.esp")', lookup)
+        self.assertNotIn("Start()", lookup)
+        begin = body(control, "BeginSession")
+        self.assertLess(begin.index('!optIn || evidence == ""'), begin.index("host.Start()"))
+        self.assertLess(begin.index("host.HasRememberedCapsules()"), begin.index("host.Start()"))
+        self.assertNotRegex(begin, r"Assign\(|Qualify\(|Pulse\(|Synchronize\(")
+        for function, call in (("RegisterActor", "host.Assign(slot, target)"), ("QualifyActor", "host.Qualify("),
+                               ("PulseActor", "host.Pulse(slot, expectedActor)")):
+            self.assertIn(call, body(control, function))
+        self.assertNotRegex(control, r"Find.*Actor|RegisterFor.*Update|Stop\(|Reset\(|AttachCollider")
 
 
 if __name__ == "__main__":
