@@ -3,7 +3,11 @@
 A werewolf body with named morphs and distinct male/female shapes. The first release
 uses each sex's low-weight (`_0`) shape at both weight endpoints. Distinct weight
 endpoints are now in development; the optional Anatomy add-on remains deferred.
-An add-on to **Elegant Werewolf Replacer** — nothing here builds or works without it.
+CLAW derives from **Elegant Werewolf Replacer** and supplies its own replacement
+body meshes. The current runtime package still requires Elegant's texture files;
+its original body meshes are not needed at runtime. The original donor meshes
+remain pinned inputs for rebuilding CLAW. Inclusion of our changes in Elegant is
+not required for CLAW to develop as a separate mod.
 
 The first published release is **resources for modders**: meshes, named morphs and
 the base plugin. OBody integration and automatic body distribution are planned for
