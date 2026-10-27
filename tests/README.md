@@ -47,3 +47,34 @@
 `python -m unittest discover -s tests -p "test_*.py" -v` проверяет отказ от
 неполной установки, сохранение происхождения при повторной сверке и обнаружение
 изменённых либо лишних файлов перед упаковкой. Blender и игра для этих тестов не нужны.
+
+## `test_CLAW - Wild Preset Fixture`
+
+This isolated test plugin defines six initially-beast NPC bases: Sever, Klyk,
+Buryi, Luna, Vyuga and Tucha. The first three are male and the last three female;
+all use `WerewolfBeastRace`, level10, weight50 and unaggressive fixture AI.
+It contains no placed references, quests, scripts, templates or vanilla overrides.
+Installing the plugin spawns nothing. A manual test operator creates its owned
+references only on the owner's group command. These female fixtures supplement
+the older Ulva test described above.
+
+`fixtures/CLAW-Human-Contrast.xml` supplies six ordinary HUMAN BodySlide/OBody
+presets for HIMBO and 3BA: Slim, Muscular and Heavy for each sex. The same human
+coefficients are used for human-to-beast linkage and originally-beast OBody
+source bootstrap. Both XML endpoints are equal; existing human NPC base weights
+are not changed. The XML and fixture plugin are test resources, never part of a
+release package.
+
+The six bases have local IDs `0x800..0x805`; resolve them against this exact ESL
+plugin name rather than guessing a runtime FE index. Runtime preset distribution
+configuration, source-family declarations and group-command implementation are
+separate explicit scene requirements. No working automatic assignment, rendered
+deformation, safe runtime contact or implemented group handler is inferred from
+an offline build. The source bootstrap test must not be replaced by a tester's
+manual `GenActor`, preset assignment or temporary human transformation.
+
+Group removal means hiding only same-run owned references and retaining their
+registry/state. Adding a hidden group re-enables those references; repeated add
+must not duplicate them or reroll presets. The wild group is absent from initial
+human scene preparation and appears only on a separate owner command. Actual
+group operations require the testing tool's qualified implementation.
