@@ -1,6 +1,12 @@
 # CLAW — future plans
 
-Owner-defined priorities, revised 26 October 2026. No release dates are promised.
+Owner-defined priorities, revised 27 October 2026. No release dates are promised.
+
+Current task: assemble the SE candidate and prepare human OBody/preset-to-wolf
+checks using the composed bodies and calibrated mappings. VR body development
+is paused by the owner; retain its existing prototype without further work.
+Physics remains experimental: source integration is built, but close surface fit
+and actual provider motion/contact behavior are not accepted.
 
 1. Use real human preset mods and OBody to define each actor's beast morphology
    through shared body-resource conversion rules. The latest owner direction
@@ -17,8 +23,8 @@ Owner-defined priorities, revised 26 October 2026. No release dates are promised
 4. Link human and beast morphology during transformation, preserving both forms
    and other mods' contributions.
 
-The owner subsequently added VR body development in parallel and explicitly
-requested morph-responsive collision fitting now. These refine the same work;
+The owner explicitly requested morph-responsive collision fitting. VR was added
+in parallel on 26 October and paused on 27 October. These refine the same work;
 the optional adult Anatomy/physics add-on remains deferred.
 
 The published resource package remains the starting point for this work. The
@@ -70,9 +76,9 @@ demonstrated requirement cannot be met otherwise.
   seam/intersection reports and perspective camera clearance are proposed tool
   improvements, rather than claimed existing measurements.
 
-The owner added first-person VR body work to parallel development on 26 October.
-It can proceed beside the remaining source candidates without changing the frozen
-SE test environment. The separate [VR body prototype](vr-body.md) records its
+The owner added first-person VR body work to parallel development on 26 October,
+then paused that work on 27 October to prioritize SE. The retained
+[VR body prototype](vr-body.md) records its
 resource and runtime-integration boundaries. No manual game or microphone launch
 is implied; that still waits for the owner's direct command.
 The [head-bone audit](vr-head-policy.md) additionally finds Head-weighted breast
@@ -111,7 +117,7 @@ the original attempt remains consumed, with no automatic replay or acceptance.
   Offline builds and mesh bounds do not replace game checks.
 
 New physics and distinct weight endpoints are current development candidates,
-with their own geometry/provider/contact acceptance requirements. VR remains
-parallel offline work in this SE round, and adult Anatomy remains deferred.
+with their own geometry/provider/contact acceptance requirements. VR development
+is paused in this SE round, and adult Anatomy remains deferred.
 None of these source builds changes the published resource release or starts a
 manual game, microphone session or old held test order.

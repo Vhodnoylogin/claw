@@ -180,7 +180,9 @@ The coordinator owns the user menu and optional human OBody route.
 | `GetOwnMorph(actor, name)` | Last verified own coefficient, zero unless status is applied |
 | `ClearOwn(actor)` | Queued scoped cleanup; saved suppression until explicit assign/configure |
 | `Refresh(actor)` | Queued lifecycle/readback refresh |
-| `ConfigureMorphLink(actor, profile, sources[], targets[], gains[], caps[])` | Queued explicit morph-to-morph profile, 1..32 rules; actual SKEE source coefficients, no preset-name pairs |
+| `ConfigureMorphLink(actor, profile, sources[], targets[], gains[], caps[])` | Queued explicit morph-to-morph profile, 1..128 rules; actual SKEE source coefficients, no preset-name pairs |
+| `GetMorphFamilies(female)` / `ConfigureMorphFamily(actor, profileId)` | Enumerate and bind a validated body-resource mapping; setup must declare the actual installed family |
+| `GetHumanWeight(actor)` / `GetBeastWeight(actor)` | Last observed normalized NPC weight in each form; -1 means unavailable, and neither getter sets weight |
 | `DisableMorphLink(actor)` | Queued return to the retained independent preset |
 
 Status values: **0** unknown, **1** pending, **2** own coefficients read back and
@@ -197,16 +199,19 @@ configured source values times gains, clamps each target sum once to 0..1 and
 multiplies by its configured cap; it never reapplies actor weight to those human
 values. Linked output starts with all public own morphs neutral for the actor's
 sex; every unmapped trait, including ears and tail, stays zero. Female breast
-stays zero pending shape qualification. No independent preset, catalog or actor
+mapping is available in the matching measured female resource profiles; its
+appearance still needs acceptance. No independent preset, catalog or actor
 weight contributes, even if an older independent assignment is retained for
 `DisableMorphLink`. `GetAssigned` is empty while linkage is enabled. The profile is explicit;
 there is no universally calibrated default or automatic body-family detection.
 Normal `AssignPreset` disables linkage. `ClearOwn` retains the mapping while
 suppressing distribution; a valid explicit configuration resumes it. Disabling
 linkage does not clear suppression. The existing
-single own key is retained. Actor record v2 stores the mapping/source snapshot;
-v1 migrates independent. The v2 layout is unchanged, and its linked records use
-the direct neutral-baseline semantics after refresh. Real source aggregation and actual
+single own key is retained. Actor co-save v4 stores the mapping, captured source
+values and optional actual weight observations. Readers retain v1/v2/v3 support;
+v2 retains its 32-row budget, while v3/v4 allow 128 rows. Version1 migrates to
+independent mode. Linked records use the direct neutral baseline after refresh.
+Real source aggregation and actual
 save/load/transform behavior require separate acceptance evidence. The API queues
 work: wait for the previous request to complete before submitting the next one.
 

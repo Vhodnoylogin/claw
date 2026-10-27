@@ -1,5 +1,8 @@
 # First-person VR body: composed resources and engine qualification
 
+Development paused by the owner on 27 October 2026. Preserve the prototype;
+the current task is flat-game OBody and human-to-wolf morph testing.
+
 ## Current implementation
 
 The selected anatomical split now separates actual head-only triangles from the
