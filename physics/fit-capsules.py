@@ -460,6 +460,15 @@ def solid_tail(regions,sex,skeleton,count,prescribe=False):
                 tangentRule="neighboring neutral section centroids with local signed affine TRI tangent regression; radius retains all actual residuals")
 
 
+def partition_overrides(value):
+    """Explicit local trials cannot silently change another sex/node's layout."""
+    methods=('compact','compact-extreme','strips-0','strips-1','strips-2')
+    allowed={sex+'/'+node for sex in ('male','female') for node in (NODES+(P1_NODES if sex=='female' else ()))}
+    if not isinstance(value,dict) or any(key not in allowed or method not in methods for key,method in value.items()):
+        raise ValueError('Partition overrides require exact sex/node keys and supported explicit methods')
+    return dict(value)
+
+
 def build_current(args,api,records_by_sex,skeleton,snapshots,out):
     import contact_fit as contact
     counts=tuple(int(x) for x in args.current_counts.split(',')) if args.current_counts else (8,3,8,3,5,2,1,0,2)
@@ -470,6 +479,8 @@ def build_current(args,api,records_by_sex,skeleton,snapshots,out):
     if weight_dependent and not(args.male_nif_1 and args.female_nif_1):raise ValueError('Independent weight requires both sex endpoint1 NIFs')
     if args.solid_tail and weight_dependent:raise ValueError('Experimental solid-tail regrouping is not weight-qualified')
     if args.solid_tail and args.tail_axis=='tangent' and args.contact_passes:raise ValueError('Prescribed-axis contact optimization is not a supported family')
+    overrides=partition_overrides(getattr(args,'partition_overrides',{}))
+    if overrides and args.solid_tail:raise ValueError('Region partition overrides cannot be combined with solid-tail regrouping')
     report={"schemaVersion":3,"frame":"node-local-game-units","domain":[0.,1.],
             "status":"offline-current-vector-triangle-fit","runtimeQualified":False,"gameValidated":False,
             "evaluator":"deform-actual-normalized-rest-LBS-support-then-PCA-refit-v1",
@@ -486,6 +497,7 @@ def build_current(args,api,records_by_sex,skeleton,snapshots,out):
         'contactPasses':args.contact_passes,'fixtureSet':args.fixture_set,'signedDiagnostics':args.signed_diagnostics,
         'independentWeightSamples':[0.,.5,1.] if weight_dependent else [0.],
         'requireDistinctWeightEndpoints':args.require_distinct_weight_endpoints}
+    if overrides:report['configuration']['partitionOverrides']=overrides
     if args.contact_passes:
         report.update(contactPasses=args.contact_passes,evaluator='deform-rest-LBS-support-then-symmetric-triangle-contact-minimax-RMS-v3',
             proofScope='Finite symmetric skin/capsule-surface minimax/RMS optimization at each actual vector. Explicit measured undercoverage and separation replace unconditional convex containment. No continuous Hausdorff, animation or game-contact proof.',
@@ -519,9 +531,10 @@ def build_current(args,api,records_by_sex,skeleton,snapshots,out):
                 faces.extend((np.asarray(source['fullRegionTriangles'])+offset).tolist()); offset+=len(points)
             count=count_map[node]
             if count==0:raise ValueError("Current counts omit a face-bearing node: "+node)
+            method=overrides.get(sex+'/'+node,args.partition_method)
             partition,groups=contact.partitions(p,faces,count)
             choices=[]
-            if args.partition_method=='auto':
+            if method=='auto':
                 for method in ('compact','strips-0','strips-1','strips-2'):
                     ids,tri_ids=contact.partitions(p,faces,count,method)
                     caps=[contact.capsule(p[group]) for group in ids]
@@ -529,13 +542,14 @@ def build_current(args,api,records_by_sex,skeleton,snapshots,out):
                     score=measure['capsuleToSkinP95']+.25*measure['capsuleToSkinMaxSampled']
                     choices.append((score,method,ids,tri_ids))
                 _,method,partition,groups=min(choices,key=lambda row:row[0])
-            elif args.partition_method!='compact':
-                partition,groups=contact.partitions(p,faces,count,args.partition_method)
+            elif method!='compact':
+                partition,groups=contact.partitions(p,faces,count,method)
             report['regions'][sex+'/'+node]={"points":p.tolist(),"deltas":{n:v.tolist() for n,v in d.items()},
                 "faces":faces,"partitions":partition,"triangleGroups":groups,"morphs":names,"padding":1e-4,
-                "sources":[row[2] for row in rows],"partitionChoice":method if choices else args.partition_method,
+                "sources":[row[2] for row in rows],"partitionChoice":method,
                 "partitionScores":[{'score':row[0],'method':row[1]} for row in choices],"contactPasses":args.contact_passes}
             if weight_dependent:report['regions'][sex+'/'+node]['weightDeltas']=np.concatenate(weight_chunks[node]).tolist()
+    if set(overrides)-set(report['regions']):raise ValueError('Partition override names a region without actual selected support')
     if args.solid_tail:
         for sex in ('male','female'):solid_tail(report['regions'],sex,skeleton,sum(counts[4:]),args.tail_axis=='tangent')
         for region in report['regions'].values():region['contactPasses']=args.contact_passes
@@ -630,7 +644,7 @@ def main(argv=None):
     parser.add_argument("--bundles", action="store_true", help="Explicit 32-slot fitted bundle candidate; never changes the legacy eight-slot model")
     parser.add_argument("--current-vector",action="store_true",help="Schema3 exact current-vector refit; separate native model, not affine Papyrus input")
     parser.add_argument("--current-counts",help="Nine comma-separated requested triangle group counts; total <=128")
-    parser.add_argument("--partition-method",default='compact',choices=['auto','compact','strips-0','strips-1','strips-2'])
+    parser.add_argument("--partition-method",default='compact',choices=['auto','compact','compact-extreme','strips-0','strips-1','strips-2'])
     parser.add_argument("--solid-tail",action='store_true',help='Partition the connected tail into solid axial sections before node assignment')
     parser.add_argument("--tail-axis",default='pca',choices=['pca','tangent'],help='Current PCA or experimental signed TRI section tangent for solid tail')
     parser.add_argument("--skin-shapes",default='body,head',help='Explicit comma-separated bound skin shapes; include anatomical head split pieces')
@@ -642,8 +656,11 @@ def main(argv=None):
     parser.add_argument("--require-distinct-weight-endpoints",action='store_true')
     args=parser.parse_args(argv)
     try:
+        args.partition_overrides={}
+        recipe_bytes=None
         if args.contact_recipe is not None:
-            recipe=json.loads(args.contact_recipe.read_bytes())
+            recipe_bytes=args.contact_recipe.read_bytes()
+            recipe=json.loads(recipe_bytes)
             if recipe.get('schemaVersion')!=1 or recipe.get('weightDomain')!=[0.,1.] or recipe.get('morphDomain')!=[0.,1.]:raise ValueError('Unsupported contact recipe domains')
             provided=list(sys.argv[1:] if argv is None else argv)
             options={'skinShapes':('skin_shapes',lambda v:','.join(v)),
@@ -655,7 +672,9 @@ def main(argv=None):
             for key,(attribute,convert) in options.items():
                 option='--'+attribute.replace('_','-')
                 if key in recipe and not any(value==option or value.startswith(option+'=') for value in provided):setattr(args,attribute,convert(recipe[key]))
-            if args.contact_passes not in range(9) or args.fixture_set not in ('full','compact') or args.partition_method not in ('compact','auto','strips-0','strips-1','strips-2'):raise ValueError('Unsupported contact recipe options')
+            args.partition_overrides=partition_overrides(recipe.get('partitionOverrides',{}))
+            if args.contact_passes not in range(9) or args.fixture_set not in ('full','compact') or args.partition_method not in ('compact','compact-extreme','auto','strips-0','strips-1','strips-2'):raise ValueError('Unsupported contact recipe options')
+        if args.partition_overrides and not args.current_vector:raise ValueError('Region partition overrides require a current-vector model')
         if args.require_distinct_weight_endpoints:
             for sex in ('male','female'):
                 endpoint=getattr(args,sex+'_nif_1')
@@ -671,6 +690,8 @@ def main(argv=None):
         if args.signed_diagnostics:paths.append(ROOT/'physics/contact_diagnostics.py')
         if args.contact_recipe is not None:paths.append(args.contact_recipe)
         snapshots={p.resolve():p.read_bytes() for p in paths}
+        if args.contact_recipe is not None and snapshots[args.contact_recipe.resolve()]!=recipe_bytes:
+            raise ValueError('Contact recipe changed since its options were parsed')
         if args.current_vector and snapshots[(ROOT/'physics/current_model.py').resolve()] != _settings_module.SOURCE_BYTES:
             raise ValueError('Evaluator settings changed since their code was loaded')
         out=safe_output(args.out, paths)

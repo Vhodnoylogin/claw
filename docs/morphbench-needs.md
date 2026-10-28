@@ -1,8 +1,73 @@
 # Morphbench improvements identified during CLAW development
 
-Analysis against Morphbench `4bc01e41d0cbab8aa99c4aeaa6b713069c4a92da`,
-26 October 2026. These are proposals, not implemented Morphbench features. The
-tool remains a separate repository; CLAW experiments below do not modify it.
+The owner requested direct coordination with the Morphbench chat on 28 October
+2026. Use its current capability handoff and exact source revision, rather than
+assuming the public archive contains development features. The tool remains a
+separate repository; CLAW measurements and authoring stages do not modify it.
+
+## Verified current use, 28 October 2026
+
+The first frozen tool export is Morphbench
+`3ddc3afa0c45b74e69210d26d45df40cfe1eac5b`, branch
+`feature/collider-physics-ppb`. Its source has working additive morphs, file bounds,
+edge-strain/layer diagnostics, node-frame chain capsule fitting, skeleton capsule
+coverage, and source-preserving PPB editing. These measurements do not establish
+posed skinning, independent NPC-weight interpolation or actual game contact.
+
+CLAW used the actual CLI on four composed endpoints, with the repaired male TRI
+explicitly selected. All 86 parts remain inside their stored spheres throughout
+the configured additive morph cube 0..1: `overCap=0`, and the largest excess in
+each endpoint is negative (-0.0145 to -0.0154). This is file-bound evidence, not
+runtime culling acceptance or a proof about animation/physics displacements.
+It concerns shape spheres. Separate new Neck NiSkinData spheres were found to
+be rest-only and are widened by a CLAW authoring stage; the current Morphbench
+command does not certify per-bone bounds. That concrete fixture and the validated
+stored B-frame convention were supplied to its owner for a future diagnostic.
+
+```powershell
+python '<frozen-morphbench>/mb.py' bounds '<body_0.nif>' --tri '<selected.tri>' --json
+python '<frozen-morphbench>/mb.py' binding '<body_0.nif>' --tri '<selected.tri>' `
+  --morph CLAWTorsoWaistNarrow --shape head --json
+```
+
+Use `MorphBench.chain_capsules(...)` for its documented node-local rest-point
+contract. Its raw deformed NIF vertices differ from actual normalized rest-LBS
+on these donors. In the female EarSize=1 witness, the difference is 0.278 model
+units; a capsule comparison must establish the frame/skin contract first. CLAW
+then independently mapped the same vertex into its normalized-LBS region and
+confirmed an actual remaining undercoverage witness. Do not reinterpret the
+node-local CBPC model as an HKX ragdoll fit.
+
+File visibility is another explicit boundary of this export. Native flags hide
+eleven first-person head-side shapes, but the facade's initial `visible_shapes()`
+still returns all parts. That viewer inspection policy cannot prove file or
+runtime hiding. A concrete fixture and a request for local/inherited visibility
+metadata plus a separate respect-file-visibility policy were sent to the
+Morphbench chat. Retained torso and hand selection currently uses independently
+read NIF flags and the reviewed CLAW profile, not the viewer's default selection.
+
+That focused request is now implemented in Morphbench
+`80d8972766e1784b608973f442e94bedd3b93077`. Its public `file_visibility()` reports
+native local/inherited state and completeness, while
+`respect_file_visibility(on=True, show_hidden=False)` selects an independent
+inspection policy. Unknown ancestry remains distinct and excluded under that
+policy; ordinary inspection defaults remain available. On all four final CLAW
+resources, the exact committed source reports 10/10 female and 11/11 male visible
+parts, eleven hidden parts each, and no unknown rows. Explicit show-hidden and
+viewer-only selection were checked independently. This closes the tool feedback
+loop without treating static NIF visibility as runtime camera evidence.
+
+```python
+bench.open(nif_path, tri=tri_path, skeleton="")
+native_metadata = bench.file_visibility()
+bench.respect_file_visibility(True)
+file_visible_parts = bench.visible_shapes()
+```
+
+Reproducible source export, actual command output and tool feedback are under
+`Builds/claw-morphbench-20261028/`. The remaining proposals below originated in
+the 26 October review of `4bc01e41d0cbab8aa99c4aeaa6b713069c4a92da`;
+they are not claims that the current tool already supplies those APIs.
 
 ## 1. Evaluate skeletal poses using actual serialized skin frames
 

@@ -1,5 +1,83 @@
 # CLAW VR body resource prototype
 
+## First-person Neck attachment candidate
+
+`audit_head_isolation.py` measures, and with `--write-candidate` prepares, a
+separate first-person-only Neck attachment candidate from the six pinned
+`final-composed-004` files. It retains the eleven-shape anatomical visibility
+selection below. In the seven visible mixed skin/fur shapes, positive Head, Jaw
+and ear-descendant mass follows the **existing XP32 `NPC Neck [Neck]`** instead.
+The intended reference removes Head-local motion while retaining the parent
+Neck/Spine chain, arms and P1. Changes relative to the old Head-driven torso are
+reported separately from error against that intended reference.
+
+The Neck bind derives from the actual old Head rest product, including the
+stored skin frame and scale. Only missing existing-XP32 mesh nodes are grafted:
+one Neck node for female and CME Spine2 plus Neck for male. No skeleton asset or
+new skeleton bone is supplied. The full public PyNifly export is diagnostic
+scratch. The candidate is assembled in the original container, retaining its
+original block/string IDs and all unrelated bytes. Original positions, topology,
+UVs, raw normal/tangent bytes, shaders, textures, alpha, BODYTRI, original node
+transforms/binds and foreign packed/float skin weights remain exact. Four-slot
+budgets and both shared TRI files are preserved.
+
+Collapsing several half-precision descendant weights into one Neck slot changes
+some packed row sums by at most 0.000244140625. This is measured explicitly,
+without changing foreign weights to hide the rounding. Actual native readback
+and independent frozen MorphBench influence inventories find zero positive
+Head-subtree weights in all file-visible shapes: 5,439 female and 5,392 male
+vertices receive Neck support. MorphBench measurements receive explicit native
+file-visible shape names; its default viewer visibility is not file-flag evidence.
+
+The actual serialized matrices have a conservative desired-reference error
+enclosure below 0.000968 normalized / 0.03251 raw-packed units across all public
+morph coefficients independently 0..1, independent neutral weight 0..1 and the
+160 declared finite poses. Changed-vertex boxes remain within the unchanged
+stored shape spheres with at least 8.94548 units clearance. Unchanged vertices
+retain the original composed-family bound proof. This is finite mathematical
+coverage, not renderer/camera or continuous-animation acceptance.
+
+All roots in the five mixed visible fur/blend layers and the 55 collar anchors
+are measured at weights 0/0.3/1. Head-only examples have transported-root residuals
+below 9e-14 units in both sexes. Existing parent/ordinary-animation coupling
+defects remain, including ChestBlend held-out maxima of 4.49344 female and
+3.24174 male. The separate zero-Head arm/tail-tip fur layers and every frozen
+attachment triangle have zero descendant support, so their prior root/anchor
+motion remains unchanged. These facts do not certify complete fur coverage,
+the open hidden-head boundary, camera clearance or visual quality.
+
+```powershell
+python vr/audit_head_isolation.py --body-root '<final-composed-004>/meshes/actors/werewolfbeast/character assets' `
+  --morphbench '<frozen MorphBench 3ddc3af export>' --out-dir '<new external folder>' --write-candidate
+$env:CLAW_VR_COMPOSED_ROOT='<final-composed-004>/meshes/actors/werewolfbeast/character assets'
+$env:CLAW_VR_HEAD_ISOLATION_ROOT='<completed external folder>'
+python -m unittest discover -s vr/tests -p test_head_isolation.py -v
+```
+
+All four numerical preflights must pass before any NIF is written. A numerical
+rejection writes a rejected report, no candidate resources, and exits 2. A
+verified candidate status requires all four native receipts and both complete
+join reports. Nine regressions include actual four-endpoint preservation,
+corrupted Neck bind/foreign P1 rejection, injected numerical rejection and CLI
+exit status. Without explicit roots the five native checks are skipped.
+The optional `--reuse-joins '<completed run>'` reuses immutable expensive
+measurements only after matching actual candidate bytes, inputs, dependencies,
+captured analysis-function AST and helper source bytes; the report records reuse.
+
+The source family remains explicitly pinned; a later male WaistNarrow TRI repair
+requires a separate composition and verification stage. No engine filename,
+install tree, runtime visibility adapter, VRIK resolver change or contact setting
+is generated. Loaded graph/weight/sex dispatch, morph reloads, camera/neck
+appearance, IK, HIGGS/PLANCK contacts and actual game acceptance remain open.
+
+The 28 October current-source build is
+`D:/Skyrim VR Modding/Builds/claw-morphbench-20261028/vr/neck-candidate-002/`.
+Its `head-isolation-report.json` records all four native receipts and explicit
+reuse of the byte-identical `001` join measurements. The adjacent
+`verification-manifest.json` connects those resources to the independent frozen
+MorphBench inventory, native affine enclosure and unchanged-layer attachment
+proofs retained under `neck-candidate-001`. These are external offline artifacts.
+
 ## Selective visibility on the composed family
 
 `prepare_first_person.py` now prepares a separate **first-person-only** visibility

@@ -48,6 +48,11 @@ The [morph-quality audit](docs/morph-expansion.md#reproducible-static-quality-au
 actual serialized fields, fixed boundary pairs and finite morph combinations.
 An opt-in male WaistNarrow collar repair is staged separately; rendered seams,
 fur coupling and resource rebinding remain acceptance requirements.
+The first-person Neck attachment candidate removes the visible torso's Head-local
+coupling using existing XP32 bones, and can be composed with that collar repair.
+An optional female right-ear partition trial improves measured whole-union samples
+but retains regional tradeoffs; the default physics model is unchanged. Both
+stages remain offline development resources with separate runtime gates.
 
 *Эта страница на русском: [README.ru.md](README.ru.md).*
 

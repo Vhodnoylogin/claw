@@ -23,6 +23,20 @@ retain the older zero-pass/0.0001 defaults, and existing default headers remain
 byte identical. Inconsistent or unsupported settings fail before header output;
 an unchanged identity cannot authorize a top-level override of pinned regions.
 
+`contact-ear-partition-trial.json` is a separate optional offline experiment. Its
+`partitionOverrides` selects only `female/NPC EarR [EarR]Bone01`, retaining the
+same capsule budget and every full support triangle. `compact-extreme` starts
+compact clustering at the triangle centroid farthest from the centroid mean;
+exact ties use the lowest input face index. The ordinary `compact` method keeps
+its historical first-face seed. Overrides require exact sex/node keys and actual
+selected support; they cannot combine with experimental solid-tail regrouping.
+Use this recipe explicitly with `fit-capsules.py --current-vector --contact-recipe`
+and the complete reviewed NIF/TRI/skeleton arguments. It creates a new model
+identity and fixtures. Finite heldout and exposed whole-union measurements must
+accompany it; this trial does not establish close fit or runtime contact.
+The exact bytes used to parse a contact recipe must also match the captured
+source snapshot; replacement between parsing and capture fails before output.
+
 Explicit activation is `BeginSession(True, evidence)`, `RegisterActor(slot, actor)`
 then `EnableAutomaticActor(slot, actor, evidence, True, True, True)`. The three
 assertions qualify the actual provider/API and effective configuration, exclusive

@@ -9,6 +9,26 @@ contact=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(contact)
 
 
 class ContactFitTests(unittest.TestCase):
+    def test_explicit_extreme_seed_keeps_complete_faces_and_stable_tie_order(self):
+        points=np.asarray([[x,y,0.] for x in (-4.,-3.,0.,3.,4.) for y in (0.,1.,2.)])
+        faces=np.asarray([[3*i,3*i+1,3*i+2] for i in range(5)])
+        historical=contact.partitions(points,faces,2)
+        self.assertEqual(historical,contact.partitions(points,faces,2,'compact'))
+        first=contact.partitions(points,faces,2,'compact-extreme')
+        self.assertEqual(first,contact.partitions(points,faces,2,'compact-extreme'))
+        self.assertEqual(sorted(index for group in first[1] for index in group),list(range(len(faces))))
+        for vertices,group in zip(*first):
+            self.assertEqual(vertices,np.unique(faces[group]).tolist())
+        # Equal farthest ends use the first stable face index, so this symmetric
+        # fixture retains the historical left-first capsule order.
+        self.assertEqual(first,historical)
+        # Reorder a unique farthest face: the geometric result follows that
+        # extreme, and triangle references still address the supplied storage.
+        points[12:,0]=8.
+        groups,triangles=contact.partitions(points,faces,2,'compact-extreme')
+        self.assertIn(4,triangles[0])
+        self.assertEqual(sorted(i for row in triangles for i in row),list(range(5)))
+
     def test_near_sphere_surface_has_stable_axis_parameterization(self):
         sphere={'p1':[0.,0.,0.],'p2':[0.,0.,0.],'radius':2.}
         almost={'p1':[0.,0.,0.],'p2':[1e-14,-1e-14,0.],'radius':2.}

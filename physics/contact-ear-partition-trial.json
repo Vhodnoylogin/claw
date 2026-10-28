@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "name": "CLAW optional female right-ear compact-extreme partition experiment",
+  "skinShapes": ["body", "head", "head_CLAWHead"],
+  "currentCounts": [16, 10, 16, 10, 16, 10, 8, 0, 10],
+  "femaleP1Counts": [16, 16],
+  "partitionMethod": "compact",
+  "partitionOverrides": {
+    "female/NPC EarR [EarR]Bone01": "compact-extreme"
+  },
+  "contactPasses": 3,
+  "fixtureSet": "full",
+  "signedDiagnostics": true,
+  "requireDistinctWeightEndpoints": true,
+  "weightDomain": [0.0, 1.0],
+  "morphDomain": [0.0, 1.0],
+  "weightFormula": "P0 + u*(P1-P0) + sum(actualEffectiveMorph*absoluteTRIdelta)",
+  "surfaceFitAccepted": false,
+  "runtimeQualified": false,
+  "experimental": true,
+  "selectionLimit": "One explicit regional seed change only. Finite whole-union and heldout comparisons are required; this recipe is not an accepted default or runtime package."
+}

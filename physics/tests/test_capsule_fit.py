@@ -3,6 +3,11 @@ from pathlib import Path
 import tempfile
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
+from contextlib import redirect_stderr
+import io
+import json
+import sys
 import numpy as np
 
 PATH=Path(__file__).resolve().parents[1]/"fit-capsules.py"
@@ -16,6 +21,43 @@ def cylinder():
 
 
 class CapsuleFitTests(unittest.TestCase):
+    def test_recipe_change_between_parse_and_snapshot_cannot_attest_other_bytes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);recipe=root/'recipe.json';nif=root/'input.nif';addon=root/'addon';out=root/'out'
+            (addon/'pyn').mkdir(parents=True)
+            (addon/'NiflyDLL.dll').write_bytes(b'fixture')
+            (addon/'pyn/pynifly.py').write_bytes(b'fixture')
+            nif.write_bytes(b'fixture')
+            parsed=json.dumps({'schemaVersion':1,'weightDomain':[0.,1.],'morphDomain':[0.,1.],
+                'partitionOverrides':{'female/NPC EarR [EarR]Bone01':'compact-extreme'}}).encode()
+            recipe.write_bytes(parsed)
+            def admit(_):
+                # PyNifly admission occurs after option parsing and before the
+                # source snapshot. Even semantically equal replacement bytes
+                # cannot be attributed to the already parsed source document.
+                recipe.write_bytes(parsed+b'\n')
+                return SimpleNamespace(),None,addon
+            argv=['--current-vector','--contact-recipe',str(recipe),'--out',str(out),'--skeleton',str(nif)]
+            for sex in ('male','female'):
+                for suffix in ('nif','tri'):argv.extend(['--'+sex+'-'+suffix,str(nif)])
+            errors=io.StringIO()
+            with patch.dict(sys.modules,{'breast_rig':SimpleNamespace(load_pynifly=admit),'tri_patch':SimpleNamespace()}),redirect_stderr(errors):
+                result=fit.main(argv)
+            self.assertEqual(result,2)
+            self.assertIn('Contact recipe changed since its options were parsed',errors.getvalue())
+            self.assertFalse(out.exists())
+
+    def test_partition_overrides_are_explicit_sex_node_methods(self):
+        selected={'female/NPC EarR [EarR]Bone01':'compact-extreme'}
+        self.assertEqual(fit.partition_overrides(selected),selected)
+        self.assertIsNot(fit.partition_overrides(selected),selected)
+        for value in (None,[],{'female/EarR':'compact-extreme'},
+                      {'male/NPC L Breast P1':'compact-extreme'},
+                      {'female/NPC EarR [EarR]Bone01':'auto'},
+                      {'female/NPC EarR [EarR]Bone01':True}):
+            with self.subTest(value=value),self.assertRaisesRegex(ValueError,'exact sex/node'):
+                fit.partition_overrides(value)
+
     def test_minority_p1_mobility_support_is_not_lost_by_dominant_threshold(self):
         def transform(x=0):return SimpleNamespace(rotation=np.eye(3),scale=1.,translation=[x,0,0])
         node=fit.P1_NODES[0];other='NPC Head [Head]'

@@ -25,6 +25,60 @@ files do not establish engine dispatch or runtime flag persistence. Existing
 Head-bone influence on retained torso/fur is reported, so VRIK head scaling and
 camera/neck clearance still need their own solution and qualification.
 
+### First-person Neck attachment
+
+The [Neck attachment builder](../vr/README.md) now prepares a separate candidate
+which moves positive Head/Jaw/ear-descendant skin influence in visible torso and
+fur to the existing XP32 Neck. This intentionally removes Head-local motion while
+retaining parent Neck/Spine, arm and P1 motion. The new bind derives from the
+original Head rest product and actual stored skin frame. Only missing mesh nodes
+from the existing XP32 ancestry are grafted; no skeleton asset is replaced.
+
+The broad native export is scratch only. The selected NIF preserves original
+block/string IDs, geometry/UV/normal/tangent/material bytes, old nodes/binds and
+foreign weights. A separately measured half-precision merge error remains:
+the conservative desired-reference enclosure is at most 0.000968 normalized or
+0.03251 raw model units over the public morph/weight cube at 160 declared poses.
+These are numerical design guards, not engine or appearance acceptance.
+
+In nine Head-local examples, transported attachment error in the measured visible
+collar/mixed layers drops below 9e-14. Other defects remain: ordinary/held-out
+ChestBlend errors still reach 4.49344 female and 3.24174 male model units. The
+new attachment therefore solves the declared Head-local coupling, not every fur
+or animation defect. Perspective camera/neck coverage, runtime skeleton binding,
+IK and interaction still need actual VR qualification.
+
+`vr/compose_neck_seam.py` combines admitted Neck NIFs with the separately verified
+male WaistNarrow TRI extension, without changing any NIF byte. It requires the
+full original source family and successful native preservation receipts, and
+reconstructs the one-record extension exactly. On all 135 visible collar pairs,
+neutral/half/full WaistNarrow, weights 0/0.5/1 and 160 declared poses, the composed
+candidate's maximum distance is about 0.00002133 model units in both weighting
+conventions. The hidden head-side cut is intentionally separate during Head
+motion. This is still an external resource candidate, with no engine dispatch
+plugin or install layout.
+
+The added Neck bone has a separate NiSkinData sphere for each affected shape.
+Native export initially computes these for rest vertices only; all 28 new
+spheres missed actual morph/weight samples, by up to 9.656 model units. A further
+`vr/expand_neck_bounds.py` stage widens only those new radii. It preserves their
+float32 centres and every other byte, and encloses the complete serialized TRI
+cube plus independent weight interpolation with outward rounding. The stored
+bone-bound frame is the serialized skin-to-bone transform applied to mesh vertices;
+it was checked against the native rest spheres and is distinct from the B*C
+posed-LBS convention. Shape-bound success alone did not establish this property.
+Old bone spheres remain untouched and are not certified by this Neck-only stage.
+
+```powershell
+python vr/compose_neck_seam.py --neck-root '<verified-neck-candidate>' `
+  --seam-manifest '<male-seam-candidate>/artifact-manifest.json' `
+  --skeleton '<reviewed-XP32>/skeleton.nif' `
+  --morphbench '<frozen-Morphbench>' --out '<new-external-composition>'
+python vr/expand_neck_bounds.py --resources '<composition>/resources' `
+  --composition-report '<composition>/composition-report.json' `
+  --morphbench '<frozen-Morphbench>' --out-dir '<new-external-Neck-bounds>'
+```
+
 ### XP32 aliases and the actual weighted arm
 
 The inspected VRIK0.8.7 reconstruction searches a preferred human node name

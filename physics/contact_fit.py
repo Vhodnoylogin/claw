@@ -219,8 +219,12 @@ def partitions(points,faces,count,method='compact'):
         if axis[int(np.argmax(abs(axis)))]<0:axis=-axis
         groups=[ids.tolist() for ids in np.array_split(np.argsort(centroids@axis,kind='stable'),count)]
         return [np.unique(faces[ids].reshape(-1)).tolist() for ids in groups],groups
-    if method!='compact':raise ValueError("Unknown triangle partition method")
-    centres=[centroids[0]]
+    if method not in ('compact','compact-extreme'):raise ValueError("Unknown triangle partition method")
+    # The historical first-face seed remains the default. The explicit trial
+    # starts at the farthest centroid from the centroid mean; np.argmax breaks
+    # exact ties by the lowest stable input face index. Face storage is retained.
+    first=0 if method=='compact' else int(np.argmax(np.sum((centroids-centroids.mean(axis=0))**2,axis=1)))
+    centres=[centroids[first]]
     for _ in range(count-1):
         nearest=np.min(np.sum((centroids[:,None,:]-np.asarray(centres)[None,:,:])**2,axis=2),axis=1)
         centres.append(centroids[int(np.argmax(nearest))])
