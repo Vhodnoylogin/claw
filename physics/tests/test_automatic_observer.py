@@ -12,7 +12,7 @@ build = importlib.util.module_from_spec(spec); spec.loader.exec_module(build)
 def model():
     node = build.NODES[0]
     result = {'schemaVersion':3, 'frame':'node-local-game-units', 'domain':[0,1],
-              'evaluator':'test', 'morphs':['CLAWHeadEarSize'],
+              'evaluator':'deform-actual-normalized-rest-LBS-support-then-PCA-refit-v1', 'morphs':['CLAWHeadEarSize'],
               'slots':[{'node':node, 'male':{'partitionIndices':[0,1]}, 'female':{'partitionIndices':[0,1]}}],
               'regions':{sex+'/'+node:{'points':[[0,0,0],[0,1,0]],'deltas':{}} for sex in ('male','female')}}
     canonical = json.dumps({k:result[k] for k in ('evaluator','morphs','regions','slots')}, sort_keys=True,separators=(',',':')).encode()

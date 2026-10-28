@@ -2,6 +2,7 @@
 from __future__ import annotations
 import argparse
 import hashlib
+import importlib.util
 import json
 import math
 from pathlib import Path
@@ -11,6 +12,9 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent
+_settings_spec = importlib.util.spec_from_file_location("claw_current_model_settings", ROOT / "current_model.py")
+_settings_module = importlib.util.module_from_spec(_settings_spec)
+_settings_spec.loader.exec_module(_settings_module)
 # Anchor provenance to the code actually loaded, including when a stale .pyc was
 # used or the builder was edited after import. Compile from captured bytes and
 # compare with the live module code, rather than hashing whatever is on disk later.
@@ -50,7 +54,7 @@ class SourceInputs:
         self.breast_contact = breast_contact
         self.breast_name = "breast-contact-motion.json" if breast_contact else "breast-motion.json"
         self.breast_profile = None
-        names = ["recipe.json", "capsules.json", "sources.json", "README.md", "build.py",
+        names = ["recipe.json", "capsules.json", "sources.json", "README.md", "build.py", "current_model.py",
                  *("papyrus/" + name for name in SCRIPTS)]
         if breast or breast_contact: names.append(self.breast_name)
         self.payloads = {name:(self.root / name).read_bytes() for name in names}
@@ -61,6 +65,8 @@ class SourceInputs:
                                    "sha256":hashlib.sha256(payload).hexdigest()}
         if self.payloads["build.py"] != BUILDER_BYTES:
             raise ValueError("Builder source changed since its code was loaded")
+        if self.payloads["current_model.py"] != _settings_module.SOURCE_BYTES:
+            raise ValueError("Evaluator settings changed since their code was loaded")
 
     def json(self, name):
         return json.loads(self.payloads[name])
@@ -181,6 +187,7 @@ def validate_fitted_model(model):
             raise ValueError("Current-vector model identity differs from its complete support data")
         regions = model.get("regions")
         if not isinstance(regions, dict): raise ValueError("Current-vector support regions missing")
+        _settings_module.evaluator_settings(model)
         for slot in slots:
             if slot.get("node") not in NODES + BREAST_NODES or slot["node"] == "TailBone04":
                 raise ValueError("Current-vector slot must retain measured existing XP32 ear/tail nodes")

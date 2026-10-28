@@ -226,6 +226,141 @@ and its reproducible read-only audit. All sparse serialized pairs were checked
 against the independent public TRI reader, accounting explicitly for that
 reader's subthreshold filtering. No mesh, TRI or installed profile was changed.
 
+## Reproducible static quality audit
+
+`scripts/audit-morph-quality.py` now makes that investigation reusable on explicit
+NIF/TRI inputs. It writes diagnostic JSON to a **new external directory** and has
+no mesh writer, installation switch, game dependency or Morphbench dependency:
+
+```powershell
+python scripts/audit-morph-quality.py --low '<female_0.nif>' `
+  --high '<female_1.nif>' --tri '<female.tri>' `
+  --skin body head head_CLAWHead --out '<new-external-audit-directory>'
+python -m unittest discover -s tests -p test_morph_quality.py -v
+```
+
+Use only actual existing primary skin shapes with `--skin`; an unsplit resource
+uses `body head`. All shapes, including fur and blend patches, receive individual
+surface diagnostics. The explicit skin selection defines the combined-field
+comparison and cross-shape boundary join candidates; a shape called `head` is
+not assumed to contain only anatomical head tissue. Stored normalized bone
+weights allocate delta energy to named bone families as a leakage **proxy**.
+These allocations are not an anatomical segmentation or a proof of leakage.
+
+The audit independently decodes every serialized sparse pair, checks vertex
+indices and exact agreement with the public PyNifly TRI reader, and retains
+subthreshold pairs which that reader omits. Inputs, executed local sources,
+PyNifly Python sources/DLL and environment versions are pinned in the report and
+rechecked before success. Geometry and TRI vectors are transformed into the same
+global shape/file coordinates, without evaluating skin binds or skeletal poses.
+The audit reports field cosine, support overlap and best scalar-fit residual;
+none alone establishes aliases, redundancy, artistic quality or physical volume.
+
+It samples neutral, each unit field, pairs whose absolute skin-field cosine is
+at least 0.4, and all fields together at 0.5 and 1. With `--high`, each state is
+measured at normalized weights 0, 0.5 and 1 against that weight's own neutral.
+Triangle area, negative dot against its neutral normal, edge strain and exact
+triangle IDs are retained. A normal turn can be a legitimate large rotation;
+these indicators do not certify inversion, collision or a continuous safe cube.
+Boundary vertex pairs within the explicit neutral distance (default 0.0001 model
+units) are frozen before deformation. Their relative motion is reported without
+nearest-neighbor reassignment. Zero candidates means that join was **not
+measured**; it does not certify a closed seam. Existing female collar gaps and
+fur-root/skin distances still require the separate attachment audit.
+
+The 28 October run on `final-composed-004` and published 0.6.2.0 found a concrete
+male join issue: both have 135 neutral-coincident `body`/`head` boundary pairs.
+`CLAWTorsoWaistNarrow=1` separates `body[99]` and `head[18]` by 4.137988914 model
+units, at all three sampled weights. The male head field is entirely zero while
+the body peak is 4.137988914. The current `full-body.json` WaistNarrow carry list
+contains belly/back/chest fur but omits the attached skin head. This is direct
+static join evidence, unlike the overlap scores. A bounded collar-follow repair
+must protect the other fields, complete corresponding layer motion and check
+both endpoints and poses before any visual acceptance. No production geometry
+or recipe was changed by this audit.
+
+Both selected sexes also retain 141 exactly coincident `head`/`head_CLAWHead`
+boundary pairs in every sampled state; this checks that specific split join,
+not the original body/head collar. Selected female BackWide/WaistNarrow cosine
+is -0.8542 and male -0.6048. Their scalar-fit residuals are respectively 52.0%
+and 79.6%, so the fields cannot be treated as interchangeable. Complete decode
+counts are 319,963 female / 319,604 male, including 54 female subthreshold pairs.
+The selected female audit samples 36 states at three weights; male samples 32
+at three weights. Neither selected skin family has a newly zero-area triangle
+at these samples, but normal turns and large strains remain investigation gates.
+Reports and exact hashes are retained under
+`Builds/claw-parallel-20261028/morph-quality/{selected,published}-{female,male}/`.
+
+### Opt-in male WaistNarrow collar candidate
+
+`scripts/repair-morph-seam.py` stages a separate TRI-only candidate on the actual
+selected male endpoints. It appends the missing `head/CLAWTorsoWaistNarrow` record
+while reconstructing the original TRI stream exactly after removing that one
+record and restoring the head morph count. Every original serialized record,
+both NIFs and every public name remain unchanged. No production recipe enables
+this stage. Its artifact manifest references the two unchanged NIFs and the new
+TRI; this is not an installation package.
+
+These authoring tools require Python, NumPy and the locally configured PyNifly
+Python bindings/DLL. The seam solver also requires SciPy. These are development
+dependencies, not additional runtime requirements for players; the reports retain
+the versions used for the measured candidates.
+
+The correction samples the actual frozen nearest-body-triangle field, with a C1
+geodesic taper on exact-coordinate welded head vertices. All 135 coincident
+collar pairs constrain the exact body packed triples. All 141 split pairs and
+vertices outside the collar band remain exactly zero. The new record uses the
+body field's unchanged scale, so anchor equality survives int16 serialization;
+interior values use round-to-nearest-even quantization. Conflicting duplicate
+constraints, changed endpoint binds or a changed source contract are rejected.
+
+The 9-unit band was the smallest passing tested band in the declared production
+candidate sweep, against an explicit **numerical** guard: no isolated half/full
+normal turns or collapsed triangles, and maximum head edge strain no greater
+than the original body WaistNarrow strain at weights 0, 0.5 and 1. Narrower tested
+bands failed that strain guard. The maximum 0.631028 strain is forced by an
+already constrained seam edge; it is not a claimed appearance threshold.
+Rejected harmonic-only trials remain external diagnostics, not exported variants.
+
+The frozen `male-waist-seam-001` candidate changes 303 stored head vertices.
+The new TRI is `a6087d542776888ee03a7884a311e005d33b537b7eb794769d93a45042767467`.
+`male-waist-seam-002-current-source` is the same payload rebuilt after adding
+duplicate-endpoint-name and endpoint-bind guards. Its TRI bytes and complete
+static/pose/fur metrics match 001 exactly; `payload-equivalence.json` retains the
+comparison and current executed-source pins. This refresh changes provenance,
+not the shape or its acceptance status.
+At all three weights, isolated unit WaistNarrow closes every frozen collar pair
+exactly (previous worst gap 4.137989). The selected split remains exactly closed.
+Other old fields retain their tiny pair mismatches: the all-fields stress state
+still reaches 0.000869 model units. Across 160 declared existing-skeleton LBS
+poses, isolated WaistNarrow's maximum collar distance decreases from 4.139004 to
+0.000021321 raw packed, or 4.137994 to 0.000021318 normalized. These are imposed
+offline poses, not observed animations or physics acceptance.
+
+One indicator remains at weight 1 with every field at 1: head triangle 17 gains
+a negative dot against its **neutral** normal. Its old and new stress normals
+have cosine 0.99997419 (about 0.412 degrees apart); area changes 0.397187 to
+0.389916 and its shortest edge stays 0.264217. The old stress normal was already
+almost perpendicular to neutral. This is a disclosed threshold crossing, not
+proof of inversion, and does not establish full stress-shape nonregression.
+The exact vertices, normals, areas and interpolation samples are retained in
+`male-waist-seam-001-normal-turn-review.json` alongside the immutable candidate.
+
+Existing frozen `Layer` root/barycentric rules provide a separate static fur
+check. Among 188 belly roots whose skin attachment is affected, unit-field
+offset drift maximum decreases 3.700812 to 3.011569 and squared sum 462.551078
+to 281.893822. Six chest roots improve slightly; shoulder and ChestBlend roots
+are unaffected under these rules. Fur TRI fields remain exact. Residual drift,
+fade cards, posed offset transport, coverage and appearance remain open; this
+does not establish common skin/fur motion.
+
+Bounds, geometry/model bindings, family morph calibration and physics/VR resource
+hash contracts require a separate rebind or recalibration assessment for the new
+TRI identity. Earlier model identities and acceptance are not inherited. Frozen
+SE test inputs, installation profiles, meshes, shaders and skeleton were not
+changed. Run the five seam regressions with
+`python -m unittest discover -s tests -p test_morph_seam.py -v`.
+
 ## Implementation order
 
 First qualify current OBody/body-source linkage and calibrated signed torso/limb
@@ -252,7 +387,7 @@ preferred route.
 3. Extend the public name catalog, native recognized-name allowlist, linked-target
    policy, authoring resources and documentation together. `CLAWArmForearmGirth`,
    for example, is currently rejected by both target recognition and link policy.
-4. Stay inside the current 32-rule profile limit or explicitly review a larger
+4. Stay inside the current 128-edge profile limit or explicitly review a larger
    bounded format. Each source-to-target pair consumes a row.
 5. Verify actual coefficients/readback and human-return cleanup, then inspect the
    rendered shape. TRI presence and an offline morph preview are separate evidence.

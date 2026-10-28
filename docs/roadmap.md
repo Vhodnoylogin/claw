@@ -1,10 +1,11 @@
 # CLAW — future plans
 
-Owner-defined priorities, revised 27 October 2026. No release dates are promised.
+Owner-defined priorities, revised 28 October 2026. No release dates are promised.
 
 Current task: assemble the SE candidate and prepare human OBody/preset-to-wolf
-checks using the composed bodies and calibrated mappings. VR body development
-is paused by the owner; retain its existing prototype without further work.
+checks using the composed bodies and calibrated mappings. The owner resumed
+parallel physics, first-person VR body and morph-quality development on 28 October.
+Keep new development resources separate from the prepared SE manual-test payload.
 Physics remains experimental: source integration is built, but close surface fit
 and actual provider motion/contact behavior are not accepted.
 
@@ -24,7 +25,7 @@ and actual provider motion/contact behavior are not accepted.
    and other mods' contributions.
 
 The owner explicitly requested morph-responsive collision fitting. VR was added
-in parallel on 26 October and paused on 27 October. These refine the same work;
+in parallel on 26 October, paused on 27 October and resumed on 28 October. These refine the same work;
 the optional adult Anatomy/physics add-on remains deferred.
 
 The published resource package remains the starting point for this work. The
@@ -77,7 +78,7 @@ demonstrated requirement cannot be met otherwise.
   improvements, rather than claimed existing measurements.
 
 The owner added first-person VR body work to parallel development on 26 October,
-then paused that work on 27 October to prioritize SE. The retained
+paused that work on 27 October to prioritize SE and resumed it on 28 October. The
 [VR body prototype](vr-body.md) records its
 resource and runtime-integration boundaries. No manual game or microphone launch
 is implied; that still waits for the owner's direct command.
@@ -118,6 +119,6 @@ the original attempt remains consumed, with no automatic replay or acceptance.
 
 New physics and distinct weight endpoints are current development candidates,
 with their own geometry/provider/contact acceptance requirements. VR development
-is paused in this SE round, and adult Anatomy remains deferred.
+continues separately from this SE test; adult Anatomy remains deferred.
 None of these source builds changes the published resource release or starts a
 manual game, microphone session or old held test order.

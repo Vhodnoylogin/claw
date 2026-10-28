@@ -128,7 +128,7 @@ def main(argv=None):
     if not 0<args.tolerance<=.001:raise ValueError('Explicit equivalence tolerance must be <=.001')
     root=Path(__file__).resolve().parents[1];addon=args.pynifly.resolve()
     geometry=[getattr(args,sex+'_'+suffix) for sex in ('male','female') for suffix in ('nif','nif_1','tri')]+[args.skeleton]
-    inputs=[args.source,args.source.parent/'physics-fit-model.h',args.source.parent/'physics-fit-fixtures.h',Path(__file__),root/'physics/fit-capsules.py',root/'physics/contact_fit.py',root/'scripts/tri_patch.py',root/'distribution/include/claw/PhysicsFit.h',*geometry,
+    inputs=[args.source,args.source.parent/'physics-fit-model.h',args.source.parent/'physics-fit-fixtures.h',Path(__file__),root/'physics/fit-capsules.py',root/'physics/contact_fit.py',root/'physics/current_model.py',root/'scripts/tri_patch.py',root/'distribution/include/claw/PhysicsFit.h',*geometry,
             addon/'NiflyDLL.dll',*sorted((addon/'pyn').glob('*.py'))]
     # Capture once, before parsing the model or executing any selected helper.
     snapshots=capture_inputs(inputs);source=captured_json(args.source,snapshots)
@@ -137,6 +137,8 @@ def main(argv=None):
     captured_module('contact_fit',root/'physics/contact_fit.py',snapshots)
     tri_patch=captured_module('tri_patch',root/'scripts/tri_patch.py',snapshots)
     fit=captured_module('claw_captured_fit_rebase',root/'physics/fit-capsules.py',snapshots)
+    if fit._settings_module.SOURCE_BYTES != snapshots[(root/'physics/current_model.py').resolve()]:
+        raise ValueError('Evaluator settings differ from their captured source bytes')
     from pyn import pynifly,niflydll
     if Path(pynifly.__file__).resolve()!=addon/'pyn/pynifly.py' or Path(niflydll.nifly_path).resolve()!=addon/'NiflyDLL.dll':
         raise ValueError('Loaded PyNifly interface/DLL differs from the explicitly captured dependency')

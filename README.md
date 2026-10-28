@@ -24,8 +24,8 @@ is the primary goal: ordinary human presets must determine the wolf through
 morph-to-morph conversion, without requiring wolf presets. Geometry repair,
 ear/tail and breast physics, morph-responsive colliders and the transformation
 link proceed alongside the explicitly requested distinct weight endpoints.
-On 27 October the owner paused further VR development to prioritize the
-flat-game OBody and human-morph integration test.
+On 28 October the owner resumed parallel physics, first-person VR body and
+morph-quality development. The prepared flat-game OBody test remains separate.
 The optional [typed preset companion and authoring resources](docs/presets.md)
 are development candidates; runtime acceptance is pending.
 The native [human/beast morph link](docs/transformation.md) derives a neutral
@@ -39,11 +39,15 @@ A native observer follows actual effective morphs and NPC weight, refits capsule
 on a bounded worker, and rejects stale results before publication. Actual provider
 ownership, close contact and game behavior remain unqualified.
 The [breast rig](docs/breast-rig.md) includes a separate layer-only fur motion
-experiment. [First-person VR body resources](docs/vr-body.md) are currently paused.
+experiment. [First-person VR body resources](docs/vr-body.md) are in development.
 Anatomical head/torso separation and a names-only XP32
 alias compatibility candidate are implemented offline; engine integration and camera/interaction acceptance
 remain pending. [Additional human-driven morphs](docs/morph-expansion.md) and
 [Morphbench improvements](docs/morphbench-needs.md) are researched proposals.
+The [morph-quality audit](docs/morph-expansion.md#reproducible-static-quality-audit) measures
+actual serialized fields, fixed boundary pairs and finite morph combinations.
+An opt-in male WaistNarrow collar repair is staged separately; rendered seams,
+fur coupling and resource rebinding remain acceptance requirements.
 
 *Эта страница на русском: [README.ru.md](README.ru.md).*
 

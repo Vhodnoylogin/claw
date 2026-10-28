@@ -11,6 +11,7 @@ animated skin containment, engine contact or full-body Havok behavior.
 from __future__ import annotations
 import argparse
 import hashlib
+import importlib.util
 import itertools
 import json
 import math
@@ -19,6 +20,9 @@ import sys
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
+_settings_spec = importlib.util.spec_from_file_location("claw_current_fit_settings", ROOT / "physics/current_model.py")
+_settings_module = importlib.util.module_from_spec(_settings_spec)
+_settings_spec.loader.exec_module(_settings_module)
 NODES = ("NPC EarL [EarL]Bone01", "NPC EarL [EarL]Bone02",
          "NPC EarR [EarR]Bone01", "NPC EarR [EarR]Bone02",
          "TailBone01", "TailBone02", "TailBone03", "TailBone04", "TailBone05")
@@ -85,6 +89,7 @@ def triangle_regions(shape, skeleton, records, nodes=NODES):
 
 def write_cpp_model(report,path):
     """Emit the exact schema3 evidence as a compiled immutable native model."""
+    contact_passes, padding = _settings_module.evaluator_settings(report)
     def vector(points):return '{'+','.join('{'+','.join(format(float(v),'.17g') for v in p)+'}' for p in points)+'}'
     lines=['#pragma once','#include "claw/PhysicsFit.h"','namespace claw::physics {',
            'inline const Model& CompiledModel(bool isFemale) {']
@@ -92,7 +97,11 @@ def write_cpp_model(report,path):
         lines.append('static const Model '+sex+' = [] { Model m;')
         lines.append('m.identity='+json.dumps(report['modelIdentity'])+';')
         lines.append('m.morphs={'+','.join(json.dumps(n) for n in report['morphs'])+'};')
-        lines.append('m.contactPasses='+str(report.get('contactPasses',0))+';')
+        lines.append('m.contactPasses='+str(contact_passes)+';')
+        # Keep historical default headers byte identical, while consuming an
+        # explicitly pinned nondefault padding instead of silently dropping it.
+        if padding != _settings_module.DEFAULT_PADDING:
+            lines.append('m.padding='+format(float(padding),'.17g')+';')
         lines.append('m.weightDependent='+str(report.get('weightDependent',False)).lower()+';')
         for slot in report['slots']:
             if slot.get(sex) is None:
@@ -657,11 +666,13 @@ def main(argv=None):
         paths=[args.male_nif,args.male_tri,args.female_nif,args.female_tri,args.skeleton,
                Path(__file__), ROOT/"scripts/breast_rig.py", ROOT/"scripts/tri_patch.py",
                addon/"NiflyDLL.dll", addon/"pyn/pynifly.py"]
-        if args.current_vector:paths.extend([ROOT/'physics/contact_fit.py',ROOT/'distribution/include/claw/PhysicsFit.h'])
+        if args.current_vector:paths.extend([ROOT/'physics/contact_fit.py',ROOT/'physics/current_model.py',ROOT/'distribution/include/claw/PhysicsFit.h'])
         paths.extend(path for path in (args.male_nif_1,args.female_nif_1) if path is not None)
         if args.signed_diagnostics:paths.append(ROOT/'physics/contact_diagnostics.py')
         if args.contact_recipe is not None:paths.append(args.contact_recipe)
         snapshots={p.resolve():p.read_bytes() for p in paths}
+        if args.current_vector and snapshots[(ROOT/'physics/current_model.py').resolve()] != _settings_module.SOURCE_BYTES:
+            raise ValueError('Evaluator settings changed since their code was loaded')
         out=safe_output(args.out, paths)
         skeleton=api.NifFile(str(args.skeleton))
         if any(n not in skeleton.nodes for n in NODES): raise ValueError("Missing XP32 ear/tail nodes")

@@ -15,6 +15,14 @@ generated header through `-PhysicsModelHeader`; build this host with the matchin
 names before observation. Schema-3 data cannot use the older affine Papyrus path.
 The ledger supports 128 slots and preserves older short ledgers until resolved.
 
+Source ingestion and native header emission also require the declared evaluator
+and top-level contact pass count to match every identity-pinned region. Passes
+are integers in 0..8; each region must use the same finite padding in (0, .01].
+Explicit nondefault padding is emitted into the native model. Omitted settings
+retain the older zero-pass/0.0001 defaults, and existing default headers remain
+byte identical. Inconsistent or unsupported settings fail before header output;
+an unchanged identity cannot authorize a top-level override of pinned regions.
+
 Explicit activation is `BeginSession(True, evidence)`, `RegisterActor(slot, actor)`
 then `EnableAutomaticActor(slot, actor, evidence, True, True, True)`. The three
 assertions qualify the actual provider/API and effective configuration, exclusive

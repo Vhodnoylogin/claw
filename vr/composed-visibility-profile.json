@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "sourceFamily": "final-composed-004",
+  "graph": "first-person",
+  "hiddenShapes": [
+    "ChestBlend_CLAWHead", "eyes", "fur_back_CLAWHead", "fur_belly_CLAWHead",
+    "fur_chest_CLAWHead", "fur_face", "fur_shoulders_CLAWHead", "FurfaceBlend",
+    "head_CLAWHead", "mouth", "ScalpFurBlend"
+  ],
+  "retainedTorsoShapes": ["body", "ChestBlend", "fur_back", "fur_belly", "fur_chest", "fur_shoulders", "head"],
+  "skeletonSha256": "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0",
+  "bodies": {
+    "female": {
+      "nifSha256": ["030f6e484c2bae2e2c38f6d7f595b1e5f6735c6b1bcf0d1b275b5f4364de6e23", "3deb12cf70067543830addefa0b40a3faa4665086edfabc6945d32440f2019d3"],
+      "triSha256": "04cc835c9287756065fc76f78d70bee414fc25eb0a6e41363f6e16f19f3eac04",
+      "nodeCount": 97, "shapeCount": 21, "publicMorphCount": 25,
+      "breastSupport": {"ChestBlend": 1, "fur_belly": 2538, "fur_chest": 156, "fur_shoulders": 48, "head": 450}
+    },
+    "male": {
+      "nifSha256": ["88a1e7df6f5aa3759802da6e17be8568d0269e2e79797d145387bc132817f311", "86382761899ed797257d6e336aa3b34130473b2b9af489b5988e4b8c305cb9c7"],
+      "triSha256": "75472a4a3dc81a3f78a4bd1bfd2302b10eee6fb25ba849d89e2d9b113a8250e0",
+      "nodeCount": 92, "shapeCount": 22, "publicMorphCount": 24,
+      "breastSupport": {}
+    }
+  }
+}

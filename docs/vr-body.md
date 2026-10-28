@@ -1,7 +1,8 @@
 # First-person VR body: composed resources and engine qualification
 
-Development paused by the owner on 27 October 2026. Preserve the prototype;
-the current task is flat-game OBody and human-to-wolf morph testing.
+The owner resumed parallel VR body development on 28 October 2026 after the
+27 October pause. New offline candidates remain separate from the prepared
+flat-game OBody and human-to-wolf test; game/headset qualification is still pending.
 
 ## Current implementation
 
@@ -14,6 +15,15 @@ offsets on both sides. Separate composed exports apply this split to the correct
 body/physics carrier and distinct weight endpoints. The builder and exact
 preservation checks are described in [the head policy](vr-head-policy.md).
 These offline resources still require actual VR graph/camera qualification.
+
+The separate [composed visibility builder](../vr/README.md) now prepares
+first-person-only copies of all four anatomical weight endpoints. It hides
+eleven explicitly selected head-side shapes per NIF; the retained head-textured
+torso, breast support and hands stay visible. Exact byte comparison permits
+only the eleven hidden-bit changes, with both shared TRIs unchanged. These
+files do not establish engine dispatch or runtime flag persistence. Existing
+Head-bone influence on retained torso/fur is reported, so VRIK head scaling and
+camera/neck clearance still need their own solution and qualification.
 
 ### XP32 aliases and the actual weighted arm
 
