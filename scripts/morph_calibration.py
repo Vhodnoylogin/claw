@@ -141,10 +141,39 @@ def gain_with_primary_direction(gain, human_axis, wolf_axis):
 
 def compose(rules, sources):
     """Independent numerical oracle for the shipped native sum/clamp contract."""
-    result = {}
+    result, caps = {}, {}
     for rule in rules:
         value = float(sources.get(rule["source"], 0.))
         if not np.isfinite(value):
             raise ValueError("Nonfinite source coefficient")
+        cap = float(rule.get("cap", 1.))
+        target = rule["target"]
+        if not np.isfinite(cap) or not 0 < cap <= 1 or caps.get(target,cap) != cap:
+            raise ValueError("Consistent native target cap required")
+        caps[target] = cap
         result[rule["target"]] = result.get(rule["target"], 0.) + value * rule["gain"]
-    return {name: float(np.clip(value, 0, 1)) for name, value in result.items()}
+    return {name: float(np.clip(value, 0, 1))*caps[name] for name, value in result.items()}
+
+
+def finite_region_dimensions(neutral, deformed, indices, axis):
+    """Exact recentered regional sample extents, separate from linear response.
+
+    Membership is frozen at neutral. MAD is a vertex-sample mean absolute half
+    extent, not circumference, tissue volume or a live skinned-mesh measurement.
+    Quantile/full spans remain separate so an unchanged extremum cannot hide
+    a changed region or be mistaken for an unchanged whole shape.
+    """
+    neutral, deformed = np.asarray(neutral,float), np.asarray(deformed,float)
+    ids = np.asarray(indices,dtype=int)
+    if (neutral.ndim != 2 or neutral.shape[1] != 3 or deformed.shape != neutral.shape or
+            axis not in (0,1,2) or ids.ndim != 1 or len(ids) < 8 or len(np.unique(ids)) != len(ids) or
+            ids.min() < 0 or ids.max() >= len(neutral) or not np.isfinite(neutral).all() or not np.isfinite(deformed).all()):
+        raise ValueError("Finite matching geometry and frozen region required")
+    def dimensions(points):
+        values=points[ids,axis];q=np.quantile(values,[.05,.95])
+        return {'centre':float(values.mean()), 'mad':float(np.abs(values-values.mean()).mean()),
+                'q05_95_span':float(q[1]-q[0]), 'full_span':float(np.ptp(values)),
+                'minimum':float(values.min()), 'maximum':float(values.max())}
+    before,after=dimensions(neutral),dimensions(deformed)
+    relative={k:after[k]/before[k]-1 if before[k]>1e-10 else None for k in ('mad','q05_95_span','full_span')}
+    return {'neutral':before,'deformed':after,'relative':relative,'samples':len(ids)}

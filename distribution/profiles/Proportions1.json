@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "id": "primary-proportions-iteration05",
+  "baseSourceSha256": "2eb526d6b1f8d6faa9d3ac5ee29aadb160ba2cf23e19ffc4888c52bfc86a6ecb",
+  "families": {
+    "HIMBO": {
+      "targetMultipliers": {
+        "CLAWTorsoBellyRound": 0.04,
+        "CLAWTorsoGirth": 0.3,
+        "CLAWTorsoShoulderGirth": 2.5
+      },
+      "addRules": [
+        {
+          "source": "Muscle",
+          "target": "CLAWTorsoWaistNarrow",
+          "gain": -4.7922708,
+          "cap": 1
+        }
+      ],
+      "targetCaps": {
+        "CLAWTorsoGirth": 0.25
+      }
+    },
+    "3BA": {
+      "targetMultipliers": {
+        "CLAWTorsoBellyRound": 0.3,
+        "CLAWTorsoGirth": 0.65,
+        "CLAWTorsoBackWide": 0.4,
+        "CLAWTorsoShoulderGirth": 1.2
+      },
+      "addRules": [],
+      "targetCaps": {
+        "CLAWTorsoGirth": 0.25
+      }
+    },
+    "CBBE": {
+      "targetMultipliers": {},
+      "targetCaps": {
+        "CLAWTorsoGirth": 0.25
+      },
+      "addRules": []
+    }
+  },
+  "selection": "Trial005 preserves all trial004 HIMBO/3BA numerical gains and caps. It extends the same TorsoGirth output cap to CBBE because that family uses the same female wolf geometry; its gains are normalized to preserve the original sub-cap slope. This is cap consistency, not new CBBE calibration or acceptance. Trial004 selected belly/girth through exact finite regional MAD with primary-direction, individual-RMS and waist-depth constraints; geometry quality limits take precedence over proportional fit.",
+  "calibration": "regional-primary-proportions-trial5",
+  "primaryWaistCounterEvidence": {
+    "sourceFamily": "HIMBO5.8",
+    "axis": "frozen Spine boneweight>=0.25 lateral width",
+    "sourceTriSha256": "3c4d393e70f8ee86160b5571b69e8f894d1f67f0ed2d7d1067f72b1939a5df7f",
+    "responsesAtWeight0": {
+      "Muscle": 0.02634494243768279,
+      "TorsoWaistSize": -0.021085090903294502
+    },
+    "responsesAtWeight1": {
+      "Muscle": 0.025919780719607592,
+      "TorsoWaistSize": -0.020744814074243865
+    },
+    "formula": "counterGain=existingTorsoWaistSizeGain * MuscleWidthResponse/TorsoWaistSizeWidthResponse",
+    "existingTorsoWaistSizeGain": 3.8354787,
+    "counterGain": -4.7922708,
+    "selectionPriority": "Primary-direction correctness precedes equal-axis torsoRMS; 6of25 heldout torsoRMS regressions per endpoint are retained."
+  },
+  "finiteMetric": {
+    "formula": "MAD(P)=mean(abs(P_axis-mean(P_axis))); response=MAD(neutral+summedTRI)/MAD(neutral)-1",
+    "regions": "Frozen neutral bone-weight memberships>=0.25; waist/midtorso/chest/hip width/depth scored equally. q05-95 span and full span reported separately.",
+    "selectionGrid": {
+      "HIMBO": {
+        "belly": [
+          0.02,
+          0.025,
+          0.03,
+          0.04,
+          0.045
+        ],
+        "girth": [
+          0.2,
+          0.25,
+          0.3
+        ]
+      },
+      "3BA": {
+        "belly": [
+          0.15,
+          0.2,
+          0.25,
+          0.3,
+          0.35,
+          0.4
+        ],
+        "girth": [
+          0.4,
+          0.5,
+          0.65,
+          0.8
+        ]
+      }
+    },
+    "qualityConstraint": "TorsoGirth output <= 0.25 for HIMBO, 3BA and CBBE. Gains normalize by oldCap/newCap so the intended sub-cap linear multiplier is preserved. The bound is provisional, not proof of all joint shapes.",
+    "limits": "Exact for summed serialized neutral fields, not posed live vertices or visual acceptance. Firstorder features remain surrogate only. Runa worst hip-depth error rises0.161pp despite tiny torsoRMS improvement; Grom waist width underfits by23.04pp because safer Girth cannot supply the human width."
+  }
+}

@@ -42,6 +42,14 @@ class CalibrationTests(unittest.TestCase):
         self.assertEqual(cal.compose(rules,{'A':2,'B':-2}),{'Girth':0})
         self.assertEqual(cal.compose(rules,{'A':1,'B':0}),{'Girth':.5})
 
+    def test_native_cap_is_applied_after_shared_sum_and_clamp(self):
+        rules=[{'source':name,'target':'Girth','gain':2.4,'cap':.25} for name in ['A','B']]
+        self.assertAlmostEqual(cal.compose(rules,{'A':.1})['Girth'],.06)
+        self.assertEqual(cal.compose(rules,{'A':2})['Girth'],.25)
+        self.assertEqual(cal.compose(rules,{'A':2,'B':-2})['Girth'],0)
+        with self.assertRaises(ValueError):
+            cal.compose([rules[0],dict(rules[1],cap=.5)],{})
+
     def test_measured_himbo_and_wolf_waist_shrink_need_same_polarity(self):
         # Serialized installed TRI/NIF measurements: positive source and target
         # both decrease the bone-supported regional lateral width.
@@ -54,6 +62,21 @@ class CalibrationTests(unittest.TestCase):
         self.assertEqual(cal.compose(rules, {'TorsoWaistSize':-.4})['WaistNarrow'], 0)
         with self.assertRaises(ValueError):
             cal.gain_with_primary_direction(gain, 0, wolf_width)
+
+    def test_finite_recentered_metric_handles_large_field_and_translation(self):
+        points=np.asarray([[x,y,z] for x in (-2,-1,1,2) for y in (-1,1) for z in (0,1)],float)
+        ids=np.arange(len(points))
+        moved=cal.finite_region_dimensions(points,points+[10,20,30],ids,0)
+        self.assertAlmostEqual(moved['relative']['mad'],0)
+        self.assertAlmostEqual(moved['relative']['full_span'],0)
+        scaled=cal.finite_region_dimensions(points,points*[1.5,1,1],ids,0)
+        self.assertAlmostEqual(scaled['relative']['mad'],.5)
+        self.assertAlmostEqual(scaled['relative']['q05_95_span'],.5)
+        reflected=points*[-1,1,1]
+        finite=cal.finite_region_dimensions(points,reflected,ids,0)
+        self.assertAlmostEqual(finite['relative']['mad'],0)
+        linear=cal.response(reflected-points,[cal.feature(points,np.ones(len(points),bool),'width')])[0]
+        self.assertAlmostEqual(linear,-2) # A surrogate, not the finite width.
 
     def test_degenerate_geometry_refused(self):
         with self.assertRaises(ValueError):cal.feature(np.zeros((16,3)),np.ones(16,bool),'width')

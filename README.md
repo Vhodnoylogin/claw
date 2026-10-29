@@ -28,16 +28,23 @@ On 28 October the owner resumed parallel physics, first-person VR body and
 morph-quality development. The prepared flat-game OBody test remains separate.
 The optional [typed preset companion and authoring resources](docs/presets.md)
 are development candidates; runtime acceptance is pending.
-The native [human/beast morph link](docs/transformation.md) derives a neutral
-beast morph vector from actual applied human coefficients. Linked actors need
-no beast preset files; real OBody/profile calibration and game acceptance remain
-pending. Measured CBBE/3BA/HIMBO resource-family conversions are included as
-development data. The older exact preset-pairing experiment is historical.
+The native [human/beast morph link](docs/transformation.md) derives a beast morph
+vector from actual applied human coefficients. Linked actors use ordinary human
+presets; there are no separate wolf presets in this path. Real SE checks have
+exercised six human actors of both sexes, transformations and returns, source
+preservation, save/load and two actors created directly as wolves. Numeric
+conversion is working; visible proportional quality remains under development.
+Measured CBBE/3BA/HIMBO resource-family conversions are development data. The older
+exact preset-pairing experiment is historical.
 The nearest functional SE release now prioritizes stable linkage on the published
 0.6.2.0 bodies with the official installed RaceMenu. The current development
-configuration has hung during transformation; its cause is unresolved. A separate
-RaceMenu shutdown repair is not a demonstrated transformation fix or a required
-CLAW release dependency. New body geometry, physics and VR remain separate trials.
+configuration passed the later core117 checks and the owner's six-actor manual
+transformations. The earlier transformation failure remains retained evidence,
+not the current result. The manual inspection rejected weak visual contrast and
+female breast/underarm geometry. A silent shutdown exception was also reproduced
+without the Distribution DLL and integration plugin; it is not established as a
+CLAW-specific fault. A separate RaceMenu repair is not a required CLAW dependency.
+New body geometry, physics and VR remain separate trials.
 The [ear/tail physics source candidate](physics/README.md) uses existing XP32
 chains, an optional finite per-actor host and explicit provider qualification.
 A native observer follows actual effective morphs and NPC weight, refits capsules

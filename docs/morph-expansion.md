@@ -464,3 +464,94 @@ the active manual game and installed XML are unchanged.
 This does not create genuinely thinner arms/legs, improve muscular chest
 calibration, remove upper saturation or establish rendered acceptance. Opposed
 geometry and regional calibration still need their separate measured work.
+
+
+### Coefficient-only proportions trials and finite regional metric
+
+`distribution/profiles/Proportions1.json` records trial 005. Reproduce it with
+`scripts/refine-morph-links.py --source <pinned-baseline-xml> --policy <policy>
+--output <new-external-xml>`; the exact baseline SHA is required. Explicit defaults
+are a packaging choice. No actor identity or preset name enters the mapping.
+
+Trial 005 preserves the fourth trial's numerical HIMBO/3BA rules and adds the
+same conservative Girth cap to CBBE because that family shares the female wolf
+mesh. This is cap consistency, not a new CBBE calibration or game qualification.
+The effective male belly/girth/shoulder multipliers are 0.04 / 0.30 / 2.5.
+Female 3BA belly/girth/back/shoulder multipliers are 0.30 / 0.65 / 0.4 / 1.2.
+All breast rules and the measured third-trial waist counter are retained.
+
+The primary metric uses exact finite recentered mean absolute deviation (MAD):
+`MAD(P) = mean(abs(P_axis - mean(P_axis)))`, with relative response
+`MAD(neutral + sum(TRI * coefficient)) / MAD(neutral) - 1`.
+Frozen neutral bone-weight membership sums >= 0.25 select Spine, Spine1, Spine2
+and Pelvis for waist, midtorso, chest and hip. Left/right upperarm, thigh and calf
+are separate regions. Both wolf skin shapes, `body` and `head`, participate; fur
+is excluded from this metric. The half-extent is a sample statistic, not
+circumference, volume or live posed skinning. Q05–95 spans, full spans and raw
+extrema remain separate. Initial alpha 1 compares proportional human and wolf
+change, not equal centimetres or a universal aesthetic optimum.
+
+The earlier first-order feature was only a surrogate. For example, Grom human
+waist depth is +75.32% in that proxy, +42.45% in finite MAD and +37.83% in full
+span. Historical first-order artifacts remain for review. Report every regional
+residual, torso eight-axis equal-weight RMS, worst-axis error, direction signs,
+pairwise contrast, negative floors and attained caps. The corrected surrogate
+target box uses actual caps, with zero adjustable range for absent targets;
+it is neither a finite shape bound nor proof of joint source feasibility.
+
+The fourth trial's bounded grid changed only belly/girth. Eligible rows did not
+worsen any actor torso RMS or primary waist-depth error and introduced no new
+primary waist-width reversal. Mean actor torso RMS selected among them; worst
+axes remain explicit. Geometry quality takes precedence: Girth is hard-capped
+at 0.25 in all three profiles after high values produced corrugation. The native
+formula is `cap * clamp(sum(gain * source), 0, 1)`; gain normalization by old/new
+cap preserves the intended sub-cap slope. This is a conservative constraint,
+not proof of every joint shape's safety.
+
+On the published 0.6.2.0 geometry and six actual native source readbacks:
+
+| Actor type | Current finite torso RMS | Trial 005 |
+|---|---:|---:|
+| Iney (MThin) | 15.121 pp | 13.979 pp |
+| Kedr (MMuscular) | 3.474 pp | 2.127 pp |
+| Grom (MHeavy) | 35.251 pp | 10.908 pp |
+| Lada (FThin) | 8.956 pp | 8.956 pp |
+| Mira (FMuscular) | 9.724 pp | 9.523 pp |
+| Runa (FHeavy) | 18.061 pp | 10.537 pp |
+
+Grom waist depth changes from +64.50% in trial 003 to +39.80%, versus human
++42.45%. The quality-limited wolf remains 23.04 pp too narrow at the waist.
+Runa depth changes +37.75% to +39.26%, versus human +44.94%; its worst hip-depth
+error rises 0.161 pp while torso RMS improves only 0.017 pp. Mira retains a
+primary waist-direction mismatch: human -0.23%, wolf +3.17%. These limits are
+not hidden by the aggregate. Negative source sums still floor to zero; genuinely
+thinner limbs/chest require opposed geometry or separately qualified signed
+semantics. XML min/max attributes do not enable negative outputs.
+
+The separate male sampled audit supports the provisional Girth bound: isolated
+0.25 has no reported body/head direction flags, while 0.5207 has 27/154.
+The combined Grom trial still has three body flags. The published male
+WaistNarrow field lacks head carry, so a minimal seam repair is required before
+the next Iney game test. Recalculate this finite table on separately pinned
+repaired resources; these published-baseline values are not their qualification.
+The owner accepts the final proportions from fixed-view actual SE comparisons.
+
+### Retained primary-direction counter
+
+Positive HIMBO TorsoWaistSize and positive wolf WaistNarrow both narrow the waist.
+An earlier combined regional fit reversed that source's primary direction. The
+corrected source gain is +3.8354787. However, a human Muscle/waist combination
+also needs the independently measured widening contribution: Muscle widens the
+bone-defined waist by +2.6345% / +2.5920% at the two human weight endpoints.
+The stable ratio to the waist source gives countergain -4.7922708 in existing
+WaistSize gain units: `existingWaistGain * MuscleResponse / WaistSizeResponse`.
+It preserves the qualified narrowing amplitude; it is not an absolute alpha-1
+unit fit, which would be about -0.39 against the wolf width field.
+
+The independent 5-by-5 Muscle/Waist grid removes 10 wrong-direction waist cases
+at each weight, improves 13 primary errors, regresses none and leaves 12 equal.
+It nevertheless worsens the historical eight-axis surrogate RMS in 6 of 25 cases
+per endpoint, by at most 0.754 pp. The explicit priority preserves the measured
+primary direction before aggregate RMS; it is not an all-region optimum.
+The actual Kedr waist changes from -4.59% in trial 002 to about +0.49%, versus
+human +0.15%. Trial 005 retains the same counter without fitting actor identities.
