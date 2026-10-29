@@ -163,7 +163,7 @@
     <Rule source="TorsoMassSmooth" target="CLAWTorsoGirth" gain="0.0001326" cap="1" />
     <Rule source="TorsoShoulderDec" target="CLAWTorsoShoulderGirth" gain="-0.736337" cap="1" />
     <Rule source="TorsoShoulderInc" target="CLAWTorsoShoulderGirth" gain="1.3638221" cap="1" />
-    <Rule source="TorsoWaistSize" target="CLAWTorsoWaistNarrow" gain="-3.8354787" cap="1" />
+    <Rule source="TorsoWaistSize" target="CLAWTorsoWaistNarrow" gain="3.8354787" cap="1" />
     <Rule source="TorsoWaistSize" target="CLAWTorsoGirth" gain="-0.4292707" cap="1" />
     <Rule source="TorsoWidth" target="CLAWTorsoChestSize" gain="0.2402696" cap="1" />
     <Rule source="TorsoWidth" target="CLAWTorsoShoulderGirth" gain="0.1364316" cap="1" />

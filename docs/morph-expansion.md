@@ -441,3 +441,26 @@ lowering the tissue. Independent wolf volume/projection/lift/sag fields express
 this, whereas one averaged BreastSize cannot. Fit the actual coefficients in
 the wolf's breast frame, keep roots/fur attached and test combinations; neither
 source's menu percentage specifies simulator stiffness or collider radius.
+
+
+### 29 October manual-scene waist direction correction
+
+Independent readback of the actual installed HIMBO NIF/TRI pair measured positive
+`TorsoWaistSize` lateral responses of -0.10086448 (`_0`) and -0.10154594 (`_1`).
+The published male CLAW `WaistNarrow` field measured -0.03953668 on the same frozen
+bone-supported waist-width definition. Both positive fields therefore narrow.
+The previous unconstrained multiregion projection chose a negative gain to reduce
+its combined depth/belly residual; this reversed the primary lateral meaning.
+
+The source mapping now changes only that gain from -3.8354787 to +3.8354787. The
+calibration recipe preserves its fitted magnitude and other rules but constrains
+this one independently qualified primary direction. It records both the old
+unconstrained error and the new actual error; a better composite fit cannot
+justify narrowing the Heavy actor while discarding the Slim narrowing source.
+Actual scene inputs +0.2 and -0.4 now produce WaistNarrow 0.76709574 and 0,
+respectively. Neutral remains zero. These are offline next-candidate changes;
+the active manual game and installed XML are unchanged.
+
+This does not create genuinely thinner arms/legs, improve muscular chest
+calibration, remove upper saturation or establish rendered acceptance. Opposed
+geometry and regional calibration still need their separate measured work.

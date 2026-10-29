@@ -42,6 +42,19 @@ class CalibrationTests(unittest.TestCase):
         self.assertEqual(cal.compose(rules,{'A':2,'B':-2}),{'Girth':0})
         self.assertEqual(cal.compose(rules,{'A':1,'B':0}),{'Girth':.5})
 
+    def test_measured_himbo_and_wolf_waist_shrink_need_same_polarity(self):
+        # Serialized installed TRI/NIF measurements: positive source and target
+        # both decrease the bone-supported regional lateral width.
+        human_width = -0.10086447796210547
+        wolf_width = -0.039536675600633314
+        gain = cal.gain_with_primary_direction(-3.8354787, human_width, wolf_width)
+        self.assertEqual(gain, 3.8354787)
+        rules = [{'source':'TorsoWaistSize','target':'WaistNarrow','gain':gain}]
+        self.assertAlmostEqual(cal.compose(rules, {'TorsoWaistSize':.2})['WaistNarrow'], .76709574)
+        self.assertEqual(cal.compose(rules, {'TorsoWaistSize':-.4})['WaistNarrow'], 0)
+        with self.assertRaises(ValueError):
+            cal.gain_with_primary_direction(gain, 0, wolf_width)
+
     def test_degenerate_geometry_refused(self):
         with self.assertRaises(ValueError):cal.feature(np.zeros((16,3)),np.ones(16,bool),'width')
         with self.assertRaises(ValueError):cal.signed_fit(np.zeros((1,9)),[1])

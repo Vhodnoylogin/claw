@@ -127,6 +127,18 @@ def signed_fit(matrix, human):
     return best[1], best[0][0]
 
 
+def gain_with_primary_direction(gain, human_axis, wolf_axis):
+    """Keep a fitted magnitude but preserve one independently measured axis.
+
+    The caller must explicitly select a geometrically qualified primary axis;
+    this is not inferred from a slider name or applied to every fitted rule.
+    """
+    values = np.asarray([gain, human_axis, wolf_axis], float)
+    if not np.isfinite(values).all() or abs(human_axis) < 1e-8 or abs(wolf_axis) < 1e-8:
+        raise ValueError("Qualified nonzero primary-axis responses required")
+    return float(np.copysign(abs(gain), human_axis * wolf_axis))
+
+
 def compose(rules, sources):
     """Independent numerical oracle for the shipped native sum/clamp contract."""
     result = {}

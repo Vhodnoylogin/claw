@@ -182,8 +182,22 @@ def main():
   gains,error=cal.signed_fit(matrix,human_response)
   single=min(cal.signed_fit(matrix[:,index:index+1],human_response)[1] for index in range(len(allowed)))
   if error>single+1e-9:raise ValueError('Multiple-target solution regressed its single-target baseline')
+  direction_guard=None
+  if args.family=='HIMBO' and source=='TorsoWaistSize' and 'waist' in allowed:
+   # The unconstrained multiregion fit can choose the opposite waist polarity
+   # to improve unrelated depth/belly residuals. Keep the independently measured
+   # lateral direction; do not refit other gains or invent a neutral offset.
+   index=allowed.index('waist');axis=feature_names.index('waist.width')
+   before=float(gains[index]);before_error=error
+   gains[index]=cal.gain_with_primary_direction(before,human_response[axis],wolf_response['waist'][axis])
+   positive=matrix@np.clip(gains,0,1);negative=matrix@np.clip(-gains,0,1)
+   error=float(np.sum((positive-human_response)**2)+np.sum((negative+human_response)**2))
+   direction_guard={'axis':'waist.width','gainBefore':before,'gainAfter':float(gains[index]),
+    'humanResponse':float(human_response[axis]),'wolfResponse':float(wolf_response['waist'][axis]),
+    'unconstrainedSignedUnitError':before_error,'policy':'preserve-primary-direction-v1'}
   comparisons.append({'source':source,'humanFeatureResponse':human_response.tolist(),'targets':allowed,'gains':gains.tolist(),
-   'signedUnitError':error,'bestSingleTargetError':single,'zeroResponseError':float(2*human_response@human_response)})
+   'signedUnitError':error,'bestSingleTargetError':single,'zeroResponseError':float(2*human_response@human_response),
+   'primaryDirectionGuard':direction_guard})
   for name,gain in zip(allowed,gains):
    if abs(gain)>1e-5:rules.append({'source':source,'target':TARGETS[name],'gain':round(float(gain),7),'cap':1})
  if not 1<=len(rules)<=128:raise ValueError('Native family rule budget exceeded: '+str(len(rules)))

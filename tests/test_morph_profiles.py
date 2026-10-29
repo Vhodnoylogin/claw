@@ -37,6 +37,12 @@ class ShippedFamilyTests(unittest.TestCase):
             self.assertGreater(cal.compose(self.rules(family),{'Breasts':.2})['CLAWTorsoBreastSize'],0)
             self.assertTrue(any(r['source']=='BreastsSmall' and r['gain']<0 for r in self.rules(family)))
 
+    def test_himbo_actual_slim_and_heavy_waist_inputs_keep_geometric_direction(self):
+        rules=self.rules('HIMBO')
+        # Actual manual-scene inputs; positive HIMBO waist field narrows.
+        self.assertAlmostEqual(cal.compose(rules,{'TorsoWaistSize':.2})['CLAWTorsoWaistNarrow'],.76709574)
+        self.assertEqual(cal.compose(rules,{'TorsoWaistSize':-.4})['CLAWTorsoWaistNarrow'],0)
+
     def test_all_rules_are_finite_unique_bounded_and_preserve_zero(self):
         for family in self.profiles:
             rules=self.rules(family)
