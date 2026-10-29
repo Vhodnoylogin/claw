@@ -15,6 +15,8 @@ import re
 import stat
 from typing import Any
 
+from polygon_guard_contract import SUPPORTED_PROTOCOL_COMMIT
+
 
 CONFIG_KIND = "claw-origin-recovery-plan-input"
 CONFIG_KEYS = {"schemaVersion", "kind", "workspaceRoot", "recoveryId", "assessment",
@@ -242,8 +244,16 @@ def prepare_plan(config: dict[str, Any]) -> dict[str, Any]:
     return {
         "schemaVersion": 1, "kind": "claw-origin-restoration-plan", "recoveryId": config["recoveryId"],
         "cleanupGranted": False, "launchGranted": False, "executionSupported": False,
-        "blocker": "Published status/inspect do not supply a supported current restoring-reservation guard; no live phase is implemented.",
+        "blocker": "A supported restoring guard is published, but this client only checks offline JSON; no live actor, reservation, cleanup strategy or execution handoff is implemented.",
         "source": {"path": str(Path(__file__).resolve()), "sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()},
+        "guardAdapter": {
+            "protocolCommit": SUPPORTED_PROTOCOL_COMMIT,
+            "source": {"path": str(Path(__file__).with_name("polygon_guard_contract.py").resolve()),
+                       "sha256": hashlib.sha256(Path(__file__).with_name("polygon_guard_contract.py").read_bytes()).hexdigest()},
+            "mode": "pure-offline-json-validation", "transportImplemented": False,
+            "liveExecutionApproved": False, "savedResponseGrantsCleanup": False,
+            "managerIdleEvidenceRequiredSeparately": True,
+        },
         "inputPins": {k: config[k] for k in ("assessment", "preparedRequest", "submittedOrder", "reserveReview")},
         "instance": str(instance), "profile": order["profile"], "evidenceRoot": str(evidence_root),
         "sameQueuedSubjectMustRemainUnchanged": order["id"], "physicalRollbackIsOptionalFallback": True,
