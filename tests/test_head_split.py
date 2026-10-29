@@ -12,6 +12,33 @@ import tri_patch
 
 
 class SplitTests(unittest.TestCase):
+    def test_generated_shader_owner_is_distinct_with_exact_values(self):
+        # Two geometry owners must not alias the runtime shader/pass-list state.
+        nif=object.__new__(h.Nif)
+        nif.type_names=['BSLightingShaderProperty'];nif.kinds=[0]
+        block=struct.pack('<II Ii',0,0xFFFFFFFF,0,-1)+bytes(range(84))
+        nif.blocks=[block]
+        torso=bytearray(120);struct.pack_into('<I',torso,92,0)
+        head=bytearray(torso)
+        source,clone=h.clone_shape_shader(nif,head,72)
+        self.assertEqual(source,0)
+        self.assertNotEqual(clone,source)
+        self.assertEqual(struct.unpack_from('<I',torso,92)[0],source)
+        self.assertEqual(struct.unpack_from('<I',head,92)[0],clone)
+        self.assertEqual(nif.blocks[clone],block)
+        changed=bytearray(nif.blocks[clone]);changed[16]^=1;nif.blocks[clone]=bytes(changed)
+        self.assertEqual(nif.blocks[source],block)
+
+    def test_shader_owner_rejects_unreviewed_reference_graph(self):
+        for extras,controller in [(1,-1),(0,2)]:
+            nif=object.__new__(h.Nif)
+            nif.type_names=['BSLightingShaderProperty'];nif.kinds=[0]
+            nif.blocks=[struct.pack('<II Ii',0,0xFFFFFFFF,extras,controller)+bytes(84)]
+            shape=bytearray(120);struct.pack_into('<I',shape,92,0)
+            with self.assertRaisesRegex(ValueError,'ownership copy contract'):
+                h.clone_shape_shader(nif,shape,72)
+            self.assertEqual(len(nif.blocks),1)
+
     def test_majority_ownership_follows_slanted_neck(self):
         v=np.array([[0,0,0],[1,0,0],[0,1,0],[1,1,0]],float);t=np.array([[0,1,2],[1,2,3]])
         result=h.classify(v,t,np.array([0,.4,.4,1]),.5)
@@ -67,6 +94,10 @@ class SplitTests(unittest.TestCase):
             self.assertEqual(len(poses['poses']),10)
             self.assertEqual(poses['maximumExteriorError'],0.)
             self.assertEqual(poses['maximumDuplicatedSeamGap'],0.)
+            owners=body['readback']['shaderPropertyOwnership']
+            self.assertTrue(owners)
+            self.assertTrue(all(x['distinctOwners'] and x['byteExactProperty'] for x in owners.values()))
+            self.assertEqual(len({x['headShaderBlock'] for x in owners.values()}),len(owners))
 
     def test_native_rejects_independent_tri_and_bind_corruption(self):
         import os
@@ -107,6 +138,29 @@ class SplitTests(unittest.TestCase):
             actual=np.asarray(after[name].uvs)[np.asarray(after[name].tris)]
             expected=np.asarray(before['head'].uvs)[np.asarray(before['head'].tris)[index[key]]]
             np.testing.assert_array_equal(actual,expected)
+
+    def test_native_rejects_shared_shader_owner_even_with_equal_material(self):
+        import os
+        root=os.environ.get('CLAW_HEAD_SPLIT_NATIVE')
+        if not root:self.skipTest('Set CLAW_HEAD_SPLIT_NATIVE to the completed external candidate')
+        root=Path(root);report=json.loads((root/'head-split-report.json').read_text());body=report['bodies']['female']
+        sources={Path(p).name:Path(p) for p in report['inputs']}
+        source=sources['femalebodywerewolf_0.nif'];source_tri=sources['femalebodywerewolf.tri']
+        api,Trip,_=h.rig.load_pynifly(None);skel=api.NifFile(str(sources['skeleton.nif']))
+        parents={n:x.parent.name if x.parent else None for n,x in skel.nodes.items()}
+        planned,_=h.plan(api.NifFile(str(source)),Trip.from_filepath(str(source_tri)).shapes,
+                         h.vr_head.descendants(parents,h.vr_head.HEAD),json.loads((h.ROOT/'recipes/head-split.json').read_text()))
+        parsed=api.NifFile(body['nif']);shapes={s.name:s.id for s in parsed.shapes}
+        container=h.Nif(Path(body['nif']).read_bytes())
+        torso=container.blocks[shapes['head']];extra=struct.unpack_from('<I',torso,4)[0]
+        shader=struct.unpack_from('<I',torso,92+4*extra)[0]
+        head=bytearray(container.blocks[shapes['head_CLAWHead']]);extra=struct.unpack_from('<I',head,4)[0]
+        struct.pack_into('<I',head,92+4*extra,shader)
+        container.blocks[shapes['head_CLAWHead']]=bytes(head)
+        with tempfile.TemporaryDirectory(dir=root) as temp:
+            corrupt=Path(temp)/'shared-shader.nif';corrupt.write_bytes(container.bytes())
+            with self.assertRaisesRegex(ValueError,'share mutable shader property'):
+                h.verify(api,Trip,source,corrupt,source_tri,Path(body['tri']),planned)
 
 
 if __name__=='__main__':unittest.main()

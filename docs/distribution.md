@@ -1,11 +1,13 @@
 # Linked human and werewolf morphs
 
-Linkage prototype contract, 11 October 2026; scope clarified25October2026.
-The owner's revised order places independent presets first and human/beast
-linkage fourth, with VR afterwards. See [presets.md](presets.md) for the separate
-distribution companion. The published 0.6.2.0 resource
-package has neither controller. `scripts/distribution.py` is an executable **offline
-reference core**, not an installed game integration.
+Historical offline prototype, 11 October 2026. Its seeded traits and proposed
+`CLAW.Link` key below do not describe the current native runtime. The supported
+development direction is [human-to-werewolf morph linkage](transformation.md):
+human coefficients determine a neutral beast vector without separate wolf presets.
+The current coordinator uses its own scoped `CLAW.Distribution` key. See
+[the native module](../distribution/README.md) for its actual API and lifecycle.
+The published 0.6.2.0 resource package has no controller. `scripts/distribution.py`
+is an executable **offline reference core**, not an installed game integration.
 
 The owner clarified26October that linkage is **morph to morph**. Presets supply
 the human values; their names do not select the wolf shape. See

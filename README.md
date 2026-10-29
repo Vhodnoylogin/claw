@@ -33,6 +33,11 @@ beast morph vector from actual applied human coefficients. Linked actors need
 no beast preset files; real OBody/profile calibration and game acceptance remain
 pending. Measured CBBE/3BA/HIMBO resource-family conversions are included as
 development data. The older exact preset-pairing experiment is historical.
+The nearest functional SE release now prioritizes stable linkage on the published
+0.6.2.0 bodies with the official installed RaceMenu. The current development
+configuration has hung during transformation; its cause is unresolved. A separate
+RaceMenu shutdown repair is not a demonstrated transformation fix or a required
+CLAW release dependency. New body geometry, physics and VR remain separate trials.
 The [ear/tail physics source candidate](physics/README.md) uses existing XP32
 chains, an optional finite per-actor host and explicit provider qualification.
 A native observer follows actual effective morphs and NPC weight, refits capsules
@@ -189,10 +194,10 @@ it silently loses both the shader and every transparency block.
 
 ## Rights
 
-The author of Elegant (Wolflady500, KaienHash) permits using the models and textures in another
-mod as long as it is not sold, and asks that it not make their mod redundant. Hence the design:
-we ship the difference, not the mesh, and without Elegant our mod does not work. Both names are
-mandatory in the description.
+CLAW ships modified body meshes and morph files, and requires Elegant's texture
+files. It does not ship Elegant textures or replace their installation. The donor
+permission and its limits are recorded in [assets/donors/README.md](assets/donors/README.md).
+Credit Wolflady500 and KaienHash when describing the donor work.
 
 ## Development assistance
 

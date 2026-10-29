@@ -1,11 +1,15 @@
 # CLAW — future plans
 
-Owner-defined priorities, revised 28 October 2026. No release dates are promised.
+Owner-defined priorities, revised 29 October 2026. No release dates are promised.
 
-Current task: assemble the SE candidate and prepare human OBody/preset-to-wolf
-checks using the composed bodies and calibrated mappings. The owner resumed
-parallel physics, first-person VR body and morph-quality development on 28 October.
-Keep new development resources separate from the prepared SE manual-test payload.
+Current task: fix and automatically test the core human-to-wolf linkage for the
+nearest SE release. The first controlled comparison uses the exact published
+0.6.2.0 body set and official installed RaceMenu, retaining current Distribution
+and real OBody. Transformation currently hangs in the development configuration;
+its cause is unresolved. The separate RaceMenu exit-lifetime patch does not prove
+a transformation repair and is not an adopted release requirement.
+New geometry, physics, distinct weight endpoints and VR are separate development
+resources; their completion does not gate this narrower core release.
 Physics remains experimental: source integration is built, but close surface fit
 and actual provider motion/contact behavior are not accepted.
 
@@ -89,6 +93,13 @@ These development results do not change or requalify the published0.6.2.0 packag
 
 ## Remaining acceptance for the next functional release
 
+The 29 October manual transformation reached a confirmed render-pass cycle and
+hung the game. Its captured dump and forced closure are failure evidence, not a
+successful morph-link check. First establish stable human/beast/human operation
+with advancing game frames on the published bodies; if it still hangs, compare a
+fresh game disabling only Distribution. Do not attribute the hang to RaceMenu,
+TNG or geometry from shader names alone. Keep the proven shutdown fault separate.
+
 The first bounded SE mechanics run on 26 October passed 21 of 68 required checks,
 then stopped on a source-change read before the two-second refresh interval could
 be guaranteed. One assertion mismatched and 46 checks were not run. This is not
@@ -111,14 +122,15 @@ the original attempt remains consumed, with no automatic replay or acceptance.
   assignment/selection and save/load persistence without unintended rerolls.
 - Check actual human OBody coexistence and calibrated human morph mapping;
   synthetic source values alone do not qualify a real body-resource profile.
-- Inspect the repaired geometry in game for both sexes, representative poses and
-  strong morph combinations, including breast underside, collar and fur seams.
+- Inspect the body set actually selected for release for both sexes and strong
+  morph combinations. Experimental geometry repairs need their own acceptance;
+  the previously accepted baseline breast underside gap remains disclosed.
 - Verify the SE runtime build, final archive, fresh installation and upgrade
   behavior in this round. The owner excluded VR testing from this session.
   Offline builds and mesh bounds do not replace game checks.
 
-New physics and distinct weight endpoints are current development candidates,
-with their own geometry/provider/contact acceptance requirements. VR development
-continues separately from this SE test; adult Anatomy remains deferred.
+New physics, distinct weight endpoints and VR remain development candidates with
+their own acceptance requirements. They are outside the current core release
+scope; adult Anatomy remains deferred.
 None of these source builds changes the published resource release or starts a
 manual game, microphone session or old held test order.

@@ -178,8 +178,29 @@ def plan(nif, raw, head_names, profile):
     return result,comparisons
 
 
+def clone_shape_shader(nif, shape, sphere):
+    """Give the generated shape its own mutable engine shader/pass state.
+
+    Texture sets and alpha remain shared, unchanged data. Controllers and extra
+    data can contain owner references and need a separate graph-copy contract.
+    """
+    source,=struct.unpack_from('<I',shape,sphere+20)
+    if source>=len(nif.blocks) or nif.kind(source)!='BSLightingShaderProperty':
+        raise ValueError('Expected reviewed lighting shader property')
+    block=nif.blocks[source]
+    # SSE BS100: shader type, NiObjectNET name, extra count, controller.
+    if len(block)<16:
+        raise ValueError('Truncated lighting shader property')
+    extras,controller=struct.unpack_from('<Ii',block,8)
+    if extras or controller!=-1:
+        raise ValueError('Shader controllers/extra data need an ownership copy contract')
+    clone=nif.append('BSLightingShaderProperty',block)
+    struct.pack_into('<I',shape,sphere+20,clone)
+    return source,clone
+
+
 def split_nif(data, plan_, names):
-    nif=Nif(data); added=[]; changed=[]; appended=[]
+    nif=Nif(data); added=[]; changed=[]; appended=[]; shader_clones=[]
     for name,p in plan_.items():
         if p['action']!='split': continue
         bid=p['sourceBlock']; shape=bytearray(nif.blocks[bid]);extra,=struct.unpack_from('<I',shape,4)
@@ -191,10 +212,15 @@ def split_nif(data, plan_, names):
         partition=Partition(nif.blocks[partid]);source_data=nif.blocks[dataid]
         m=p['mapping']; newpart=partition.subset(m['headVertices'],m['headTriangles'])
         newdata=subset_skin_data(source_data,m['headVertices'])
-        # Reuse all material, alpha, controller, extra-data and existing bone refs.
+        # Keep material values, texture/alpha and bone references, but never make
+        # independently morphed shapes share a mutable shader/pass-list owner.
+        newshape=bytearray(shape)
+        shader_source,shader_clone=clone_shape_shader(nif,newshape,sphere)
+        appended.append(shader_clone)
+        shader_clones.append({'source':shader_source,'clone':shader_clone,'shape':name+SUFFIX})
         nsid=len(nif.blocks);ndid=nsid+1;npid=nsid+2;nbid=nsid+3
         newinstance=bytearray(instance);struct.pack_into('<II',newinstance,0,ndid,npid)
-        newshape=bytearray(shape);struct.pack_into('<I',newshape,0,nif.name(name+SUFFIX));struct.pack_into('<I',newshape,sphere+16,nsid)
+        struct.pack_into('<I',newshape,0,nif.name(name+SUFFIX));struct.pack_into('<I',newshape,sphere+16,nsid)
         for kind,value in [('BSDismemberSkinInstance',newinstance),('NiSkinData',newdata),('NiSkinPartition',newpart),('BSTriShape',newshape)]:
             appended.append(nif.append(kind,value))
         nif.blocks[dataid]=subset_skin_data(source_data,m['torsoVertices'])
@@ -208,7 +234,8 @@ def split_nif(data, plan_, names):
     # Every untouched original block must remain exactly byte-identical.
     old=Nif(data)
     if any(a!=b for i,(a,b) in enumerate(zip(old.blocks,nif.blocks)) if i not in changed):raise ValueError('Unrelated block changed')
-    return nif.bytes(),{'modifiedOriginalBlocks':changed,'appendedBlocks':appended,'byteExactUntouchedBlocks':len(old.blocks)-len(changed)}
+    return nif.bytes(),{'modifiedOriginalBlocks':changed,'appendedBlocks':appended,
+                       'shaderPropertyClones':shader_clones,'byteExactUntouchedBlocks':len(old.blocks)-len(changed)}
 
 
 def split_trip(data, plan_):
@@ -286,6 +313,21 @@ def verify(api, Trip, source, target, source_tri, target_tri, plan_,skeleton=Non
     before=api.NifFile(str(source));after=api.NifFile(str(target));old={s.name:s for s in before.shapes};new={s.name:s for s in after.shapes}
     expected=set(old)|{n+SUFFIX for n,p in plan_.items() if p['action']=='split'}
     if set(new)!=expected:raise ValueError('Serialized shape inventory mismatch')
+    source_blocks=Nif(Path(source).read_bytes());target_blocks=Nif(Path(target).read_bytes())
+    shader_ownership={};generated_shader_ids=set()
+    for name,p in plan_.items():
+        if p['action']!='split':continue
+        def shader_id(blocks,shape):
+            data=blocks.blocks[shape.id];extra=struct.unpack_from('<I',data,4)[0]
+            return struct.unpack_from('<I',data,92+4*extra)[0]
+        original=shader_id(source_blocks,old[name])
+        torso=shader_id(target_blocks,new[name]);head=shader_id(target_blocks,new[name+SUFFIX])
+        if torso!=original or head<len(source_blocks.blocks) or head in generated_shader_ids:
+            raise ValueError('Split shapes share mutable shader property state: '+name)
+        if target_blocks.kind(head)!='BSLightingShaderProperty' or target_blocks.blocks[head]!=source_blocks.blocks[original]:
+            raise ValueError('Cloned shader property values changed: '+name)
+        generated_shader_ids.add(head)
+        shader_ownership[name]={'torsoShaderBlock':torso,'headShaderBlock':head,'distinctOwners':True,'byteExactProperty':True}
     raw_before=Trip.from_filepath(str(source_tri)).shapes;raw_after=Trip.from_filepath(str(target_tri)).shapes
     if {k for x in raw_before.values() for k in x}!={k for x in raw_after.values() for k in x}:raise ValueError('Public morph union changed')
     checks={};tri_pairs=0
@@ -319,7 +361,8 @@ def verify(api, Trip, source, target, source_tri, target_tri, plan_,skeleton=Non
         other=after.nodes[name]
         if (node.parent.name if node.parent else None)!=(other.parent.name if other.parent else None):raise ValueError('Node parent changed')
         if not np.array_equal(rig.matrix(node.transform),rig.matrix(other.transform)):raise ValueError('Node transform changed')
-    result={'shapes':checks,'mappedSparseTriPairs':tri_pairs,'publicMorphCount':len({k for x in raw_after.values() for k in x})}
+    result={'shapes':checks,'mappedSparseTriPairs':tri_pairs,'publicMorphCount':len({k for x in raw_after.values() for k in x}),
+            'shaderPropertyOwnership':shader_ownership}
     if skeleton is not None:result['controlledHeadPoses']=pose_equivalence(before,after,raw_before,raw_after,plan_,skeleton)
     return result
 
