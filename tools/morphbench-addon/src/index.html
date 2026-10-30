@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CLAW human morph link</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="/web/addon-sdk.js" defer></script>
+  <script src="catalog.js" defer></script>
+  <script src="core.js" defer></script>
+  <script src="main.js" defer></script>
+</head>
+<body>
+  <h1>CLAW human morph link</h1>
+  <p>Preview the canonical mapping from <strong>aggregate applied human morph values</strong>. This input is manual data, not an OBody assignment or a game observation.</p>
+  <label for="profile">Human resource family</label>
+  <select id="profile"></select>
+  <p id="profile-info" class="muted"></p>
+  <label for="human">Human values (finite JSON map)</label>
+  <textarea id="human" rows="8" spellcheck="false">{}</textarea>
+  <label class="file-label" for="import">Import JSON file</label>
+  <input id="import" type="file" accept=".json,application/json">
+  <p class="muted">Omitted sources are zero. Values already include their human morph-key aggregation; do not multiply by NPC weight. Copy this input before changing models: v1 reloads the addon frame.</p>
+  <div class="actions">
+    <button id="evaluate" type="button">Calculate</button>
+    <button id="apply" type="button" disabled>Apply linked body targets</button>
+    <button id="reset" type="button" disabled>Zero linked body targets</button>
+  </div>
+  <p id="status" role="status" aria-live="polite">Connecting to Morphbench…</p>
+  <p class="muted">The current wolf catalog is nonnegative. Negative sums clip at zero; slim reductions without an opposed wolf morph cannot be reproduced. This preview does not prove game physics or visual quality.</p>
+  <p id="provenance" class="muted"></p>
+  <p id="unmapped" class="muted"></p>
+  <div id="results"></div>
+</body>
+</html>

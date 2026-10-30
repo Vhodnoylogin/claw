@@ -1,0 +1,8 @@
+{
+  "id": "claw-human-link-dev-001",
+  "name": "CLAW human morph link",
+  "version": "0.1.0-dev.1",
+  "apiVersion": 1,
+  "entry": "index.html",
+  "description": "Preview CLAW's canonical human-to-wolf morph mapping from explicit aggregate human values."
+}

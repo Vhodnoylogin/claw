@@ -5,9 +5,10 @@ actual applied human coefficients determine the corresponding beast proportions.
 A preset supplies coefficients; its name does not select a paired wolf preset.
 The native implementation remains a development candidate. Actual SE checks have
 exercised six actors of both sexes, human/beast roundtrips, source preservation,
-mixed-state save/load and two actors created as wolves. A later repaired-surface
-run passed 82 action checks and six one-way transformations. Final textured visual
-acceptance and a complete regression of the final packaged inputs remain pending.
+mixed-state save/load and two actors created as wolves. The current runtime set
+passed 117 core checks and 33 fresh-world born-wolf checks, with normal exits in
+both sessions. Final textured visual acceptance remains pending. See the
+[bounded verification summary](verification-20261030.md).
 These SE results do not establish VR or other executable-version compatibility.
 
 ### Contrast trial 6 — coefficient-only candidate
@@ -24,8 +25,8 @@ DLL, source ownership and save format stay unchanged. Static skin-and-fur checks
 on the six measured source vectors found no new triangles below 10% of their
 current area for the chosen coefficients. A 0.4 chest candidate and larger torso
 caps failed that screen and were rejected. This screen does not establish textured
-appearance or all possible morph combinations. Trial 6 still needs an actual SE
-run and owner visual acceptance; earlier gameplay results belong to trial 5.
+appearance or all possible morph combinations. Actual SE trial 6 values match the
+mapping within 5.43e-8; the owner's final visual acceptance remains separate.
 
 The opposing Muscle-to-waist rule is retained: independent human geometry shows
 that muscle widens this region while TorsoWaistSize narrows it. Their cancellation

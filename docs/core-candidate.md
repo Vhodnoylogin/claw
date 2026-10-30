@@ -51,5 +51,9 @@ Dependency notices are retained even though they do not affect game behavior.
 The builder checks exact archive/member bytes and inventory. It writes a separate
 build manifest outside the installable archives. It never installs or publishes.
 Candidate packaging is not owner visual acceptance. Current quality limits
-include residual fur/skin continuity and weak slimming response; the last ordinary
-run's window-close exception does not establish a failed game-menu exit.
+include residual fur/skin continuity and weak slimming response. The current
+runtime set passed core117 and born33 in actual SE, both with normal exit 0 and
+verified restoration. Earlier shutdown failures remain historical evidence; these
+two results do not establish universal exit reliability. See
+[verification scope](verification-20261030.md). Documentation-only repackaging
+must preserve every verified runtime hash and does not create a new gameplay test.

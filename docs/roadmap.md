@@ -111,21 +111,18 @@ These development results do not change or requalify the published0.6.2.0 packag
 
 ## Remaining acceptance for the next functional release
 
-Completed offline: all six selected surface files replay exactly from source;
-minimal base/Distribution archives rebuild identically; 23 focused tests and
-136 archive checks pass, including all four installation selections. Six actual
-human source vectors have paired human/wolf Morphbench images. See the
-[candidate build contract](core-candidate.md) for exact scope and limitations.
+Completed: the six repaired surface files replay exactly; minimal archives,
+four FOMOD selections, actual native MO2 installation/accounting, dependencies
+and winning runtime files are verified. Contrast6 passed 278 source tests with
+10 skips and 59 clean-package consistency checks. The exact runtime set then
+passed two actual SE scenarios: core117 and born33, with both-sex roundtrips,
+preserved human/foreign keys, save/load and two originally-beast actors. Both
+processes exited normally and the environment was restored. The two scenarios
+remain separate because the current fixture supports six persistence participants
+and requires a fresh world for born actors. See the
+[verification summary](verification-20261030.md) and
+[candidate build contract](core-candidate.md).
 
-- Install the actual minimal archives through MO2, verify selected FOMOD files,
-  recursive dependencies, active plugins and winning runtime bytes. Check fresh
-  installation and the upgrade path; offline selection simulation alone is not
-  manager installation evidence.
-- Run the final combined SE scenario on that exact composition: multiple actors
-  of both sexes, real OBody input, human/wolf/human transitions, source and foreign
-  key preservation, born-wolf distribution and save/load without unintended
-  reassignment. Retain earlier positive checks separately; they do not substitute
-  for the final packaged run. Use actual game-menu exit and verify restoration.
 - Obtain the owner's in-game visual acceptance of the selected repaired bodies,
   especially textures, fur and axilla/neck joins. Offline comparisons do not
   establish textured or animated appearance. The post-release shape improvements
@@ -135,7 +132,13 @@ human source vectors have paired human/wolf Morphbench images. See the
   The current Distribution binary targets SE1.7.104 only; do not claim untested
   AE/VR compatibility. Publication remains a separate owner decision.
 
-The final automatic and manual orders are prepared; preparation alone does not
-mean the final regression ran or passed. Recheck current shared test ownership
-before live work and do not clear another qualification's hold. No source build
-starts a game, microphone session or old held order, or changes the public release.
+The separate CLAW Morphbench addon has a first API v1 development package; it is
+not part of the game archives or a prerequisite for this release. Natural shape,
+physics and VR work remains in the backlog. A minor diagnostic cleanup is also
+queued: an absent legacy wolf-preset directory should be logged as an empty
+optional catalog, rather than an error. Linked human-driven operation does not
+need that directory and passed with it absent.
+
+Prepare a fresh owner inspection scene with AI/collisions disabled and the
+retained rectangle. Recheck shared ownership; no old order, actor reference or
+toggle batch is reusable. Publication remains separate from testing.

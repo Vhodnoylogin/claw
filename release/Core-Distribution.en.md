@@ -21,16 +21,16 @@ Its quest asks stock OBody to provide human source values for eligible actors
 first encountered as wolves. Existing assignments and OBody restrictions are
 respected. Without that option, the wild-source host plugin/scripts are absent.
 
-SE checks have exercised six human actors of both sexes, transformations and
-returns, human source preservation, mixed-state save/load and two initially-wolf
-actors. The repaired-surface run passed all 82 action checks and six transformations.
-Those are bounded mechanism checks; final textured visual acceptance is pending.
-The packaged trial 6 coefficients strengthen bellies and HIMBO pecs.
-Static checks found no additional near-collapsed triangles in six measured shapes;
-the previous gameplay result used trial 5, so this exact package still requires
-an SE regression and visual acceptance. Slim limbs currently stop at neutral.
-Automatic window-close produced a separate exit exception; actual menu exit was
-not tested by that run and the owner reports it works normally.
+These runtime files passed two actual SE regressions: 117 checks covering six
+ordinary human presets, both-sex roundtrips and save/load, plus 33 checks covering
+two actors created directly as wolves. Human and foreign morph keys were preserved;
+both game sessions exited normally. This verifies mechanisms and numeric shapes;
+final textured visual acceptance is pending.
+
+Trial 6 strengthens bellies and HIMBO pecs. Slim limb reductions currently stop
+at neutral. Head, ears and tail are outside the human-body conversion. The optional
+source host asks OBody to process eligible wild actors; this is not a claim that
+OBody alone supports creatures or overrides every external mod's restrictions.
 
 No third-party DLL replacements, textures, skeletons, human or wolf presets,
 test actors, physics configuration or VR body are supplied. The unchanged native
