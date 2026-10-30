@@ -1,5 +1,10 @@
 # Linked human and werewolf morphs
 
+Current linked-SE runtime/package status is documented in
+[transformation.md](transformation.md) and [core-candidate.md](core-candidate.md).
+The independent Python reference and seeded traits described below are retained
+development history; they are not the no-wolf-preset release candidate's behavior.
+
 Historical offline prototype, 11 October 2026. Its seeded traits and proposed
 `CLAW.Link` key below do not describe the current native runtime. The supported
 development direction is [human-to-werewolf morph linkage](transformation.md):

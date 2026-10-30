@@ -45,6 +45,10 @@ female breast/underarm geometry. A silent shutdown exception was also reproduced
 without the Distribution DLL and integration plugin; it is not established as a
 CLAW-specific fault. A separate RaceMenu repair is not a required CLAW dependency.
 New body geometry, physics and VR remain separate trials.
+The selected breast/axilla and male collar edits now have a [reproducible baked
+authoring recipe and minimal linked-SE candidate builder](docs/core-candidate.md).
+They reproduce the exact repaired-surface trial inputs; final owner visual
+acceptance and final-package regression remain pending.
 The [ear/tail physics source candidate](physics/README.md) uses existing XP32
 chains, an optional finite per-actor host and explicit provider qualification.
 A native observer follows actual effective morphs and NPC weight, refits capsules

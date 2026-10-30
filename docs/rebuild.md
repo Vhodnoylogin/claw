@@ -1,5 +1,10 @@
 # Журнал сборки: как получить меши и морфы заново
 
+The repaired linked-SE candidate has a separate, pinned [surface authoring replay
+and minimal archive builder](core-candidate.md). The historical0.6.2.0 pipeline
+below remains the source of its permanent baseline inputs. The candidate does
+not depend on temporary authoring folders or a modified third-party DLL.
+
 ## Fixed low-weight release 0.6.2.0
 
 Both weight endpoints use the respective sex `_0` shape. The female base and adult

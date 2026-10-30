@@ -1,5 +1,15 @@
 # Morphbench improvements identified during CLAW development
 
+## Owner correction, 30 October 2026
+
+Do not add a CLAW-specific built-in tab. A future Morphbench extension system
+should register user tabs through a general interface; a separate CLAW add-on
+would own human-preset conversion. Neither extension work is required now.
+For current development, calculate actual human-to-wolf values externally and
+use ordinary Morphbench facade calls to render/inspect frozen human and wolf
+states. Keep values, resource identities, weight handling and camera limitations
+with the comparison. This does not require executing the SKSE DLL outside Skyrim.
+
 The owner requested direct coordination with the Morphbench chat on 28 October
 2026. Use its current capability handoff and exact source revision, rather than
 assuming the public archive contains development features. The tool remains a

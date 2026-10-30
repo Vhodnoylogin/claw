@@ -1,0 +1,33 @@
+{
+  "nativeCommit": "078510a8877a0fb1487ffa4abb84eeab342edc04",
+  "correspondingSource": "42913da00599cc6cc31b197c8600a32b9b37946fe3b111b58fa6e547f7faae21",
+  "core": {
+    "SKSE/Plugins/CLAWDistribution.dll": "16543ae9ef459599bb02fd912d6ab70fe8af4155fa821a6b1a56e440bfbf6e92",
+    "Scripts/CLAWDistributionNative.pex": "c43b468a14dd0dcc02ee16c3da9d442f94c545ab95dc30c82de22be91cda32fb"
+  },
+  "host": {
+    "CLAW - OBody Integration.esp": "3258246f77c1750974bdae25ef51d05e456414343e87d5686030f93ee988108c",
+    "Scripts/CLAWOBodySourceHost.pex": "ddfd20791231439d1b46c2dadfe54f8b1a78e64950a52b2eb223f8857fd13dbc"
+  },
+  "notices": {
+    "NOTICES/CLAW-donor-permission-record.md": "4cd36c887f51ea682cc925a8a6cf88502dd0bf0213f992161275a814d2ca9724",
+    "NOTICES/CommonLibSSE-NG/COPYING.txt": "72d2f09334f8b87dded94a833ba7da05e5280e77a037ca23b251f96eae4cf719",
+    "NOTICES/CommonLibSSE-NG/EXCEPTIONS.md": "d3a3ec90e21ae118d3653d0834a2f6d1e6d32b773cc185023824992ad4bdcfce",
+    "NOTICES/CommonLibSSE-NG/extern/openvr/LICENSE": "f56ff606104d4ef18e617921a75c73ad73b5a1a1d70c69590c29de16919e04ad",
+    "NOTICES/CommonLibSSE-NG/licenses/LICENSE-hde64.txt": "f9fdcbff6e0ff5cef66b22742777a34bebc48975c72b6ec874642745af9a36a3",
+    "NOTICES/CommonLibSSE-NG/licenses/LICENSE-MIT.txt": "253d41f9a66509071e71deeafaad01d9cd5e1d0e235f38d988f33d4f54cb0fe2",
+    "NOTICES/directxmath/copyright": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+    "NOTICES/directxtk/copyright": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+    "NOTICES/fmt/copyright": "a65fcc5a1095fc33cc37e4fff69366e49d7e92f613558a2b95ed1b70e33758b4",
+    "NOTICES/nlohmann-json/copyright": "46a65cffd1ea955132d95a8dd921640714a8d6b537d2e4e482d31145ae95b603",
+    "NOTICES/OBODY-API-NOTICE.md": "65a10ef19c7baef07ad1f8071730b356dabda49c754493a2b8452637ae72e891",
+    "NOTICES/OBody-public-API.h": "42a899e88ba53bcc673d2d8e9513e839f0d661ee1e002514fe3551827a98681d",
+    "NOTICES/pugixml/LICENSE.md": "0d0b3772af2fa45628a548a3b34583707ebcc68bb6f83ec48ca273aab4a510f1",
+    "NOTICES/rapidcsv/copyright": "8e60b029b7a16c4087af1e8dc695e4412f36f46819aa2fe1ef445e7776e40594",
+    "NOTICES/SimpleIni/copyright": "1f8d19cba3d929f45f74b8e7cdf84b2fee5b96be69d08d0084ed728316f9f2c2",
+    "NOTICES/SKEE-IPluginInterface.h": "875410dd22230f76a014a6841004e7d346f5fa1c748cfff695f9f495234da277",
+    "NOTICES/spdlog/copyright": "d678c20826e1392578508e1c78649a1e3c31bda05ef4388d967dbd654461b140",
+    "NOTICES/toml11/copyright": "b547d41695cdfbc1d054b5044578e476a0e9d756849f1e0cb3864cfc83e50a9e",
+    "NOTICES/xbyak/copyright": "7e411d5c5d38501a504843f58afb6824439c828872b35d2ff1e892e73fd1a30d"
+  }
+}

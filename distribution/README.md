@@ -12,8 +12,12 @@ OBody, rename beast presets to human families, or change OBody's human assignmen
 The earlier SE mechanics candidate at `f42e0f2` completed a first bounded game run:
 21 checks passed, one assertion mismatched with ambiguous timing and 46 checks
 were not run. Those results do not accept this direct linked-mode revision or
-rendered geometry. The current linked revision is not game-tested. Compilation
-is not runtime acceptance.
+rendered geometry. Later SE core117 and born33 checks exercised six human actors,
+roundtrips, source preservation, mixed-state persistence and two initially-wolf
+actors. The repaired-surface trial then passed 82 action checks and six one-way
+transformations. Final textured visual acceptance remains pending. The minimal
+linked release candidate is built by `scripts/build-core-candidate.py`; the older
+independent-preset/menu packager below is not its installation contract.
 The SE build requires **SKSE 2.3.1**, the matching **Address Library v13** data,
 and a RaceMenu/SKEE build qualified for that runtime. RaceMenu/SKEE runtime
 compatibility remains a separate gate; the pinned interface header alone does

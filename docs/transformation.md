@@ -1,11 +1,14 @@
 # Human-to-werewolf morph linkage
 
-Development candidate, 26 October 2026. The intended link is **morph to morph**:
+Development candidate, updated 30 October 2026. The link is **morph to morph**:
 actual applied human coefficients determine the corresponding beast proportions.
 A preset supplies coefficients; its name does not select a paired wolf preset.
-The native implementation remains a development candidate. This direct linked
-mode has not been game-tested; provider behavior, save/load and actual SE/VR
-transformations require independent verification.
+The native implementation remains a development candidate. Actual SE checks have
+exercised six actors of both sexes, human/beast roundtrips, source preservation,
+mixed-state save/load and two actors created as wolves. A later repaired-surface
+run passed 82 action checks and six one-way transformations. Final textured visual
+acceptance and a complete regression of the final packaged inputs remain pending.
+These SE results do not establish VR or other executable-version compatibility.
 
 ## Explicit calibrated mapping
 
@@ -143,7 +146,8 @@ observations. Readers preserve v1/v2/v3: v2 retains its original 32-row budget;
 v3/v4 support 128 rows. Version1 records migrate to independent mode; an old
 preset name never creates an opt-in. Development linked records use the direct
 neutral-baseline semantics on refresh, ignoring a retained independent choice.
-Actual engine save/load migration still needs a game test. Source/weight
+Current-state engine save/load has been exercised in SE; migration from every
+historical state format has not. Source/weight
 observations are diagnostic persistence data, not permission to skip current
 provider or NPC reads.
 
