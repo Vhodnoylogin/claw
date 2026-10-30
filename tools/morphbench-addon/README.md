@@ -9,9 +9,15 @@ the host's native orientation link. Zoom, pan and framing remain independent.
 The consumer uses the documented additive API v1 independent-preview contract.
 Published Application 0.8.0 lacks those capabilities: this addon displays a clear
 message and retains calculation/import, without trying to modify the main view.
-The inspected extension is in Morphbench's `feature/addon-multi-view` worktree;
-qualified host revision and actual paired-browser acceptance are still pending.
-An API number alone does not prove that the extension is present.
+The qualified development host is Morphbench's `feature/addon-multi-view` at
+[`fc414cf309c705b4b75d1b0fd6e68ec2c749b079`](https://github.com/Vhodnoylogin/morphbench/tree/fc414cf309c705b4b75d1b0fd6e68ec2c749b079),
+with its [pinned addon contract](https://github.com/Vhodnoylogin/morphbench/blob/fc414cf309c705b4b75d1b0fd6e68ec2c749b079/docs/addons.md).
+Its separate Application package is `0.8.0-multiview-dev1`; this is not the
+published stable Application 0.8.0. Source and merged Runtime/Application checks
+report 752 passes and one Windows symlink-privilege skip each. Generic host browser
+proof covers four real pairs, model isolation and bidirectional rotation.
+Actual CLAW consumer browser acceptance remains partial. An API number alone
+does not prove that the extension is present.
 The dev-004 pilot opened the actual male HIMBO/CLAW pair in the isolated source
 host. Browser import/apply acceptance remains incomplete after a file-chooser
 timeout and a reported user stop of computer control; offline suites are not
