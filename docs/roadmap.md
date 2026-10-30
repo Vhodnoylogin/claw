@@ -35,8 +35,22 @@ acceptance or permission to publish.
    stage, linked to human actor weight without weighting effective morphs twice.
 5. **First-person VR body:** finish model dispatch, selective head visibility,
    morph synchronization, camera clearance, IK and interaction acceptance.
+6. **Ear, tail, head and claw selection:** design how an actor's ear size, tail
+   size, head proportions and claw size are chosen and adjusted. Existing public
+   morphs do not yet participate in the current body-only human conversion.
+   Investigate meaningful readable human body/head parameters and deterministic
+   many-to-many links; keep the choice of controls and handling of traits without
+   an established human counterpart open. Do not require separate wolf presets
+   or invent unrelated body-to-ear mappings. Preserve each actor's choices across
+   transformations and save/load.
+7. **Fur colour feasibility:** investigate whether male and female werewolf fur
+   can be recoloured per actor, then whether that colour can follow the human
+   actor's actual hair colour. Establish readable hair-colour data and feasible
+   material, tint or texture mechanisms for skin and fur layers; check consistency
+   across transformations, model reload and save/load. Keep this an investigation:
+   no working recolour mechanism or automatic hair-to-fur link is claimed yet.
 
-All five are outside the nearest release gate. Existing partial implementations
+All seven are outside the nearest release gate. Existing partial implementations
 are retained; this deferral does not declare physics or VR complete. The optional
 adult Anatomy/physics add-on remains a separate later task.
 
