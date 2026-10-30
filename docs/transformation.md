@@ -10,6 +10,32 @@ run passed 82 action checks and six one-way transformations. Final textured visu
 acceptance and a complete regression of the final packaged inputs remain pending.
 These SE results do not establish VR or other executable-version compatibility.
 
+### Contrast trial 6 — coefficient-only candidate
+
+The 30 October manual measurements found a nearly disconnected HIMBO pecs signal
+and weak visible bellies. Trial 6
+raises belly response by 1.75 within the existing 0..1 bound, sets HIMBO
+PecsMass/PecsSize chest gains to 0.3/0.45. The observed muscular actor's chest
+changes from 0.000950 to 0.3; the observed
+male/female heavy belly values change from 0.455/0.573 to 0.796/1.0.
+
+This changes configuration only: the repaired meshes, morph names, caps, native
+DLL, source ownership and save format stay unchanged. Static skin-and-fur checks
+on the six measured source vectors found no new triangles below 10% of their
+current area for the chosen coefficients. A 0.4 chest candidate and larger torso
+caps failed that screen and were rejected. This screen does not establish textured
+appearance or all possible morph combinations. Trial 6 still needs an actual SE
+run and owner visual acceptance; earlier gameplay results belong to trial 5.
+
+The opposing Muscle-to-waist rule is retained: independent human geometry shows
+that muscle widens this region while TorsoWaistSize narrows it. Their cancellation
+is therefore meaningful, rather than a reason to force a narrow muscular waist.
+
+Slim limb reductions still reach the neutral limb shape because this catalog has
+positive growth targets and a nonnegative composition contract. Independent
+head/ear/tail traits and more natural belly, breast and muscle shapes remain
+post-release work. Automatic linkage is not a claim of identical proportions.
+
 ## Explicit calibrated mapping
 
 Different human body resources give their sliders different geometry and ranges.

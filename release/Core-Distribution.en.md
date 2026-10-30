@@ -25,6 +25,10 @@ SE checks have exercised six human actors of both sexes, transformations and
 returns, human source preservation, mixed-state save/load and two initially-wolf
 actors. The repaired-surface run passed all 82 action checks and six transformations.
 Those are bounded mechanism checks; final textured visual acceptance is pending.
+The packaged trial 6 coefficients strengthen bellies and HIMBO pecs.
+Static checks found no additional near-collapsed triangles in six measured shapes;
+the previous gameplay result used trial 5, so this exact package still requires
+an SE regression and visual acceptance. Slim limbs currently stop at neutral.
 Automatic window-close produced a separate exit exception; actual menu exit was
 not tested by that run and the owner reports it works normally.
 

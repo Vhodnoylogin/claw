@@ -53,5 +53,23 @@ class ShippedFamilyTests(unittest.TestCase):
             self.assertFalse(any(any(token in r['target'] for token in ('Head','Tail','Claw','Paw','Crotch')) for r in rules))
             self.assertTrue(all(value==0 for value in cal.compose(rules,{}).values()))
 
+    def test_observed_muscular_human_keeps_nontrivial_pecs_signal(self):
+        # Manual-scene regression: these nonzero source shapes previously gave
+        # an almost zero pecs response. Waist direction has a separate geometry
+        # regression; global muscle legitimately counters waist narrowing.
+        wolf=cal.compose(self.rules('HIMBO'),{
+            'PecsMass':.25,'PecsSize':.5,'TorsoWaistSize':.2,'Muscle':.2})
+        self.assertGreater(wolf['CLAWTorsoChestSize'],.2)
+        self.assertLessEqual(wolf['CLAWTorsoChestSize'],.4)
+
+    def test_observed_heavy_humans_reach_distinct_bounded_belly_shapes(self):
+        male=cal.compose(self.rules('HIMBO'),{
+            'BellyPot':.5,'BellyRounder':.2,'TorsoBelly':.6,'TorsoBellyChub':.35})
+        female=cal.compose(self.rules('3BA'),{'Belly':.7,'BigBelly':.7})
+        self.assertGreater(male['CLAWTorsoBellyRound'],.7)
+        self.assertGreater(female['CLAWTorsoBellyRound'],.9)
+        self.assertLessEqual(male['CLAWTorsoBellyRound'],1)
+        self.assertLessEqual(female['CLAWTorsoBellyRound'],1)
+
 
 if __name__=='__main__':unittest.main()
