@@ -7,11 +7,26 @@ must measure the actual mesh response before another game inspection.
 
 ## Latest paired game evidence
 
-The accepted twelve-actor QASmoke scene contains six identical human-source
-pairs. Fresh complete reads compared 339 source entries per side, including
-keyed values and actor weight: zero pair differences. Maximum error between
-native stored coefficients and the declared conversion is 5.43e-8. This measures
-stored morphs; it is not a readback of posed rendered vertices.
+The accepted twelve-actor QASmoke scene contains six pairs with equal observed
+conversion inputs. Reads compared 339 configured conversion-source values per
+side: 61 names for each male type and 52 for each female type. Keyed evidence and
+actor weight were also compared. There were zero pair differences within
+that captured scope. These are historical runtime reads, not the full human
+morph set. Maximum error between native stored wolf coefficients and the declared
+conversion is 5.43e-8. This measures stored morphs, not posed rendered vertices.
+
+The external `claw-morphbench-addon-20261030/real-pair-inputs/` reconciliation
+separately reconstructs all 834 assigned-preset values for the six human types,
+including 22 negative values; the observed configured subset contains 339 values
+and 20 negatives. Five nonzero female preset entries were outside that capture:
+FThin `BigButt=-0.25`, `Butt=-0.5`; FMuscular `MuscleAbs=0.8`; FHeavy
+`BigButt=0.14`, `Butt=0.21` (rounded here). They are currently unmapped and do not
+change the linked wolf outputs, but matter to a full preset-based human-body comparison.
+Those additions come from the assigned preset and must not be presented as
+runtime-measured values or replaced with invented zeros. Observed values match
+their preset counterparts at float32 precision. Full reconstructed human inputs
+and captured conversion inputs remain distinct fixtures; no new game capture is
+implied.
 
 | Pair | NPC weight (0..100) | Arm girth | Thigh girth | Belly | Breast | Torso girth | Waist narrowing |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -42,8 +57,9 @@ response in this geometric envelope. Alpha transparency, skinning, lighting and
 the actual posed silhouette remain outside that measurement. Do not call these
 model-space lengths live world measurements or rendered visible volume.
 
-Raw complete snapshots, input hashes and section reconstruction are retained in
-the external `manual-pairs-live-20261030-2/` evidence directory.
+Raw configured-source snapshots, input hashes and section reconstruction are
+retained in the external `manual-pairs-live-20261030-2/` evidence directory.
+The full-preset reconciliation is retained separately in `real-pair-inputs/`.
 
 ## First shape iteration
 
@@ -63,8 +79,10 @@ the external `manual-pairs-live-20261030-2/` evidence directory.
    Recheck axilla/under-breast joins and mixed head/torso geometry.
 4. Compare isolated targets at0/.25/.5/.75/1 and finite combinations, for both
    sexes and weights0/.5/1. The same effective human vector must produce exactly
-   the same wolf vector in native code and the Morphbench addon. Never multiply
-   already weighted human values by NPC weight a second time.
+   the same wolf vector in native code and the Morphbench addon. Build the human
+   comparison mesh from the complete qualified human input vector, preserving
+   which values were observed and which were reconstructed from the preset.
+   Never multiply already weighted human values by NPC weight a second time.
 5. Only after offline range/quality checks pass, install a complete candidate
    and repeat the accepted twelve-actor scene, followed by roundtrip/save-load
    checks. Keep layout110/300/320, AI/collision Off before fixture creation.

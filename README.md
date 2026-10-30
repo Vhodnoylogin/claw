@@ -1,10 +1,12 @@
 # CLAW — Configurable Lycanthrope Anatomy and Weight
 
-The [30 October SE core Git baseline](release/SE-Core-20261030.md) freezes the
-tested Base and Distribution payloads after the owner's paired game inspection.
-Human-driven linkage works; visible contrast is still modest. Stronger thin and
-bulky endpoints, breast shape, fur colour and physics are the next development
-work. This checkpoint does not publish another Nexus release.
+The [30 October technical Git release](release/SE-Core-20261030.md) provides two
+downloads: one working CLAW installer and one `test_CLAW` comparison-data archive.
+The working installer combines body resources, optional human morph linkage and
+optional OBody source integration. The owner accepted this technical baseline;
+visible thin/bulky contrast remains too modest for the intended product result.
+Stronger shapes, breast naturalness, fur colour and physics are subsequent work.
+This Git release is separate from the historical Nexus 0.6.2.0 base-only release.
 
 A werewolf body with named morphs and distinct male/female shapes. The first release
 uses each sex's low-weight (`_0`) shape at both weight endpoints. Distinct weight
@@ -15,23 +17,21 @@ its original body meshes are not needed at runtime. The original donor meshes
 remain pinned inputs for rebuilding CLAW. Inclusion of our changes in Elegant is
 not required for CLAW to develop as a separate mod.
 
-The first published release is **resources for modders**: meshes, named morphs and
-the base plugin. OBody integration and automatic body distribution are planned for
-later releases. The packaged [resource contract and NiOverride example](release/CLAW.en.md)
-document the files, morph names and integration responsibilities.
+The historical Nexus 0.6.2.0 release supplies **resources for modders**: meshes,
+named morphs and the base plugin. Its [resource contract and NiOverride example](release/CLAW.en.md)
+describe that package. The newer technical Git release additionally includes the
+tested native human-to-wolf linkage inside the single working installer; it does
+not require a separately installed Distribution mod.
 
 See the [future plans](docs/roadmap.md) for collider alignment, ear and breast
 physics, colliders that follow morphs, seam repairs, OBody or equivalent support,
 a first-person VR body, and the separate adult anatomy/physics add-on.
 
-Post-release development starts with an [offline distribution core](docs/distribution.md)
-and [measured collider candidates](docs/colliders.md). Automatic population variety
-is the primary goal: ordinary human presets must determine the wolf through
-morph-to-morph conversion, without requiring wolf presets. Geometry repair,
-ear/tail and breast physics, morph-responsive colliders and the transformation
-link proceed alongside the explicitly requested distinct weight endpoints.
-On 28 October the owner resumed parallel physics, first-person VR body and
-morph-quality development. The prepared flat-game OBody test remains separate.
+The [distribution core](docs/distribution.md) and [measured collider candidates](docs/colliders.md)
+remain documented separately. Ordinary human presets determine the linked wolf
+through morph-to-morph conversion, without requiring wolf presets. Geometry,
+ear/tail and breast physics, morph-responsive colliders and distinct weight
+endpoints continue as development work.
 The optional [typed preset companion and authoring resources](docs/presets.md)
 are development candidates; runtime acceptance is pending.
 The native [human/beast morph link](docs/transformation.md) derives a beast morph
@@ -40,17 +40,15 @@ presets; there are no separate wolf presets in this path. Real SE checks have
 exercised six human actors of both sexes, transformations and returns, source
 preservation, save/load and two actors created directly as wolves. Numeric
 conversion is working; visible proportional quality remains under development.
-Measured CBBE/3BA/HIMBO resource-family conversions are development data. The older
-exact preset-pairing experiment is historical.
-The nearest functional SE release now prioritizes stable linkage on the published
-0.6.2.0 bodies with the official installed RaceMenu. The current development
-configuration passed the later core117 checks and the owner's six-actor manual
-transformations. The earlier transformation failure remains retained evidence,
-not the current result. The manual inspection rejected weak visual contrast and
-female breast/underarm geometry. A silent shutdown exception was also reproduced
-without the Distribution DLL and integration plugin; it is not established as a
-CLAW-specific fault. A separate RaceMenu repair is not a required CLAW dependency.
-New body geometry, physics and VR remain separate trials.
+The working installer offers measured HIMBO + CBBE or HIMBO + 3BA family mappings.
+The older exact preset-pairing experiment is historical. The frozen repaired
+resources and linkage passed core117 and born33 with the official installed
+RaceMenu; the [verification scope](docs/verification-20261030.md) distinguishes
+these mechanism checks from artistic acceptance and later installation checks.
+The DLL accepts only Skyrim SE 1.7.104.0 / SKSE 2.3.1. Other SE/AE/VR native
+runtimes remain unqualified; the separate compiled VR candidate is not a
+supported binary in the working archive. A separate RaceMenu repair is not a
+required CLAW dependency.
 The selected breast/axilla and male collar edits now have a [reproducible baked
 authoring recipe and minimal linked-SE candidate builder](docs/core-candidate.md).
 They reproduce the exact repaired-surface trial inputs; final owner visual
@@ -91,45 +89,35 @@ everything rests on: anatomy is set by morphs, mass by weight. The trick is the 
 (Caliente's Beautiful Bodies Enhancer) and HIMBO (Highly Improved Male Body Overhaul) use:
 an ordinary name whose initials spell a fitting word.
 
-**`CLAW` is the prefix of the whole family.** Only the base mod carries the full expansion;
-the others go by the short name and still read as one group and sit together in the list:
+The current two downloads install under these exact names:
 
-| Component | Scope |
+| Installed mod | Scope |
 |---|---|
-| `CLAW - Configurable Lycanthrope Anatomy and Weight` | bodies of both sexes with identical low/high weight endpoints per sex, a morph file **without adult sliders**, and a plugin with the weight slider and the female model |
-| `CLAW - Distribution` | development candidate: human morph linkage without beast presets; optional legacy independent assignment; game acceptance pending |
-| `CLAW - Anatomy` | the adult add-on: **morph files only**, five megabytes |
-| `CLAW - VR` | what only makes sense in a headset: dense capsules for the hands, a beast body for the player, HIGGS, PLANCK and swinging-physics settings |
+| `CLAW - Configurable Lycanthrope Anatomy and Weight` | Both-sex body resources with equal low/high weight endpoints, base named morphs and plugin; optional native linkage, selected human-family mapping and OBody source host in one FOMOD |
+| `test_CLAW - Human and Werewolf Comparison` | Isolated test-only NPC definitions, six human contrast presets, effective inspection/OBody settings and a twelve-actor scene recipe; installation creates no scene |
 
-**Published 0.6.2.0 contains the base mod only.** Distribution is a separate development
-candidate; `CLAW - Anatomy` and `CLAW - VR` are deferred. Version 0.6.2.0 retains both weight filenames
-for compatibility, with the same `_0` shape at every weight for each sex. Named morphs
-remain supported. This does not establish untested platform or physics compatibility.
+The [release page](release/SE-Core-20261030.md) lists both download names, sizes,
+hashes and exact compatibility. GitHub uses hyphenated transport filenames;
+the archive labels and local filenames preserve the full names with spaces.
+Corresponding native source is nested under the working archive's `Source/`
+and is not installed into the game.
 
-Local test and legacy draft folders are outside the published package:
+Native MO2 installation/accounting and independent settlement verified 33 working
+files for the installed HIMBO + 3BA/OBody selection and eight test files. The
+CLAW and legacy SE-Testing profiles use these two mods; Morphbench's enabled
+composition remains unchanged. The 16 replaced CLAW folders are retained outside
+MO2 with full byte-verified backups. This consolidation launched no game and adds
+no compatibility or visual acceptance. Keep third-party dependencies as separate
+mods and the test archive in isolated testing profiles.
 
-| Folder in MO2 | What it actually is |
-|---|---|
-| `test_CLAW - Companion` | a **test mod** providing a female werewolf fixture. Lives in `tests\`, never ships, removed after a run |
-| `CLAW - OBody Presets` | historical draft folder; the supported new authoring contract is [typed independent CLAW presets](docs/presets.md), not OBody's human preset pool |
+**Historical Nexus 0.6.2.0 contains the base only.** It retains both weight
+filenames with the same `_0` shape at every weight per sex. The current repaired
+Git baseline also has equal endpoints. Named morphs remain available, without
+establishing untested platform or physics compatibility.
 
-The difference is not size but responsibility: a released mod answers to the player, a test mod
-only to us, and a draft answers to no one.
-
-The split between the base and adult versions is made **by the morph file, not by geometry**:
-the geometry is identical, but the base version's morph file has no crotch sliders at all, so
-there is nothing to raise them with.
-
-And that geometry sits **entirely under the skin** at rest: 27 of the 442 sheath vertices and
-50 of the 444 scrotum vertices stay outside, and those are the rim seam, which has to lie on
-the surface or there would be a hole in its place. So without the adult add-on the content
-does not exist in game — not "hidden for now", but literally unreachable.
-
-Why not cut it by geometry: the shape lives **inside** the body file, and a mod manager
-overrides whole files. You cannot add a shape to someone else's mesh, so "adult geometry
-separately" would mean a second copy of all four bodies — thirty-four megabytes for eight
-hundred vertices. There is one real alternative: make the anatomy a wearable item, the way SOS
-and ABC do; their mesh weighs fifty kilobytes. That is a goal, not today.
+Anatomy and the first-person VR body are [future roadmap work](docs/roadmap.md),
+not additional currently shipped mods. [Typed independent wolf presets](docs/presets.md)
+remain an optional authoring contract separate from automatic human linkage.
 
 ## What it is, and what it is not
 
@@ -151,7 +139,7 @@ for the donor permission and its limits.
     docs\        how it works and why
     work\        unpacked and intermediate files, outside the repository, reproducible
     assets\      donor meshes and built plugins - in the repository through Git LFS
-    tests\       test material: mods and plugins that never ship
+    tests\       test fixtures and authoring inputs; the separate test_CLAW archive uses selected data
     dist\        release archives, outside the repository
 
 **Binary files are versioned through Git LFS regardless of weight.** Git stores a full copy of
@@ -195,6 +183,15 @@ journal, what the comparison's answer means, and how to add your own step.
 The history of journal edits is the git history: `git log -p recipes/build.json`.
 
 ## How it is released
+
+The current two-download Git release is reproduced by
+`scripts/build-unified-release.py` and `scripts/build-test-fixture-package.py`.
+They preserve the pinned runtime payloads, validate the five installer selections
+and keep test data separate. See [the dated release contract](release/SE-Core-20261030.md)
+and [installer notes](release/unified-installer/README.md). Packaging itself never
+installs, starts the game or publishes a release.
+
+The historical family-version packaging workflow remains:
 
     python scripts/release.py [--list]
 
