@@ -50,3 +50,6 @@
 *.yaml  text
 *.json  text
 *.md    text
+
+# Preserve exact tested release payload bytes, including upstream notices.
+assets/release/se-core-20261030/** -text -whitespace

@@ -35,6 +35,10 @@ All six repaired body resources reproduce the hashes in the frozen surface recip
 Installation used the actual FOMOD selection and native MO2 archive accounting.
 
 These results establish fundamental linkage and persistence. Distinct numbers
-do not establish sufficiently expressive or natural rendered shapes. Owner
-textured visual acceptance, physics, VR and other executable versions are not
-certified. Publication is a separate owner decision.
+do not establish sufficiently expressive or natural rendered shapes. The owner
+then inspected adjacent human/wolf pairs in the game, reported weak visible
+differences and requested a Git release freeze with shape improvements in the
+next development branch. The [dated baseline](../release/SE-Core-20261030.md)
+preserves those exact payloads and the known limitation. Natural rendered shape,
+physics, VR and other executable versions are not certified. Nexus publication
+is a separate owner decision.

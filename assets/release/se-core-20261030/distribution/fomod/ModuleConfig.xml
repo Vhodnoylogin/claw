@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='utf-8'?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+  <moduleName>CLAW Distribution — linked SE candidate</moduleName>
+  <moduleDependencies operator="And">
+    <fileDependency file="CLAW.esp" state="Active" />
+    <fileDependency file="RaceMenu.esp" state="Active" />
+  </moduleDependencies>
+  <requiredInstallFiles>
+    <folder source="00 Core" destination="" priority="0" />
+  </requiredInstallFiles>
+  <installSteps order="Explicit">
+    <installStep name="Declare installed human bodies">
+      <optionalFileGroups order="Explicit">
+        <group name="Choose your actual body resources" type="SelectExactlyOne">
+          <plugins order="Explicit">
+            <plugin name="HIMBO 5.8 male + CBBE 2.0.3 female">
+              <description>Select only if these are your installed human body resources. This declares the conversion mapping; it does not choose a preset or enable physics. No automatic body-resource detection is performed.</description>
+              <files>
+                <folder source="10 Human Family/HIMBO-and-CBBE" destination="" priority="0" />
+              </files>
+              <typeDescriptor>
+                <type name="Optional" />
+              </typeDescriptor>
+            </plugin>
+            <plugin name="HIMBO 5.8 male + 3BA 2.48 female">
+              <description>Select only if these are your installed human body resources. This declares the conversion mapping; it does not choose a preset or enable physics. No automatic body-resource detection is performed.</description>
+              <files>
+                <folder source="10 Human Family/HIMBO-and-3BA" destination="" priority="0" />
+              </files>
+              <typeDescriptor>
+                <type name="Optional" />
+              </typeDescriptor>
+            </plugin>
+          </plugins>
+        </group>
+      </optionalFileGroups>
+    </installStep>
+    <installStep name="Optional wild-werewolf source generation">
+      <optionalFileGroups order="Explicit">
+        <group name="OBody integration" type="SelectAny">
+          <plugins order="Explicit">
+            <plugin name="Originally-beast OBody source integration">
+              <description>Installs the start-enabled CLAW source host for eligible actors born as werewolves. Requires active OBody.esp and its full dependency chain. Ordinary human presets remain owned by OBody. Skip to omit the host entirely. Final repaired-surface acceptance is pending.</description>
+              <files>
+                <folder source="20 OBody Source" destination="" priority="0" />
+              </files>
+              <typeDescriptor>
+                <dependencyType>
+                  <defaultType name="NotUsable" />
+                  <patterns>
+                    <pattern>
+                      <dependencies operator="And">
+                        <fileDependency file="OBody.esp" state="Active" />
+                      </dependencies>
+                      <type name="Optional" />
+                    </pattern>
+                  </patterns>
+                </dependencyType>
+              </typeDescriptor>
+            </plugin>
+          </plugins>
+        </group>
+      </optionalFileGroups>
+    </installStep>
+  </installSteps>
+</config>

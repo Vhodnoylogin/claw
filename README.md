@@ -1,5 +1,11 @@
 # CLAW — Configurable Lycanthrope Anatomy and Weight
 
+The [30 October SE core Git baseline](release/SE-Core-20261030.md) freezes the
+tested Base and Distribution payloads after the owner's paired game inspection.
+Human-driven linkage works; visible contrast is still modest. Stronger thin and
+bulky endpoints, breast shape, fur colour and physics are the next development
+work. This checkpoint does not publish another Nexus release.
+
 A werewolf body with named morphs and distinct male/female shapes. The first release
 uses each sex's low-weight (`_0`) shape at both weight endpoints. Distinct weight
 endpoints are now in development; the optional Anatomy add-on remains deferred.

@@ -1,0 +1,243 @@
+{
+  "schemaVersion": 1,
+  "family": "CLAW",
+  "releaseId": "se-core-20261030",
+  "kind": "Owner-requested Git release baseline; not a Nexus publication",
+  "sourceCommit": "9b36b0063c5f44fef1b944a582f28b3833e7d9d9",
+  "nativeSourceCommit": "078510a8877a0fb1487ffa4abb84eeab342edc04",
+  "runtime": "SkyrimSE1.7.104.0 / SKSE2.3.1",
+  "packages": [
+    {
+      "component": "base",
+      "archive": "CLAW-Base-SE-Core-Candidate-20261030.zip",
+      "archiveSha256": "50f02d782e479c75d8f957d9d2beec841bd02f9580529a8917e901eae5a70ad4",
+      "archiveBytes": 23514199,
+      "files": [
+        {
+          "path": "CLAW.esp",
+          "sha256": "cac9d75760dfda81315c760dd6769958eb125958c93e69806855b3073b768739",
+          "bytes": 810
+        },
+        {
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf.tri",
+          "sha256": "3fd1ce64adafa5d77a510d1829077b9b3aa06a23eb741377a4803432416fb28b",
+          "bytes": 2591574
+        },
+        {
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_0.nif",
+          "sha256": "033c9828661e371d4d9eadbf85202235391ccd31408777e149631d57baafa3ff",
+          "bytes": 8877676
+        },
+        {
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_1.nif",
+          "sha256": "033c9828661e371d4d9eadbf85202235391ccd31408777e149631d57baafa3ff",
+          "bytes": 8877676
+        },
+        {
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf.tri",
+          "sha256": "1e2dd49812870620072d3a426124a957486f292504d5173978fd3b5edb8db285",
+          "bytes": 2557972
+        },
+        {
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_0.nif",
+          "sha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef",
+          "bytes": 8959527
+        },
+        {
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_1.nif",
+          "sha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef",
+          "bytes": 8959527
+        },
+        {
+          "path": "README.md",
+          "sha256": "44bedefeb76b2ecba48c730b1b6794645e96c14e6108068822d8cb7c471cf09e",
+          "bytes": 1404
+        },
+        {
+          "path": "README.ru.md",
+          "sha256": "984d31e2816d927bd9bd7d80be3e4b675bbf94f718879e5888d6fbc23bc5a06d",
+          "bytes": 2096
+        }
+      ]
+    },
+    {
+      "component": "distribution",
+      "archive": "CLAW-Distribution-SE-Core-Candidate-20261030.zip",
+      "archiveSha256": "80cfec874d90c1e6a925f3ceed1eac2ced12a3d047eb668f560bb484cd66f1c0",
+      "archiveBytes": 1417634,
+      "files": [
+        {
+          "path": "00 Core/NOTICES/CLAW-donor-permission-record.md",
+          "sha256": "4cd36c887f51ea682cc925a8a6cf88502dd0bf0213f992161275a814d2ca9724",
+          "bytes": 4598
+        },
+        {
+          "path": "00 Core/NOTICES/CommonLibSSE-NG/COPYING.txt",
+          "sha256": "72d2f09334f8b87dded94a833ba7da05e5280e77a037ca23b251f96eae4cf719",
+          "bytes": 35562
+        },
+        {
+          "path": "00 Core/NOTICES/CommonLibSSE-NG/EXCEPTIONS.md",
+          "sha256": "d3a3ec90e21ae118d3653d0834a2f6d1e6d32b773cc185023824992ad4bdcfce",
+          "bytes": 2095
+        },
+        {
+          "path": "00 Core/NOTICES/CommonLibSSE-NG/extern/openvr/LICENSE",
+          "sha256": "f56ff606104d4ef18e617921a75c73ad73b5a1a1d70c69590c29de16919e04ad",
+          "bytes": 1488
+        },
+        {
+          "path": "00 Core/NOTICES/CommonLibSSE-NG/licenses/LICENSE-hde64.txt",
+          "sha256": "f9fdcbff6e0ff5cef66b22742777a34bebc48975c72b6ec874642745af9a36a3",
+          "bytes": 1363
+        },
+        {
+          "path": "00 Core/NOTICES/CommonLibSSE-NG/licenses/LICENSE-MIT.txt",
+          "sha256": "253d41f9a66509071e71deeafaad01d9cd5e1d0e235f38d988f33d4f54cb0fe2",
+          "bytes": 1095
+        },
+        {
+          "path": "00 Core/NOTICES/CORRESPONDING-SOURCE.json",
+          "sha256": "0e4e7df65d110eaf9d148f0b87b490ba96d9e0c52f1f8568eb518222098c5e86",
+          "bytes": 415
+        },
+        {
+          "path": "00 Core/NOTICES/directxmath/copyright",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+          "bytes": 1141
+        },
+        {
+          "path": "00 Core/NOTICES/directxtk/copyright",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+          "bytes": 1141
+        },
+        {
+          "path": "00 Core/NOTICES/fmt/copyright",
+          "sha256": "a65fcc5a1095fc33cc37e4fff69366e49d7e92f613558a2b95ed1b70e33758b4",
+          "bytes": 1094
+        },
+        {
+          "path": "00 Core/NOTICES/nlohmann-json/copyright",
+          "sha256": "46a65cffd1ea955132d95a8dd921640714a8d6b537d2e4e482d31145ae95b603",
+          "bytes": 1076
+        },
+        {
+          "path": "00 Core/NOTICES/OBODY-API-NOTICE.md",
+          "sha256": "65a10ef19c7baef07ad1f8071730b356dabda49c754493a2b8452637ae72e891",
+          "bytes": 903
+        },
+        {
+          "path": "00 Core/NOTICES/OBody-public-API.h",
+          "sha256": "42a899e88ba53bcc673d2d8e9513e839f0d661ee1e002514fe3551827a98681d",
+          "bytes": 78594
+        },
+        {
+          "path": "00 Core/NOTICES/pugixml/LICENSE.md",
+          "sha256": "0d0b3772af2fa45628a548a3b34583707ebcc68bb6f83ec48ca273aab4a510f1",
+          "bytes": 1079
+        },
+        {
+          "path": "00 Core/NOTICES/rapidcsv/copyright",
+          "sha256": "8e60b029b7a16c4087af1e8dc695e4412f36f46819aa2fe1ef445e7776e40594",
+          "bytes": 1518
+        },
+        {
+          "path": "00 Core/NOTICES/SimpleIni/copyright",
+          "sha256": "1f8d19cba3d929f45f74b8e7cdf84b2fee5b96be69d08d0084ed728316f9f2c2",
+          "bytes": 1089
+        },
+        {
+          "path": "00 Core/NOTICES/SKEE-IPluginInterface.h",
+          "sha256": "875410dd22230f76a014a6841004e7d346f5fa1c748cfff695f9f495234da277",
+          "bytes": 22854
+        },
+        {
+          "path": "00 Core/NOTICES/spdlog/copyright",
+          "sha256": "d678c20826e1392578508e1c78649a1e3c31bda05ef4388d967dbd654461b140",
+          "bytes": 1323
+        },
+        {
+          "path": "00 Core/NOTICES/toml11/copyright",
+          "sha256": "b547d41695cdfbc1d054b5044578e476a0e9d756849f1e0cb3864cfc83e50a9e",
+          "bytes": 1077
+        },
+        {
+          "path": "00 Core/NOTICES/xbyak/copyright",
+          "sha256": "7e411d5c5d38501a504843f58afb6824439c828872b35d2ff1e892e73fd1a30d",
+          "bytes": 1501
+        },
+        {
+          "path": "00 Core/README.md",
+          "sha256": "1e73e1e2bb5cf06d51ef8ea3920f78790d724ec2e6bab17c48e55c11d3ad1f46",
+          "bytes": 2374
+        },
+        {
+          "path": "00 Core/README.ru.md",
+          "sha256": "2ef5b7bdebb3c5194d997f74b4733580b43b1f65212d516ad44421aba3c1ce9d",
+          "bytes": 4052
+        },
+        {
+          "path": "00 Core/Scripts/CLAWDistributionNative.pex",
+          "sha256": "c43b468a14dd0dcc02ee16c3da9d442f94c545ab95dc30c82de22be91cda32fb",
+          "bytes": 1514
+        },
+        {
+          "path": "00 Core/SKSE/Plugins/CLAWDistribution.dll",
+          "sha256": "16543ae9ef459599bb02fd912d6ab70fe8af4155fa821a6b1a56e440bfbf6e92",
+          "bytes": 3372032
+        },
+        {
+          "path": "10 Human Family/HIMBO-and-3BA/SKSE/Plugins/CLAW/MorphLinks.xml",
+          "sha256": "ea4113a1fbbe2c03734d64e8b0d84d4a64467fbd4181e1faf786c18ed0ddb253",
+          "bytes": 21046
+        },
+        {
+          "path": "10 Human Family/HIMBO-and-CBBE/SKSE/Plugins/CLAW/MorphLinks.xml",
+          "sha256": "d541d85458b7a2d8a965691d1bf14fd17773e22c8f993cf0f435c6302c8f77ce",
+          "bytes": 21048
+        },
+        {
+          "path": "20 OBody Source/CLAW - OBody Integration.esp",
+          "sha256": "3258246f77c1750974bdae25ef51d05e456414343e87d5686030f93ee988108c",
+          "bytes": 441
+        },
+        {
+          "path": "20 OBody Source/Scripts/CLAWOBodySourceHost.pex",
+          "sha256": "ddfd20791231439d1b46c2dadfe54f8b1a78e64950a52b2eb223f8857fd13dbc",
+          "bytes": 4017
+        },
+        {
+          "path": "fomod/info.xml",
+          "sha256": "1d2a31654763cda16dd0c710bdfde679cd5ce134d2a32efba9ee6e6ca4fc58a5",
+          "bytes": 343
+        },
+        {
+          "path": "fomod/ModuleConfig.xml",
+          "sha256": "5bb184ecfcdc090c37cf893cbd9b9124785e78f6d6768ab086a11b7da60325ba",
+          "bytes": 3419
+        }
+      ]
+    }
+  ],
+  "correspondingSource": {
+    "path": "corresponding-source/CLAW-SE-Candidate-Corresponding-Source-20261027.zip",
+    "sha256": "42913da00599cc6cc31b197c8600a32b9b37946fe3b111b58fa6e547f7faae21",
+    "bytes": 23490362
+  },
+  "verification": {
+    "core": {
+      "checks": 117,
+      "result": "passed"
+    },
+    "bornWolf": {
+      "checks": 33,
+      "result": "passed"
+    },
+    "manualOwnerReview": "Owner inspected paired human/wolf scene and authorized freezing this release in Git on2026-10-30; weak visible contrast remains an acknowledged limitation.",
+    "expressiveOrNaturalShapeAccepted": false,
+    "physicsQualified": false,
+    "VRQualified": false,
+    "AEGameTested": false
+  },
+  "scope": "Exact previously tested runtime payloads; no relabelled binary, new physics, new texture, new skeleton, or live installation in this freeze. Original candidate archive labels and metadata are intentionally retained."
+}
