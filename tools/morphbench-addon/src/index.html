@@ -3,33 +3,58 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CLAW human morph link</title>
+  <title>CLAW human/wolf comparison</title>
   <link rel="stylesheet" href="style.css">
   <script src="/web/addon-sdk.js" defer></script>
   <script src="catalog.js" defer></script>
   <script src="core.js" defer></script>
+  <script src="pair.js" defer></script>
+  <script src="input.js" defer></script>
+  <script src="preview-controller.js" defer></script>
   <script src="main.js" defer></script>
 </head>
 <body>
-  <h1>CLAW human morph link</h1>
-  <p>Preview the canonical mapping from <strong>aggregate applied human morph values</strong>. This input is manual data, not an OBody assignment or a game observation.</p>
+  <h1>CLAW human/wolf comparison</h1>
+  <p>One human input vector controls the human body and the derived wolf shape. Wolf outputs below are read-only. This is an offline preview.</p>
+  <p id="paired-support" class="muted">Checking independent preview capabilities…</p>
   <label for="profile">Human resource family</label>
   <select id="profile"></select>
   <p id="profile-info" class="muted"></p>
+  <label for="human-model">Human panel — exact catalog resource</label>
+  <select id="human-model"></select>
+  <label for="wolf-model">Wolf panel — exact catalog resource</label>
+  <select id="wolf-model"></select>
+  <div class="actions">
+    <button id="refresh-models" type="button" disabled>Refresh catalog</button>
+    <button id="open-pair" type="button" disabled>Open comparison pair</button>
+    <button id="close-pair" type="button" disabled>Close comparison pair</button>
+  </div>
+  <p id="pair-status" class="muted">No comparison pair is open.</p>
+  <p class="muted">Declare the actual resource family and sex. Each panel uses its selected fixed NIF. For a weight-100 comparison select both matching _1 files. Intermediate neutral geometry weight is not interpolated.</p>
   <label for="human">Human values (finite JSON map)</label>
   <textarea id="human" rows="8" spellcheck="false">{}</textarea>
-  <label class="file-label" for="import">Import JSON file</label>
-  <input id="import" type="file" accept=".json,application/json">
-  <p class="muted">Omitted sources are zero. Values already include their human morph-key aggregation; do not multiply by NPC weight. Copy this input before changing models: v1 reloads the addon frame.</p>
+  <label class="file-label" for="import">Import human JSON, evidence fixture or BodySlide preset XML</label>
+  <input id="import" type="file" accept=".json,.xml,application/json,application/xml,text/xml">
+  <div id="preset-controls" hidden>
+    <label for="preset">Human preset</label><select id="preset"></select>
+    <label for="weight">Preset coefficient weight 0..1</label><input id="weight" type="number" min="0" max="1" step="0.01" value="1">
+    <p class="muted">Interpolate preset coefficients once. This control does not blend the selected NIF's neutral weight geometry.</p>
+  </div>
+  <p class="muted">Already-effective JSON coefficients are never multiplied by weight again. Names outside the wolf mapping still affect the human preview. Omitted names use preview zero; this is not evidence of an actual game value.</p>
+  <p id="input-provenance" class="muted"></p>
   <div class="actions">
     <button id="evaluate" type="button">Calculate</button>
-    <button id="apply" type="button" disabled>Apply linked body targets</button>
-    <button id="reset" type="button" disabled>Zero linked body targets</button>
+    <button id="apply" type="button" disabled>Apply to both previews</button>
+    <button id="reset" type="button" disabled>Zero owned wolf outputs</button>
   </div>
+  <label class="inline"><input id="live" type="checkbox" disabled> Apply human slider edits live</label>
+  <label for="filter">Filter full human morph controls</label><input id="filter" type="search" placeholder="Morph name">
+  <div id="shared-sliders"></div>
   <p id="status" role="status" aria-live="polite">Connecting to Morphbench…</p>
   <p class="muted">The current wolf catalog is nonnegative. Negative sums clip at zero; slim reductions without an opposed wolf morph cannot be reproduced. This preview does not prove game physics or visual quality.</p>
   <p id="provenance" class="muted"></p>
   <p id="unmapped" class="muted"></p>
+  <details><summary>All human-only input names</summary><p id="unmapped-names" class="muted"></p></details>
   <div id="results"></div>
 </body>
 </html>

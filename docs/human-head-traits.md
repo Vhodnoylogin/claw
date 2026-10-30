@@ -90,6 +90,70 @@ Standalone presets can explicitly set these public traits without inventing
 human counterparts. Tail/ear rest morphs remain separate from physics ownership,
 stiffness, animation and morph-responsive collision fitting.
 
+## Frozen trait-field geometry audit
+
+The 30 October offline audit measured thirteen actual fields in both sexes:
+the five `CLAWHead*` controls above, three `CLAWTail*` controls,
+`CLAWArmClawLong`, `CLAWLegClawLong`, `CLAWArmPawSize`, `CLAWLegPawSize` and
+`CLAWLegDigitigrade`. All 31 stored shapes received support counts/bounds,
+maximum/P95 unit displacement, skin/fur summaries and cross-field overlap.
+The staged four NIFs and two TRIs matched the SHA-256/size records in
+`assets/release/se-core-20261030/claw-build.json`; each sex's `_0`/`_1` files
+were also verified byte-identical. Exact resource SHA-256 values are:
+
+| Frozen resource | SHA-256 |
+|---|---|
+| Male `_0` and `_1` NIF | `cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef` |
+| Female `_0` and `_1` NIF | `033c9828661e371d4d9eadbf85202235391ccd31408777e149631d57baafa3ff` |
+| Male TRI | `1e2dd49812870620072d3a426124a957486f292504d5173978fd3b5edb8db285` |
+| Female TRI | `3fd1ce64adafa5d77a510d1829077b9b3aa06a23eb741377a4803432416fb28b` |
+
+Primary PyNifly NIF/TRIP reads were cross-checked by the existing complete
+`morph_quality.decode_fields` decoder. Every primary-retained record agreed;
+203 tiny serialized pairs omitted by the primary reader across the female TRI
+were retained. That reader omits triples whose components are all at most
+0.0001 in magnitude. Support here means exact nonzero decoded displacement.
+
+The **breast-expansion-support** witness consists of the 6,690 vertices with
+nonzero actual `CLAWTorsoBreastSize` displacement, spanning `head`, `body` and
+four fur/blend surfaces. It is not a complete anatomical breast segmentation;
+neither the shape name `head` nor Head-bone weights define anatomical head.
+Overlap alone cannot establish which field extends outside its intended region:
+the breast field may also include neck/head transition vertices. Do not zero
+the entire witness as an automatic repair. First curate anatomical/protected
+regions and test continuity of both fields separately and together.
+
+| Head field on this witness | Vertices moved | Maximum unit displacement |
+|---|---:|---:|
+| EarSize / EarTilt | 0 | 0 |
+| MuzzleLong | 1,594 | 1.734167 |
+| MuzzleWide | 1,596 | 2.255332 |
+| HeadSize | 4 | 0.438434 |
+
+Both muzzle fields move witness skin and multiple fur/blend layers; HeadSize
+moves four `fur_belly` witness vertices. Ear fields avoiding this witness do not
+certify the remaining breast or its attachments. Future head links and addon
+controls therefore require an explicit anatomical region, protected torso/witness
+vertices and frozen fur-root correspondences before unrestricted exposure.
+Require zero unintended movement on those protected regions and check combined
+head/muzzle fields. Paw/claw overlap also requires combined-field checks; tail
+and claw mapping still needs justified human inputs. Full human face/head capture
+is outside the current body fixtures.
+
+All thirteen traits were zero in the six historical linked wolf observations:
+this is a latent future constraint, not an established current runtime failure.
+Measurements are unskinned NIF-root model units at coefficient 1, with shape
+global transforms applied and material alpha ignored. No posed, rendered,
+attachment, animation or contact result is claimed.
+
+External evidence, relative to the workspace root:
+`Builds/claw-morphbench-addon-20261030/trait-field-audit/report.md`,
+`trait-field-audit.json`, `input-hashes.json` and `validation.json` in that folder.
+The compact audit JSON SHA-256 is
+`07f360526bdeb4e0bcbb8178800cfda1098d09676f6ac55eca0f63482913f932`.
+Input hashes and shape/surface/support totals were rechecked. Generated geometry
+and audit data remain outside Git.
+
 ## Capture, persistence and implementation order
 
 1. Inventory one pinned human head resource per race/sex: base mesh/TRIs, HeadParts,

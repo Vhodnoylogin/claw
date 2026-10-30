@@ -120,6 +120,8 @@ Human head/face links and traits without a counterpart are specified separately
 in [human-head-traits.md](human-head-traits.md). Ear measurements may drive ears;
 unsupported tail/claw controls remain explicit profile choices, with no arbitrary
 belly-to-tail or eyebrow-to-claw rule.
+Head capture and human-driven ear/tail/claw source selection remain separate open
+implementation tasks; the paired body-preview addon does not complete them.
 
 ## Proposed small releases
 

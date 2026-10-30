@@ -3,6 +3,14 @@ body { margin: 16px; max-width: 64rem; }
 h1 { font-size: 1.25rem; margin: 0 0 12px; }
 label { display: block; font-weight: 600; margin-top: 12px; }
 select, textarea { box-sizing: border-box; width: 100%; padding: 8px; }
+input[type="search"] { box-sizing: border-box; width: 100%; padding: 7px; }
+.inline { display: flex; gap: 8px; align-items: center; }
+.morph-row { display: grid; grid-template-columns: minmax(7rem,1fr) minmax(6rem,1fr) 6.5rem; gap: 8px; align-items: center; border-top: 1px solid #8884; padding-top: 7px; font-size: 12px; }
+.morph-row span { overflow-wrap: anywhere; }
+.morph-row input { min-width: 0; width: 100%; box-sizing: border-box; }
+.morph-row small { grid-column: 1 / -1; font-weight: normal; opacity: .72; overflow-wrap: anywhere; }
+.morph-row[hidden] { display: none; }
+#shared-sliders { max-height: 32rem; overflow: auto; margin-top: 8px; }
 textarea { font: 12px/1.5 ui-monospace, Consolas, monospace; }
 .muted { opacity: .76; font-size: 12px; overflow-wrap: anywhere; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }

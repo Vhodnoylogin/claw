@@ -24,7 +24,7 @@ BODY_TARGETS = frozenset((
     "CLAWTorsoChestSize", "CLAWTorsoFlankWidth", "CLAWTorsoGirth",
     "CLAWTorsoNeckGirth", "CLAWTorsoShoulderGirth", "CLAWTorsoWaistNarrow",
 ))
-ASSETS = ("addon.json", "index.html", "core.js", "main.js", "style.css")
+ASSETS = ("addon.json", "index.html", "core.js", "pair.js", "input.js", "preview-controller.js", "main.js", "style.css")
 
 
 def identifier(value: str) -> bool:

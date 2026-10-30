@@ -1,118 +1,140 @@
-# CLAW human morph link — Morphbench addon
+# CLAW human/wolf comparison — Morphbench addon
 
-This first consumer previews the current `distribution/profiles/MorphLinks.xml`
-with Morphbench's documented browser SDK v1. It is an independent CLAW tool;
-it imports no Morphbench backend, native module, private viewer objects or DOM.
-It does not install or alter the game, MO2, Distribution, human presets or OBody.
+This independent CLAW tool opens a human body and a wolf body in two host-rendered
+preview panels. One full human morph vector controls the human preview and the
+canonical many-to-many CLAW conversion. Wolf outputs are derived and read-only;
+there is no inverse conversion. Rotating either panel follows the other through
+the host's native orientation link. Zoom, pan and framing remain independent.
 
-Requires the Morphbench `feature/addons` development host, baseline contract verified at
-`8751e0caea425f7b1e90846e18cea3f43afd73ac` (`docs/addons.md` and
-`web/addon-sdk.js`). The public 0.8.0 archive does not supply this host.
+The consumer uses the documented additive API v1 independent-preview contract.
+Published Application 0.8.0 lacks those capabilities: this addon displays a clear
+message and retains calculation/import, without trying to modify the main view.
+The inspected extension is in Morphbench's `feature/addon-multi-view` worktree;
+qualified host revision and actual paired-browser acceptance are still pending.
+An API number alone does not prove that the extension is present.
+The dev-004 pilot opened the actual male HIMBO/CLAW pair in the isolated source
+host. Browser import/apply acceptance remains incomplete after a file-chooser
+timeout and a reported user stop of computer control; offline suites are not
+substituted for that acceptance.
 
-The same dev-001 ZIP was subsequently exercised in an actual isolated browser
-against host `5fff9022abdc3c4cfd6a86c6e00f5901f4d14f43`: installation/enable,
-SDK/CSP connection, calculate/apply, family cleanup, preserved ears/tail, reset
-with invalid edited JSON and atomic missing-target refusal passed. Synthetic
-full/missing-target NIF/TRIP fixtures were used; this is host integration evidence,
-not a real-body or game visual acceptance.
-
-Host `5fff902` adds capability-discovered `state.get/set/reset` and explicit
-disabled-package updates. Dev-001 still uses the smaller baseline API and does
-not restore its controls through that new state service. Statements below about
-missing update/storage support describe the baseline `8751e0c` host, not the
-newer capabilities. A later consumer slice can adopt them without automatic
-application to a newly opened model.
-
-## Build and verify
-
-From the CLAW repository root, with Python 3.12+ and Node.js 22+:
-
-```powershell
-python tools/morphbench-addon/build.py --output-dir 'D:/Skyrim VR Modding/Builds/claw-morphbench-addon-20261030'
-python -m unittest discover -s tools/morphbench-addon/tests -p 'test_*.py'
-node tools/morphbench-addon/tests/core.test.cjs 'D:/Skyrim VR Modding/Builds/claw-morphbench-addon-20261030/catalog.json'
-node tools/morphbench-addon/tests/sdk-integration.cjs 'D:/Skyrim VR Modding/Builds/claw-morphbench-addon-20261030/catalog.json' 'D:/Skyrim VR Modding/Repositories/morphbench/web/addon-sdk.js'
-```
-
-The output directory is required and must be outside the CLAW checkout. The
-standard-library builder reads the canonical XML, checks the current three
-families and body-target allowlist, preserves XML rule order, and generates
-`catalog.js` directly into a deterministic ZIP. ZIP member times, order, modes
-and stored bytes are fixed; the SDK is loaded from the host and is not copied.
-Only six local browser assets ship. The external `build-report.json` records
-the archive, XML, generator and evaluator SHA-256 hashes; `catalog.json` is an inspection/test snapshot.
-No generated mapping or ZIP needs to be added to Git.
-The SDK integration test executes the host's actual SDK unchanged in an offline
-DOM/message harness. It is not an installed-host, real-browser or visual test.
+This tool installs or edits no game, MO2 profile, Distribution DLL, human preset,
+texture or skeleton. It imports no Morphbench backend, private renderer or DOM.
+It is a separate addon ZIP, not part of either CLAW game package.
 
 ## Use
 
-Install the built ZIP through Morphbench's addon manager, explicitly enable it,
-and open its inspector tab. Open the intended CLAW body with the host's normal
-model controls. Select **CBBE 2.0.3**, **3BA 2.48**, or **HIMBO 5.8** explicitly;
-the addon does not infer a human resource family from a wolf filename or sex.
+1. Install the addon ZIP through Morphbench's addon manager, explicitly enable it
+   and open its inspector. Updating the same ID requires disabling it, using the
+   manager's update operation, and enabling it again. Dev-004 retains the original
+   `claw-human-link-dev-001` ID and uses version `0.2.0-dev.4`.
+2. Declare the actual human resources: **HIMBO 5.8 male**, **CBBE 2.0.3 female** or
+   **3BA 2.48 female**. Select the exact human and wolf catalog entries and click
+   **Open comparison pair**. The addon opens no models automatically.
+3. Import a full human coefficient JSON, a retained evidence-fixture JSON with
+   `humanValues` and optional per-name provenance, or a BodySlide preset XML.
+   Review the human controls and the read-only wolf calculation.
+4. **Apply to both previews** writes the human vector to the human model and
+   its mapped body outputs to the wolf. The optional **Apply human slider edits
+   live** switch enables subsequent human slider edits; it starts unchecked.
+5. **Zero owned wolf outputs** preserves the human vector, ears/tail and unrelated
+   wolf controls. **Close comparison pair** disposes this addon's two previews.
 
-Paste or import a JSON object of effective **aggregate human morph values**, for
-example HIMBO male heavy input:
+The controls expose all names in the loaded human TRI, with a filter. Imported
+human-only fields such as `Butt`, `BigButt` or `MuscleAbs` remain in the human
+preview even when no current CLAW rule uses them. The UI reports those names and
+their nonzero values separately from mapped output. It never silently filters a
+full human vector down to the configured conversion-source subset.
 
-```json
-{"BellyPot":0.5,"BellyRounder":0.2,"TorsoBelly":0.6,"TorsoBellyChub":0.35}
+Resource family and sex are explicit declarations; filenames and available
+morphs cannot establish donor provenance. Changing family clears only previously
+acknowledged wolf outputs. Changing sex requires reopening matching resources.
+Changing a model selection disables Apply until that pair is explicitly opened.
+Scene notifications do not automatically apply coefficients.
+
+## Fixed geometry and two input modes
+
+Each preview uses the selected **fixed NIF**. The extension has no neutral
+low/high geometry-weight interpolation API. For a weight-100 comparison choose
+the matching human `_1` and wolf `_1` resources. A weight-30/50 actor shown on
+one endpoint has a known neutral-geometry mismatch; interpolating preset
+coefficients does not repair it.
+
+**Already-effective human JSON** is accepted as signed finite float32 numbers.
+It is never multiplied by weight again, including when an imported fixture has
+NPC-weight metadata. Omitted names use zero for this preview, not an assertion
+that an unobserved game value was zero. Full fixture imports preserve per-name
+provenance. A configured conversion-source capture is not a complete capture of
+every human TRI name or preset slider; reconstructed preset values must retain
+their separate provenance.
+
+**BodySlide preset XML** supplies `small`/`big` percentage endpoints. The selected
+preset's coefficients are normalized once and interpolated at the separate
+0..1 coefficient-weight control, including exact endpoint selection at 0 and 1.
+Missing endpoints default to zero. Signed and extrapolated coefficients remain
+valid; unknown sizes such as `both`, duplicate endpoints, unsafe names,
+nonfinite/overflowing values and DTD/entity declarations are rejected. Comments
+and standard predefined/numeric escapes pass to the browser's XML parser. This
+strict import policy does not reproduce every BodySlide/OBody dialect quirk.
+Preview interpolation uses normalized float32 endpoints and weight, selecting
+the exact endpoint when that weight is 0 or 1. Interior weights use the binary64
+convex sum `low*(1-weight) + high*weight`, bounded to the endpoint interval,
+then rounded once to float32. This avoids overflowing a float32 endpoint delta
+or cancelling a tiny endpoint. It is a declared preview reconstruction policy,
+not an observed SKEE aggregate or a claim of bit-identical runtime OBody arithmetic.
+
+Independent neutral geometry would require
+`V0 + weight*(V1-V0) + sum(effectiveCoefficient*TRIDelta)`. The selected fixed NIF
+does not implement its weight term. The current XML examples with equal preset
+coefficient endpoints therefore produce the same coefficients at every weight.
+
+## Arithmetic and lifecycle
+
+`core.js` remains byte-for-byte unchanged from dev-001. It implements native
+`MorphLink::compose`: float32 inputs/gains/caps, double accumulation in XML rule
+order, then `float32(clamp(sum,0,1)*cap)`. Cap multiplication follows clamping;
+NPC weight is absent. Negative sums can reach neutral but cannot create an
+opposed wolf deformation that does not exist in the current resource.
+
+The controller uses only explicit `previews.*` operations. Each immutable opaque
+preview ID serves as its binding generation, alongside a local session epoch.
+Both morph domains are validated before either write. Each host batch is atomic
+within its own model; the two calls are **not** a cross-model transaction. A
+partial or unknown write failure closes this addon's pair and reports failure.
+Failed cleanup retains exact owned handles for a retry. Another preview and the
+main model are never cleanup targets. Closed/replaced sessions invalidate queued
+work; unsent human vectors coalesce to the latest one.
+
+The native `previews.link(..., properties:["orientation"])` handles rotation.
+No pointer-event RPC echo loop is wired. `pair.js` retains its independent tested
+camera/state foundation, but the actual host adapter uses the native link.
+Model loads, frame lifetime and renderer disposal remain the host's contract.
+
+## Build and verify
+
+From CLAW with Python 3.12+ and Node.js 22+, using new external build directories:
+
+```powershell
+python tools/morphbench-addon/build.py --output-dir '<external-build>'
+python -m unittest discover -s tools/morphbench-addon/tests -p 'test_*.py'
+node tools/morphbench-addon/tests/core.test.cjs '<external-build>/catalog.json'
+node tools/morphbench-addon/tests/pair-state.test.cjs '<external-build>/catalog.json'
+node tools/morphbench-addon/tests/input.test.cjs
+node tools/morphbench-addon/tests/preview-controller.test.cjs
+node tools/morphbench-addon/tests/sdk-integration.cjs '<external-build>/catalog.json' '<host>/web/addon-sdk.js' '<external-real-pair-inputs>'
+node tools/morphbench-addon/tests/real-inputs.test.cjs '<external-build>/catalog.json' '<external-real-pair-inputs>'
 ```
 
-These are already applied human coefficients after morph-key aggregation,
-not BodySlide percentage endpoints, an OBody preset name or proof of an actual
-OBody assignment. No game capture occurs. Omitted source names mean zero;
-unmapped human names are reported and ignored. Non-numbers, nonfinite/overflowing
-float32 values, invalid or unsafe names, CLAW input names and unknown profiles
-are rejected. Negative human values remain valid inputs.
+The builder reads canonical `distribution/profiles/MorphLinks.xml`, validates all
+three resource families and preserves XML order. It emits nine local browser
+assets in a deterministic ZIP, with an external catalog and SHA-256 build report.
+The SDK is loaded from the host and is never copied into the package. The host's
+CSP blocks fetch/XHR, so the mapping is a classic local JS asset and imports use
+the browser File API.
 
-**Calculate** shows every linked target, the contributing sources and gains,
-the raw sum, clamping and final output. It reproduces native `MorphLink::compose`:
-float32 source/gain/cap, double accumulation in XML order, then
-`float32(clamp(sum, 0, 1) * cap)`. The cap multiplies the clamped sum; it is not
-an upper bound applied directly to the raw sum. NPC weight is never applied again.
-
-**Apply linked body targets** revalidates input, confirms a model is open and
-checks that every required target already exists in `morphs.get`. A missing
-target rejects the entire operation before any write. One `morphs.set` batch
-includes zeros for every recognized linked body target, even names with no source
-rules (for example neck girth, or HIMBO back width). Ears, tail and other
-non-body controls remain outside this addon's scope. When changing families in the same
-frame, formerly written targets absent from the new family are zeroed as well.
-This validates available target names, not the donor provenance or sex of a model.
-
-**Zero linked body targets** writes zero only to the selected sex's linked body
-targets and any targets this frame previously wrote. It never calls
-`morphs.reset`, never changes ears/tail/head/paw/claw/adult controls and does not
-restore values that existed before applying. SDK v1 has one shared preview
-value per name, without per-addon morph-key ownership; explicit apply/reset can
-therefore replace a user's values on those same linked body controls.
-
-The current catalog clamps output nonnegative. Source reductions with no opposed
-wolf deformation can reach zero but cannot reproduce slimmer-than-neutral
-geometry. This preview establishes mapping arithmetic only. It does not prove
-game assignment, rendered quality, runtime skinning, contacts or physics.
-
-## Development updates and current API gaps
-
-Baseline host `8751e0c` rejects an already installed ID (`alreadyInstalled`). Use
-a fresh external addon directory/configuration or a distinct development ID there.
-Host `5fff902` supports explicit update of a disabled package with the same ID:
-validate/install the new ZIP through the addon manager, then explicitly enable it.
-Rebuilding unchanged sources reproduces the same package. Editing installed files
-is never the update workflow; old hosts cannot read the newer registry format.
-
-Changing models recreates this frame and clears its memory. Dev-001 has not yet
-adopted the new host's namespaced state methods, so copy the JSON outside the frame
-before switching and paste/import it again, then reselect the family. The addon
-does not use opaque-origin local storage, private host state or browser internals.
-No automatic write follows a scene event or model reload. Model opening is left
-to the host in this slice. The newer `state.get/set/reset` service has tab-session
-scope, not durable project storage; future adoption must restore controls only.
-
-The SDK has no model revision token for a read/validate/write transaction;
-the host validates the entire `morphs.set` batch against its current morph list
-atomically. A navigation normally destroys this frame. Later anatomical metrics
-will additionally need skin weights and appropriate bind/node transforms: v1
-`scene.geometry` exposes bone names and model-space vertices, not those skinning
-data. Those gaps do not prevent this first mapping consumer.
+Tests cover arithmetic, scoped ownership, cleanup/closure races, partial failure,
+latest-input coalescing, family/sex changes, source provenance, complete real
+human fixture vectors and the unchanged actual SDK in a detached DOM/message
+harness. That harness is not an actual browser, renderer or installed-host test.
+The real fixture resources remain outside Git and are not redistributed.
+Textured paired-model appearance, user rotation in the qualified host, game
+assignment, physics and runtime skinning require their separate acceptance.
