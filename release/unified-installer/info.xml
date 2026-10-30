@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<fomod>
+  <Name>CLAW - Configurable Lycanthrope Anatomy and Weight</Name>
+  <Author>Vhodnoylogin</Author>
+  <Version>2026.10.30</Version>
+  <Description>CLAW base resources with optional human morph linkage for exact Skyrim SE 1.7.104.0. The retained core has acknowledged visual limits; physics and VR native support are separate development work.</Description>
+  <Website>https://github.com/Vhodnoylogin/claw</Website>
+</fomod>

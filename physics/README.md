@@ -345,6 +345,14 @@ or engine quest integration. This host intentionally leaves that acceptance open
 
 ## Build and offline checks
 
+`preflight.py` checks the current independent-weight schema-3 model against an
+explicit seven-role resource binding, the complete generated native header and
+host data source, and a supplied baseline provider snapshot. It retains a report
+when resources disagree; unchanged model identity alone cannot qualify new body
+bytes. See [the next-stage procedure](../docs/physics-next-stage.md) for its input
+format and the measured frozen-core mismatch. It never enables physics or turns
+offline source agreement into runtime qualification.
+
 From the CLAW repository:
 
 ```powershell

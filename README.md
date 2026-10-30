@@ -54,7 +54,9 @@ New body geometry, physics and VR remain separate trials.
 The selected breast/axilla and male collar edits now have a [reproducible baked
 authoring recipe and minimal linked-SE candidate builder](docs/core-candidate.md).
 They reproduce the exact repaired-surface trial inputs; final owner visual
-acceptance and final-package regression remain pending.
+assessment found modest contrast, while core117 and born33 passed on the final
+frozen runtime. The [next range plan](docs/morph-range-plan.md) addresses lean
+minima, bulky maxima and the actual paired game measurements.
 The [ear/tail physics source candidate](physics/README.md) uses existing XP32
 chains, an optional finite per-actor host and explicit provider qualification.
 A native observer follows actual effective morphs and NPC weight, refits capsules

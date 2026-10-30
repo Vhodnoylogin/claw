@@ -11,10 +11,13 @@ transformations with advancing frames and preserved human coefficients; the
 earlier render hang remains historical failure evidence, not the latest result.
 Official RaceMenu remains the dependency; a replacement RaceMenu is not required.
 
-After reviewing six paired Morphbench comparisons on 30 October, the owner called
-the result a good start and explicitly deferred the following improvements until
-after this release. That is preliminary offline feedback, not final game visual
-acceptance or permission to publish.
+The owner subsequently inspected paired actors in the game and accepted the
+technical projection as a GitHub release, while rejecting its weak visible
+contrast for product use. The frozen runtime cut is `claw/se-core-20261030`.
+The [range and release plan](morph-range-plan.md) records the actual twelve-actor
+measurements, proposed lean/bulky fields, control terminology and six small
+post-baseline releases. New feature development starts from the latest `main`
+on a separate branch; this does not publish another Nexus version.
 
 ## Post-release backlog
 
@@ -109,7 +112,7 @@ and fur vertices: preserving the mixed shape alone does not qualify head hiding.
 
 These development results do not change or requalify the published0.6.2.0 package.
 
-## Remaining acceptance for the next functional release
+## Accepted technical baseline and product work
 
 Completed: the six repaired surface files replay exactly; minimal archives,
 four FOMOD selections, actual native MO2 installation/accounting, dependencies
@@ -123,14 +126,14 @@ and requires a fresh world for born actors. See the
 [verification summary](verification-20261030.md) and
 [candidate build contract](core-candidate.md).
 
-- Obtain the owner's in-game visual acceptance of the selected repaired bodies,
-  especially textures, fur and axilla/neck joins. Offline comparisons do not
-  establish textured or animated appearance. The post-release shape improvements
-  above are not additional acceptance requirements for this release.
-- Finalize version labels, changelog and dependency/platform claims against the
-  accepted archive hashes, including the separate native corresponding source.
-  The current Distribution binary targets SE1.7.104 only; do not claim untested
-  AE/VR compatibility. Publication remains a separate owner decision.
+The owner has accepted a technical Git release with modest contrast. Improve the
+actual geometry range and obtain a new in-game visual assessment before claiming
+the stronger product outcome. Packaging is consolidated into one working-mod
+archive and one `test_` archive; the native corresponding source is nested in
+the working download and is not installed. The native binary still targets
+SE1.7.104 only; CommonLib configuration alone does not qualify AE/VR. See
+[unified-release.md](unified-release.md) and
+[test-fixture-package.md](test-fixture-package.md).
 
 The separate CLAW Morphbench addon has a first API v1 development package; it is
 not part of the game archives or a prerequisite for this release. Natural shape,
@@ -139,6 +142,7 @@ queued: an absent legacy wolf-preset directory should be logged as an empty
 optional catalog, rather than an error. Linked human-driven operation does not
 need that directory and passed with it absent.
 
-Prepare a fresh owner inspection scene with AI/collisions disabled and the
-retained rectangle. Recheck shared ownership; no old order, actor reference or
-toggle batch is reusable. Publication remains separate from testing.
+Future inspection scenes use the owner's accepted absolute QASmoke placement,
+pair distance110, pair pitch300 and row separation320. Capture AI/collision Off
+before the first fixture. Recheck shared ownership; no old order, actor reference
+or toggle batch is reusable. Publication remains separate from testing.

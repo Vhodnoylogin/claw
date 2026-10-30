@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "kind": "CLAW.unified-installer-source-contract",
+  "payloads": {
+    "base": "00 Base",
+    "native": "10 Native",
+    "families": [
+      "20 Human Family/HIMBO-and-CBBE",
+      "20 Human Family/HIMBO-and-3BA"
+    ],
+    "sourceHost": "30 OBody Source",
+    "correspondingSource": "Source"
+  },
+  "baseAlwaysInstalled": true,
+  "nativeChoice": {
+    "name": "Human morph linkage (Skyrim 1.7.104.0 only)",
+    "groupType": "SelectAny",
+    "flag": {"name": "humanLink", "value": "Yes"},
+    "defaultType": "NotUsable",
+    "orderedPatterns": [
+      {"minimumGameVersion": "1.7.104.1", "type": "NotUsable"},
+      {"minimumGameVersion": "1.7.104.0", "activeFile": "RaceMenu.esp", "type": "Optional"}
+    ],
+    "qualifiedNativeRuntime": "1.7.104.0",
+    "requiredSKSE": "2.3.1",
+    "requiredAddressLibrary": "13",
+    "dependencyChainQualifiedByInstaller": false
+  },
+  "familyStep": {
+    "visibleFlag": {"name": "humanLink", "value": "Yes"},
+    "groupType": "SelectExactlyOne",
+    "choices": ["HIMBO-and-CBBE", "HIMBO-and-3BA"]
+  },
+  "sourceHostStep": {
+    "visibleFlag": {"name": "humanLink", "value": "Yes"},
+    "groupType": "SelectAny",
+    "defaultType": "NotUsable",
+    "optionalWhenActiveFile": "OBody.esp"
+  },
+  "validPayloadSelections": [
+    {"native": false, "family": null, "sourceHost": false},
+    {"native": true, "family": "HIMBO-and-CBBE", "sourceHost": false},
+    {"native": true, "family": "HIMBO-and-CBBE", "sourceHost": true},
+    {"native": true, "family": "HIMBO-and-3BA", "sourceHost": false},
+    {"native": true, "family": "HIMBO-and-3BA", "sourceHost": true}
+  ],
+  "sourceDirectoryInstalled": false,
+  "primaryReferences": [
+    {
+      "file": "GenericModConfig5.0.xsd",
+      "url": "https://qconsulting.ca/gemm/ModConfig5.0.xsd",
+      "sha256": "2e57ed50807ec7c26a249091e94172e703e8fa4801c1fbfd77c370fd5f7dda85",
+      "examinedLineRanges": [
+        {"start": 118, "end": 120, "meaning": "gameDependency specifies a minimum game version"},
+        {"start": 142, "end": 160, "meaning": "composite dependencies support And and Or"},
+        {"start": 194, "end": 207, "meaning": "default type and first matching dependency type pattern"},
+        {"start": 552, "end": 560, "meaning": "versionDependency carries a required version string"}
+      ]
+    },
+    {
+      "file": "src/fomodinstallerdialog.cpp",
+      "repository": "https://github.com/ModOrganizer2/modorganizer-installer_fomod",
+      "sha256": "c4f65c49fa46ec198e02e14db5aa805030a2a11f9079b5427433bca687344913",
+      "examinedLineRanges": [
+        {"start": 453, "end": 469, "meaning": "four zero-filled integer version components; lexicographic comparison"},
+        {"start": 475, "end": 505, "meaning": "manager gameVersion and required-version <= installed-version test"},
+        {"start": 548, "end": 580, "meaning": "required files and checked choices on visible pages contribute payloads"},
+        {"start": 918, "end": 927, "meaning": "first matching dependency pattern determines type"},
+        {"start": 950, "end": 970, "meaning": "singleton required-selection groups become SelectAll"},
+        {"start": 1365, "end": 1414, "meaning": "flags come from checked choices on previous visible pages"},
+        {"start": 1540, "end": 1586, "meaning": "SelectAll skips type enforcement; NotUsable is unchecked and disabled"},
+        {"start": 1640, "end": 1658, "meaning": "back navigation discards later visibility cache"}
+      ]
+    }
+  ],
+  "nativeManagerWizardTestedByThisContract": false,
+  "newRuntimeCompatibilityQualified": false,
+  "physicsQualified": false
+}
