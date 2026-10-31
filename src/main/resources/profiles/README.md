@@ -37,9 +37,15 @@ targets new automatically discovered states, after successful source capture;
 existing/restored/suppressed/manual states are preserved. Without the declaration,
 the explicit per-actor API remains available.
 
-Female profiles can explicitly drive `CLAWTorsoBreastSize`; male profiles cannot.
-Ears, muzzle, tail, paws, claws and adult traits remain neutral without qualified
-corresponding human source fields. A shape with no opposed wolf deformation
+Female profiles explicitly drive `CLAWTorsoBreastSize`. The current development
+candidate adds five vanilla FaceGen sources and human stature to every family;
+see [the exact source and mapping contract](../../docs/human-head-traits.md).
+These are explicit `$human.*` engine inputs, not SKEE body morph names. Muzzle
+rows use captured human face records. Head/ear size, tail length and claw length
+use a documented artistic stature analogy centered at height ratio 1. Missing
+human history remains unavailable with neutral arithmetic and a diagnostic.
+Ear tilt, tail lift/fluff and paw controls remain neutral by default.
+A shape with no opposed wolf deformation
 cannot reproduce both human directions; such clipping is recorded, not hidden
 by an invented neutral offset.
 

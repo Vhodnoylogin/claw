@@ -36,13 +36,15 @@ profiles remain neutral linked policies. Exact active source/output collisions
 are rejected, and capture also refuses sources overlapping existing own-key
 outputs. No prefix is assumed to identify a human or wolf morph.
 
-Actor records now write semantic version 6 with every function and parameter.
-Readers retain v1..v5 support; old ordinary rules retain their original evaluation.
+Actor records now write version 7 with every function/parameter and a separate
+human FaceGen/stature snapshot with provenance and per-channel availability.
+Readers retain v1..v6 support; old ordinary rules retain their original evaluation.
 Saved matrices remain authoritative, so existing actors adopt revised XML only
 through an explicit ConfigureMorphFamily request. All-constant profiles capture
 no human values and cannot depend on an OBody source bootstrap. Fresh game,
 existing-save refresh and rendered geometry still require runtime acceptance.
-Version 6 retains the v5 byte layout but reserves the actor-input namespace.
+Version 6 retained the v5 byte layout but reserved the actor-input namespace;
+v7 appends the human snapshot and reserves the explicit `$human.` namespace.
 Pre-v6 assignments using that namespace are suppressed until explicit rebind;
 they are not reinterpreted as actor weight. Loading removes inactive saved edges and their
 declared source values without substituting an installed profile; undeclared,
@@ -235,6 +237,8 @@ The coordinator owns the user menu and optional human OBody route.
 | `ConfigureMorphLink(actor, profile, sources[], targets[], gains[], caps[])` | Queued explicit morph-to-morph profile, 0..128 structural rules; actual SKEE source coefficients, no preset-name pairs |
 | `GetMorphFamilies(female)` / `ConfigureMorphFamily(actor, profileId)` | Enumerate and bind a validated body-resource mapping; setup must declare the actual installed family |
 | `GetHumanWeight(actor)` / `GetBeastWeight(actor)` | Last observed normalized NPC weight in each form; -1 means unavailable, and neither getter sets weight |
+| `HasHumanTrait(actor, source)` / `GetHumanTrait(actor, source)` | Cached human-only `$human.*` snapshot; inspect availability before interpreting a zero value |
+| `GetAppearanceStatus(actor)` | Cached colour-capture/application diagnostic, separate from morph readback status |
 | `DisableMorphLink(actor)` | Queued return to the retained independent preset |
 
 Status values: **0** unknown, **1** pending, **2** own coefficients read back and

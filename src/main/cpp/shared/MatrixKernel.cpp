@@ -45,21 +45,30 @@ extern "C" int32_t claw_matrix_source_kind(const char* name, uint32_t length) {
     if (!name || !length || length > 160 || name[0] <= 32 || name[length - 1] <= 32) return -1;
     for (uint32_t index = 0; index < length; ++index)
         if (static_cast<unsigned char>(name[index]) < 32 || static_cast<unsigned char>(name[index]) >= 127) return -1;
-    constexpr char prefix[] = "$actor.", weight[] = "$actor.weight";
-    bool reserved = length >= sizeof(prefix) - 1;
-    for (uint32_t index = 0; reserved && index < sizeof(prefix) - 1; ++index) {
-        const char ch = name[index] >= 'A' && name[index] <= 'Z' ? static_cast<char>(name[index] + ('a' - 'A')) : name[index];
-        reserved = ch == prefix[index];
-    }
-    if (!reserved) return 0;
-    if (length != sizeof(weight) - 1) return -1;
-    for (uint32_t index = 0; index < length; ++index) if (name[index] != weight[index]) return -1;
-    return 1;
+    const auto matches = [&](const char* value, bool prefix, bool fold) {
+        uint32_t index{};
+        for (; value[index]; ++index) {
+            if (index >= length) return false;
+            const char ch = fold && name[index] >= 'A' && name[index] <= 'Z' ? static_cast<char>(name[index] + ('a' - 'A')) : name[index];
+            if (ch != value[index]) return false;
+        }
+        return prefix || index == length;
+    };
+    if (matches("$actor.", true, true)) return matches("$actor.weight", false, false) ? 1 : -1;
+    if (!matches("$human.", true, true)) return 0;
+    if (matches("$human.height", false, false)) return 3;
+    constexpr const char* channels[]{"$human.face.noseLength", "$human.face.jawWidth", "$human.face.jawForward",
+        "$human.face.chinWidth", "$human.face.chinForward"};
+    for (const auto* value : channels)
+        if (matches(value, false, false)) return 2;
+    return -1;
 }
 
 extern "C" uint32_t claw_matrix_source_value_valid(int32_t kind, float value) {
-    return finiteFloat(value) && (kind == 0 || (kind == 1 && value >= 0.F && value <= 1.F));
+    return finiteFloat(value) && (kind == 0 || (kind == 1 && value >= 0.F && value <= 1.F) ||
+        (kind == 2 && value != 3.40282346638528859812e38F) || (kind == 3 && value > 0.F));
 }
+extern "C" float claw_matrix_source_neutral(int32_t kind) { return kind == 3 ? 1.F : 0.F; }
 
 extern "C" double claw_matrix_clamp(double value) {
     return value < 0.0 ? 0.0 : value > 1.0 ? 1.0 : value;

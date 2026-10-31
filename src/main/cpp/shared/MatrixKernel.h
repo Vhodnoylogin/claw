@@ -28,13 +28,17 @@ float claw_matrix_gain_epsilon(void);
 int claw_matrix_gain_active(float gain);
 
 // Source binding is shared with the offline editor. Printable ASCII names are
-// ordinary morphs (0), except the exact explicit scalar "$actor.weight" (1).
-// The entire ASCII-casefolded "$actor." namespace is reserved: unsupported or
+// ordinary morphs (0), except "$actor.weight" (1), supported "$human.face.*"
+// FaceGen scalars (2) and "$human.height" (3). The ASCII-casefolded "$actor."
+// and "$human." namespaces are reserved: unsupported or
 // noncanonical spellings and malformed names return -1. Targets require kind0.
 int32_t claw_matrix_source_kind(const char* name, uint32_t length);
-// Normalized actor weight must be finite0..1; ordinary applied morphs may be
-// signed or above1. This validates inputs, without multiplying any other value.
+// Weight is finite0..1; FaceGen is signed finite excluding its default sentinel;
+// height is positive finite. Ordinary applied morphs may be signed or above1.
 uint32_t claw_matrix_source_value_valid(int32_t kind, float value);
+// Arithmetic neutral for unavailable human data: height ratio1, face0. This is
+// not an availability marker and never excuses missing required actor weight.
+float claw_matrix_source_neutral(int32_t kind);
 
 // No allocation, libraries, locale, engine or browser dependencies. Buffers must
 // be nonoverlapping. Ordered sum, final clamp then cap, one float32 output round.

@@ -36,6 +36,12 @@ Float Function GetOwnMorph(Actor target, String morphName) Global Native
 Bool Function ClearOwn(Actor target) Global Native
 Bool Function Refresh(Actor target) Global Native
 
+; Cached pre-transformation traits. A missing value differs from observed zero.
+Bool Function HasHumanTrait(Actor target, String source) Global Native
+Float Function GetHumanTrait(Actor target, String source) Global Native
+; Skin/fur sources, private material application, or reason for unavailable colour.
+String Function GetAppearanceStatus(Actor target) Global Native
+
 ; Explicit morph-to-morph developer profile. No preset-name pairing or OBody writes.
 ; Applied signed source values are read from SKEE; weight must not be applied twice.
 ; Equal-size arrays, 1..128 rows. sum(source*gain), clamp 0..1, multiply target cap.

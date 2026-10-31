@@ -61,6 +61,7 @@ inline std::int32_t morphSourceKind(std::string_view name) {
     return claw_matrix_source_kind(name.data(), static_cast<std::uint32_t>(name.size()));
 }
 inline bool actorWeightSource(std::string_view name) { return morphSourceKind(name) == 1; }
+inline bool humanTraitSource(std::string_view name) { return morphSourceKind(name) >= 2; }
 inline float normalizedActorWeight(float rawNPCWeight) {
     if (!std::isfinite(rawNPCWeight) || rawNPCWeight < 0.F || rawNPCWeight > 100.F)
         throw std::runtime_error("actor weight is unavailable or outside0..100");
@@ -150,7 +151,7 @@ struct MorphLink {
         return true;
     }
     [[nodiscard]] std::string sourceConflict(const Morphs& previousOutputs) const {
-        for (const auto& rule : rules) if (rule.active() && !rule.constant() && !actorWeightSource(rule.source))
+        for (const auto& rule : rules) if (rule.active() && !rule.constant() && morphSourceKind(rule.source) == 0)
             for (const auto& [name, value] : previousOutputs) {
                 (void)value;
                 if (morphProviderIdentity(name) == morphProviderIdentity(rule.source)) return rule.source;
@@ -170,6 +171,14 @@ struct MorphLink {
     // is read only for an explicitly declared scalar and normalized once.
     void captureActor(const std::function<float(std::string_view)>& readMorph, float rawNPCWeight) {
         capture([&](std::string_view source) {
+            if (humanTraitSource(source)) throw std::runtime_error("human trait requires the explicit human snapshot adapter");
+            return actorWeightSource(source) ? normalizedActorWeight(rawNPCWeight) : readMorph(source);
+        });
+    }
+    void captureActor(const std::function<float(std::string_view)>& readMorph, float rawNPCWeight,
+        const std::function<float(std::string_view)>& readHuman) {
+        capture([&](std::string_view source) {
+            if (humanTraitSource(source)) return readHuman(source);
             return actorWeightSource(source) ? normalizedActorWeight(rawNPCWeight) : readMorph(source);
         });
     }

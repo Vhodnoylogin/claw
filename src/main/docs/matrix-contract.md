@@ -87,8 +87,9 @@ attributes are additive, for example:
 source column in the matrix. The game adapter reads the current NPC base weight
 in 0..100 and divides it once by 100; the evaluator and offline plugin receive
 the resulting finite float32 in 0..1. It is not a SKEE/TRI morph. Missing or invalid
-weight is an error, not an implicit zero. All other source and target names remain
-data-driven; adding a real morph does not require rebuilding the DLL.
+weight is an error, not an implicit zero. Explicit `$human.*` sources use the
+separate human-only snapshot described below. Other source and target names
+remain data-driven; adding a real SKEE morph does not require rebuilding the DLL.
 
 The ASCII-casefolded `$actor.` namespace is reserved. Only the exact spelling
 `$actor.weight` is supported, and reserved names cannot be output targets. The
@@ -126,9 +127,10 @@ MorphLinkProfiles XML. `evaluate(catalog,id,humanValues)` retains its existing A
 Explicit linear and omitted linear produce identical outputs. The matrix keeps
 ordered sparse edges rather than reordering a sum through a dense table.
 
-Actor co-save record v6 persists each rule's function code, exponent and constant
-value. Readers retain versions 1..5: v1 is independent, v2..4 rules migrate to
-linear. Version 6 retains the v5 byte layout, but identifies the explicit actor
+Actor co-save record v7 persists each rule's function code, exponent and constant
+value, and appends a human-trait snapshot. Readers retain versions 1..6: v1 is
+independent, v2..4 rules migrate to linear. Version 6 retains the v5 byte layout,
+but identifies the explicit actor
 source semantics. A pre-v6 assignment containing a now-reserved `$actor.` name
 is retained as suppressed and requires an explicit rebind; it is never silently
 reinterpreted as an actor scalar or replaced by a new default. On load,
@@ -166,3 +168,37 @@ Existing saves continue their saved matrices after upgrade. To adopt these
 defaults for an existing actor, explicitly call ConfigureMorphFamily after the
 new resources and family XML have been installed. Fresh-game/default adoption
 and an existing-save matrix refresh are separate game checks.
+
+## Explicit human FaceGen and stature sources
+
+The exact sources `$human.face.noseLength`, `$human.face.jawWidth`,
+`$human.face.jawForward`, `$human.face.chinWidth`, `$human.face.chinForward`
+and `$human.height` are engine inputs rather than SKEE morphs. The shared
+`claw_matrix_source_kind` returns 2 for these face values and 3 for height;
+ordinary SKEE inputs remain 0 and actor weight remains 1. Both reserved
+namespaces reject unsupported or differently cased spellings, including as
+targets. Source-value validation accepts signed finite face values excluding
+the engine's default sentinel and positive finite height ratios.
+
+The runtime adapter reads raw vanilla FaceData from the root face NPC and NPC
+NAM6 times current-race sex height only while the current non-werewolf race has
+`ActorTypeNPC`. Other creature forms preserve the preceding human snapshot. It preserves
+availability and race/NPC/root-face-NPC/sex provenance separately in co-save v7.
+While a wolf it reuses that snapshot; SKEE body inputs and weight continue their
+ordinary refresh. Missing face inputs use arithmetic neutral 0, missing height
+uses 1, and a diagnostic identifies the unavailable sources. Missing is never
+recorded as an available neutral value. A born wolf has no invented head history.
+No scalar is written to human SKEE controls. Offline consumers must supply these
+explicit values separately from model morphs and preserve this availability
+distinction. The source kind does not change the shared numeric evaluation.
+
+Each canonical matrix appends 15 authored edges: five face-to-muzzle edges and
+centered `height-1` growth terms for head size, ear size, tail length and both
+claw lengths. HIMBO uses 127 of the retained 128 structural slots. Current IDs
+are unchanged; the calibration marker identifies the new human-trait revision.
+The stature projection is an explicit artistic analogy; tail posture/fluff,
+ear tilt and paw controls have no default invented source. Direction, attachment
+quality and race-specific geometry still need game acceptance. See
+[human head traits](human-head-traits.md) for the exact reads, gains and limits.
+Pre-v7 assignments containing the now-reserved `$human.` namespace are
+suppressed until explicit rebind; established v6 `$actor.weight` remains valid.

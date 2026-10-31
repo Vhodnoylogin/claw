@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
             for (const auto& [name, kind] : sources) {
                 if (!first) std::cout << ','; first = false;
                 std::cout << "{\"name\":" << claw::jsonString(name) << ",\"kind\":"
-                    << claw::jsonString(kind == 1 ? "actor-weight" : "skee-morph") << '}';
+                    << claw::jsonString(kind == 1 ? "actor-weight" : kind == 2 ? "human-face" : kind == 3 ? "human-height" : "skee-morph") << '}';
             }
             std::cout << "],\"targets\":["; first = true;
             for (const auto& name : targets) {
@@ -63,15 +63,21 @@ int main(int argc, char** argv) {
         }
         auto link = profile->link;
         try {
+            std::set<std::string> unavailableHuman;
             const auto read = [&](std::string_view source) {
                 const auto found = human.find(claw::morphProviderIdentity(source));
                 if (found == human.end() && claw::actorWeightSource(source)) throw std::runtime_error("explicit actor weight input is missing");
+                if (found == human.end() && claw::humanTraitSource(source)) {
+                    unavailableHuman.emplace(source);
+                    return claw_matrix_source_neutral(claw::morphSourceKind(source));
+                }
                 return found == human.end() ? 0.F : found->second;
             };
             if (rawWeightInput) {
                 if (human.contains("$actor.weight")) throw std::runtime_error("raw actor weight and normalized scalar stdin cannot be combined");
-                link.captureActor(read, rawWeight);
+                link.captureActor(read, rawWeight, read);
             } else link.capture(read);
+            for (const auto& source : unavailableHuman) std::cerr << "Unavailable human source uses neutral input: " << source << '\n';
             const auto morphs = link.compose(profile->sex);
             std::cout << std::setprecision(std::numeric_limits<float>::max_digits10) << '{'; bool first = true;
             for (const auto& [target, value] : morphs) { if (!first) std::cout << ','; first = false; std::cout << claw::jsonString(target) << ':' << value; }
