@@ -1,8 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<fomod>
-  <Name>CLAW - Configurable Lycanthrope Anatomy and Weight</Name>
-  <Author>Vhodnoylogin</Author>
-  <Version>0.7.0.0</Version>
-  <Description>CLAW requires HIMBO male and CBBE female bodies; choose CBBE or CBBE+3BA. Human linkage is mandatory; Vanilla support is deferred. One CommonLib DLL; SE 1.7.104.0 mechanisms tested. Other declared runtimes retain offline coverage. All six comparison presets have owner-confirmed visible differences.</Description>
-  <Website>https://github.com/Vhodnoylogin/claw</Website>
-</fomod>

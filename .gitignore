@@ -1,24 +1,26 @@
-﻿# Продукты сборки и окружения в репозиторий не попадают.
-build/
-dist/
-.venv/
-models/
-__pycache__/
-*.pyc
-
-# Логи, токены и локальные настройки - у каждой машины свои.
+# Sources and authored resources live in src/; all generated output is ignored.
+/target/
+/.venv/
+**/__pycache__/
+*.py[cod]
+/build.local.json
 *.log
 *-token.txt
-build.local.json
-
-# Черновики прогонов.
 session.jsonl
-*.wav
 *.bak-*
+/.claude/
 
-# Служебные копии агентов Claude Code - это отдельные репозитории.
-.claude/
-
-# Reproducible intermediate files.
-work/*
-!work/README.md
+# Compiled code, plugins and packaged products belong in release assets.
+*.dll
+*.exe
+*.pdb
+*.lib
+*.obj
+*.pex
+*.esp
+*.esm
+*.esl
+*.zip
+*.7z
+*.bsa
+*.ba2

@@ -1,8 +1,0 @@
-{
-  "id": "claw-human-link-dev-001",
-  "name": "CLAW human/wolf comparison",
-  "version": "0.3.0",
-  "apiVersion": 1,
-  "entry": "index.html",
-  "description": "CLAW plugin: paired human/wolf previews, editable sparse coefficient/function wolf matrix presets, numeric comparison and scoped vertex inspection."
-}
