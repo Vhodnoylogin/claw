@@ -2,8 +2,10 @@
 
 ## Current runtime-only package
 
-The public title is **CLAW - The Beast Within**; the current download and Nexus
-update group are named **CLAW**, with the version stored separately.
+The owner-set public title is **CLAW - Customizable Lycanthrope Appearance and
+Weight**. The saved file/update-group label is **CLAW - Custom Lycanthrope
+Appearance and Weight**, shortened to fit Nexus's 50-character field limit.
+Its version is stored separately; legacy installed identifiers remain unchanged.
 
 The packaging-only correction is published as
 [CLAW.zip on GitHub](https://github.com/Vhodnoylogin/claw/releases/download/claw/0.7.0.0/CLAW.zip).

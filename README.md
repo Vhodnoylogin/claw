@@ -1,4 +1,4 @@
-# CLAW — The Beast Within
+# CLAW — Customizable Lycanthrope Appearance and Weight
 
 Human body morphs shape male and female werewolves through editable coefficient
 and function matrices for HIMBO, CBBE and CBBE+3BA. Optional OBody integration
