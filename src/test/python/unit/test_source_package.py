@@ -95,6 +95,7 @@ class SourcePackageTests(unittest.TestCase):
         result = package.build(**self.arguments())
         self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [10, 12, 10, 12])
         files = package.read_zip(Path(result["archive"]).read_bytes())
+        self.assertEqual(Path(result["archive"]).name, "CLAW.zip")
         self.assertEqual(sum(name.endswith(".dll") for name in files), 1)
         self.assertEqual(sum(name.endswith(".nif") for name in files), 2)
         self.assertFalse(result["gameOrManagerExecuted"])
@@ -121,8 +122,27 @@ class SourcePackageTests(unittest.TestCase):
                          | {"fomod/ModuleConfig.xml", "fomod/info.xml", "README.md", "NOTICES/CommonLib.txt", "NOTICES/THIRD-PARTY.txt"})
         for row in result["selections"]:
             matrix = next(item for item in row["files"] if item["path"].endswith("MorphLinks.xml"))
-            defaults = ET.fromstring(files[matrix["source"]]).find("Defaults")
+            installed_matrix = ET.fromstring(files[matrix["source"]])
+            defaults = installed_matrix.find("Defaults")
             self.assertIn(row["family"], defaults.get("female"))
+            installed_profiles = installed_matrix.findall("Profile")
+            self.assertEqual(len(installed_profiles), 2)
+            self.assertEqual({profile.get("family") for profile in installed_profiles},
+                             {"HIMBO", row["family"]})
+            self.assertEqual({profile.get("id") for profile in installed_profiles},
+                             {defaults.get("male"), defaults.get("female")})
+
+    def test_selected_profiles_preserve_each_authored_rule_and_reject_unknown_family(self):
+        original = (self.root / "src/main/resources/profiles/MorphLinks.xml").read_bytes()
+        source = ET.fromstring(original)
+        for family in ("CBBE", "3BA"):
+            actual = ET.fromstring(package.profiles(original, family))
+            for profile in actual.findall("Profile"):
+                donor = next(row for row in source.findall("Profile") if row.get("id") == profile.get("id"))
+                self.assertEqual(profile.attrib, donor.attrib)
+                self.assertEqual([rule.attrib for rule in profile], [rule.attrib for rule in donor])
+        with self.assertRaisesRegex(ValueError, "supported female body"):
+            package.profiles(original, "Unknown")
 
     def test_absent_optional_host_has_no_broken_host_choice(self):
         result = package.build(**self.arguments(host=False))

@@ -30,7 +30,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[4]
-NAME = "CLAW - Configurable Lycanthrope Anatomy and Weight"
+NAME = "CLAW - The Beast Within"
 VERSION = "0.7.0.0"
 MESH = "Meshes/Actors/WerewolfBeast/Character Assets"
 ARCHIVES = {".zip", ".7z", ".rar", ".tar", ".gz", ".gzip", ".tgz", ".bz2", ".bzip2",
@@ -218,6 +218,8 @@ def companion(inputs, directory, native_sha, native_sources, commonlib_commit):
 
 
 def profiles(data, family):
+    if family not in {"CBBE", "3BA"}:
+        raise ValueError("Select exactly one supported female body family")
     if b"<!" in data:
         raise ValueError("Declarations/entities are not supported in profile XML")
     tree = ET.fromstring(data)
@@ -228,6 +230,9 @@ def profiles(data, family):
         tree.remove(old)
     male = next(row.get("id") for row in rows if row.get("family") == "HIMBO")
     female = next(row.get("id") for row in rows if row.get("family") == family)
+    for row in rows:
+        if row.get("family") not in {"HIMBO", family}:
+            tree.remove(row)
     tree.insert(0, ET.Element("Defaults", male=male, female=female))
     ET.indent(tree)
     return ET.tostring(tree, encoding="utf-8") + b"\n"
@@ -235,6 +240,7 @@ def profiles(data, family):
 
 def installer(template, entries):
     config = ET.fromstring(template)
+    config.find("moduleName").text = NAME
     required = config.find("requiredInstallFiles")
     required.clear()
     destinations = {"CLAW.esp"} | {MESH + "/" + sex + "bodywerewolf" + ending
@@ -396,6 +402,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     template = ROOT / "src/main/resources/publication/unified-installer"
     entries["fomod/ModuleConfig.xml"] = installer(inputs.read(template / "ModuleConfig.xml"), entries)
     info = ET.fromstring(inputs.read(template / "info.xml"))
+    info.find("Name").text = NAME
     info.find("Version").text = version
     info.find("Description").text = "Links human body morphs to werewolf bodies."
     entries["fomod/info.xml"] = ET.tostring(info, encoding="utf-8", xml_declaration=True)
@@ -433,7 +440,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
         raise ValueError("Literal ZIP/readback installation differs from the recorded payload")
     inputs.verify()
     output.mkdir(parents=True, exist_ok=False)
-    archive = output / (NAME + ".zip")
+    archive = output / "CLAW.zip"
     archive.write_bytes(packed)
     receipt.update(archive=str(archive), sha256=sha(packed), bytes=len(packed), archiveFiles=len(entries),
                    inputs={str(path): {"sha256": sha(data), "bytes": len(data)} for path, data in inputs.records.items()})
