@@ -1,4 +1,4 @@
-# First-queue matrix candidate, 31 October 2026
+# First queue: matrix implementation and acceptance, 31 October 2026
 
 This is development work, not another published release or new game acceptance.
 The implementation is pinned at `ed0f466519a6d16c284af1a80f0adb9406523b30`.
@@ -51,9 +51,32 @@ and 1 by the native CLI and reject missing explicit weight.
 
 Actual Morphbench browser observations applied the same separate scalar to male
 HIMBO and female 3BA pairs; exported coefficients match the native CLI exactly.
-Both model panels use fixed selected NIFs. Scalar edits do not interpolate human
-neutral geometry; Vanilla zero-TRI control-domain checks are SDK coverage, not
-actual Vanilla body rendering or game acceptance.
+The follow-up also opened genuine Vanilla male and female NIFs from the game's
+BSA, with no TRI files, at matching weight-0/1 endpoints. All four exported
+vectors match the native CLI bit-for-bit. The female full geometry export has
+2,029 human and 99,023 wolf vertices: human morph names/values are empty, all
+human deltas are zero and wolf deltas are nonzero. This is actual browser
+rendering/readback, not a game observation. Both panels use fixed selected NIFs;
+scalar edits do not interpolate human neutral geometry.
+
+The native follow-up at `57bc951b775d33bea67b93270198cc39630acdf2` also exposes
+the canonical active graph through `matrix-info` and accepts raw NPC weight
+through the same native normalization used by the game. The CLAW-owned capture
+analyzer requires the collector's independent actor/session/world weight witness,
+never a fake SKEE field or a guessed value. It uses the native graph rather than
+duplicating the cutoff or conversion arithmetic in Python. Thirty-seven actual
+CLI integration tests include missing/malformed identity and scalar observations.
+The sex-binding DLL follow-up passed all six native suites; its archive has not
+been repackaged, installed or game-tested. The earlier archive above is not this
+follow-up and must not be presented as its verified runtime package.
+
+The plugin's `0.4.0-dev.4` dependency is pinned to that same committed native
+revision. The shared kernel and XML bytes are unchanged, and the recompiled WASM
+is byte-identical to dev.3. Focused checks using actual Morphbench 0.8.6 SDK
+assets and native/WASM weight vectors pass. Nexus page197517 was published and
+is currently hidden by its owner; the owner reports the required Launcher is in
+quarantine. Local verification does not make that distribution usable or publish
+a new plugin version.
 
 A separate existing-executor admission attempt started Skyrim SE and reached
 QASmoke, but stopped before actor creation: the authored scenario supplied 60s
