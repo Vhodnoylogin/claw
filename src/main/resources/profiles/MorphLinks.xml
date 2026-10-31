@@ -1,5 +1,9 @@
 <MorphLinkProfiles schemaVersion="1">
   <Profile id="CLAW.3BA.2.48.Geometry1" family="3BA" version="2.48" sex="female" calibration="authored-opposed-matrix1">
+    <Rule source="" target="CLAWTorsoLean" gain="0.125" cap="1" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoLean" gain="-0.25" cap="1" />
+    <Rule source="" target="CLAWTorsoGirth" gain="-0.5" cap="0.25" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoGirth" gain="1" cap="0.25" />
     <Rule source="Arms" target="CLAWArmGirth" gain="-0.5886322" cap="1" />
     <Rule source="Back" target="CLAWTorsoBackWide" gain="0.0050167" cap="1.0" />
     <Rule source="Back" target="CLAWTorsoShoulderGirth" gain="0.6159342" cap="1.0" />
@@ -84,6 +88,10 @@
     <Rule source="Thighs" target="CLAWLegThighLean" gain="0.2565606" cap="1" function="negative" />
   </Profile>
   <Profile id="CLAW.HIMBO.5.8.Geometry1" family="HIMBO" version="5.8" sex="male" calibration="authored-opposed-matrix1">
+    <Rule source="" target="CLAWTorsoLean" gain="0.125" cap="1" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoLean" gain="-0.25" cap="1" />
+    <Rule source="" target="CLAWTorsoGirth" gain="-0.5" cap="0.25" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoGirth" gain="1" cap="0.25" />
     <Rule source="ArmsBiceps" target="CLAWArmGirth" gain="0.5063776" cap="1" />
     <Rule source="ArmsBicepsBack" target="CLAWArmGirth" gain="0.1938665" cap="1" />
     <Rule source="ArmsBrachio" target="CLAWArmGirth" gain="0.217953" cap="1" />
@@ -194,6 +202,10 @@
     <Rule source="Lean" target="CLAWTorsoLean" gain="0.8" cap="1" function="positive" />
   </Profile>
   <Profile id="CLAW.CBBE.2.0.3.Geometry1" family="CBBE" version="2.0.3" sex="female" calibration="authored-opposed-matrix1">
+    <Rule source="" target="CLAWTorsoLean" gain="0.125" cap="1" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoLean" gain="-0.25" cap="1" />
+    <Rule source="" target="CLAWTorsoGirth" gain="-0.5" cap="0.25" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoGirth" gain="1" cap="0.25" />
     <Rule source="Arms" target="CLAWArmGirth" gain="-0.6027545" cap="1" />
     <Rule source="Back" target="CLAWTorsoBackWide" gain="0.0539491" cap="1" />
     <Rule source="Back" target="CLAWTorsoShoulderGirth" gain="0.5409237" cap="1" />
@@ -276,5 +288,49 @@
     <Rule source="SlimThighs" target="CLAWLegThighLean" gain="0.3173357" cap="1" function="positive" />
     <Rule source="SlimThighs" target="CLAWLegCalfLean" gain="0.0044308" cap="1" function="positive" />
     <Rule source="Thighs" target="CLAWLegThighLean" gain="0.2889533" cap="1" function="negative" />
+  </Profile>
+  <Profile id="CLAW.VanillaMale.Weight1" family="Vanilla" version="game-weight-v1" sex="male" calibration="vanilla-weight-neutral-50-v1">
+    <Rule source="" target="CLAWArmLean" gain="1" cap="0.5" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWArmLean" gain="-2" cap="0.5" />
+    <Rule source="" target="CLAWLegThighLean" gain="1" cap="0.5" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWLegThighLean" gain="-2" cap="0.5" />
+    <Rule source="" target="CLAWLegCalfLean" gain="1" cap="0.375" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWLegCalfLean" gain="-2" cap="0.375" />
+    <Rule source="" target="CLAWTorsoLean" gain="1" cap="0.375" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoLean" gain="-2" cap="0.375" />
+    <Rule source="" target="CLAWArmGirth" gain="-1" cap="0.5" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWArmGirth" gain="2" cap="0.5" />
+    <Rule source="" target="CLAWLegThighGirth" gain="-1" cap="0.5" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWLegThighGirth" gain="2" cap="0.5" />
+    <Rule source="" target="CLAWLegCalfGirth" gain="-1" cap="0.375" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWLegCalfGirth" gain="2" cap="0.375" />
+    <Rule source="" target="CLAWTorsoGirth" gain="-1" cap="0.25" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoGirth" gain="2" cap="0.25" />
+    <Rule source="" target="CLAWTorsoShoulderGirth" gain="-1" cap="0.25" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoShoulderGirth" gain="2" cap="0.25" />
+    <Rule source="" target="CLAWTorsoBellyRound" gain="-1" cap="0.375" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoBellyRound" gain="2" cap="0.375" />
+  </Profile>
+  <Profile id="CLAW.VanillaFemale.Weight1" family="Vanilla" version="game-weight-v1" sex="female" calibration="vanilla-weight-neutral-50-v1">
+    <Rule source="" target="CLAWArmLean" gain="1" cap="0.5" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWArmLean" gain="-2" cap="0.5" />
+    <Rule source="" target="CLAWLegThighLean" gain="1" cap="0.5" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWLegThighLean" gain="-2" cap="0.5" />
+    <Rule source="" target="CLAWLegCalfLean" gain="1" cap="0.375" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWLegCalfLean" gain="-2" cap="0.375" />
+    <Rule source="" target="CLAWTorsoLean" gain="1" cap="0.375" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoLean" gain="-2" cap="0.375" />
+    <Rule source="" target="CLAWArmGirth" gain="-1" cap="0.5" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWArmGirth" gain="2" cap="0.5" />
+    <Rule source="" target="CLAWLegThighGirth" gain="-1" cap="0.5" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWLegThighGirth" gain="2" cap="0.5" />
+    <Rule source="" target="CLAWLegCalfGirth" gain="-1" cap="0.375" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWLegCalfGirth" gain="2" cap="0.375" />
+    <Rule source="" target="CLAWTorsoGirth" gain="-1" cap="0.25" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoGirth" gain="2" cap="0.25" />
+    <Rule source="" target="CLAWTorsoShoulderGirth" gain="-1" cap="0.25" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoShoulderGirth" gain="2" cap="0.25" />
+    <Rule source="" target="CLAWTorsoBellyRound" gain="-1" cap="0.375" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoBellyRound" gain="2" cap="0.375" />
   </Profile>
 </MorphLinkProfiles>

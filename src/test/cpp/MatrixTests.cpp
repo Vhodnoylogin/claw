@@ -23,6 +23,83 @@ int main() {
     try {
         using F = claw::MorphFunction;
         {
+            const auto kind = [](std::string_view name) { return claw_matrix_source_kind(name.data(), static_cast<std::uint32_t>(name.size())); };
+            require(kind("$actor.weight") == 1 && kind("Weight") == 0 && kind("CLAWCustomHuman") == 0,
+                    "shared source binding changed ordinary morph names");
+            for (const auto name : {"$actor.Weight", "$ACTOR.weight", "$actor.height", "$actor.", "", " leading", "trailing "})
+                require(kind(name) == -1, "unknown/noncanonical actor input or malformed name accepted");
+            require(claw_matrix_source_kind(nullptr, 1) == -1, "null actor input name accepted");
+            for (const float value : {0.F, .25F, 1.F}) require(claw_matrix_source_value_valid(1, value), "normalized actor weight rejected");
+            for (const float value : {-.01F, 1.01F, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()})
+                require(!claw_matrix_source_value_valid(1, value), "invalid actor weight domain accepted");
+            require(claw_matrix_source_value_valid(0, -2.F) && claw_matrix_source_value_valid(0, 3.F) &&
+                    !claw_matrix_source_value_valid(-1, 0.F), "scalar domain leaked into ordinary morphs");
+            for (const auto sex : {claw::Sex::male, claw::Sex::female}) {
+                claw::MorphLink link{"Mixed", {{"$actor.weight", "Wolf", 1, .8F}, {"Human", "Wolf", .2F, .8F}}, {}, false};
+                unsigned reads{};
+                for (const float raw : {0.F, 25.F, 50.F, 100.F}) {
+                    link.captureActor([&](std::string_view name) { require(name == "Human", "actor scalar read from fake SKEE morph"); ++reads; return .5F; }, raw);
+                    const auto expected = static_cast<float>(std::min(1.0, static_cast<double>(raw / 100.F) + static_cast<double>(.5F) * .2F) * .8F);
+                    require(link.sourceValues.at("$actor.weight") == raw / 100.F && link.compose(sex).at("Wolf") == expected,
+                            "actor weight normalized twice or multiplied the applied human morph");
+                }
+                require(reads == 4 && link.hasProviderSources(), "mixed source capture duplicated/skipped provider input");
+                const auto old = link.sourceValues;
+                for (const float bad : {-1.F, 101.F, std::numeric_limits<float>::quiet_NaN()}) {
+                    bool rejected = false;
+                    try { link.captureActor([](std::string_view) { return .5F; }, bad); } catch (const std::exception&) { rejected = true; }
+                    require(rejected && link.sourceValues == old, "invalid actor weight mutated a prior source snapshot");
+                }
+                require(link.sourceConflict({{"$actor.weight", 0.F}}).empty(), "actor scalar was confused with an old SKEE output");
+                auto scalar = claw::MorphLink{"Vanilla", {{"$actor.weight", "Wolf", 1, 1}}, {}, false};
+                scalar.captureActor([](std::string_view) -> float { throw std::runtime_error("vanilla read SKEE source"); }, 65.F);
+                require(!scalar.hasProviderSources() && scalar.compose(sex).at("Wolf") == .65F, "born-beast/vanilla scalar capture requires human history");
+                auto mixed = scalar; mixed.sourceValues.at("$actor.weight") = 65.F;
+                require(!mixed.canonicalize(sex), "corrupt saved scalar was silently clamped/normalized");
+                Record record;
+                claw::writeMorphRule(scalar.rules[0], [&](const auto& text) { record.strings.push_back(text); }, [&](auto value) { record.integers.push_back(value); });
+                const auto savedSources = scalar.sourceValues;
+                auto restored = scalar; restored.rules = {claw::readMorphRule(record, claw::actorMatrixRecordVersion)};
+                restored.sourceValues = savedSources;
+                require(!claw::legacyActorInputNeedsRebind(restored, 6) && restored.canonicalize(sex) && restored.compose(sex) == scalar.compose(sex),
+                        "v6 same-layout scalar roundtrip changed saved authority");
+                require(claw::legacyActorInputNeedsRebind(restored, 5), "pre-v6 same-token SKEE source was silently reinterpreted");
+                claw::MorphLink ordinary{"Old", {{"Weight", "Custom", 1, 1}}, {}, false};
+                ordinary.captureActor([](std::string_view) { return .3F; }, std::numeric_limits<float>::quiet_NaN());
+                require(!claw::legacyActorInputNeedsRebind(ordinary, 5) && ordinary.compose(sex).at("Custom") == .3F,
+                        "old generic Weight source was renamed or gained hidden scalar dependence");
+                claw::MorphLink neutral{"Empty", {}, {}, false};
+                neutral.captureActor([](std::string_view) -> float { throw std::runtime_error("empty link read provider"); }, std::numeric_limits<float>::quiet_NaN());
+                require(neutral.valid(sex) && neutral.sourceValues.empty(), "empty link acquired an implicit weight input");
+                claw::MorphLink constant{"Constant", {{"", "Fixed", .5F, 1, F::constant, 2, .8F}}, {}, false};
+                constant.captureActor([](std::string_view) -> float { throw std::runtime_error("constant read provider"); }, std::numeric_limits<float>::quiet_NaN());
+                require(!constant.hasProviderSources() && constant.compose(sex).at("Fixed") == .4F, "constant input acquired actor weight");
+            }
+            claw::MorphProfileCatalog scalarCatalog;
+            require(scalarCatalog.loadXml(document("<Rule source=\"$actor.weight\" target=\"Wolf\" gain=\"1\" cap=\"1\"/>")), "explicit scalar XML rejected");
+            require(scalarCatalog.loadXml(
+                "<MorphLinkProfiles schemaVersion=\"1\"><Defaults male=\"CLAW.VanillaMale.Weight1\" female=\"CLAW.VanillaFemale.Weight1\"/>"
+                "<Profile id=\"CLAW.VanillaMale.Weight1\" family=\"Vanilla\" version=\"game-weight-v1\" sex=\"male\" calibration=\"test\">"
+                "<Rule source=\"$actor.weight\" target=\"Wolf\" gain=\"0.8\" cap=\"1\"/></Profile>"
+                "<Profile id=\"CLAW.VanillaFemale.Weight1\" family=\"Vanilla\" version=\"game-weight-v1\" sex=\"female\" calibration=\"test\">"
+                "<Rule source=\"$actor.weight\" target=\"Wolf\" gain=\"0.6\" cap=\"1\" function=\"power\" exponent=\"2\"/></Profile></MorphLinkProfiles>"),
+                "both-sex vanilla family defaults rejected");
+            for (const auto sex : {claw::Sex::male, claw::Sex::female}) {
+                const auto* profile = scalarCatalog.defaultFor(sex);
+                require(profile && profile->sourceFamily == "Vanilla", "vanilla sex default was inferred as a human body");
+                auto link = profile->link;
+                link.captureActor([](std::string_view) -> float { throw std::runtime_error("vanilla default read SKEE input"); }, 50.F);
+                require(link.compose(sex).at("Wolf") == (sex == claw::Sex::male ? .4F : .15F),
+                        "vanilla default/nonlinear scalar did not use shared matrix math");
+            }
+            for (const auto& rule : {
+                "<Rule source=\"$actor.Weight\" target=\"Wolf\" gain=\"1\" cap=\"1\"/>",
+                "<Rule source=\"$actor.height\" target=\"Wolf\" gain=\"0\" cap=\"1\"/>",
+                "<Rule source=\"Human\" target=\"$actor.weight\" gain=\"1\" cap=\"1\"/>",
+                "<Rule source=\"Human\" target=\"$ACTOR.height\" gain=\"0\" cap=\"1\"/>"})
+                require(!scalarCatalog.loadXml(document(rule)), "reserved namespace was confused with an ordinary SKEE source/output");
+        }
+        {
             CLAWMatrixRule rules[]{{0, 5, 2, 0, .5F, .8F, .4F}, {0, 2, 2, -.5F, .5F, .8F, 0}};
             float outputs[2]{}; double sums[2]{};
             require(claw_matrix_evaluate(rules, 2, outputs, sums, 2) == 0, "shared kernel rejected mixed matrix");

@@ -218,21 +218,33 @@ def companion(inputs, directory, native_sha, native_sources, commonlib_commit):
     return files, licenses, public
 
 
-def profiles(data, family):
-    if family not in {"CBBE", "3BA"}:
-        raise ValueError("Select exactly one supported female body family")
+MALE_FAMILIES = ("HIMBO", "Vanilla")
+FEMALE_FAMILIES = ("CBBE", "3BA", "Vanilla")
+
+
+def profiles(data, family, male_family="HIMBO"):
+    if family not in FEMALE_FAMILIES or male_family not in MALE_FAMILIES:
+        raise ValueError("Select exactly one supported male and female body family")
     if b"<!" in data:
         raise ValueError("Declarations/entities are not supported in profile XML")
     tree = ET.fromstring(data)
     rows = tree.findall("Profile")
-    if tree.tag != "MorphLinkProfiles" or {row.get("family") for row in rows} != {"HIMBO", "CBBE", "3BA"} or len(rows) != 3:
-        raise ValueError("Expected the canonical three body-family matrices")
+    inventory = {(row.get("sex"), row.get("family")) for row in rows}
+    if (tree.tag != "MorphLinkProfiles" or len(rows) != 5 or inventory !=
+            {("male", "HIMBO"), ("female", "CBBE"), ("female", "3BA"),
+             ("male", "Vanilla"), ("female", "Vanilla")}):
+        raise ValueError("Expected the canonical five sex-specific body-family matrices")
+    if any(not row.get('id') for row in rows) or len({row.get('id') for row in rows}) != 5:
+        raise ValueError("Canonical matrices require five distinct explicit profile identifiers")
     for old in tree.findall("Defaults"):
         tree.remove(old)
-    male = next(row.get("id") for row in rows if row.get("family") == "HIMBO")
-    female = next(row.get("id") for row in rows if row.get("family") == family)
+    selected = {("male", male_family), ("female", family)}
+    male = next(row.get("id") for row in rows if (row.get("sex"), row.get("family")) == ("male", male_family))
+    female = next(row.get("id") for row in rows if (row.get("sex"), row.get("family")) == ("female", family))
+    if not male or not female or male == female:
+        raise ValueError("Selected matrices must have distinct explicit profile identifiers")
     for row in rows:
-        if row.get("family") not in {"HIMBO", family}:
+        if (row.get("sex"), row.get("family")) not in selected:
             tree.remove(row)
     tree.insert(0, ET.Element("Defaults", male=male, female=female))
     ET.indent(tree)
@@ -255,30 +267,59 @@ def installer(template, entries):
     if old is not None:
         config.remove(old)
     dependencies = ET.Element("moduleDependencies", operator="And")
-    for marker in ("RaceMenu.esp", "HIMBO.esp", "CBBE.esp"):
-        ET.SubElement(dependencies, "fileDependency", file=marker, state="Active")
+    ET.SubElement(dependencies, "fileDependency", file="RaceMenu.esp", state="Active")
     config.insert(1, dependencies)
     steps = config.find("installSteps")
     steps[0].set("name", "Required bodies and human morph linkage")
     option = steps[0].find("optionalFileGroups/group/plugins/plugin")
     option.set("name", "Required human morph linkage")
-    option.find("description").text = "Carries human body morphs into werewolf form. Requires matching SKSE, RaceMenu, Address Library, HIMBO and CBBE."
+    option.find("description").text = "Carries human body morphs and declared NPC weight inputs into werewolf form. Requires matching SKSE, RaceMenu and Address Library. Select the actual human bodies in the next step."
     descriptor = option.find("typeDescriptor")
     descriptor.clear()
     ET.SubElement(descriptor, "type", name="Required")
     family_step = steps[1]
-    family_step.set("name", "Required human body combination")
+    family_step.set("name", "Select your actual male and female bodies")
     visible = family_step.find("visible")
     if visible is not None:
         family_step.remove(visible)
-    for index, option in enumerate(family_step.findall("optionalFileGroups/group/plugins/plugin")):
-        descriptor = option.find("typeDescriptor")
-        descriptor.clear()
-        dependent = ET.SubElement(descriptor, "dependencyType")
-        ET.SubElement(dependent, "defaultType", name="Recommended" if index == 0 else "NotUsable")
-        pattern = ET.SubElement(ET.SubElement(dependent, "patterns"), "pattern")
-        ET.SubElement(ET.SubElement(pattern, "dependencies", operator="And"), "fileDependency", file="3BBB.esp", state="Active")
-        ET.SubElement(pattern, "type", name="Optional" if index == 0 else "Recommended")
+    groups = family_step.find("optionalFileGroups")
+    groups.clear(); groups.set("order", "Explicit")
+    def marker_pattern(parent, markers, kind):
+        pattern = ET.SubElement(parent, "pattern")
+        required = ET.SubElement(pattern, "dependencies", operator="And")
+        for marker in markers:
+            ET.SubElement(required, "fileDependency", file=marker, state="Active")
+        ET.SubElement(pattern, "type", name=kind)
+    for sex, families in (("male", MALE_FAMILIES), ("female", FEMALE_FAMILIES)):
+        group = ET.SubElement(groups, "group", name=sex.title()+" human body", type="SelectExactlyOne")
+        options = ET.SubElement(group, "plugins", order="Explicit")
+        for family in families:
+            choice = ET.SubElement(options, "plugin", name=family)
+            ET.SubElement(choice, "description").text = (
+                "Uses this sex's actual NPC weight as the only human input. No replacement human body mod is required."
+                if family == "Vanilla" else
+                "Select only when these human meshes are installed. Plugin markers recommend or gate the choice; they cannot verify winning meshes or the full dependency chain. Human bodies and physics are not bundled.")
+            ET.SubElement(ET.SubElement(choice, "conditionFlags"), "flag", name=sex+"Family").text = family
+            dependent = ET.SubElement(ET.SubElement(choice, "typeDescriptor"), "dependencyType")
+            ET.SubElement(dependent, "defaultType", name="Recommended" if family == "Vanilla" else "NotUsable")
+            patterns = ET.SubElement(dependent, "patterns")
+            if family == "HIMBO": marker_pattern(patterns, ("HIMBO.esp",), "Recommended")
+            elif family == "CBBE":
+                marker_pattern(patterns, ("CBBE.esp", "3BBB.esp"), "Optional")
+                marker_pattern(patterns, ("CBBE.esp",), "Recommended")
+            elif family == "3BA": marker_pattern(patterns, ("CBBE.esp", "3BBB.esp"), "Recommended")
+            else: marker_pattern(patterns, ("HIMBO.esp",) if sex == "male" else ("CBBE.esp",), "Optional")
+    old = config.find("conditionalFileInstalls")
+    if old is not None: config.remove(old)
+    patterns = ET.SubElement(ET.SubElement(config, "conditionalFileInstalls"), "patterns")
+    for male in MALE_FAMILIES:
+        for female in FEMALE_FAMILIES:
+            pattern = ET.SubElement(patterns, "pattern")
+            dependencies = ET.SubElement(pattern, "dependencies", operator="And")
+            ET.SubElement(dependencies, "flagDependency", flag="maleFamily", value=male)
+            ET.SubElement(dependencies, "flagDependency", flag="femaleFamily", value=female)
+            ET.SubElement(ET.SubElement(pattern, "files"), "folder",
+                          source="20 Human Family/"+male+"-and-"+female, destination="", priority="0")
     if not any(name.startswith("30 OBody Source/") for name in entries):
         for step in list(steps):
             if any(row.get("source") == "30 OBody Source" for row in step.findall(".//files/folder")):
@@ -296,12 +337,15 @@ def selection_audit(entries):
     if required is None or len(required) != 7 or any(row.tag != "file" for row in required):
         raise ValueError("Literal serialized FOMOD must contain seven explicit base file mappings")
     rows = []
-    for family in ("CBBE", "3BA"):
+    for male, family in ((male, female) for male in MALE_FAMILIES for female in FEMALE_FAMILIES):
         for host in (False, True):
             if host and not any(name.startswith("30 OBody Source/") for name in entries):
                 continue
-            installed = reader.resolve_selection(config, entries, native=True, family=family, host=host,
-                                                additional_active={"HIMBO.esp", "CBBE.esp", "3BBB.esp"})
+            active = ({"HIMBO.esp"} if male == "HIMBO" else set())
+            active |= ({"CBBE.esp"} if family in {"CBBE", "3BA"} else set())
+            active |= ({"3BBB.esp"} if family == "3BA" else set())
+            installed = reader.resolve_selection(config, entries, native=True, male_family=male,
+                                                family=family, host=host, additional_active=active)
             for item in required:
                 source, destination = safe_name(item.get("source", "")), safe_name(item.get("destination", ""))
                 if source not in entries or destination in installed:
@@ -310,7 +354,14 @@ def selection_audit(entries):
             expected = reader.BASE_RUNTIME | reader.NATIVE_RUNTIME | {reader.FAMILY_DEST} | (reader.HOST_RUNTIME if host else set())
             if set(installed) != expected or len(installed) != (12 if host else 10):
                 raise ValueError("Nonminimal/incomplete selected runtime")
-            rows.append({"family": family, "obody": host, "runtimeFiles": len(installed),
+            matrix = ET.fromstring(entries[installed[reader.FAMILY_DEST]])
+            selected = {(row.get("sex"), row.get("family")) for row in matrix.findall("Profile")}
+            defaults = matrix.find("Defaults")
+            ids = {row.get("sex"): row.get("id") for row in matrix.findall("Profile")}
+            if (selected != {("male", male), ("female", family)} or len(matrix.findall("Profile")) != 2 or
+                    defaults is None or defaults.get("male") != ids["male"] or defaults.get("female") != ids["female"]):
+                raise ValueError("Selected body matrices/defaults differ from the independent choices")
+            rows.append({"maleFamily": male, "family": family, "obody": host, "runtimeFiles": len(installed),
                          "files": [{"path": name, "source": source, "sha256": sha(entries[source])}
                                    for name, source in sorted(installed.items())]})
     return rows
@@ -398,8 +449,9 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
         entries["30 OBody Source/CLAW - OBody Integration.esp"] = inputs.runtime(obody_esp, b"TES4", "OBody ESP")
         entries["30 OBody Source/Scripts/CLAWOBodySourceHost.pex"] = inputs.runtime(obody_pex, b"\xfa\x57\xc0\xde", "OBody PEX")
     matrix = inputs.read(ROOT / "src/main/resources/profiles/MorphLinks.xml")
-    for family in ("CBBE", "3BA"):
-        entries["20 Human Family/HIMBO-and-" + family + "/SKSE/Plugins/CLAW/MorphLinks.xml"] = profiles(matrix, family)
+    for male in MALE_FAMILIES:
+        for family in FEMALE_FAMILIES:
+            entries["20 Human Family/"+male+"-and-"+family+"/SKSE/Plugins/CLAW/MorphLinks.xml"] = profiles(matrix, family, male)
     template = ROOT / "src/main/resources/publication/unified-installer"
     entries["fomod/ModuleConfig.xml"] = installer(inputs.read(template / "ModuleConfig.xml"), entries)
     info = ET.fromstring(inputs.read(template / "info.xml"))
@@ -416,9 +468,9 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     entries.update(notices)
     entries["README.md"] = ("# " + NAME + "\n\n"
         "Human body morphs carried into werewolf shape.\n"
-        "Install with a mod manager through FOMOD and select your HIMBO/CBBE or HIMBO/CBBE+3BA bodies.\n"
-        "Requires Elegant textures, XP32, matching SKSE/RaceMenu/Address Library and those human bodies.\n"
-        "Enable OBody integration when using OBody.\n\nSource code: " + reference["url"] + "\n").encode("utf-8")
+        "Install through FOMOD: choose HIMBO or Vanilla for males and CBBE, 3BA or Vanilla for females.\n"
+        "Requires Elegant textures, XP32 and matching SKSE/RaceMenu/Address Library. Replacement human bodies are required only for their selected matrix.\n"
+        "Vanilla matrices use NPC weight. OBody integration supplies morph inputs to eligible born wolves using a morph-based matrix.\n\nSource code: " + reference["url"] + "\n").encode("utf-8")
     validate_no_nested_archives(entries)
     selections = selection_audit(read_zip(zip_bytes(entries)))
     receipt = {"schemaVersion": 1, "status": "packaged-explicit-build-inputs-not-game-qualified-not-published",

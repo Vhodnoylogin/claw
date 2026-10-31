@@ -6,8 +6,13 @@ spec=importlib.util.spec_from_file_location("refine",ROOT/'src/main/python/build
 
 
 def rules(family):
+ # Retain the reviewed ordinary linear calibration at neutral actor weight .5.
+ # Centered actor rows then contribute zero; the legacy helper intentionally
+ # does not interpret actor scalars, constants or nonlinear lean extensions.
+ # The shared native/WASM kernel is the full matrix evaluator.
  p=next(p for p in ET.parse(ROOT/'src/main/resources/profiles/MorphLinks.xml').getroot().findall("Profile") if p.attrib["family"]==family)
- return [dict(r.attrib) for r in p.findall("Rule")]
+ return [dict(r.attrib) for r in p.findall("Rule") if r.get('source')
+         and not r.get('source').startswith('$actor.') and r.get('function','linear')=='linear']
 
 
 def compose(family,sources):
@@ -24,7 +29,7 @@ class ProportionsTests(unittest.TestCase):
   result=refine.refine(source,policy);self.assertEqual(result.find('Profile/Rule').attrib['gain'],'1.0')
   with self.assertRaises(ValueError):refine.refine(source+b' ',policy)
 
- def test_zero_remains_neutral_without_preset_or_actor_identity(self):
+ def test_calibrated_linear_zero_remains_neutral_at_neutral_actor_weight(self):
   for family in ['HIMBO','3BA','CBBE']:self.assertFalse(any(compose(family,{}).values()))
 
  def test_girth_quality_cap_preserves_subcap_slope_and_bounds_extremes(self):

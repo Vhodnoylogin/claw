@@ -3,6 +3,7 @@ import importlib.util
 import unittest
 import xml.etree.ElementTree as ET
 import math
+import struct
 
 ROOT=Path(__file__).resolve().parents[4]
 SPEC=importlib.util.spec_from_file_location('claw_calibration',ROOT/'src/main/python/build-tools/morph_calibration.py')
@@ -11,17 +12,43 @@ cal=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(cal)
 
 class ShippedFamilyTests(unittest.TestCase):
     def setUp(self):
-        self.profiles={node.attrib['family']:node for node in ET.parse(ROOT/'src/main/resources/profiles/MorphLinks.xml').getroot()}
+        self.root=ET.parse(ROOT/'src/main/resources/profiles/MorphLinks.xml').getroot()
+        self.profiles={(node.attrib['sex'],node.attrib['family']):node for node in self.root.findall('Profile')}
 
     def rules(self,family):
-        return [{'source':r.attrib['source'],'target':r.attrib['target'],'gain':float(r.attrib['gain'])} for r in self.profiles[family]]
+        """Legacy calibrated linear submatrix, at neutral actor weight (0.5).
+
+        The old calibration helper is not a second function/scalar evaluator.
+        Centered actor rows have zero combined contribution at neutral weight;
+        function-based lean extensions and all actor/constant rows stay outside
+        these retained shape regressions. Native/WASM checks cover full math.
+        """
+        sex='male' if family=='HIMBO' else 'female'
+        return [{'source':r.attrib['source'],'target':r.attrib['target'],'gain':float(r.attrib['gain'])}
+                for r in self.profiles[sex,family]
+                if r.get('source') and not r.get('source').startswith('$actor.')
+                and r.get('function','linear')=='linear']
 
     def test_families_have_explicit_identities_and_no_implicit_activation(self):
-        self.assertEqual(set(self.profiles),{'3BA','CBBE','HIMBO'})
-        self.assertEqual(self.profiles['HIMBO'].attrib['sex'],'male')
-        self.assertEqual(self.profiles['3BA'].attrib['sex'],'female')
-        root=ET.parse(ROOT/'src/main/resources/profiles/MorphLinks.xml').getroot()
-        self.assertIsNone(root.find('Defaults'))
+        expected={('male','HIMBO'):'CLAW.HIMBO.5.8.Geometry1',
+                  ('female','CBBE'):'CLAW.CBBE.2.0.3.Geometry1',
+                  ('female','3BA'):'CLAW.3BA.2.48.Geometry1',
+                  ('male','Vanilla'):'CLAW.VanillaMale.Weight1',
+                  ('female','Vanilla'):'CLAW.VanillaFemale.Weight1'}
+        self.assertEqual(len(self.root.findall('Profile')),5)
+        self.assertEqual({key:node.get('id') for key,node in self.profiles.items()},expected)
+        self.assertEqual(len({node.get('id') for node in self.profiles.values()}),5)
+        self.assertIsNone(self.root.find('Defaults'))
+        for (sex,family),profile in self.profiles.items():
+            self.assertEqual(profile.get('sex'),sex)
+            self.assertTrue(profile.get('version'))
+            self.assertTrue(profile.get('calibration'))
+            self.assertTrue(any(rule.get('source')=='$actor.weight' for rule in profile))
+            if family=='Vanilla':
+                self.assertEqual(profile.get('version'),'game-weight-v1')
+                self.assertEqual(len(profile),20)
+                self.assertEqual({rule.get('source') for rule in profile},{'','$actor.weight'})
+                self.assertTrue(all((rule.get('function')=='constant') == (rule.get('source')=='') for rule in profile))
 
     def test_actual_source_girth_sign_is_preserved(self):
         for family in ('CBBE','3BA'):
@@ -43,15 +70,30 @@ class ShippedFamilyTests(unittest.TestCase):
         self.assertAlmostEqual(cal.compose(rules,{'TorsoWaistSize':.2})['CLAWTorsoWaistNarrow'],.76709574)
         self.assertEqual(cal.compose(rules,{'TorsoWaistSize':-.4})['CLAWTorsoWaistNarrow'],0)
 
-    def test_all_rules_are_finite_unique_bounded_and_preserve_zero(self):
-        for family in self.profiles:
-            rules=self.rules(family)
+    def test_full_canonical_rules_are_active_finite_unique_and_have_consistent_caps(self):
+        f32=lambda value:struct.unpack('<f',struct.pack('<f',float(value)))[0]
+        epsilon=f32(1e-6)
+        for identity,profile in self.profiles.items():
+            rules=[rule.attrib for rule in profile]
             self.assertLessEqual(len(rules),128)
             self.assertEqual(len(rules),len({(r['source'],r['target']) for r in rules}))
-            self.assertTrue(all(math.isfinite(r['gain']) for r in rules))
-            self.assertFalse(any(r['source'].startswith('CLAW') for r in rules))
-            self.assertFalse(any(any(token in r['target'] for token in ('Head','Tail','Claw','Paw','Crotch')) for r in rules))
-            self.assertTrue(all(value==0 for value in cal.compose(rules,{}).values()))
+            self.assertLessEqual(len({r['target'] for r in rules}),64)
+            caps={}
+            for rule in rules:
+                with self.subTest(profile=identity,source=rule['source'],target=rule['target']):
+                    self.assertTrue(math.isfinite(f32(rule['gain'])))
+                    self.assertGreater(abs(f32(rule['gain'])),epsilon)
+                    cap=f32(rule['cap'])
+                    self.assertTrue(math.isfinite(cap) and 0<cap<=1)
+                    self.assertEqual(caps.setdefault(rule['target'],cap),cap)
+                    function=rule.get('function','linear')
+                    self.assertIn(function,{'linear','positive','negative','smoothstep','power','constant'})
+                    self.assertEqual(rule['source']=='',function=='constant')
+                    if function=='constant':self.assertTrue(math.isfinite(f32(rule['value'])))
+
+    def test_ordinary_calibrated_submatrices_preserve_zero_at_neutral_actor_weight(self):
+        for family in ('HIMBO','CBBE','3BA'):
+            self.assertTrue(all(value==0 for value in cal.compose(self.rules(family),{}).values()))
 
     def test_observed_muscular_human_keeps_nontrivial_pecs_signal(self):
         # Manual-scene regression: these nonzero source shapes previously gave

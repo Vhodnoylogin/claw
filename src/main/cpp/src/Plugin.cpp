@@ -285,7 +285,7 @@ bool pendingActorRequest(RE::Actor* actor) {
 bool sourcePolicyAllows(const State& state, RE::Actor* actor) {
     return claw::SourceBootstrapPolicy{state.adoptedDefault, state.firstSeenBeast, state.observedHuman,
         state.humanWeight >= 0, state.sourceRevoked, state.suppressed, state.quarantined,
-        state.sourceClaimed, pendingActorRequest(actor)}.allows();
+        state.sourceClaimed, pendingActorRequest(actor), state.link.hasProviderSources()}.allows();
 }
 
 void logError(State& state, std::string reason, Status status) {
@@ -358,6 +358,7 @@ State* stateFor(RE::Actor* actor, bool create, bool adoptDefaults = true) {
         state.firstSeenBeast = beastRace && actor->GetRace() == beastRace;
         state.defaultRoot = reinterpret_cast<std::uintptr_t>(actor->Get3D());
         for (const auto& [name, value] : state.link.sourceValues) {
+            if (claw::actorWeightSource(name)) continue;
             (void)value;
             if (value != 0 || morphs->HasBodyMorphName(skeeReference(actor), name.c_str())) { revokeSourceBootstrap(state); break; }
         }
@@ -414,14 +415,17 @@ bool sourceBootstrapLive(RE::Actor* actor, State& state) {
         !declared || declared->id != state.link.profile || state.lastRoot != root ||
         (state.defaultRoot && state.defaultRoot != root) || state.link.sourceValues.empty()) return false;
     for (const auto& [name, value] : state.link.sourceValues) {
+        if (claw::actorWeightSource(name)) continue;
         (void)value;
         // Name presence protects zero-valued keys too; a sum of zero is not unassigned.
         if (value != 0 || morphs->HasBodyMorphName(skeeReference(actor), name.c_str())) { revokeSourceBootstrap(state); return false; }
     }
     try { captureSources(actor, state.link); }
     catch (const std::exception&) { return false; }
-    for (const auto& [name, value] : state.link.sourceValues)
+    for (const auto& [name, value] : state.link.sourceValues) {
+        if (claw::actorWeightSource(name)) continue;
         if (value != 0 || morphs->HasBodyMorphName(skeeReference(actor), name.c_str())) { revokeSourceBootstrap(state); return false; }
+    }
     return true;
 }
 
@@ -631,7 +635,9 @@ void captureSources(RE::Actor* actor, claw::MorphLink& link) {
     const auto previous = ownMorphSnapshot(actor);
     if (const auto conflict = link.sourceConflict(previous); !conflict.empty())
         throw std::runtime_error("human source overlaps an existing CLAW-owned output; clear before rebinding: " + conflict);
-    link.capture([actor](std::string_view name) { return morphs->GetBodyMorphs(skeeReference(actor), name.data()); });
+    const auto* base = actor->GetActorBase();
+    link.captureActor([actor](std::string_view name) { return morphs->GetBodyMorphs(skeeReference(actor), name.data()); },
+        base ? base->weight : std::numeric_limits<float>::quiet_NaN());
 }
 
 bool readback(RE::Actor* actor, const claw::Morphs& expected) {
@@ -672,6 +678,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         try {
             captureSources(actor, state->link);
             if (state->adoptedDefault && !state->sourceRevoked) for (const auto& [name, value] : state->link.sourceValues) {
+                if (claw::actorWeightSource(name)) continue;
                 (void)value;
                 if (value != 0 || morphs->HasBodyMorphName(skeeReference(actor), name.c_str())) { revokeSourceBootstrap(*state); break; }
             }
@@ -699,7 +706,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     const auto desiredSex = sex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
     if (state->sex != desiredSex) revokeSourceBootstrap(*state);
     const bool linked = state->link.enabled();
-    float weight = -1; // Linked mode never reads or interpolates actor weight.
+    float weight = -1; // Linked mode never interpolates output; explicit input was captured above.
     claw::Morphs expected;
     try {
         expected = claw::resolveMorphs(state->link, desiredSex, [&] {
@@ -888,7 +895,7 @@ void save(SKSE::SerializationInterface* interface) {
         for (const float weight : {state.humanWeight, state.beastWeight}) {
             std::uint32_t bits; std::memcpy(&bits, &weight, sizeof(bits)); u32(row, bits);
         }
-        if (!interface->WriteRecord(actorRecord, 5, row.data(), static_cast<std::uint32_t>(row.size()))) SKSE::log::error("Actor {:08X} serialization failed", id);
+        if (!interface->WriteRecord(actorRecord, claw::actorMatrixRecordVersion, row.data(), static_cast<std::uint32_t>(row.size()))) SKSE::log::error("Actor {:08X} serialization failed", id);
     }
 }
 
@@ -914,7 +921,7 @@ void load(SKSE::SerializationInterface* interface) {
     std::set<std::uint64_t> identities;
     while (interface->GetNextRecordInfo(type, version, length)) {
         if (type != sessionRecord && type != actorRecord) continue;
-        if ((version != 1 && !(type == actorRecord && (version >= 2 && version <= 5))) ||
+        if ((version != 1 && !(type == actorRecord && (version >= 2 && version <= claw::actorMatrixRecordVersion))) ||
             length > (type == actorRecord && version >= 3 ? 131072U : 16384U)) { SKSE::log::error("Unsupported/corrupt CLAW record"); continue; }
         Bytes bytes(length);
         if (interface->ReadRecordData(bytes.data(), length) != length) { SKSE::log::error("Truncated CLAW record"); continue; }
@@ -939,6 +946,7 @@ void load(SKSE::SerializationInterface* interface) {
                 if (!claw::morphNameIdentifier(name) || !std::isfinite(value) || value < 0 || value > 1 || !state.cache.emplace(name, value).second)
                     throw std::runtime_error("invalid serialized morph");
             }
+            bool scalarRebindRequired = false;
             if (version >= 2) {
                 state.link.profile = reader.string(); const auto ruleCount = reader.u32();
                 const std::uint32_t maxLinkEntries = version >= 3 ? 128U : 32U;
@@ -953,8 +961,9 @@ void load(SKSE::SerializationInterface* interface) {
                     const auto name = reader.string(); const auto bits = reader.u32(); float value; std::memcpy(&value, &bits, sizeof(value));
                     if (!state.link.sourceValues.emplace(name, value).second) throw std::runtime_error("duplicate linked source");
                 }
+                scalarRebindRequired = claw::legacyActorInputNeedsRebind(state.link, version);
                 std::string reason;
-                if (!state.link.canonicalize(state.sex, &reason)) throw std::runtime_error("invalid saved morph link profile: " + reason);
+                if (!scalarRebindRequired && !state.link.canonicalize(state.sex, &reason)) throw std::runtime_error("invalid saved morph link profile: " + reason);
             } // Old v1 state remains independent; a preset name never opts into linkage.
             if (!claw::validMorphCache(state.cache, state.sex, state.link.enabled()))
                 throw std::runtime_error("invalid saved linked/independent morph cache");
@@ -966,6 +975,13 @@ void load(SKSE::SerializationInterface* interface) {
                 }
             }
             if (reader.offset != bytes.size()) throw std::runtime_error("trailing serialized actor bytes");
+            if (scalarRebindRequired) {
+                // Retain this actor record so a scan cannot silently adopt a
+                // new default. Existing suppression survives future saves and
+                // only an explicit manual policy rebind may resume linkage.
+                state.link = {}; state.cache.clear(); state.suppressed = true;
+                logError(state, "pre-v6 reserved actor source/target rejected; linkage suppressed until explicit rebind");
+            }
             RE::FormID id{};
             if (interface->ResolveFormID(oldID, id)) {
                 if (!id || states.contains(id) || states.size() >= maxActors) throw std::runtime_error("duplicate/excessive actor record");

@@ -41,6 +41,26 @@ extern "C" int claw_matrix_gain_active(float gain) {
     return finiteFloat(gain) && (gain > epsilon || gain < -epsilon);
 }
 
+extern "C" int32_t claw_matrix_source_kind(const char* name, uint32_t length) {
+    if (!name || !length || length > 160 || name[0] <= 32 || name[length - 1] <= 32) return -1;
+    for (uint32_t index = 0; index < length; ++index)
+        if (static_cast<unsigned char>(name[index]) < 32 || static_cast<unsigned char>(name[index]) >= 127) return -1;
+    constexpr char prefix[] = "$actor.", weight[] = "$actor.weight";
+    bool reserved = length >= sizeof(prefix) - 1;
+    for (uint32_t index = 0; reserved && index < sizeof(prefix) - 1; ++index) {
+        const char ch = name[index] >= 'A' && name[index] <= 'Z' ? static_cast<char>(name[index] + ('a' - 'A')) : name[index];
+        reserved = ch == prefix[index];
+    }
+    if (!reserved) return 0;
+    if (length != sizeof(weight) - 1) return -1;
+    for (uint32_t index = 0; index < length; ++index) if (name[index] != weight[index]) return -1;
+    return 1;
+}
+
+extern "C" uint32_t claw_matrix_source_value_valid(int32_t kind, float value) {
+    return finiteFloat(value) && (kind == 0 || (kind == 1 && value >= 0.F && value <= 1.F));
+}
+
 extern "C" double claw_matrix_clamp(double value) {
     return value < 0.0 ? 0.0 : value > 1.0 ? 1.0 : value;
 }

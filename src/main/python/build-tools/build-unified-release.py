@@ -84,7 +84,7 @@ def plugin_type(plugin, game_version, active, flags):
 
 def resolve_selection(config, archive_paths, game_version="1.7.104.0", racemenu=True,
                       obody=True, native=False, family=None, host=False,
-                      additional_active=()):
+                      additional_active=(), male_family=None):
     """Evaluate the shipped XML's reviewed subset, returning installed destinations.
 
     Four-component minimum-version and first-matching-pattern semantics match
@@ -94,11 +94,22 @@ def resolve_selection(config, archive_paths, game_version="1.7.104.0", racemenu=
     the frozen installer uses the original empty default.
     """
     active = ({"RaceMenu.esp"} if racemenu else set()) | ({"OBody.esp"} if obody else set()) | set(additional_active)
-    if family not in (None, "CBBE", "3BA"): raise ValueError("Unknown human resource family")
+    independent_families = config.find("conditionalFileInstalls") is not None
+    if family not in ((None, "CBBE", "3BA", "Vanilla") if independent_families else (None, "CBBE", "3BA")):
+        raise ValueError("Unknown human resource family")
+    if male_family is not None and (not independent_families or male_family not in {"HIMBO", "Vanilla"}):
+        raise ValueError("Unknown or unsupported male resource family")
     if not native and (family is not None or host): raise ValueError("Family/host requires selected native linkage")
+    if not native and male_family is not None: raise ValueError("Male family requires selected native linkage")
     if native and family is None: raise ValueError("Native linkage requires one human family")
     choices = {"10 Native"} if native else set()
-    if family: choices.add("20 Human Family/HIMBO-and-"+family)
+    requested_flags = {}
+    if family:
+        if independent_families:
+            if male_family is None: raise ValueError("Native linkage requires an explicit male family")
+            requested_flags = {"maleFamily": male_family, "femaleFamily": family}
+            choices.update("@"+name+"="+value for name, value in requested_flags.items())
+        else: choices.add("20 Human Family/HIMBO-and-"+family)
     if host: choices.add("30 OBody Source")
     folders = list(config.findall("requiredInstallFiles/folder")); flags = {}; selected = set()
     module = config.find("moduleDependencies")
@@ -111,20 +122,35 @@ def resolve_selection(config, archive_paths, game_version="1.7.104.0", racemenu=
             picked = []
             for plugin in group.findall('plugins/plugin'):
                 files = plugin.find("files")
-                if files is None or len(files) != 1 or files[0].tag != "folder":
-                    raise ValueError("Every selectable option requires one explicit folder")
-                source = files[0].attrib["source"]
+                declared_flags = plugin.findall("conditionFlags/flag")
+                if files is None and independent_families:
+                    if len(declared_flags) != 1 or declared_flags[0].get("name") not in {"maleFamily", "femaleFamily"}:
+                        raise ValueError("Unreviewed flag-only FOMOD option")
+                    flag = declared_flags[0]
+                    source = "@"+flag.get("name")+"="+(flag.text or "")
+                else:
+                    if files is None or len(files) != 1 or files[0].tag != "folder":
+                        raise ValueError("Every selectable option requires one explicit folder")
+                    source = files[0].attrib["source"]
                 if source not in choices: continue
                 if plugin_type(plugin,game_version,active,flags) == "NotUsable":
                     raise ValueError("Unsupported or dependency-blocked option: " + plugin.attrib["name"])
-                picked.append(plugin); selected.add(source); folders.extend(files)
-                for flag in plugin.findall("conditionFlags/flag"):
+                picked.append(plugin); selected.add(source)
+                if files is not None: folders.extend(files)
+                for flag in declared_flags:
+                    if flag.attrib["name"] in step_flags: raise ValueError("Conflicting selected FOMOD flags")
                     step_flags[flag.attrib["name"]] = flag.text or ""
             if group.attrib["type"] == "SelectExactlyOne" and len(picked) != 1:
                 raise ValueError("Exactly one option must be selected: " + group.attrib["name"])
             if group.attrib["type"] not in {"SelectAny", "SelectExactlyOne"}: raise ValueError("Unreviewed group type")
         flags.update(step_flags)  # Prior-step flags only, matching the primary installer.
     if selected != choices: raise ValueError("Selection was hidden or incomplete")
+    for pattern in config.findall("conditionalFileInstalls/patterns/pattern"):
+        if dependency(pattern.find("dependencies"),game_version,active,flags):
+            files = pattern.find("files")
+            if files is None or len(files) != 1 or files[0].tag != "folder":
+                raise ValueError("Conditional option requires one explicit folder")
+            folders.extend(files)
     installed = {}
     for folder in folders:
         source = safe_path(folder.attrib["source"]).rstrip("/")+"/"

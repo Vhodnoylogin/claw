@@ -56,9 +56,22 @@ inline std::string morphProviderIdentity(std::string_view value) {
     for (auto& ch : result) if (ch >= 'A' && ch <= 'Z') ch = static_cast<char>(ch + ('a' - 'A'));
     return result;
 }
+inline std::int32_t morphSourceKind(std::string_view name) {
+    if (name.size() > 160) return -1;
+    return claw_matrix_source_kind(name.data(), static_cast<std::uint32_t>(name.size()));
+}
+inline bool actorWeightSource(std::string_view name) { return morphSourceKind(name) == 1; }
+inline float normalizedActorWeight(float rawNPCWeight) {
+    if (!std::isfinite(rawNPCWeight) || rawNPCWeight < 0.F || rawNPCWeight > 100.F)
+        throw std::runtime_error("actor weight is unavailable or outside0..100");
+    return rawNPCWeight / 100.F;
+}
+inline bool sourceValueWellFormed(std::string_view name, float value) {
+    return claw_matrix_source_value_valid(morphSourceKind(name), value) != 0;
+}
 inline bool morphRuleWellFormed(const MorphLinkRule& rule) {
-    return (rule.constant() ? rule.source.empty() : morphNameIdentifier(rule.source)) &&
-        morphNameIdentifier(rule.target) && !morphFunctionName(rule.function).empty() &&
+    return (rule.constant() ? rule.source.empty() : morphSourceKind(rule.source) >= 0) &&
+        morphSourceKind(rule.target) == 0 && !morphFunctionName(rule.function).empty() &&
         std::isfinite(rule.gain) && std::isfinite(rule.cap) && std::isfinite(rule.value) &&
         rule.cap > 0 && rule.cap <= 1 && (rule.constant() || rule.value == 0) &&
         (rule.function == MorphFunction::power ? rule.exponent >= 1 && rule.exponent <= 8 : rule.exponent == 2);
@@ -69,6 +82,11 @@ struct MorphLink {
     Morphs sourceValues;
     bool captured{};
     [[nodiscard]] bool enabled() const { return !profile.empty(); }
+    [[nodiscard]] bool hasProviderSources() const {
+        return std::any_of(rules.begin(), rules.end(), [](const auto& rule) {
+            return rule.active() && !rule.constant() && morphSourceKind(rule.source) == 0;
+        });
+    }
     [[nodiscard]] std::string validationError(Sex sex) const {
         if (!enabled()) return rules.empty() && sourceValues.empty() && !captured ? "" : "disabled morph link contains state";
         if (!morphLinkIdentifier(profile) || rules.size() > 128) return "invalid profile identifier or excessive rules";
@@ -97,7 +115,7 @@ struct MorphLink {
         if (!captured) return sourceValues.empty() ? "" : "uncaptured morph link contains source values";
         if (sourceValues.size() != sources.size()) return "source snapshot does not match active rules";
         for (const auto& [name, value] : sourceValues)
-            if (!sources.contains(name) || !std::isfinite(value)) return "invalid active source snapshot";
+            if (!sources.contains(name) || !sourceValueWellFormed(name, value)) return "invalid active source snapshot";
         return "";
     }
     [[nodiscard]] bool valid(Sex sex) const { return validationError(sex).empty(); }
@@ -119,7 +137,7 @@ struct MorphLink {
             }
         }
         for (const auto& [name, value] : sourceValues)
-            if (!declared.contains(name) || !std::isfinite(value)) return fail("invalid declared source snapshot");
+            if (!declared.contains(name) || !sourceValueWellFormed(name, value)) return fail("invalid declared source snapshot");
         std::erase_if(staged.rules, [](const auto& rule) { return !rule.active(); });
         std::erase_if(staged.sourceValues, [&](const auto& row) { return !activeSources.contains(row.first); });
         if (auto reason = staged.validationError(sex); !reason.empty()) return fail(std::move(reason));
@@ -128,7 +146,7 @@ struct MorphLink {
         return true;
     }
     [[nodiscard]] std::string sourceConflict(const Morphs& previousOutputs) const {
-        for (const auto& rule : rules) if (rule.active() && !rule.constant())
+        for (const auto& rule : rules) if (rule.active() && !rule.constant() && !actorWeightSource(rule.source))
             for (const auto& [name, value] : previousOutputs) {
                 (void)value;
                 if (morphProviderIdentity(name) == morphProviderIdentity(rule.source)) return rule.source;
@@ -139,15 +157,22 @@ struct MorphLink {
         Morphs observed;
         for (const auto& rule : rules) if (rule.active() && !rule.constant() && !observed.contains(rule.source)) {
             const auto value = read(rule.source);
-            if (!std::isfinite(value)) throw std::runtime_error("nonfinite applied human morph");
+            if (!sourceValueWellFormed(rule.source, value)) throw std::runtime_error("invalid applied morph or explicit actor scalar");
             observed.emplace(rule.source, value);
         }
         sourceValues = std::move(observed); captured = true;
     }
+    // Game adapter only: provider values are already effective. Raw NPC weight
+    // is read only for an explicitly declared scalar and normalized once.
+    void captureActor(const std::function<float(std::string_view)>& readMorph, float rawNPCWeight) {
+        capture([&](std::string_view source) {
+            return actorWeightSource(source) ? normalizedActorWeight(rawNPCWeight) : readMorph(source);
+        });
+    }
     [[nodiscard]] Morphs compose(Sex sex) const {
         if (!valid(sex) || !captured) throw std::runtime_error("morph link profile/source is unavailable or invalid");
-        // Linked output starts neutral. Independent presets, actor weight and
-        // unmapped traits cannot contribute to this mode.
+        // Linked output starts neutral. Independent presets and unmapped traits
+        // cannot contribute; actor weight contributes only as a declared input.
         Morphs result;
         std::set<std::string> activeIdentities;
         for (const auto& rule : rules) if (rule.active()) activeIdentities.emplace(morphProviderIdentity(rule.target));
