@@ -56,6 +56,8 @@ assets/release/se-core-20261030/** -text -whitespace
 
 # Keep addon source and its fingerprinted mapping identical after Windows checkouts.
 distribution/profiles/MorphLinks.xml text eol=lf
+distribution/shared/*.h text eol=lf
+distribution/shared/*.cpp text eol=lf
 tools/morphbench-addon/*.py text eol=lf
 tools/morphbench-addon/*.md text eol=lf
 tools/morphbench-addon/src/*.js text eol=lf

@@ -77,10 +77,19 @@ public:
             try {
                 for (const auto rule : node.children()) {
                     if (rule.type() != pugi::node_element || std::string_view(rule.name()) != "Rule" ||
-                        !attributes(rule, {"source", "target", "gain", "cap"}) || rule.first_child())
+                        !ruleAttributes(rule) || rule.first_child())
                         return fail("Unexpected family rule/attribute/content");
-                    profile.link.rules.push_back({rule.attribute("source").value(), rule.attribute("target").value(),
-                        number(rule.attribute("gain").value()), number(rule.attribute("cap").value())});
+                    MorphLinkRule edge{rule.attribute("source").value(), rule.attribute("target").value(),
+                        number(rule.attribute("gain").value()), number(rule.attribute("cap").value())};
+                    if (rule.attribute("function")) edge.function = parseMorphFunction(rule.attribute("function").value());
+                    if (edge.function == MorphFunction::power) {
+                        const std::string_view text = rule.attribute("exponent").value();
+                        const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), edge.exponent);
+                        if (text.empty() || end != text.data() + text.size() || error != std::errc{})
+                            throw std::invalid_argument("Invalid exponent");
+                    }
+                    if (edge.constant()) edge.value = number(rule.attribute("value").value());
+                    profile.link.rules.push_back(std::move(edge));
                 }
             } catch (const std::invalid_argument&) { return fail("Invalid family coefficient"); }
             if (!profile.link.valid(profile.sex)) return fail("Family mapping violates MorphLink contract");
@@ -134,6 +143,17 @@ private:
         for (const auto item : node.attributes())
             if (!found.insert(item.name()).second || std::find(expected.begin(), expected.end(), item.name()) == expected.end()) return false;
         return found.size() == expected.size();
+    }
+    static bool ruleAttributes(pugi::xml_node node) {
+        std::set<std::string_view> found;
+        for (const auto item : node.attributes())
+            if (!found.insert(item.name()).second) return false;
+        auto expected = std::set<std::string_view>{"source", "target", "gain", "cap"};
+        if (found.contains("function")) expected.emplace("function");
+        const std::string_view function = node.attribute("function").value();
+        if (function == "power") expected.emplace("exponent");
+        if (function == "constant") expected.emplace("value");
+        return found == expected;
     }
 };
 }

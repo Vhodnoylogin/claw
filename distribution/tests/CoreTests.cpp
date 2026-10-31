@@ -68,7 +68,7 @@ int main() {
             for (const auto name : claw::recognizedMorphs(claw::Sex::male))
                 require(first.at(std::string(name)) == (name == "CLAWTorsoGirth" ? .125F : 0.F), "unmapped linked trait was nonzero");
             const auto female = claw::resolveMorphs(link, claw::Sex::female, oldA);
-            require(female.size() == 25 && female.at("CLAWTorsoBreastSize") == 0, "female neutral breast/cache lost");
+            require(female.size() == claw::recognizedMorphs(claw::Sex::female).size() && female.at("CLAWTorsoBreastSize") == 0, "female neutral breast/cache lost");
             require(claw::verifyOwnMorphs(first, [&](std::string_view name) {
                 const auto found = first.find(name); return found == first.end() ? 0.F : found->second;
             }), "complete male own-key readback failed");
@@ -285,7 +285,7 @@ int main() {
             require(empty.empty(), "neutral preset gained a nonzero morph");
             std::size_t visited{};
             require(claw::verifyOwnMorphs(empty, [&](std::string_view) { ++visited; return 0.F; }), "zero neutral readback failed");
-            require(visited == 25, "neutral readback skipped recognized morphs");
+            require(visited == claw::recognizedMorphs(claw::Sex::female).size(), "neutral readback skipped recognized morphs");
             require(!claw::verifyOwnMorphs(empty, [](std::string_view name) { return name == "CLAWTailFluff" ? .4F : 0.F; }),
                     "neutral readback accepted an unexpected own value");
             const claw::Morphs sparse{{"CLAWArmGirth", .5F}};

@@ -1,0 +1,6 @@
+<MorphLinkProfiles schemaVersion="1">
+  <Profile id="CLAW.HIMBO.ConstantExample" family="HIMBO" version="5.8" sex="male" calibration="independent-constant-example">
+    <Rule source="" target="CLAWTorsoChestSize" gain="1" cap="1" function="constant" value="0.4" />
+    <Rule source="" target="CLAWArmGirth" gain="1" cap="1" function="constant" value="0.3" />
+  </Profile>
+</MorphLinkProfiles>

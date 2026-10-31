@@ -4,7 +4,7 @@ param(
     [Parameter(Mandatory=$true)][string]$SkeeHeader,
     [string]$CMakeExe,
     [string]$Generator = 'Visual Studio 18 2026',
-    [ValidateSet('VR','SE')][string]$Runtime = 'VR',
+    [ValidateSet('UNIVERSAL')][string]$Runtime = 'UNIVERSAL',
     [string]$DependencyPrefix,
     [string]$ToolchainFile,
     [string]$PhysicsModelHeader,
@@ -23,7 +23,7 @@ $clawCache = Join-Path $clawOutput 'CMakeCache.txt'
 if (Test-Path -LiteralPath $clawCache) {
     $clawRuntimeEntry = Get-Content -LiteralPath $clawCache | Where-Object { $_ -match '^CLAW_RUNTIME:.*=' } | Select-Object -First 1
     $clawPreviousRuntime = if ($clawRuntimeEntry) { ($clawRuntimeEntry -split '=', 2)[1] } else { 'VR' }
-    if ($clawPreviousRuntime -ne $Runtime) { throw 'Use a separate BuildDir for each runtime; legacy build trees are VR.' }
+    if ($clawPreviousRuntime -ne $Runtime) { throw 'Use a fresh universal BuildDir; preserve older SE/VR build trees.' }
 }
 $clawAllowedWork = [IO.Path]::Combine($clawRepo, 'work') + [IO.Path]::DirectorySeparatorChar
 if ($clawOutput.Equals($clawRepo, [StringComparison]::OrdinalIgnoreCase) -or
@@ -64,14 +64,13 @@ if ($PhysicsModelHeader) { $clawConfigure += "-DCLAW_PHYSICS_MODEL_HEADER=$([IO.
 if ($PhysicsFixtureHeader) { $clawConfigure += "-DCLAW_PHYSICS_FIXTURE_HEADER=$([IO.Path]::GetFullPath($PhysicsFixtureHeader))" }
 if ($OBodyHeader) { $clawConfigure += "-DCLAW_OBODY_HEADER=$([IO.Path]::GetFullPath($OBodyHeader))" }
 foreach ($clawName in $FetchSources.Keys) {
-    if ($clawName -notin @('PUGIXML','FMT','SPDLOG','RAPIDCSV')) { throw "Unknown external dependency: $clawName" }
+    if ($clawName -notin @('PUGIXML')) { throw "Only PUGIXML is fetched here; supply modern SDK dependencies through DependencyPrefix/ToolchainFile: $clawName" }
     $clawConfigure += "-DFETCHCONTENT_SOURCE_DIR_$($clawName.ToUpperInvariant())=$([IO.Path]::GetFullPath($FetchSources[$clawName]))"
 }
 & $CMakeExe @clawConfigure
 if ($LASTEXITCODE) { throw 'CMake configuration failed.' }
-$clawPluginTarget = if ($Runtime -eq 'SE') { 'CLAWDistributionSE' } else { 'CLAWDistribution' }
-$clawTargets = @($clawPluginTarget,'claw-preset-tool')
-if ($BuildTests) { $clawTargets += 'claw-preset-tests','claw-physics-observer-tests','claw-physics-fit-tests','claw-source-bootstrap-tests' }
+$clawTargets = @('CLAWDistribution','claw-preset-tool')
+if ($BuildTests) { $clawTargets += 'claw-preset-tests','claw-matrix-tests','claw-runtime-tests','claw-physics-observer-tests','claw-physics-fit-tests','claw-source-bootstrap-tests' }
 & $CMakeExe --build $clawOutput --config Release --target @clawTargets --parallel $Parallel
 if ($LASTEXITCODE) { throw 'Native compilation failed.' }
 Write-Output "Compiled into $clawOutput. This command never runs tests or installs files."

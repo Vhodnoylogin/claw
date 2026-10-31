@@ -2,8 +2,39 @@
 #include "claw/MorphProfiles.h"
 #include <charconv>
 #include <iostream>
+#include <iomanip>
+#include <limits>
 
 int main(int argc, char** argv) {
+    if (argc == 4 && std::string_view(argv[1]) == "matrix") {
+        claw::MorphProfileCatalog profiles;
+        if (!profiles.loadFile(argv[2])) { std::cerr << profiles.error() << '\n'; return 2; }
+        const claw::MorphFamilyProfile* profile{};
+        for (const auto sex : {claw::Sex::male, claw::Sex::female})
+            if (const auto* found = profiles.find(argv[3], sex)) profile = found;
+        if (!profile) { std::cerr << "Unknown matrix profile\n"; return 2; }
+        claw::Morphs human;
+        std::string line;
+        // Tab-separated names preserve legitimate embedded spaces.
+        while (std::getline(std::cin, line)) {
+            if (line.empty()) continue;
+            const auto delimiter = line.find('\t');
+            if (delimiter == std::string::npos) return 2;
+            const auto name = line.substr(0, delimiter), text = line.substr(delimiter + 1);
+            float value{};
+            const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
+            if (!claw::morphLinkIdentifier(name) || name.starts_with("CLAW") || error != std::errc{} ||
+                end != text.data() + text.size() || !std::isfinite(value) || !human.emplace(name, value).second) return 2;
+        }
+        auto link = profile->link;
+        try {
+            link.capture([&](std::string_view source) { const auto found = human.find(source); return found == human.end() ? 0.F : found->second; });
+            const auto morphs = link.compose(profile->sex);
+            std::cout << std::setprecision(std::numeric_limits<float>::max_digits10) << '{'; bool first = true;
+            for (const auto& [target, value] : morphs) { if (!first) std::cout << ','; first = false; std::cout << claw::jsonString(target) << ':' << value; }
+            std::cout << "}\n"; return 0;
+        } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 2; }
+    }
     if (argc == 3 && std::string_view(argv[1]) == "families") {
         claw::MorphProfileCatalog profiles;
         if (!profiles.loadFile(argv[2])) { std::cerr << profiles.error() << '\n'; return 2; }
@@ -27,6 +58,7 @@ int main(int argc, char** argv) {
     if (argc != 3 && argc != 6) {
         std::cerr << "claw-preset-tool validate <CLAW-preset-directory>\n"
                      "claw-preset-tool families <MorphLinks.xml>\n"
+                     "claw-preset-tool matrix <MorphLinks.xml> <profile>  (NAME<TAB>VALUE lines on stdin)\n"
                      "claw-preset-tool interpolate <directory> <preset> <male|female> <weight>\n";
         return 2;
     }

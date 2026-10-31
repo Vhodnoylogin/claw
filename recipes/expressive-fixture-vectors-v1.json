@@ -1,0 +1,137 @@
+[
+  {
+    "fixture": "MThin",
+    "sex": "male",
+    "profile": "CLAW.HIMBO.5.8.Geometry1",
+    "values": {
+      "CLAWArmGirth": 0,
+      "CLAWArmLean": 0.6076531410217285,
+      "CLAWLegCalfGirth": 0,
+      "CLAWLegCalfLean": 0.6009098291397095,
+      "CLAWLegThighGirth": 0,
+      "CLAWLegThighLean": 0.575585663318634,
+      "CLAWTorsoBackWide": 0,
+      "CLAWTorsoBellyRound": 0,
+      "CLAWTorsoChestSize": 0,
+      "CLAWTorsoFlankWidth": 0,
+      "CLAWTorsoGirth": 0,
+      "CLAWTorsoLean": 0.7880669236183167,
+      "CLAWTorsoNeckGirth": 0,
+      "CLAWTorsoShoulderGirth": 0,
+      "CLAWTorsoWaistNarrow": 0.7670957446098328
+    }
+  },
+  {
+    "fixture": "MMuscular",
+    "sex": "male",
+    "profile": "CLAW.HIMBO.5.8.Geometry1",
+    "values": {
+      "CLAWArmGirth": 1,
+      "CLAWArmLean": 0,
+      "CLAWLegCalfGirth": 0.4762144982814789,
+      "CLAWLegCalfLean": 0,
+      "CLAWLegThighGirth": 0.3202371597290039,
+      "CLAWLegThighLean": 0,
+      "CLAWTorsoBackWide": 0,
+      "CLAWTorsoBellyRound": 0.007189279887825251,
+      "CLAWTorsoChestSize": 0.30000001192092896,
+      "CLAWTorsoFlankWidth": 0,
+      "CLAWTorsoGirth": 0,
+      "CLAWTorsoLean": 0,
+      "CLAWTorsoNeckGirth": 0,
+      "CLAWTorsoShoulderGirth": 0.681911051273346,
+      "CLAWTorsoWaistNarrow": 0
+    }
+  },
+  {
+    "fixture": "MHeavy",
+    "sex": "male",
+    "profile": "CLAW.HIMBO.5.8.Geometry1",
+    "values": {
+      "CLAWArmGirth": 0.2547261714935303,
+      "CLAWArmLean": 0,
+      "CLAWLegCalfGirth": 0.19169536232948303,
+      "CLAWLegCalfLean": 0,
+      "CLAWLegThighGirth": 0.22750230133533478,
+      "CLAWLegThighLean": 0,
+      "CLAWTorsoBackWide": 0,
+      "CLAWTorsoBellyRound": 0.7963178753852844,
+      "CLAWTorsoChestSize": 0.16818872094154358,
+      "CLAWTorsoFlankWidth": 0.5978478193283081,
+      "CLAWTorsoGirth": 0.24030926823616028,
+      "CLAWTorsoLean": 0,
+      "CLAWTorsoNeckGirth": 0,
+      "CLAWTorsoShoulderGirth": 0.23875530064105988,
+      "CLAWTorsoWaistNarrow": 0
+    }
+  },
+  {
+    "fixture": "FThin",
+    "sex": "female",
+    "profile": "CLAW.3BA.2.48.Geometry1",
+    "values": {
+      "CLAWArmGirth": 0,
+      "CLAWArmLean": 0.5886322259902954,
+      "CLAWLegCalfGirth": 0,
+      "CLAWLegCalfLean": 0.5033231377601624,
+      "CLAWLegThighGirth": 0,
+      "CLAWLegThighLean": 0.5836408734321594,
+      "CLAWTorsoBackWide": 0,
+      "CLAWTorsoBellyRound": 0,
+      "CLAWTorsoBreastSize": 0,
+      "CLAWTorsoChestSize": 0,
+      "CLAWTorsoFlankWidth": 0,
+      "CLAWTorsoGirth": 0,
+      "CLAWTorsoLean": 0.3541686534881592,
+      "CLAWTorsoNeckGirth": 0,
+      "CLAWTorsoShoulderGirth": 0,
+      "CLAWTorsoWaistNarrow": 0.4504164755344391
+    }
+  },
+  {
+    "fixture": "FMuscular",
+    "sex": "female",
+    "profile": "CLAW.3BA.2.48.Geometry1",
+    "values": {
+      "CLAWArmGirth": 1,
+      "CLAWArmLean": 0,
+      "CLAWLegCalfGirth": 0.507148265838623,
+      "CLAWLegCalfLean": 0,
+      "CLAWLegThighGirth": 0.4784950315952301,
+      "CLAWLegThighLean": 0,
+      "CLAWTorsoBackWide": 0.7873870134353638,
+      "CLAWTorsoBellyRound": 0,
+      "CLAWTorsoBreastSize": 0.5396345257759094,
+      "CLAWTorsoChestSize": 0,
+      "CLAWTorsoFlankWidth": 0,
+      "CLAWTorsoGirth": 0,
+      "CLAWTorsoLean": 0.21580226719379425,
+      "CLAWTorsoNeckGirth": 0,
+      "CLAWTorsoShoulderGirth": 0.7885133624076843,
+      "CLAWTorsoWaistNarrow": 0.3941144049167633
+    }
+  },
+  {
+    "fixture": "FHeavy",
+    "sex": "female",
+    "profile": "CLAW.3BA.2.48.Geometry1",
+    "values": {
+      "CLAWArmGirth": 0.7997032403945923,
+      "CLAWArmLean": 0,
+      "CLAWLegCalfGirth": 0.5679961442947388,
+      "CLAWLegCalfLean": 0,
+      "CLAWLegThighGirth": 0.4175807535648346,
+      "CLAWLegThighLean": 0,
+      "CLAWTorsoBackWide": 0,
+      "CLAWTorsoBellyRound": 1,
+      "CLAWTorsoBreastSize": 1,
+      "CLAWTorsoChestSize": 0,
+      "CLAWTorsoFlankWidth": 0.21056248247623444,
+      "CLAWTorsoGirth": 0.1585526317358017,
+      "CLAWTorsoLean": 0,
+      "CLAWTorsoNeckGirth": 0,
+      "CLAWTorsoShoulderGirth": 0,
+      "CLAWTorsoWaistNarrow": 0
+    }
+  }
+]

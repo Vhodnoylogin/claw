@@ -1,6 +1,42 @@
 # CLAW — future plans
 
-Owner-defined priorities, revised 30 October 2026. No release dates are promised.
+Owner-defined priorities, revised 31 October 2026. No release dates are promised.
+
+## Current release sequence
+
+The 31 October owner instruction supersedes the earlier six-release estimate.
+
+1. **Current release — authorable conversion and visible body contrast.** A wolf
+   preset is an ordered sparse coefficient matrix plus a matching function matrix:
+   each human source can affect multiple wolf targets and vice versa. Linear,
+   nonlinear and constant cells share one validated C++/preview evaluator contract.
+   An all-constant matrix is a standalone wolf preset. Deliver the Morphbench
+   **plugin** with two independently rendered human/wolf panels, linked rotation,
+   editable human controls, read-only wolf controls, editable/importable/exportable
+   matrix, per-cell contributions and current/base vertex measurements. Author
+   leaner minima and larger fat/muscular maxima, prioritizing arms, thighs/legs
+   and abdomen, including the visible fur silhouette. Compare in Morphbench first,
+   then verify the exact installed resources and conversion in Skyrim SE. Tests
+   must cover OBody, both sexes, transform/return, born beasts and persistence.
+2. **Next release — individual traits and breast shape.** Human-driven head/face,
+   ear, tail and claw conversion participates in the same matrix concept; qualify
+   actual human sources rather than inventing anatomical equivalence. Investigate
+   per-actor fur colour from hair, skin, eyebrow and beard parameters. Improve the
+   static female breast shape, downward growth and skin/fur/axilla continuity.
+3. **Third release — physics and VR.** Finish FSMP/CBPC motion, coarse fitted SE
+   collision, detailed VR hand-contact coverage, morph-responsive collider bounds
+   and the first-person VR body. Prefer existing XP32 bones. Measure actual engine
+   behavior; an offline capsule fit is not contact acceptance.
+4. **Maintenance — morph expansion.** Evaluate additional or replacement wolf
+   fields using the same human-source, geometry-quality and appearance checks.
+
+Implementation and acceptance are separate. A passing evaluator or increased
+coefficient does not establish a visible or attractive deformation. New game
+tests use the accepted compact paired scene, disabled AI/collisions and DevBench
+engine commands; temporary output and tests stay outside the mod archive.
+
+The remaining sections retain the 30 October baseline and backlog history; their
+older priority statements do not override the sequence above.
 
 The nearest release is the SE core: repaired male/female bodies plus human-driven
 Distribution using ordinary OBody presets. Effective human morphs determine beast

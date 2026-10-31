@@ -76,7 +76,42 @@
     if (!presets.length) fail("Preset XML contains no presets.");
     return presets;
   }
-  const api = Object.freeze({ fromRows, effective, parseJSON, parseXML });
+  function matrixJSON(profile) {
+    return JSON.stringify({ schemaVersion: 1, kind: "claw-wolf-matrix", profile: core.validateMatrix(profile) }, null, 2);
+  }
+  function parseMatrixJSON(text, expectedProfile) {
+    const parsed = JSON.parse(text);
+    if (!object(parsed) || parsed.schemaVersion !== 1 || parsed.kind !== "claw-wolf-matrix") fail("Expected a CLAW wolf matrix preset (schemaVersion 1).");
+    const profile = core.validateMatrix(parsed.profile);
+    if (expectedProfile && ["id", "family", "version", "sex"].some(key => profile[key] !== expectedProfile[key])) {
+      fail("Wolf matrix resource family/version differs from the selected human family. Select its matching family first.");
+    }
+    return profile;
+  }
+  function parseWolfSnapshot(text, profile) {
+    const parsed = JSON.parse(text);
+    if (!object(parsed) || parsed.schemaVersion !== 1 || parsed.kind !== "claw-wolf-coefficient-snapshot" ||
+        parsed.profileId !== profile.id || !object(parsed.wolfValues)) fail("Expected a wolf coefficient snapshot for this exact human family.");
+    const allowed = new Set(Object.keys(core.evaluateMatrix(profile, {}).values)), values = Object.create(null);
+    for (const [name, value] of Object.entries(parsed.wolfValues)) {
+      if (!allowed.has(name)) fail("Snapshot contains an unsupported wolf body target: " + name);
+      values[name] = finite(value);
+    }
+    return values;
+  }
+  function compareWolf(calculated, reference) {
+    const rows = [], names = [...new Set([...Object.keys(calculated), ...Object.keys(reference)])].sort();
+    let squareSum = 0, maximum = 0;
+    for (const target of names) {
+      const value = Object.hasOwn(calculated, target) ? finite(calculated[target]) : 0;
+      const wanted = Object.hasOwn(reference, target) ? finite(reference[target]) : 0;
+      const difference = value - wanted;
+      rows.push({ target, value, reference: wanted, difference }); squareSum += difference * difference;
+      maximum = Math.max(maximum, Math.abs(difference));
+    }
+    return { rows, maximum, rms: rows.length ? Math.sqrt(squareSum / rows.length) : 0 };
+  }
+  const api = Object.freeze({ fromRows, effective, parseJSON, parseXML, matrixJSON, parseMatrixJSON, parseWolfSnapshot, compareWolf });
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else global.CLAWInput = api;
 })(typeof window !== "undefined" ? window : globalThis);

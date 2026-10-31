@@ -52,6 +52,22 @@ class BuildTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "outside"):
             builder.build(builder.REPOSITORY / "work/addon-output")
 
+    def test_function_parameters_and_constant_bias_are_preserved(self):
+        source = self.source.replace(b'<Rule source="Arms"', b'<Rule function="power" exponent="3" source="Arms"', 1)
+        first = builder.catalog_from_bytes(source)["profiles"][0]["rules"][0]
+        self.assertEqual((first["function"], first["exponent"]), ("power", 3))
+        source = self.source.replace(b'<Rule source="Arms"', b'<Rule function="constant" value="0.4" source=""', 1)
+        first = builder.catalog_from_bytes(source)["profiles"][0]["rules"][0]
+        self.assertEqual((first["source"], first["function"], first["value"]), ("", "constant", builder.float32("0.4")))
+
+    def test_invalid_or_irrelevant_function_parameters_are_rejected(self):
+        for attributes in [b'function="eval"', b'function="power"', b'function="power" exponent="2.5"',
+                           b'function="power" exponent="9"', b'function="linear" value="0.5"',
+                           b'function="constant" value="0.5"']:
+            data = self.source.replace(b'<Rule source="Arms"', b'<Rule ' + attributes + b' source="Arms"', 1)
+            with self.subTest(attributes=attributes), self.assertRaises(ValueError):
+                builder.catalog_from_bytes(data)
+
 
 if __name__ == "__main__":
     unittest.main()

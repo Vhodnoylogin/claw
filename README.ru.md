@@ -1,5 +1,14 @@
 # CLAW — Configurable Lycanthrope Anatomy and Weight
 
+Разработка 31 октября добавляет [матрицы коэффициентов и функций](docs/matrix-contract.md),
+[плагин сравнения человека и волка в Morphbench](tools/morphbench-addon/README.md)
+и [более худые и объёмные формы тела](docs/expressive-body.md). DLL игры и
+WebAssembly плагина используют один исходный вычислительный модуль. Игровая DLL
+собирается через CommonLib одним файлом для заявленных SE, AE и VR;
+[совместимость сборки и фактические игровые проверки](docs/universal-runtime.md)
+учитываются отдельно. Эти изменения не заменяют опубликованный технический
+срез 30 октября и исторический выпуск Nexus.
+
 Основной репозиторий: [Vhodnoylogin/claw](https://github.com/Vhodnoylogin/claw), ветка
 `main`. Исходники начинаются от корня. Для самостоятельной сборки настройте исключённый
 из Git `build.local.json`: [docs/rebuild.md](docs/rebuild.md).

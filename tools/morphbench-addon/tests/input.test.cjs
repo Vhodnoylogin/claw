@@ -104,3 +104,28 @@ test("XML comments and predefined/numeric escapes reach the browser parser uncha
   const [preset] = input.parseXML(text, BoundaryParser);
   assert.equal(preset.name, 'A & "B"'); assert.equal(input.effective(preset, 1).Butt, Math.fround(.1));
 });
+test("wolf presets round-trip the coefficient/function matrix and reject ambiguous or mismatched input", () => {
+  const profile = { id: "female.CBBE", family: "CBBE", version: "2.0.3", sex: "female", calibration: "author-test",
+    rules: [{ source: "Belly", target: "CLAWTorsoBellyRound", gain: .25, cap: .8, function: "power", exponent: 3 },
+      { source: "", target: "CLAWTorsoBellyRound", gain: 1, cap: .8, function: "constant", value: .1 }] };
+  const text = input.matrixJSON(profile), roundTrip = input.parseMatrixJSON(text, profile);
+  assert.equal(roundTrip.calibration, profile.calibration); assert.equal(roundTrip.rules[0].exponent, 3);
+  assert.equal(roundTrip.rules[1].value, Math.fround(.1)); assert.equal(roundTrip.rules[0].cap, Math.fround(.8));
+  assert.equal(input.matrixJSON(roundTrip), text, "repeated exports preserve normalized float32 parameters and ordered functions");
+  assert.throws(() => input.parseMatrixJSON(JSON.stringify(profile)), /wolf matrix preset/);
+  assert.throws(() => input.parseMatrixJSON(text, { ...profile, version: "other" }), /family\/version/);
+  assert.throws(() => input.parseMatrixJSON(text, { ...profile, sex: "male" }), /family\/version/);
+});
+test("numeric snapshots remain distinct from matrix presets and report full target differences", () => {
+  const profile = { id: "female.CBBE", family: "CBBE", sex: "female",
+    rules: [{ source: "Belly", target: "CLAWTorsoBellyRound", gain: 1, cap: 1 }] };
+  const envelope = { schemaVersion: 1, kind: "claw-wolf-coefficient-snapshot", profileId: profile.id, wolfValues: { CLAWTorsoBellyRound: .5 } };
+  const vector = input.parseWolfSnapshot(JSON.stringify(envelope), profile);
+  assert.equal(vector.CLAWTorsoBellyRound, .5);
+  assert.throws(() => input.parseMatrixJSON(JSON.stringify(envelope)), /matrix preset/);
+  for (const bad of [{ ...envelope, profileId: "other" }, { ...envelope, wolfValues: { CLAWTailLength: 1 } },
+    { ...envelope, wolfValues: { CLAWTorsoBellyRound: "1" } }]) assert.throws(() => input.parseWolfSnapshot(JSON.stringify(bad), profile));
+  const result = input.compareWolf({ CLAWTorsoBellyRound: .75, CLAWArmGirth: .25 }, vector);
+  assert.equal(result.maximum, .25); assert.equal(result.rms, .25);
+  assert.deepEqual(result.rows.map(row => row.difference), [.25, .25]);
+});

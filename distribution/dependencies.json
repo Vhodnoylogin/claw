@@ -1,11 +1,24 @@
 {
   "purpose": "Pinned build dependencies remain outside Git; no binaries or vendor sources are checked in",
   "commonlib": {
-    "repository": "https://github.com/CharmedBaryon/CommonLibSSE-NG",
-    "revision": "c4ab853d095e81e3390b282d7ba01ab2f24ebf25",
-    "tag": "v3.7.0",
-    "archive": "https://codeload.github.com/CharmedBaryon/CommonLibSSE-NG/zip/c4ab853d095e81e3390b282d7ba01ab2f24ebf25",
-    "sha256": "6777b38c42cbeb82776bcc51a03f2128c3d231a635d08467144e31b08fa48554"
+    "repository": "https://github.com/Vhodnoylogin/CommonLibSSE-NG",
+    "upstream": "https://github.com/alandtse/CommonLibSSE-NG",
+    "revision": "0c95630c29ff98f64caeea83c29ca373cf93e58b",
+    "parent": "a898f469851c464d05137bb74b069dd234897643",
+    "version": "9.1.0",
+    "change": "Owner-authorized TypeInfo object-array tag mask correction; otherwise exact parent SDK",
+    "archiveSha256": "ae915dc622a91b3ea126e3db58de7a4afcaee110d5b7b6dbccc20d42aa40101a",
+    "runtimes": [
+      "SE",
+      "AE",
+      "VR"
+    ],
+    "openvr": {
+      "repository": "https://github.com/ValveSoftware/openvr",
+      "revision": "60eb187801956ad277f1cae6680e3a410ee0873b",
+      "archiveSha256": "51b4deef78c10f52e3e41d85bab51a87a55cd4d87b4d6c65c8952c2cbfafb9ae"
+    },
+    "dependencies": "Use the external configured SDK prefix/toolchain; historical fmt/spdlog/rapidcsv pins below are for the preserved legacy build only"
   },
   "skeeApi": {
     "repository": "https://github.com/expired6978/SKSE64Plugins",
@@ -13,8 +26,27 @@
     "url": "https://raw.githubusercontent.com/expired6978/SKSE64Plugins/9ebcb733e17be695f994cd2e9cc383043446bc02/skee64/IPluginInterface.h",
     "sha256": "875410dd22230f76a014a6841004e7d346f5fa1c748cfff695f9f495234da277"
   },
-  "pugixml": {"tag":"v1.15","sha256":"0dd4dc16e38bbc1c889d3a59660072450127bac7d19415f3cf5d5d6b25c58b35"},
-  "fmt": {"tag":"10.2.1","sha256":"d368f9c39a33a3aef800f5be372ec1df1c12ad57ada1f60adc62f24c0e348469"},
-  "spdlog": {"tag":"v1.14.1","sha256":"429dfdf3afc1984feb59e414353c21c110bc79609f6d7899d52f6aa388646f6d"},
-  "rapidcsv": {"tag":"v8.84","sha256":"6226df921e392eb5fa88dd1efaf26a1a7cfdc23bc00c08a7337fc0314bf8b5a8"}
+  "pugixml": {
+    "tag": "v1.15",
+    "sha256": "0dd4dc16e38bbc1c889d3a59660072450127bac7d19415f3cf5d5d6b25c58b35"
+  },
+  "fmt": {
+    "tag": "10.2.1",
+    "sha256": "d368f9c39a33a3aef800f5be372ec1df1c12ad57ada1f60adc62f24c0e348469"
+  },
+  "spdlog": {
+    "tag": "v1.14.1",
+    "sha256": "429dfdf3afc1984feb59e414353c21c110bc79609f6d7899d52f6aa388646f6d"
+  },
+  "rapidcsv": {
+    "tag": "v8.84",
+    "sha256": "6226df921e392eb5fa88dd1efaf26a1a7cfdc23bc00c08a7337fc0314bf8b5a8"
+  },
+  "legacyCommonlib": {
+    "repository": "https://github.com/CharmedBaryon/CommonLibSSE-NG",
+    "revision": "c4ab853d095e81e3390b282d7ba01ab2f24ebf25",
+    "tag": "v3.7.0",
+    "archive": "https://codeload.github.com/CharmedBaryon/CommonLibSSE-NG/zip/c4ab853d095e81e3390b282d7ba01ab2f24ebf25",
+    "sha256": "6777b38c42cbeb82776bcc51a03f2128c3d231a635d08467144e31b08fa48554"
+  }
 }

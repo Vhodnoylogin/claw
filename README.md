@@ -1,5 +1,15 @@
 # CLAW — Configurable Lycanthrope Anatomy and Weight
 
+Development on 31 October adds [coefficient/function matrix presets](docs/matrix-contract.md),
+the [paired Morphbench plugin](tools/morphbench-addon/README.md), and
+[authored lean/growth body fields](docs/expressive-body.md). The new native
+candidate builds one [CommonLib DLL for SE, AE and VR](docs/universal-runtime.md).
+Build compatibility and actual game acceptance are tracked separately; this
+development candidate does not change the already published technical baseline.
+The [31 October SE checks](docs/verification-20261031.md) now verify the exact
+installed universal DLL and new TRIs through core105 and born27 mechanisms;
+textured artistic acceptance and VR/AE game coverage remain separate.
+
 The [30 October technical Git release](release/SE-Core-20261030.md) provides two
 downloads: one working CLAW installer and one `test_CLAW` comparison-data archive.
 The working installer combines body resources, optional human morph linkage and
@@ -28,15 +38,17 @@ physics, colliders that follow morphs, seam repairs, OBody or equivalent support
 a first-person VR body, and the separate adult anatomy/physics add-on.
 
 The [distribution core](docs/distribution.md) and [measured collider candidates](docs/colliders.md)
-remain documented separately. Ordinary human presets determine the linked wolf
-through morph-to-morph conversion, without requiring wolf presets. Geometry,
+remain documented separately. Ordinary human presets supply the linked wolf's
+inputs through morph-to-morph conversion. A wolf matrix preset can now tune that
+conversion; an all-constant matrix defines an independent wolf. Geometry,
 ear/tail and breast physics, morph-responsive colliders and distinct weight
 endpoints continue as development work.
 The optional [typed preset companion and authoring resources](docs/presets.md)
 are development candidates; runtime acceptance is pending.
 The native [human/beast morph link](docs/transformation.md) derives a beast morph
 vector from actual applied human coefficients. Linked actors use ordinary human
-presets; there are no separate wolf presets in this path. Real SE checks have
+presets; wolf matrix presets describe conversion rules rather than another set
+of human body coefficients. Real SE checks have
 exercised six human actors of both sexes, transformations and returns, source
 preservation, save/load and two actors created directly as wolves. Numeric
 conversion is working; visible proportional quality remains under development.
@@ -45,10 +57,11 @@ The older exact preset-pairing experiment is historical. The frozen repaired
 resources and linkage passed core117 and born33 with the official installed
 RaceMenu; the [verification scope](docs/verification-20261030.md) distinguishes
 these mechanism checks from artistic acceptance and later installation checks.
-The DLL accepts only Skyrim SE 1.7.104.0 / SKSE 2.3.1. Other SE/AE/VR native
-runtimes remain unqualified; the separate compiled VR candidate is not a
-supported binary in the working archive. A separate RaceMenu repair is not a
-required CLAW dependency.
+The frozen 30 October DLL accepts only Skyrim SE 1.7.104.0 / SKSE 2.3.1.
+The new development candidate builds one CommonLib DLL with SE/AE/VR dispatch;
+its [runtime contract](docs/universal-runtime.md) records exact load boundaries
+and separates offline checks from actual game acceptance. A separate RaceMenu
+repair is not a required CLAW dependency.
 The selected breast/axilla and male collar edits now have a [reproducible baked
 authoring recipe and minimal linked-SE candidate builder](docs/core-candidate.md).
 They reproduce the exact repaired-surface trial inputs; final owner visual

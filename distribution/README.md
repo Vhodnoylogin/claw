@@ -1,12 +1,29 @@
 # CLAW Distribution development companion
 
+The current matrix candidate adds a matching coefficient C and function F for
+every human-to-wolf edge. One portable implementation in
+`shared/MatrixKernel.cpp` compiles into this DLL and the Morphbench addon's
+WebAssembly module. The [matrix contract](../docs/matrix-contract.md) defines
+linear, positive/negative, smoothstep, bounded integer power and human-independent
+constant edges, ordered arithmetic and strict parameters. No expressions execute.
+Current profiles retain the family IDs, append four authored lean targets and use
+`authored-opposed-matrix1`; the frozen 30 October release remains unchanged.
+This candidate owns 28 shared public morphs plus female-only breast size.
+
+Actor records now write v5 with every function and parameter. Readers retain
+v1..v4 support; old rules initialize to the original exact linear evaluation.
+Saved matrices remain authoritative, so existing actors adopt revised XML only
+through an explicit ConfigureMorphFamily request. All-constant profiles capture
+no human values and cannot depend on an OBody source bootstrap. Fresh game,
+existing-save refresh and rendered geometry still require runtime acceptance.
+
 This optional native SKSE companion writes only the `CLAW.Distribution` morph
 key. Its independent mode reads third-party **CLAW** presets and assigns them to
 currently loaded werewolves. Explicit human morph linkage instead derives the
 whole owned coefficient vector from a neutral baseline and applied human morphs;
-it requires no beast preset files. The preserved first compiled candidate targets
-**Skyrim VR 1.4.15**. A separate **Skyrim SE 1.7.104.0** development build is now the
-flat-game test target.
+it requires no beast preset files. The historical first compiled candidate targeted **Skyrim VR 1.4.15**; the
+30 October frozen release used a separate **Skyrim SE 1.7.104.0** binary. Current
+source instead builds one universal candidate for SE, AE and VR as detailed below.
 It does not fork
 OBody, rename beast presets to human families, or change OBody's human assignments.
 The earlier SE mechanics candidate at `f42e0f2` completed a first bounded game run:
@@ -18,15 +35,12 @@ actors. The repaired-surface trial then passed 82 action checks and six one-way
 transformations. Final textured visual acceptance remains pending. The minimal
 linked release candidate is built by `scripts/build-core-candidate.py`; the older
 independent-preset/menu packager below is not its installation contract.
-The SE build requires **SKSE 2.3.1**, the matching **Address Library v13** data,
+The frozen exact-SE build required **SKSE 2.3.1**, matching **Address Library v13** data,
 and a RaceMenu/SKEE build qualified for that runtime. RaceMenu/SKEE runtime
 compatibility remains a separate gate; the pinned interface header alone does
-not establish it. Other SE/AE game versions are rejected rather than inferred
-compatible from their executable name. This exact-version bound describes the
-current SE test candidate, not a permanent limit on the Distribution mod. The
-actor/preset/state logic is shared; runtime DLL variants remain part of one
-Distribution mod. Older SE/AE variants require their SDK/API review and dependency
-qualification, and untested AE is not reported as a game pass.
+not establish it. That historical build rejected other SE/AE versions. The new universal source
+uses the explicit candidate boundaries below and still requires the correct
+per-runtime dependencies. Untested AE is not reported as a game pass.
 
 ## Preset contract
 
@@ -59,11 +73,11 @@ Use exactly `CLAW Male` or `CLAW Female` as `set`; no name-based sex inference.
 100 and interpolated once using the actor NPC weight in **0..100**. BodySlide's
 omitted endpoint semantics apply: an omitted small or big endpoint is zero, and
 an entirely omitted morph contributes zero. A typed preset with no `SetSlider`
-elements is accepted as the neutral body, and readback checks all 25 owned public
+elements is accepted as the neutral body, and readback checks all 29 owned public
 morphs, including zeros for every omitted morph. This candidate intentionally rejects
 negative/extrapolated values. Different values are not certified safe geometry.
 
-The allowlist matches the published 0.6.2.0 base resource contract: 24 shared
+The allowlist matches the published 0.6.2.0 base resource contract: 28 shared
 morphs plus female-only `CLAWTorsoBreastSize`. Adult and unknown morphs, wrong-sex
 morphs, unknown tags/attributes, malformed XML, duplicate preset names across files
 or families, duplicate endpoints and unreadable files are errors. A catalog with
@@ -198,8 +212,8 @@ Explicit refresh immediately marks the request pending and hides its previous
 coefficient cache until queued work completes or reports an error.
 
 The optional [morph-to-morph bridge](../docs/transformation.md) reads actual
-applied signed human coefficients through SKEE in main-thread tasks. It sums
-configured source values times gains, clamps each target sum once to 0..1 and
+applied signed human coefficients through SKEE in main-thread tasks. It evaluates each configured function and sums its output times the gain,
+clamps each target sum once to 0..1 and
 multiplies by its configured cap; it never reapplies actor weight to those human
 values. Linked output starts with all public own morphs neutral for the actor's
 sex; every unmapped trait, including ears and tail, stays zero. Female breast
@@ -211,9 +225,9 @@ there is no universally calibrated default or automatic body-family detection.
 Normal `AssignPreset` disables linkage. `ClearOwn` retains the mapping while
 suppressing distribution; a valid explicit configuration resumes it. Disabling
 linkage does not clear suppression. The existing
-single own key is retained. Actor co-save v4 stores the mapping, captured source
-values and optional actual weight observations. Readers retain v1/v2/v3 support;
-v2 retains its 32-row budget, while v3/v4 allow 128 rows. Version1 migrates to
+single own key is retained. Actor co-save v5 stores the mapping, functions and parameters, captured source
+values and optional actual weight observations. Readers retain v1/v2/v3/v4 support;
+v2 retains its 32-row budget, while v3/v4/v5 allow 128 rows. Version1 migrates to
 independent mode. Linked records use the direct neutral baseline after refresh.
 Real source aggregation and actual
 save/load/transform behavior require separate acceptance evidence. The API queues
@@ -221,65 +235,49 @@ work: wait for the previous request to complete before submitting the next one.
 
 ## Build without installation
 
-Use CMake 3.25+, x64 MSVC with C++23 support and an **external** configured
-CommonLibSSE-NG checkout. The verified source baseline is official
-[CommonLibSSE-NG v3.7.0](https://github.com/CharmedBaryon/CommonLibSSE-NG/tree/c4ab853d095e81e3390b282d7ba01ab2f24ebf25).
-That historical baseline is for the preserved VR candidate, not SE 1.7.104.
-The SE target requires a current external SDK with explicit
-`SKSE::RUNTIME_SSE_1_7_104`, 1.7 layouts and Address Library format-5 support.
-The selected current source baseline is CommonLibSSE-NG 9.1.0 at
-`a898f469851c464d05137bb74b069dd234897643`, plus the owner's isolated TypeInfo
-object-array mask correction `0c95630c29ff98f64caeea83c29ca373cf93e58b` (its direct
-child). The actual source is staged outside Git with the exact official OpenVR
-submodule; the canonical checkout is not modified. The SE DLL and offline tools
-compile against that source; all 23 core cases and the four example presets pass.
-PE inspection confirms the expected metadata without loading the DLL, and the
-positive build-helper check leaves the DLL hash unchanged. Runtime dependency
-and engine qualification remain separate from these offline results.
-Do not unlock the old 3.7.0 SDK by changing only the runtime constant.
-No machine path is hardcoded in the source.
+The current source builds one `CLAWDistribution.dll` through CommonLib's SE,
+AE and VR runtime dispatch. The [universal runtime contract](../docs/universal-runtime.md)
+lists its exact candidate versions and per-runtime SKSE minima. Candidate loading
+is distinct from game qualification: SE and VR need fresh checks of this binary;
+AE currently has structural review and offline build/policy checks only.
+The frozen 30 October exact-SE and historical legacy-VR outputs are unchanged.
 
-Download the official external
+Use CMake 3.25+, x64 MSVC with C++23 support and an **external** configured
+CommonLibSSE-NG SDK. The current pinned source is 9.1.0 at
+`a898f469851c464d05137bb74b069dd234897643`, plus the owner's TypeInfo correction
+`0c95630c29ff98f64caeea83c29ca373cf93e58b`. This SDK supplies explicit 1.7.104
+layouts, both pre/post629 layouts, SE/AE/VR relocations and Papyrus bindings.
+Its exact official OpenVR submodule remains external. The legacy 3.7.0 SDK is
+insufficient for the universal build. No machine path is embedded in the source.
+
+Download the pinned official external
 [SKEE API header](https://raw.githubusercontent.com/expired6978/SKSE64Plugins/9ebcb733e17be695f994cd2e9cc383043446bc02/skee64/IPluginInterface.h)
 as `IPluginInterface.h`; its SHA-256 is enforced by CMake. `dependencies.json`
-records upstream revisions/archive hashes. Pugixml, fmt, spdlog and rapidcsv are
-fetched with pinned hashes into the external build directory, or supplied using
-CMake `FETCHCONTENT_SOURCE_DIR_<NAME>` variables. Dependency sources are not copied
-into the CLAW repository. Retain their licenses in any future distributed bundle.
-Those fmt/spdlog/rapidcsv pins belong to the VR build. SE resolves spdlog,
-rapidcsv and the current SDK's DirectXTK dependency from the caller's external
-dependency prefix/toolchain instead. Supply only the pinned pugixml source through
-`-FetchSources` for that branch. CLAW uses no trampolines, so the SE configuration
-disables the SDK's optional patch decoder instead of downloading it.
+records the SDK and upstream revisions. Pugixml is fetched with a pinned hash or
+supplied through `FETCHCONTENT_SOURCE_DIR_PUGIXML`; modern SDK dependencies come
+from the caller's external dependency prefix/toolchain. No vendor source is copied
+into CLAW. Retain all dependency licenses in any corresponding-source package.
+CLAW uses no trampolines, so the optional patch decoder is disabled.
 
 ```powershell
-./distribution/build.ps1 -BuildDir '<external-build>' `
-  -CommonLibDir '<external-commonlib-checkout>' `
-  -SkeeHeader '<external-dependencies>/IPluginInterface.h'
-```
-
-For SE, use a **new** build directory and the current configured SDK/dependencies:
-
-```powershell
-./distribution/build.ps1 -Runtime SE -BuildDir '<external-SE-build>' `
+./distribution/build.ps1 -BuildDir '<fresh-external-universal-build>' `
   -CommonLibDir '<external-current-commonlib-checkout>' `
   -SkeeHeader '<external-dependencies>/IPluginInterface.h' `
   -DependencyPrefix '<external-SDK-dependency-prefix>' -BuildTests
 ```
 
-`-ToolchainFile` can supply an existing external dependency toolchain instead.
-The equivalent CMake selector is `-DCLAW_RUNTIME=SE`; the default remains `VR`.
-Targets are `CLAWDistributionSE` for SE and `CLAWDistribution` for VR. Each emits
-`Release/CLAWDistribution.dll` in its own build tree; never combine their DLLs or
-reuse one runtime's build tree for the other. The helper refuses legacy VR tree
-reuse for SE, and CMake records the selected runtime for later configurations.
+`-ToolchainFile` can supply a dependency toolchain instead. `UNIVERSAL` is the
+only current runtime selector and the default; CMake accepts
+`-DCLAW_RUNTIME=UNIVERSAL`. The one native target is `CLAWDistribution` and emits
+`Release/CLAWDistribution.dll` for all three engine families. The helper rejects
+older SE/VR build trees rather than replacing their historical binaries.
 
-The SE DLL exports modern `SKSEPlugin_Version` data with an exact supported
-runtime list, updated-struct and Address Library V5 metadata. It does not advertise
-unrestricted Address Library version independence. Query and Load both check the
-exact runtime, and Load rejects mismatches before SKSE initialization or engine
-access. These entry checks do not prove every downstream engine call or SKEE
-implementation is compatible.
+Both modern `SKSEPlugin_Version` and legacy `SKSEPlugin_Query` exports are
+present. Version metadata and Query/Load share one exact candidate list; Load
+checks the matching SKSE minimum and confirms CommonLib's actual detected
+runtime family. Address Library V5 capability and CommonLib's variable-struct
+compatibility declaration describe mechanisms, not completed game acceptance.
+No unrestricted future-version promise is made.
 
 The helper defaults to the installed VS2026 generator, accepts `-CMakeExe` and
 `-Generator`, rejects source/live/archive output locations, and never installs or
@@ -297,8 +295,8 @@ After the coordinator confirms testing readiness, explicitly configure
 command executes tests. Offline cases cover endpoints, sparse BodySlide exports,
 typed families, exclusions, duplicate catalogs, bad input, stable selection,
 nested third-party files and direct linked output with neutral unmapped traits
-and no independent catalog/weight access. The SE DLL compiled and all 28 offline
-contract cases passed for this direct linked revision. Runtime acceptance still
+and no independent catalog/weight access. The earlier exact-SE DLL passed its offline contract checks. The universal
+candidate adds runtime-policy checks alongside the existing core and matrix suites. Runtime acceptance still
 needs a separately authorized
 game test: multiple male/female beasts, UI assignment, human key preservation,
 transform/race events, delayed/reloaded 3D, external OBody updates, saved dynamic

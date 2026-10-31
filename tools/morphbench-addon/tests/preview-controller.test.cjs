@@ -16,7 +16,7 @@ function host(options = {}) {
   const calls = [], events = new Map(), previews = new Map(); let serial = 0;
   previews.set("third-party", { preview: "third-party", name: "unrelated", names: ["Other"], values: { Other: .6 } });
   const sdk = {
-    async connect() { return { apiVersion: 1, capabilities: options.capabilities || [...PreviewController.requiredCapabilities], previewLimits: { maxPreviews: 4, loadTimeoutMs: 8000 } }; },
+    async connect() { return { apiVersion: 1, capabilities: options.capabilities || [...PreviewController.requiredCapabilities, ...(options.geometry ? ["previews.geometry"] : [])], previewLimits: { maxPreviews: 4, loadTimeoutMs: 8000 } }; },
     on(name, handler) { events.set(name, handler); return () => events.delete(name); },
     async request(method, params) {
       calls.push({ method, params: JSON.parse(JSON.stringify(params)) });
@@ -40,6 +40,10 @@ function host(options = {}) {
       if (!item) throw Object.assign(new Error("Expired handle"), { code: "unknownPreview" });
       if (method === "previews.close") { assert.deepEqual(Object.keys(params), ["preview"]); previews.delete(params.preview); return { closed: true }; }
       if (method === "previews.scene.get") { assert.deepEqual(Object.keys(params), ["preview"]); return { open: true, names: { nif: item.name, tri: item.name + ".tri" }, shapes: [{ name: "Body", vertices: 3, triangles: 1 }] }; }
+      if (method === "previews.geometry") {
+        assert.equal(options.geometry, true); assert.equal(params.shape, "Body");
+        return options.geometryResult || { name: "Body", space: "model", vertices: [1, 2, 3, 0, 0, 0, -1, -2, -3], baseVertices: [0, 0, 0, 0, 0, 0, -1, -1, -1] };
+      }
       if (method === "previews.morphs.set") {
         assert.deepEqual(Object.keys(params).sort(), ["preview", "values"]);
         assert.ok(Object.keys(params.values).every(name => item.names.includes(name)));
@@ -197,4 +201,44 @@ test("external closure disposes the surviving owned preview and publishes final 
   assert.deepEqual(f.controller.failedCleanup, []);
   assert.equal(f.observations.at(-1).method, "close");
   assert.equal(f.observations.at(-1).pair, null);
+});
+test("matrix writes use functions/constants, preserve ownership and reject wrong family before writes", async () => {
+  const f = await opened(), profile = core.getProfile(catalog, "female.3BA"), pair = f.controller.pair;
+  const matrix = { ...profile, rules: [
+    { source: "UnmappedHuman", target: "CLAWTorsoBellyRound", gain: .5, cap: .8, function: "negative" },
+    { source: "", target: "CLAWTorsoBellyRound", gain: .25, cap: .8, function: "constant", value: .5 }
+  ] };
+  const result = await f.controller.apply({ UnmappedHuman: -.5 }, matrix);
+  assert.deepEqual(result.wolfValues, JSON.parse(JSON.stringify(core.evaluateMatrix(matrix, { UnmappedHuman: -.5 }).values)));
+  assert.equal(Object.hasOwn(result.humanValues, ""), false); assert.equal(result.humanValues.UnmappedHuman, -.5);
+  const count = f.calls.filter(call => call.method === "previews.morphs.set").length;
+  await assert.rejects(f.controller.apply({}, { ...matrix, id: "female.CBBE" }), /different bound human family/);
+  assert.equal(f.calls.filter(call => call.method === "previews.morphs.set").length, count);
+  await f.controller.zeroWolf(); assert.equal(f.previews.get(pair.wolf.preview).values.CLAWHeadEarSize, .6);
+});
+test("geometry capability gap never substitutes a main-model read", async () => {
+  const f = await opened(); await assert.rejects(f.controller.readGeometry(), { code: "unsupportedGeometry" });
+  assert.equal(f.calls.filter(call => /geometry$/.test(call.method)).length, 0);
+});
+test("geometry reads preserve all current/base/delta positions and never mutate a model", async () => {
+  const f = await opened({ geometry: true }), before = f.calls.length;
+  const data = await f.controller.readGeometry();
+  for (const role of ["human", "wolf"]) {
+    assert.deepEqual(data.models[role].shapes[0].deltas, [1, 2, 3, 0, 0, 0, 0, -1, -2]);
+    assert.ok(Math.abs(data.models[role].shapes[0].maximumDisplacement - Math.sqrt(14)) < 1e-12);
+  }
+  assert.ok(f.calls.slice(before).every(call => ["previews.scene.get", "previews.geometry", "previews.morphs.get"].includes(call.method)));
+  assert.ok(f.calls.slice(before).every(call => call.params.preview !== "third-party"));
+});
+test("malformed or stale geometry responses fail without applying or retaining a partial snapshot", async () => {
+  const bad = await opened({ geometry: true, geometryResult: { name: "Body", space: "model", vertices: [NaN, 0, 0], baseVertices: [0, 0, 0] } });
+  await assert.rejects(bad.controller.readGeometry(), { code: "invalidResponse" });
+  assert.ok(bad.controller.pair, "invalid read data does not mutate or dispose an otherwise valid pair");
+  const overflow = await opened({ geometry: true, geometryResult: { name: "Body", space: "model", vertices: [1e308, 0, 0], baseVertices: [-1e308, 0, 0] } });
+  await assert.rejects(overflow.controller.readGeometry(), { code: "invalidResponse" });
+  const gate = deferred(); let started = false;
+  const f = await opened({ geometry: true, async before(method) { if (method === "previews.geometry" && !started) { started = true; await gate.promise; } } });
+  const read = f.controller.readGeometry(), refused = assert.rejects(read, { code: "stalePair" }); await tick();
+  const closing = f.controller.close(); gate.resolve(); await refused; await closing;
+  assert.equal(f.calls.filter(call => call.method === "previews.geometry").length, 1); assert.equal(f.controller.pair, null);
 });

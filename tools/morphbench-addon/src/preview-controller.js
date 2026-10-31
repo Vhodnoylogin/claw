@@ -184,9 +184,9 @@
         }
       });
     }
-    apply(fullHumanVector) {
-      let human;
-      try { human = core.validateHuman(fullHumanVector); }
+    apply(fullHumanVector, matrix = null) {
+      let human, selectedMatrix;
+      try { human = core.validateHuman(fullHumanVector); selectedMatrix = matrix ? frozen(copy(core.validateMatrix(matrix))) : null; }
       catch (error) { return Promise.reject(error); }
       return this._enqueue("apply", this._epoch, async (_, epoch) => {
         const pair = this._pair;
@@ -194,8 +194,8 @@
         this._assert(epoch, pair);
         // PairState validates every supplied human name and every wolf target
         // before either scoped write. Unmapped human TRI names remain present.
-        const operation = this._state.plan(human);
-        const evaluated = core.evaluate(this.catalog, pair.profileId, human);
+        const operation = this._state.plan(human, selectedMatrix);
+        const evaluated = selectedMatrix ? core.evaluateMatrix(selectedMatrix, human) : core.evaluate(this.catalog, pair.profileId, human);
         try {
           for (const role of ["human", "wolf"]) {
             const response = await this._request("previews.morphs.set", { preview: pair[role].preview, values: operation.values[role] }, epoch, pair);
@@ -243,6 +243,53 @@
         if (!pair) throw failure("noPair", "Open both previews before clearing wolf outputs.");
         await this._zero(this._state.cleanup("wolf"), pair, epoch);
         this._notify("zeroWolf"); return this.pair;
+      });
+    }
+    readGeometry() {
+      return this._enqueue("geometry", this._epoch, async (_, epoch) => {
+        const pair = this._pair;
+        if (!pair) throw failure("noPair", "Open both previews before reading their vertices.");
+        const info = await this.sdk.connect(); this._assert(epoch, pair);
+        if (!info.capabilities.includes("previews.geometry")) throw failure("unsupportedGeometry", "This host lacks the public previews.geometry method.");
+        const result = { schemaVersion: 1, kind: "claw-paired-geometry-snapshot", profileId: pair.profileId,
+          capturedAt: new Date().toISOString(), space: "model", deltaOrigin: "selected NIF rest positions (baseVertices)",
+          precision: "Host browser geometry; int16-quantized morph deltas. Shapes are read sequentially, not atomically.", models: {} };
+        for (const role of ["human", "wolf"]) {
+          const scene = await this._request("previews.scene.get", { preview: pair[role].preview }, epoch, pair);
+          if (!scene || scene.open !== true || !Array.isArray(scene.shapes)) throw failure("invalidResponse", "Invalid scoped shape list.");
+          const observedMorphs = morphSnapshot(await this._request("previews.morphs.get", { preview: pair[role].preview }, epoch, pair));
+          const model = { name: pair[role].name, morphNames: [...observedMorphs.names], morphValues: copy(observedMorphs.values), shapes: [] };
+          for (const shape of scene.shapes) {
+            const data = await this._request("previews.geometry", { preview: pair[role].preview, shape: shape.name }, epoch, pair);
+            if (!data || data.name !== shape.name || data.space !== "model" || !Array.isArray(data.vertices) ||
+                !Array.isArray(data.baseVertices) || data.vertices.length !== data.baseVertices.length || data.vertices.length % 3 ||
+                data.vertices.some(value => typeof value !== "number" || !Number.isFinite(value)) ||
+                data.baseVertices.some(value => typeof value !== "number" || !Number.isFinite(value))) {
+              throw failure("invalidResponse", "The host returned invalid current/rest vertex arrays.");
+            }
+            const deltas = data.vertices.map((value, index) => value - data.baseVertices[index]);
+            if (deltas.some(value => !Number.isFinite(value))) throw failure("invalidResponse", "Vertex displacement overflowed the geometry snapshot.");
+            let maximum = 0, squares = 0;
+            for (let index = 0; index < deltas.length; index += 3) {
+              const length = Math.hypot(deltas[index], deltas[index + 1], deltas[index + 2]);
+              maximum = Math.max(maximum, length); squares += length * length;
+            }
+            model.shapes.push({ name: data.name, space: data.space, vertices: [...data.vertices], baseVertices: [...data.baseVertices],
+              deltas, vertexCount: deltas.length / 3, maximumDisplacement: maximum,
+              rmsDisplacement: deltas.length ? Math.sqrt(squares / (deltas.length / 3)) : 0 });
+          }
+          result.models[role] = model;
+        }
+        for (const role of ["human", "wolf"]) {
+          const after = morphSnapshot(await this._request("previews.morphs.get", { preview: pair[role].preview }, epoch, pair));
+          const before = result.models[role];
+          if (after.names.length !== before.morphNames.length || before.morphNames.some(name =>
+              !after.names.includes(name) || (after.values[name] || 0) !== (before.morphValues[name] || 0))) {
+            throw failure("staleGeometry", "Model coefficients changed during vertex collection; read again after applying the final values.");
+          }
+        }
+        result.consistency = "Coefficient vectors unchanged at both ends; geometry reads are sequential, not an atomic cross-model snapshot.";
+        this._assert(epoch, pair); return result;
       });
     }
     close() {

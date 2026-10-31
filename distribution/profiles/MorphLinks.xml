@@ -1,5 +1,5 @@
 <MorphLinkProfiles schemaVersion="1">
-  <Profile id="CLAW.3BA.2.48.Geometry1" family="3BA" version="2.48" sex="female" calibration="measured-contrast-trial6">
+  <Profile id="CLAW.3BA.2.48.Geometry1" family="3BA" version="2.48" sex="female" calibration="authored-opposed-matrix1">
     <Rule source="Arms" target="CLAWArmGirth" gain="-0.5886322" cap="1" />
     <Rule source="Back" target="CLAWTorsoBackWide" gain="0.0050167" cap="1.0" />
     <Rule source="Back" target="CLAWTorsoShoulderGirth" gain="0.6159342" cap="1.0" />
@@ -70,8 +70,20 @@
     <Rule source="Waist" target="CLAWTorsoWaistNarrow" gain="-0.5630206" cap="1" />
     <Rule source="Waist" target="CLAWTorsoGirth" gain="0.0598099" cap="0.25" />
     <Rule source="WideWaistLine" target="CLAWTorsoGirth" gain="0.0494881" cap="0.25" />
+    <Rule source="Arms" target="CLAWArmLean" gain="0.5886322" cap="1" function="positive" />
+    <Rule source="BigTorso" target="CLAWTorsoLean" gain="0.5534656" cap="1" function="negative" />
+    <Rule source="CalfSize" target="CLAWLegCalfLean" gain="0.2234755" cap="1" function="negative" />
+    <Rule source="ChubbyArms" target="CLAWArmLean" gain="1.4280414" cap="1" function="negative" />
+    <Rule source="ChubbyLegs" target="CLAWLegThighLean" gain="0.5452318" cap="1" function="negative" />
+    <Rule source="ChubbyLegs" target="CLAWLegCalfLean" gain="0.8043513" cap="1" function="negative" />
+    <Rule source="ChubbyWaist" target="CLAWTorsoLean" gain="0.2102183" cap="1" function="negative" />
+    <Rule source="LegsThin" target="CLAWLegThighLean" gain="0.0770809" cap="1" function="positive" />
+    <Rule source="LegsThin" target="CLAWLegCalfLean" gain="0.5114102" cap="1" function="positive" />
+    <Rule source="SlimThighs" target="CLAWLegThighLean" gain="0.3167277" cap="1" function="positive" />
+    <Rule source="SlimThighs" target="CLAWLegCalfLean" gain="0.0048048" cap="1" function="positive" />
+    <Rule source="Thighs" target="CLAWLegThighLean" gain="0.2565606" cap="1" function="negative" />
   </Profile>
-  <Profile id="CLAW.HIMBO.5.8.Geometry1" family="HIMBO" version="5.8" sex="male" calibration="measured-contrast-trial6">
+  <Profile id="CLAW.HIMBO.5.8.Geometry1" family="HIMBO" version="5.8" sex="male" calibration="authored-opposed-matrix1">
     <Rule source="ArmsBiceps" target="CLAWArmGirth" gain="0.5063776" cap="1" />
     <Rule source="ArmsBicepsBack" target="CLAWArmGirth" gain="0.1938665" cap="1" />
     <Rule source="ArmsBrachio" target="CLAWArmGirth" gain="0.217953" cap="1" />
@@ -168,8 +180,20 @@
     <Rule source="TorsoWidth" target="CLAWTorsoChestSize" gain="0.2402696" cap="1" />
     <Rule source="TorsoWidth" target="CLAWTorsoShoulderGirth" gain="0.341079" cap="1.0" />
     <Rule source="Muscle" target="CLAWTorsoWaistNarrow" gain="-4.7922708" cap="1" />
+    <Rule source="ArmsBiceps" target="CLAWArmLean" gain="3.0382656" cap="1" function="negative" />
+    <Rule source="ArmsBicepsBack" target="CLAWArmLean" gain="1.163199" cap="1" function="negative" />
+    <Rule source="ArmsBrachio" target="CLAWArmLean" gain="1.307718" cap="1" function="negative" />
+    <Rule source="ArmsDelts" target="CLAWArmLean" gain="1.801245" cap="1" function="negative" />
+    <Rule source="ArmsFore" target="CLAWArmLean" gain="2.4580938" cap="1" function="negative" />
+    <Rule source="BodyMass" target="CLAWTorsoLean" gain="1.8806693" cap="1" function="negative" />
+    <Rule source="LegsCalfSize" target="CLAWLegCalfLean" gain="4.0060656" cap="1" function="negative" />
+    <Rule source="LegsSize" target="CLAWLegThighLean" gain="1.4313804" cap="1" function="negative" />
+    <Rule source="LegsSize" target="CLAWLegCalfLean" gain="31.238513" cap="1" function="negative" />
+    <Rule source="LegsThigh" target="CLAWLegThighLean" gain="2.8779282" cap="1" function="negative" />
+    <Rule source="TorsoMass" target="CLAWTorsoLean" gain="0.0813125" cap="1" function="negative" />
+    <Rule source="Lean" target="CLAWTorsoLean" gain="0.8" cap="1" function="positive" />
   </Profile>
-  <Profile id="CLAW.CBBE.2.0.3.Geometry1" family="CBBE" version="2.0.3" sex="female" calibration="measured-contrast-trial6">
+  <Profile id="CLAW.CBBE.2.0.3.Geometry1" family="CBBE" version="2.0.3" sex="female" calibration="authored-opposed-matrix1">
     <Rule source="Arms" target="CLAWArmGirth" gain="-0.6027545" cap="1" />
     <Rule source="Back" target="CLAWTorsoBackWide" gain="0.0539491" cap="1" />
     <Rule source="Back" target="CLAWTorsoShoulderGirth" gain="0.5409237" cap="1" />
@@ -240,5 +264,17 @@
     <Rule source="Waist" target="CLAWTorsoWaistNarrow" gain="-0.6111171" cap="1" />
     <Rule source="Waist" target="CLAWTorsoGirth" gain="0.105898" cap="0.25" />
     <Rule source="WideWaistLine" target="CLAWTorsoGirth" gain="0.086616" cap="0.25" />
+    <Rule source="Arms" target="CLAWArmLean" gain="0.6027545" cap="1" function="positive" />
+    <Rule source="BigTorso" target="CLAWTorsoLean" gain="0.8702332" cap="1" function="negative" />
+    <Rule source="CalfSize" target="CLAWLegCalfLean" gain="0.2234911" cap="1" function="negative" />
+    <Rule source="ChubbyArms" target="CLAWArmLean" gain="1.4585297" cap="1" function="negative" />
+    <Rule source="ChubbyLegs" target="CLAWLegThighLean" gain="0.5638285" cap="1" function="negative" />
+    <Rule source="ChubbyLegs" target="CLAWLegCalfLean" gain="0.7995872" cap="1" function="negative" />
+    <Rule source="ChubbyWaist" target="CLAWTorsoLean" gain="0.3787508" cap="1" function="negative" />
+    <Rule source="LegsThin" target="CLAWLegThighLean" gain="0.0750078" cap="1" function="positive" />
+    <Rule source="LegsThin" target="CLAWLegCalfLean" gain="0.5123435" cap="1" function="positive" />
+    <Rule source="SlimThighs" target="CLAWLegThighLean" gain="0.3173357" cap="1" function="positive" />
+    <Rule source="SlimThighs" target="CLAWLegCalfLean" gain="0.0044308" cap="1" function="positive" />
+    <Rule source="Thighs" target="CLAWLegThighLean" gain="0.2889533" cap="1" function="negative" />
   </Profile>
 </MorphLinkProfiles>

@@ -65,7 +65,8 @@
       if (roles.some(role => this.bindings[role].sex !== profile.sex)) fail("Rebind resources for the selected family sex.");
       const available = {};
       for (const role of roles) available[role] = names(snapshots[role], this.bindings[role]);
-      if (!profile.rules.some(rule => available.human.has(rule.source))) fail("Human model has no configured source morphs for the declared family.");
+      if (profile.rules.some(rule => rule.function !== "constant") &&
+          !profile.rules.some(rule => rule.function !== "constant" && available.human.has(rule.source))) fail("Human model has no configured source morphs for the declared family.");
       const targets = Object.keys(core.evaluate(this.catalog, this.profileId, {}).values);
       const missing = targets.filter(name => !available.wolf.has(name));
       if (missing.length) fail("Wolf model is missing linked body targets: " + missing.join(", "));
@@ -75,14 +76,15 @@
     ledger(role, resource = this.bindings && this.bindings[role]) {
       return new Set(resource ? this.owned.get(role + ":" + key(resource)) || [] : []);
     }
-    plan(humanValues) {
+    plan(humanValues, matrix = null) {
       if (!this.enabled || !this.available) fail("Explicitly arm the validated pair before preparing writes.");
       if (this.pendingOperation) fail("Resolve the pending preview commit before preparing another write.");
       const human = core.validateHuman(humanValues);
-      const result = core.evaluate(this.catalog, this.profileId, human);
+      if (matrix && ["id", "sex", "family", "version"].some(name => matrix[name] !== core.getProfile(this.catalog, this.profileId)[name])) fail("Matrix belongs to a different bound human family.");
+      const result = matrix ? core.evaluateMatrix(matrix, human) : core.evaluate(this.catalog, this.profileId, human);
       const inputs = Object.create(null), outputs = Object.assign(Object.create(null), result.values);
       for (const rule of result.profile.rules) {
-        if (this.available.human.has(rule.source)) inputs[rule.source] = human[rule.source] || 0;
+        if (rule.source && this.available.human.has(rule.source)) inputs[rule.source] = human[rule.source] || 0;
       }
       for (const [name, value] of Object.entries(human)) {
         if (!this.available.human.has(name)) fail("Human model is missing input morph: " + name);

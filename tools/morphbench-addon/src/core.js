@@ -6,7 +6,8 @@
   const bodyTargets = new Set(["CLAWArmGirth", "CLAWLegCalfGirth", "CLAWLegThighGirth",
     "CLAWTorsoBackWide", "CLAWTorsoBellyRound", "CLAWTorsoBreastSize", "CLAWTorsoChestSize",
     "CLAWTorsoFlankWidth", "CLAWTorsoGirth", "CLAWTorsoNeckGirth",
-    "CLAWTorsoShoulderGirth", "CLAWTorsoWaistNarrow"]);
+    "CLAWTorsoShoulderGirth", "CLAWTorsoWaistNarrow", "CLAWArmLean",
+    "CLAWLegThighLean", "CLAWLegCalfLean", "CLAWTorsoLean"]);
   const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
 
   function fail(message) { throw new Error(message); }
@@ -37,40 +38,96 @@
   }
   function parseHuman(text) { return validateHuman(JSON.parse(text)); }
 
-  function getProfile(catalog, id) {
-    if (!object(catalog) || catalog.schemaVersion !== 1 || !Array.isArray(catalog.profiles)) {
-      fail("Invalid CLAW mapping catalog.");
-    }
-    if (!identifier(id)) fail("Unknown CLAW profile.");
-    const matches = catalog.profiles.filter(profile => object(profile) && profile.id === id);
-    if (matches.length !== 1) fail("Unknown or ambiguous CLAW profile: " + id);
-    const profile = matches[0];
-    if (!["CBBE", "3BA", "HIMBO"].includes(profile.family) ||
+  const functions = new Set(["linear", "positive", "negative", "smoothstep", "power", "constant"]);
+  function validateMatrix(profile) {
+    if (!object(profile) || !identifier(profile.id) || !["CBBE", "3BA", "HIMBO"].includes(profile.family) ||
         profile.sex !== (profile.family === "HIMBO" ? "male" : "female") ||
         !Array.isArray(profile.rules) || !profile.rules.length || profile.rules.length > 128) {
       fail("Invalid CLAW profile metadata.");
     }
+    for (const key of ["version", "calibration"]) {
+      if (own(profile, key) && !identifier(profile[key])) fail("Invalid CLAW profile " + key);
+    }
     const pairs = new Set(), caps = new Map();
+    const normalized = { ...profile, rules: [] };
     for (const rule of profile.rules) {
-      if (!object(rule) || !identifier(rule.source) || rule.source.startsWith("CLAW") ||
+      if (!object(rule)) fail("Invalid CLAW mapping rule.");
+      const fn = own(rule, "function") ? rule.function : "linear";
+      const allowed = new Set(["source", "target", "gain", "cap", "function"]);
+      if (fn === "power") allowed.add("exponent");
+      if (fn === "constant") allowed.add("value");
+      if (!functions.has(fn) || Object.keys(rule).some(key => !allowed.has(key)) ||
+          (fn === "constant" ? rule.source !== "" : (!identifier(rule.source) || rule.source.startsWith("CLAW"))) ||
           !identifier(rule.target) || !linkedTarget(rule.target) ||
           (profile.sex === "male" && rule.target === "CLAWTorsoBreastSize")) {
-        fail("Invalid CLAW mapping rule.");
+        fail("Invalid CLAW mapping rule or function parameters.");
       }
-      finiteFloat(rule.gain, "Rule gain");
+      const gain = finiteFloat(rule.gain, "Rule gain");
       const cap = finiteFloat(rule.cap, "Rule cap");
       if (cap <= 0 || cap > 1) fail("Rule cap must be in (0, 1].");
+      const edge = { source: rule.source, target: rule.target, gain, cap, function: fn };
+      if (fn === "power") {
+        if (!Number.isInteger(rule.exponent) || rule.exponent < 1 || rule.exponent > 8) fail("Power exponent must be an integer in 1..8.");
+        edge.exponent = rule.exponent;
+      }
+      if (fn === "constant") edge.value = finiteFloat(rule.value, "Constant value");
       const pair = JSON.stringify([rule.source, rule.target]);
       if (pairs.has(pair)) fail("Duplicate CLAW source/target rule.");
       pairs.add(pair);
       if (caps.has(rule.target) && caps.get(rule.target) !== cap) fail("Inconsistent target cap.");
       caps.set(rule.target, cap);
+      normalized.rules.push(edge);
     }
-    return profile;
+    return normalized;
+  }
+
+  function getProfile(catalog, id) {
+    if (!object(catalog) || catalog.schemaVersion !== 1 || !Array.isArray(catalog.profiles)) fail("Invalid CLAW mapping catalog.");
+    if (!identifier(id)) fail("Unknown CLAW profile.");
+    const matches = catalog.profiles.filter(profile => object(profile) && profile.id === id);
+    if (matches.length !== 1) fail("Unknown or ambiguous CLAW profile: " + id);
+    return validateMatrix(matches[0]);
+  }
+
+  function exportMatrix(matrix) {
+    const profile = validateMatrix(matrix);
+    // Native generated family interchange intentionally excludes XML entities.
+    const ascii = value => {
+      if (typeof value !== "string" || /[^\x20-\x7e]|[&<>"']/.test(value)) fail("XML matrix fields must use plain ASCII without XML delimiters.");
+      return value;
+    };
+    const version = profile.version || "1", calibration = profile.calibration || "authored-matrix";
+    const lines = ['<MorphLinkProfiles schemaVersion="1">',
+      '  <Profile id="' + ascii(profile.id) + '" family="' + profile.family + '" version="' + ascii(version) +
+      '" sex="' + profile.sex + '" calibration="' + ascii(calibration) + '">'];
+    for (const rule of profile.rules) {
+      let line = '    <Rule source="' + ascii(rule.source) + '" target="' + rule.target + '" gain="' + rule.gain + '" cap="' + rule.cap + '" function="' + rule.function + '"';
+      if (rule.function === "power") line += ' exponent="' + rule.exponent + '"';
+      if (rule.function === "constant") line += ' value="' + rule.value + '"';
+      lines.push(line + ' />');
+    }
+    lines.push('  </Profile>', '</MorphLinkProfiles>');
+    return lines.join("\n") + "\n";
   }
 
   function evaluate(catalog, profileId, humanValues) {
-    const profile = getProfile(catalog, profileId), human = validateHuman(humanValues);
+    return evaluateMatrix(getProfile(catalog, profileId), humanValues);
+  }
+
+  function exportCatalog(catalog, matrix, femaleFamily) {
+    const edited = validateMatrix(matrix);
+    if (!["CBBE", "3BA"].includes(femaleFamily)) fail("Declare the installed female body family before exporting game configuration.");
+    const profiles = catalog.profiles.map(profile => profile.family === edited.family ? edited : validateMatrix(profile));
+    const male = profiles.filter(profile => profile.family === "HIMBO");
+    const female = profiles.filter(profile => profile.family === femaleFamily);
+    if (male.length !== 1 || female.length !== 1 || new Set(profiles.map(profile => profile.id)).size !== profiles.length) fail("Ambiguous game configuration families or identifiers.");
+    const body = profiles.map(profile => exportMatrix(profile).split("\n").slice(1,-2).join("\n")).join("\n");
+    // exportMatrix validates every identifier for the deliberately strict native XML format.
+    return '<MorphLinkProfiles schemaVersion="1">\n  <Defaults male="' + male[0].id + '" female="' + female[0].id + '" />\n' + body + '\n</MorphLinkProfiles>\n';
+  }
+
+  function evaluateMatrix(matrix, humanValues) {
+    const profile = validateMatrix(matrix), human = validateHuman(humanValues);
     const targets = new Map(), mappedSources = new Set();
     // Native linked composition starts neutral. Own only its linked body subset;
     // leave ear/tail/head/paw/claw controls outside this addon's write scope.
@@ -79,26 +136,26 @@
         targets.set(target, { target: target, contributions: [], rawSum: 0, cap: 1 });
       }
     }
-    // Native MorphLink uses float inputs/gains/caps, double accumulation in XML
-    // rule order, clamp(sum, 0, 1) * cap, then a float output. Actor weight is absent.
-    for (const rule of profile.rules) {
-      const input = own(human, rule.source) ? human[rule.source] : 0;
-      const gain = Math.fround(rule.gain), cap = Math.fround(rule.cap);
-      const contribution = input * gain;
-      let row = targets.get(rule.target);
-      row.cap = cap;
-      row.rawSum += contribution;
-      if (!Number.isFinite(row.rawSum)) fail("CLAW mapping arithmetic overflow.");
-      row.contributions.push({ source: rule.source, input: input, gain: gain, contribution: contribution });
-      mappedSources.add(rule.source);
-    }
+    const kernel = global.CLAWMatrixKernel || (typeof globalThis !== "undefined" && globalThis.CLAWMatrixKernel);
+    if (!kernel) fail("Shared CLAW WebAssembly kernel is unavailable. Load matrix-kernel.js before core.js.");
+    const ordered = Array.from(targets.keys());
+    const numericRules = profile.rules.map(rule => ({ ...rule,
+      target: ordered.indexOf(rule.target),
+      input: rule.function === "constant" ? 0 : (own(human, rule.source) ? human[rule.source] : 0) }));
+    const numeric = kernel.evaluate(numericRules, ordered.length);
+    profile.rules.forEach((rule, index) => {
+      const row = targets.get(rule.target);
+      row.cap = rule.cap;
+      row.contributions.push({ ...rule, input: numericRules[index].input, ...numeric.details[index] });
+      if (rule.function !== "constant") mappedSources.add(rule.source);
+    });
     const values = Object.create(null);
+    ordered.forEach((target, index) => {
+      const row = targets.get(target);
+      row.rawSum = numeric.rawSums[index]; row.clamped = numeric.clamped[index];
+      row.value = numeric.values[index]; values[target] = row.value;
+    });
     const rows = Array.from(targets.values()).sort((a, b) => a.target < b.target ? -1 : a.target > b.target ? 1 : 0);
-    for (const row of rows) {
-      row.clamped = Math.max(0, Math.min(1, row.rawSum));
-      row.value = Math.fround(row.clamped * row.cap);
-      values[row.target] = row.value;
-    }
     return { profile: profile, rows: rows, values: values,
       unmapped: Object.keys(human).filter(name => !mappedSources.has(name)).sort() };
   }
@@ -133,7 +190,7 @@
     return { result: result, model: model, values: values, response: response };
   }
 
-  const api = Object.freeze({ parseHuman, validateHuman, getProfile, evaluate, validateModel, writeLinked });
+  const api = Object.freeze({ parseHuman, validateHuman, getProfile, validateMatrix, evaluateMatrix, exportMatrix, exportCatalog, evaluate, validateModel, writeLinked });
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else global.CLAWLink = api;
 })(typeof window !== "undefined" ? window : globalThis);

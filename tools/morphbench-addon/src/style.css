@@ -1,6 +1,7 @@
 :root { color-scheme: dark light; font: 13px/1.5 system-ui, sans-serif; }
 body { margin: 16px; max-width: 64rem; }
 h1 { font-size: 1.25rem; margin: 0 0 12px; }
+h2 { font-size: 1rem; margin: 18px 0 8px; }
 label { display: block; font-weight: 600; margin-top: 12px; }
 select, textarea { box-sizing: border-box; width: 100%; padding: 8px; }
 input[type="search"] { box-sizing: border-box; width: 100%; padding: 7px; }
@@ -22,3 +23,16 @@ summary { cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
 table { border-collapse: collapse; width: 100%; font-size: 11px; }
 th, td { text-align: right; padding: 4px; border-bottom: 1px solid #8883; }
 th:first-child, td:first-child { text-align: left; overflow-wrap: anywhere; }
+.table-wrap { max-width: 100%; overflow: auto; margin-top: 10px; }
+#matrix-table { min-width: 60rem; }
+#matrix-table input, #matrix-table select { width: 100%; min-width: 5rem; box-sizing: border-box; padding: 4px; }
+#matrix-table input[type="text"] { min-width: 10rem; }
+#matrix-table td { vertical-align: top; }
+#matrix-table button { padding: 3px 5px; }
+#matrix-table tr[hidden] { display: none; }
+.order-controls { display: flex; gap: 3px; }
+#geometry-rows td { white-space: nowrap; }
+#export-text { max-height: 32rem; }
+.export-navigation { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.export-navigation label { margin: 0 0 0 8px; }
+.export-navigation input { width: 6rem; padding: 7px; }

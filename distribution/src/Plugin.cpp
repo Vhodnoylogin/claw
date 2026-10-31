@@ -2,9 +2,11 @@
 #include "claw/Preset.h"
 #include "claw/RequestOwnership.h"
 #include "claw/MorphLink.h"
+#include "claw/MorphRuleSerialization.h"
 #include "claw/PhysicsObserver.h"
 #include "claw/MorphProfiles.h"
 #include "claw/SourceBootstrapPolicy.h"
+#include "claw/RuntimeSupport.h"
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
 #include "claw/PhysicsFit.h"
 #include CLAW_PHYSICS_MODEL_HEADER
@@ -35,17 +37,16 @@
 #undef interface
 #endif
 
-namespace {
-#if defined(CLAW_RUNTIME_SE) && !defined(CLAW_RUNTIME_VR)
-constexpr auto supportedRuntime = SKSE::RUNTIME_SSE_1_7_104;
-#elif defined(CLAW_RUNTIME_VR) && !defined(CLAW_RUNTIME_SE)
-constexpr auto supportedRuntime = SKSE::RUNTIME_VR_1_4_15;
-#else
-#error Select exactly one CLAW runtime through CMake.
+#if !defined(ENABLE_SKYRIM_SE) || !defined(ENABLE_SKYRIM_AE) || !defined(ENABLE_SKYRIM_VR) || !defined(HAS_SKYRIM_MULTI_TARGETING)
+#error The universal CLAW DLL requires CommonLib SE, AE and VR multi-targeting together.
 #endif
 
-bool supportsRuntime(const SKSE::QueryInterface* skse) {
-    return skse && !skse->IsEditor() && skse->RuntimeVersion() == supportedRuntime;
+namespace {
+// One binary uses CommonLib's runtime-selected relocations, virtual dispatch,
+// object-layout accessors and Papyrus bindings. This explicit candidate list is
+// a load boundary, not a claim that all listed engines passed game tests.
+const claw::RuntimeTarget* runtimeTarget(const SKSE::QueryInterface* skse) {
+    return skse ? claw::runtimeTarget(skse->RuntimeVersion(), skse->SKSEVersion(), skse->IsEditor()) : nullptr;
 }
 
 // CommonLib 3.7 enumerates references; 9.1 enumerates nullable pointers.
@@ -365,8 +366,11 @@ State* stateFor(RE::Actor* actor, bool create, bool adoptDefaults = true) {
 }
 
 ::TESObjectREFR* skeeReference(RE::Actor* actor) {
-    // The official SKSE64 API uses global forward declarations; CommonLib uses RE.
-    return reinterpret_cast<::TESObjectREFR*>(actor);
+    // SKEE's ABI takes the actual reference object, never a Papyrus handle or an
+    // Actor sub-interface. First perform the SDK's typed base conversion; only
+    // the official header's opaque global namespace spelling needs bridging.
+    auto* reference = static_cast<RE::TESObjectREFR*>(actor);
+    return reinterpret_cast<::TESObjectREFR*>(reference);
 }
 
 void physicsEvent(RE::Actor* actor, std::string_view kind, std::uint32_t sequence = 0) {
@@ -845,9 +849,7 @@ void save(SKSE::SerializationInterface* interface) {
         }
         string(row, state.link.profile); u32(row, static_cast<std::uint32_t>(state.link.rules.size()));
         for (const auto& rule : state.link.rules) {
-            string(row, rule.source); string(row, rule.target);
-            std::uint32_t bits; std::memcpy(&bits, &rule.gain, sizeof(bits)); u32(row, bits);
-            std::memcpy(&bits, &rule.cap, sizeof(bits)); u32(row, bits);
+            claw::writeMorphRule(rule, [&](const auto& value) { string(row, value); }, [&](auto value) { u32(row, value); });
         }
         u32(row, state.link.captured ? 1 : 0); u32(row, static_cast<std::uint32_t>(state.link.sourceValues.size()));
         for (const auto& [name, value] : state.link.sourceValues) {
@@ -856,7 +858,7 @@ void save(SKSE::SerializationInterface* interface) {
         for (const float weight : {state.humanWeight, state.beastWeight}) {
             std::uint32_t bits; std::memcpy(&bits, &weight, sizeof(bits)); u32(row, bits);
         }
-        if (!interface->WriteRecord(actorRecord, 4, row.data(), static_cast<std::uint32_t>(row.size()))) SKSE::log::error("Actor {:08X} serialization failed", id);
+        if (!interface->WriteRecord(actorRecord, 5, row.data(), static_cast<std::uint32_t>(row.size()))) SKSE::log::error("Actor {:08X} serialization failed", id);
     }
 }
 
@@ -882,7 +884,7 @@ void load(SKSE::SerializationInterface* interface) {
     std::set<std::uint64_t> identities;
     while (interface->GetNextRecordInfo(type, version, length)) {
         if (type != sessionRecord && type != actorRecord) continue;
-        if ((version != 1 && !(type == actorRecord && (version == 2 || version == 3 || version == 4))) ||
+        if ((version != 1 && !(type == actorRecord && (version >= 2 && version <= 5))) ||
             length > (type == actorRecord && version >= 3 ? 131072U : 16384U)) { SKSE::log::error("Unsupported/corrupt CLAW record"); continue; }
         Bytes bytes(length);
         if (interface->ReadRecordData(bytes.data(), length) != length) { SKSE::log::error("Truncated CLAW record"); continue; }
@@ -899,7 +901,7 @@ void load(SKSE::SerializationInterface* interface) {
             const auto oldID = reader.u32(); State state; state.identity = reader.u64();
             const auto oldHandle = reader.u64(); state.preset = reader.string();
             const auto sex = reader.u32(), suppressed = reader.u32(), count = reader.u32();
-            if (sex > 1 || suppressed > 1 || count > 25 || !state.identity || state.identity == std::numeric_limits<std::uint64_t>::max() || !identities.insert(state.identity).second)
+            if (sex > 1 || suppressed > 1 || count > claw::recognizedMorphs(claw::Sex::female).size() || !state.identity || state.identity == std::numeric_limits<std::uint64_t>::max() || !identities.insert(state.identity).second)
                 throw std::runtime_error("invalid actor identity/family/cache");
             state.sex = static_cast<claw::Sex>(sex); state.suppressed = suppressed != 0;
             for (std::uint32_t index = 0; index < count; ++index) {
@@ -912,9 +914,7 @@ void load(SKSE::SerializationInterface* interface) {
                 const std::uint32_t maxLinkEntries = version >= 3 ? 128U : 32U;
                 if (ruleCount > maxLinkEntries) throw std::runtime_error("excessive morph link rules");
                 for (std::uint32_t index = 0; index < ruleCount; ++index) {
-                    claw::MorphLinkRule rule; rule.source = reader.string(); rule.target = reader.string();
-                    auto bits = reader.u32(); std::memcpy(&rule.gain, &bits, sizeof(bits));
-                    bits = reader.u32(); std::memcpy(&rule.cap, &bits, sizeof(bits)); state.link.rules.push_back(std::move(rule));
+                    state.link.rules.push_back(claw::readMorphRule(reader, version));
                 }
                 const auto captured = reader.u32(), sourceCount = reader.u32();
                 if (captured > 1 || sourceCount > maxLinkEntries) throw std::runtime_error("invalid morph source snapshot");
@@ -1368,7 +1368,10 @@ void exchange() {
         &message, sizeof(message), "skee");
     if (message.interfaceMap) {
         auto* interface = message.interfaceMap->QueryInterface("BodyMorph");
-        if (interface && interface->GetVersion() >= 1) morphs = static_cast<IBodyMorphInterface*>(interface);
+        // All used methods belong to the stable v4 prefix. The v5-only trailing
+        // callback is not called. An older interface cannot qualify this ABI.
+        if (interface && interface->GetVersion() >= IBodyMorphInterface::kPluginVersion4)
+            morphs = static_cast<IBodyMorphInterface*>(interface);
     }
     SKSE::log::info("SKEE body morph API {}", morphs ? "available" : "unavailable");
 }
@@ -1390,11 +1393,7 @@ void exchangeOBodyReadiness() {
 
 std::filesystem::path dataDirectory() {
     std::array<wchar_t, 32768> executable{};
-#if defined(CLAW_RUNTIME_SE)
     const auto length = GetModuleFileNameW(nullptr, executable.data(), static_cast<std::uint32_t>(executable.size()));
-#else
-    const auto length = GetModuleFileName(nullptr, executable.data(), static_cast<std::uint32_t>(executable.size()));
-#endif
     if (!length || length >= executable.size()) throw std::runtime_error("cannot locate game executable directory");
     return std::filesystem::path(std::wstring(executable.data(), length)).parent_path() / "Data";
 }
@@ -1474,28 +1473,31 @@ void message(SKSE::MessagingInterface::Message* event) {
 }
 }
 
-#if defined(CLAW_RUNTIME_SE)
 extern "C" __declspec(dllexport) constinit SKSE::PluginVersionData SKSEPlugin_Version = [] {
     SKSE::PluginVersionData version;
     version.PluginVersion({0, 1, 0, 0});
     version.PluginName("CLAWDistribution");
     version.AuthorName("CLAW contributors");
     version.versionIndependenceEx = SKSE::PluginVersionData::kVersionIndependentEx_AddressLibraryV5;
-    version.CompatibleVersions({supportedRuntime});
-    version.UsesUpdatedStructs();
-    version.MinimumRequiredXSEVersion({2, 3, 1, 0});
+    for (std::size_t index = 0; index < claw::runtimeTargets.size(); ++index)
+        version.compatibleVersions[index] = claw::runtimeTargets[index].game.pack();
+    // CommonLib selects both pre/post629 struct layouts. As in CommonLib's
+    // StructCompatibility::Independent declaration, this bit means no fixed
+    // incompatible layout assumption. SKSE minima differ by runtime below.
+    version.versionIndependenceEx |= SKSE::PluginVersionData::kVersionIndependentEx_NoStructUse;
+    version.MinimumRequiredXSEVersion({0, 0, 0, 0});
     return version;
 }();
-#endif
 
 extern "C" __declspec(dllexport) bool SKSEPlugin_Query(const SKSE::QueryInterface* skse, SKSE::PluginInfo* info) {
     if (!info) return false;
     info->infoVersion = SKSE::PluginInfo::kVersion; info->name = "CLAWDistribution"; info->version = 1;
-    return supportsRuntime(skse);
+    return runtimeTarget(skse) != nullptr;
 }
 
 extern "C" __declspec(dllexport) bool SKSEPlugin_Load(const SKSE::LoadInterface* skse) {
-    if (!supportsRuntime(skse)) return false;
+    const auto* target = runtimeTarget(skse);
+    if (!target) return false;
     try {
         const auto directory = SKSE::log::log_directory();
         if (directory) {
@@ -1503,11 +1505,12 @@ extern "C" __declspec(dllexport) bool SKSEPlugin_Load(const SKSE::LoadInterface*
                 std::make_shared<spdlog::sinks::basic_file_sink_mt>((*directory / "CLAWDistribution.log").string(), true));
             spdlog::set_default_logger(std::move(logger)); spdlog::set_level(spdlog::level::info); spdlog::flush_on(spdlog::level::warn);
         }
-#if defined(CLAW_RUNTIME_SE)
         SKSE::Init(skse, {.log = false}); // Keep this plugin's existing logger.
-#else
-        SKSE::Init(skse);
-#endif
+        if (REL::Module::get().version() != target->game ||
+            REL::Module::IsVR() != (target->family == claw::RuntimeFamily::vr) ||
+            REL::Module::IsAE() != (target->family == claw::RuntimeFamily::ae) ||
+            REL::Module::IsSE() != (target->family == claw::RuntimeFamily::se)) return false;
+        SKSE::log::info("Universal CommonLib candidate runtime {} / SKSE {:08X}; engine qualification is separate", target->game.string(), skse->SKSEVersion());
         tasks = SKSE::GetTaskInterface();
         const auto* serial = SKSE::GetSerializationInterface();
         if (!tasks || !serial || !SKSE::GetPapyrusInterface() || !SKSE::GetMessagingInterface()) return false;
