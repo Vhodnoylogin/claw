@@ -25,11 +25,13 @@ NAMES = ('CLAWArmLean', 'CLAWLegThighLean', 'CLAWLegCalfLean', 'CLAWTorsoLean',
          'CLAWTorsoGirth', 'CLAWTorsoBellyRound', 'CLAWTorsoShoulderGirth', 'CLAWTorsoChestSize')
 COAT = ('fur_arms', 'fur_back', 'fur_belly', 'fur_chest', 'fur_shoulders', 'ChestBlend')
 BREAST = 'CLAWTorsoBreastSize'
+ARM_MUSCLES = ('CLAWArmBiceps', 'CLAWArmTriceps')
 
 
 def authored_names(recipe, sex):
     return (NAMES + ((BREAST,) if sex == 'female' and 'femaleBreast' in recipe['parameters'] else ())
-            + tuple(recipe['parameters'].get('headIsolation', {}).get('morphs', ())))
+            + tuple(recipe['parameters'].get('headIsolation', {}).get('morphs', ()))
+            + (ARM_MUSCLES if 'armMuscles' in recipe['parameters'] else ()))
 
 
 def smooth(value):
@@ -110,6 +112,9 @@ def belly_support(vertices, shape, rule):
             raise ValueError('Finite dome centre and positive X/Z widths required')
         support *= np.exp(-.5*((x/dome['sigmaX'])**2 +
                               ((z-dome['centreZ'])/dome['sigmaZ'])**2))
+    if 'hipCrease' in rule:
+        crease = rule['hipCrease']
+        support *= smooth((z-crease['zeroZ'])/(crease['fullZ']-crease['zeroZ']))
     return support
 
 
@@ -121,7 +126,8 @@ def fields(vertices, shape, recipe):
     coat support bends long downward cards instead of leaving their tips fixed.
     """
     v = quality.positions(vertices)
-    result = {name: np.zeros_like(v) for name in NAMES}
+    muscle_names = ARM_MUSCLES if 'armMuscles' in recipe else ()
+    result = {name: np.zeros_like(v) for name in (*NAMES, *muscle_names)}
     if shape not in ('body', 'head', *COAT, 'genitals'):
         return result
     x, y, z = v.T
@@ -145,6 +151,24 @@ def fields(vertices, shape, recipe):
     result['CLAWTorsoShoulderGirth'] = radial*(shoulder['growth']*shoulder_support)[:, None]
     for name, amount in [('CLAWArmLean', arm['lean']), ('CLAWArmGirth', arm['growth'])]:
         result[name] = radial * (amount*support*muscle)[:, None]
+    if 'softMass' in arm:
+        # Equal padding plus partial radial equalization fills valleys more than
+        # ridges; it does not apply the biceps/triceps Gaussian to soft mass.
+        soft = arm['softMass']
+        target = np.interp(ax, arm['axisX'], soft['radius'])
+        padding = np.maximum(target-soft['ridgeRetention']*radius, 0)
+        direction = radial/np.maximum(radius[:, None], 1e-8)
+        result['CLAWArmGirth'] = direction*(arm['growth']*support*padding)[:, None]
+    if muscle_names:
+        p = recipe['armMuscles']
+        local = window(ax, *p['rangeX'], p['fadeX'])
+        local *= 1-smooth((radius-p['radiusFull'])/p['radiusFade'])
+        direction = radial/np.maximum(np.linalg.norm(radial, axis=1)[:, None], 1e-8)
+        for name, rule in zip(ARM_MUSCLES, (p['biceps'], p['triceps'])):
+            axis = np.array([0., *rule['radialAxis']]); axis /= np.linalg.norm(axis)
+            angular = smooth((direction@axis-p['angularZero'])/(1-p['angularZero']))
+            axial = np.exp(-.5*((ax-rule['centreX'])/rule['widthX'])**2)
+            result[name] = direction*(rule['amplitude']*local*angular*axial)[:, None]
     for region, prefix in [('thigh', 'CLAWLegThigh'), ('calf', 'CLAWLegCalf')]:
         rule = recipe[region]
         cy = np.interp(z, rule['axisZ'], rule['axisY'])
@@ -156,6 +180,13 @@ def fields(vertices, shape, recipe):
         radial[:, 1] *= rule['depthAspect']
         for suffix, amount in [('Lean', rule['lean']), ('Girth', rule['growth'])]:
             result[prefix+suffix] = radial*(support*amount)[:, None]
+        if region == 'thigh' and 'hipCrease' in rule:
+            crease = rule['hipCrease']
+            upper = smooth((z-crease['startZ'])/(crease['fullZ']-crease['startZ']))
+            front = smooth(np.maximum(radial[:, 1], 0)/crease['frontWidth'])
+            shifted = result[prefix+'Girth'][:, 1]*upper*front*crease['forwardReduction']
+            result[prefix+'Girth'][:, 1] -= shifted
+            result[prefix+'Girth'][:, 0] += np.sign(x)*shifted*crease['lateralReroute']
     torso = recipe['torso']
     support = window(z, *torso['range'], torso['fade'])
     support *= 1-smooth((ax-torso['widthFull'])/torso['widthFade'])
@@ -175,6 +206,10 @@ def fields(vertices, shape, recipe):
     support = belly_support(v, shape, belly)
     result['CLAWTorsoBellyRound'][:, 1] = belly['forward']*support
     result['CLAWTorsoBellyRound'][:, 2] = -belly['down']*support
+    if 'hipCrease' in belly:
+        crease = belly['hipCrease']
+        lower = 1-smooth((z-crease['fullZ'])/crease['liftFade'])
+        result['CLAWTorsoBellyRound'][:, 2] += crease['lowerLift']*support*lower
     result['CLAWTorsoBellyRound'][:, 0] = x*belly['lateral']*support
     return result
 
@@ -229,7 +264,7 @@ def authored_output(path, inputs=()):
     return out
 
 
-def coat_followers(geometry, faces, generated, morph_names=NAMES):
+def coat_followers(geometry, faces, generated, morph_names=NAMES, belly_follow=False):
     """Rigid per-card followers with explicit frozen skin-triangle bindings.
 
     A KD-tree proposes root candidates; exact point/triangle projection chooses
@@ -275,7 +310,7 @@ def coat_followers(geometry, faces, generated, morph_names=NAMES):
             dist, index, face, bary = best
             root_distances.append(float(dist))
             for morph in morph_names:
-                if morph == 'CLAWTorsoBellyRound':
+                if morph == 'CLAWTorsoBellyRound' and not belly_follow:
                     continue
                 inherited = np.sum(skin_delta[morph][face]*bary[:, None], axis=0)
                 generated[name][morph][group] = inherited
@@ -284,6 +319,19 @@ def coat_followers(geometry, faces, generated, morph_names=NAMES):
                         'rootDistanceMax': max(root_distances), 'rootDistanceP95': float(np.quantile(root_distances, .95)),
                         'idealRootFollowerErrorMax': max(root_errors)}
     return report
+
+
+def belly_anatomical_mask(shape, rule):
+    """A belly is not the thigh skin that happens to share its rest-space box."""
+    weights = np.zeros(len(shape.verts))
+    for name, rows in shape.bone_weights.items():
+        if 'Thigh' in name:
+            for index, weight in rows:
+                weights[index] += weight
+    low, high = rule['startThighWeight'], rule['zeroThighWeight']
+    if not 0 <= low < high <= 1:
+        raise ValueError('Ordered bounded thigh-ownership transition required')
+    return 1-smooth((weights-low)/(high-low))
 
 
 def load_api(path=None):
@@ -341,6 +389,12 @@ def audit(geometry, faces, before, after, extra_states=(), morph_names=NAMES):
         states += [('muzzle-pair', dict.fromkeys(muzzle_names, 1.)),
                    ('body-and-muzzle-all', dict.fromkeys((*NAMES[4:], *muzzle_names,
                        *((BREAST,) if BREAST in morph_names else ())), 1.))]
+    muscles = tuple(m for m in ARM_MUSCLES if m in morph_names)
+    if muscles:
+        states += [('biceps-triceps-full', dict.fromkeys(muscles, 1.)),
+                   ('all-arm-growth-full', dict.fromkeys(('CLAWArmGirth', 'CLAWTorsoShoulderGirth', *muscles), 1.)),
+                   ('all-body-and-arm-growth-full', dict.fromkeys((*NAMES[4:], *muscles,
+                        *((BREAST,) if BREAST in morph_names else ())), 1.))]
     states += list(extra_states)
     states += [('baseline:'+n, state) for n, state in extra_states]
     rows = {}
@@ -437,6 +491,11 @@ def build(base, recipe_path, out, pynifly=None, vectors=None):
         before = decode(original[sex+'bodywerewolf.tri'], {n: len(v) for n, v in geometry.items()})
         morph_names = authored_names(recipe, sex)
         generated = {n: fields(v, n, recipe['parameters']) for n, v in geometry.items()}
+        if 'bellyAnatomy' in recipe['parameters']:
+            for shape in nif.shapes:
+                if shape.name in ('body', 'head'):
+                    generated[shape.name]['CLAWTorsoBellyRound'] *= belly_anatomical_mask(
+                        shape, recipe['parameters']['bellyAnatomy'])[:, None]
         if BREAST in morph_names:
             for name, vertices in geometry.items():
                 generated[name][BREAST] = (breast_field(vertices, recipe['parameters']['femaleBreast'])
@@ -450,7 +509,8 @@ def build(base, recipe_path, out, pynifly=None, vectors=None):
         collar = make_collar(geometry, faces)
         for morph in morph_names:
             generated['head'][morph] = collar.reconcile(generated['body'][morph], generated['head'][morph])
-        coat_bindings = coat_followers(geometry, faces, generated, morph_names)
+        coat_bindings = coat_followers(geometry, faces, generated, morph_names,
+                                      belly_follow='bellyAnatomy' in recipe['parameters'])
         by_shape = {n: rows for n, rows in records}
         for shape in geometry:
             rows = by_shape.setdefault(shape, [])

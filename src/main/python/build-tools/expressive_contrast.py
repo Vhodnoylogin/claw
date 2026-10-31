@@ -120,6 +120,8 @@ def analyze(reference, candidate, output, pynifly=None, recipe=None):
         changed.add(body.BREAST)
     if selected_recipe:
         changed.update(selected_recipe['parameters'].get('headIsolation', {}).get('morphs', ()))
+        if 'armMuscles' in selected_recipe['parameters']:
+            changed.update(body.ARM_MUSCLES)
     for sex in ('male', 'female'):
         for ending in ('_0.nif', '_1.nif'):
             name = sex + 'bodywerewolf' + ending

@@ -17,10 +17,10 @@ SPEC.loader.exec_module(pipeline)
 
 class FreshBodyPipelineTests(unittest.TestCase):
     def test_development_default_and_explicit_legacy_are_distinct_pinned_sources(self):
-        self.assertEqual(pipeline.DEFAULT_EXPRESSIVE_VERSION, 'v3')
-        recipes = [pipeline.expressive_recipe(version) for version in ('v1', 'v2', 'v3')]
+        self.assertEqual(pipeline.DEFAULT_EXPRESSIVE_VERSION, 'v4')
+        recipes = [pipeline.expressive_recipe(version) for version in ('v1', 'v2', 'v3', 'v4')]
         self.assertNotEqual(recipes[0].read_bytes(), recipes[1].read_bytes())
-        for version, recipe in zip(('v1', 'v2', 'v3'), recipes):
+        for version, recipe in zip(('v1', 'v2', 'v3', 'v4'), recipes):
             self.assertEqual(json.loads(recipe.read_text())['name'], 'rest-frame-opposed-body-'+version)
         with self.assertRaises(ValueError):
             pipeline.expressive_recipe('unregistered')

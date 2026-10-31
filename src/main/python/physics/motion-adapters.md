@@ -92,6 +92,18 @@ returns the external `report.json` path. The contract pins 85 source nodes,
 91 output nodes, 53 actual fixed collar anchors and 29 public morphs. The older
 rig's frozen 55-anchor/moderate-TRI contract is unchanged.
 
+Expressive v4 uses a separate `p1-rig-v4.json` with profile name
+`expressive-v4-current-tri-existing-xp32-p1-v1` and semantic version
+`expressive-body-v4-separate-biceps-triceps-soft-arm-girth`. Its exact female
+inventory contains 31 public morphs, including both `CLAWArmBiceps` and
+`CLAWArmTriceps`. `CLAWArmGirth` remains the soft arm field. A same-sized inventory
+with another arm-muscle name cannot satisfy this contract. The new resource pins
+do not authorize v3 inputs or alter `p1-rig-v3.json`. Both stages retain the
+85-to-91 node graph, 53 collar anchors, current BreastSize mobility method and
+existing rig verification thresholds. These P1 checks do not establish posed
+belly/thigh clearance or behavior of the two new arm fields; the geometry stage
+owns those separate checks.
+
 The new scalar mobility uses actual current head BreastSize displacement
 magnitude normalized by its maximum, with bounded upper/lower roots, a fixed
 face cutoff and collar anchors. Existing capacity guards, layer projection,
@@ -117,3 +129,35 @@ driver/armor pushup/contact or ordinary-animation displacement. It covers
 declared constants without proving provider solver compliance: FSMP constraints
 can overshoot numerically. Runtime traces must check these assumptions.
 Enlarged bounds do not establish visible motion or contact quality.
+
+## CBPC runtime admission investigation
+
+The first six-wolf observation used the installed CBPC 1.7.3 runtime-specific
+SE 1.7.104 binary. All 240 requested bone observations were available. Ear/tail
+rotations varied, while all six P1 local transform sequences were exactly
+constant. P1 world positions nevertheless moved 5.17 to 9.12 units. Animation
+and other writers can account for these observations; they do not establish
+solver ownership or visible physics. The available observer has no qualified
+CBPC bound-node inventory getter.
+
+The provider's public [SimObj binding](https://github.com/Acro748/CBPCSSE/blob/fabd56ce8f8ac10cde17325f0bd61ecc8cbcda20/CBPC/SimObj.cpp)
+checks node conditions and finds the node during a cached actor bind. Its
+[actor scan](https://github.com/Acro748/CBPCSSE/blob/fabd56ce8f8ac10cde17325f0bd61ecc8cbcda20/CBPC/scan.cpp)
+only binds actors whose cached object is unbound. Player beast-form changes,
+cell changes and configuration reload clear that cache; this source does not
+show an equivalent NPC root/race transition check. A subject admitted while
+human could therefore lack the subsequently applicable werewolf-only rows.
+That is a testable source-backed hypothesis. The official repository's current
+master is still this 2022 commit; equivalence to the installed 1.7.3 binary has
+not been established.
+
+The exact 1.7.3 FOMOD archive supplies the original `CBPCPluginScript.psc` with
+`GetVersion`, `GetVersionMinor`, `GetVersionBeta`, `ReloadConfig`,
+`StartPhysics`, `StopPhysics` and actor-setting refresh declarations. It supplies
+no bound-node inventory getter. In the public implementation, `ReloadConfig`
+requests cache clearing; Start/Stop only change suppression for a named node.
+A later declared diagnostic can compare the same transformed actors before
+and after one provider reload, followed by a controlled motion and disabled
+comparison. No such call is implicit in an adapter build, and an unobserved
+reload must not be presented as an automatic transformation fix. No additional
+dependency or `extraRaces` edit is justified by the current evidence.

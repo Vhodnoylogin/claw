@@ -1,33 +1,61 @@
 # CLAW — future plans
 
-Owner-defined priorities, revised 31 October 2026. No release dates are promised.
+Owner-defined priorities, revised 1 November 2026. No release dates are promised.
 
 ## Active owner queue (latest instruction)
 
 This list supersedes every older release sequence below.
 
-1. **First queue:** finish generic sparse coefficient/function matrices and the
-   independent Morphbench plugin. Include HIMBO, CBBE, 3BA and both Vanilla sexes.
-   `$actor.weight` is the one built-in actor scalar and is explicitly present in
-   every matrix; Vanilla uses only weight and constant bias cells. Share compiled
-   native/WASM logic, validate exact install choices, and check the finished mod
-   in game. No expansion of the general testing infrastructure belongs here.
-2. **Second queue:** head/face conversion; human-driven ears, tail and claws;
-   individual skin/fur colours and human appearance links.
-3. **Third queue:** natural female breast shape, motion physics, more expressive
-   lean/growth endpoints and better human-to-wolf calibration.
-4. **Fourth queue:** fitted/morph-responsive collisions, first-person VR body,
-   and additional or replacement wolf morphs.
-5. **Fifth queue:** separate adult anatomy and its physics.
+1. **Technical mechanisms:** generic sparse coefficient/function matrices;
+   shared game/Morphbench evaluator and independent comparison plugin;
+   human-to-wolf body/head/face links, including ears, tail and claws;
+   individual skin/fur appearance links; source preservation, transformation,
+   model refresh and save/load. Include HIMBO, CBBE, 3BA and both Vanilla sexes.
+   Every matrix explicitly supports `$actor.weight`; Vanilla body deformation
+   uses weight rather than invented body morphs. Validate exact installation
+   choices and actual game behavior. General testing-tool development is outside
+   this product queue.
+2. **Physics and VR body:** ear/tail/breast motion providers; coarse fitted SE
+   collisions, detailed VR contact, morph-responsive collider bounds;
+   first-person body dispatch, visibility, morph synchronization and interaction.
+   Prefer existing XP32 bones and separate provider-specific adapters. A built
+   configuration is not evidence of actual provider motion or collision.
+3. **Visual quality and morph authoring:** improve existing morphs and their
+   transfer calibration, natural breast shape, lean/growth endpoints and local
+   musculature; fix self-intersections and remaining surface defects; develop
+   additional or replacement morphs. This work is deferred while mechanisms
+   take priority. Do not continue aesthetic iteration merely to call an extreme
+   shape attractive.
 
-### Owner review after the first-queue manual scene
+The previously separate adult-anatomy/physics idea remains deferred and is not
+silently added to any of these three current queues. This ordering supersedes
+all numbered queue/release lists retained below as historical planning.
+
+### Mechanical scope after the combined queue-two/three scene
+
+The owner requested maximum functional implementation first and moved visual
+attractiveness to queue three. Retain appearance observations as deferred
+feedback, rather than spending this slice on breast naturalness, attractive
+proportions or repeated endpoint calibration. Functional channels, human-source
+links, per-actor colour, native/preview parity, persistence and actual provider
+motion remain active. Separate muscle and soft-mass channels address a missing
+control mechanism; their final artistic tuning remains deferred. Abdomen/thigh
+self-intersection is a known mesh defect in queue three, not a completed repair
+or a reason to declare unrelated mechanisms nonfunctional. Its bounded partial
+repair and captured-pose evidence are retained without further tuning now.
+
+Do not invent an age slider or synthetic age input. An age-related conversion
+requires a verified existing readable source; investigate actual game markers
+before proposing any implementation.
+
+### First-queue inspection record
 
 The owner confirmed that the new mechanism works after inspecting the current
 HIMBO/3BA pairs. The next game run is explicitly for queue two. The inspected
 scene verifies that installation and these six transformations, not unperformed
 Vanilla, save/load or sex-rebinding cases. No new public release is implied.
 
-Queue two implements head/face links, ears/tail/claws and individual colour.
+The first technical queue implements head/face links, ears/tail/claws and individual colour.
 Inventory actual available human and wolf inputs first; route supported traits
 through the shared native/WASM matrix kernel and expose the same controls in
 the independent Morphbench plugin. Separate muzzle/jaw/head proportions from
@@ -36,7 +64,7 @@ fallback. Treat skin and fur as separate materials; investigate per-actor Elegan
 texture selection and tint from actual human hair/skin data. A global Timber
 installation is a photography setting, not per-actor colour implementation.
 
-Queue three improves body shape and calibration: more expressive lean/bulky
+The deferred queue-three appearance work improves body shape and calibration: more expressive lean/bulky
 endpoints, arm/thigh/abdomen silhouette, natural breast growth and motion physics.
 The owner observed that Runa and Mira have similar human breast size but Runa's
 wolf breasts are visible while Mira's are almost absent; Lada's human breasts
@@ -65,7 +93,7 @@ all six 0.7 body destinations bytewise, without a new installation or game run.
 The comparison plugin is now an [independent product](https://github.com/Vhodnoylogin/claw-morphbench-plugin)
 with a pinned shared-kernel dependency, rather than a component stored here.
 
-## Current release sequence
+## Historical release sequence (superseded by the active three queues)
 
 The 31 October owner instruction supersedes the earlier six-release estimate.
 

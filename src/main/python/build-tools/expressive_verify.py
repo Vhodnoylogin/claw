@@ -39,7 +39,9 @@ def verify(candidate, output, base=None, pynifly=None, recipe=None):
         if any(new.get(key) != value for key, value in protected.items()):
             raise ValueError('Unrelated named morph record changed')
         additions = sorted({m for n, m in new}-{m for n, m in old})
-        if additions != sorted(body.NAMES[:4]):
+        expected_additions = (*body.NAMES[:4], *(body.ARM_MUSCLES if selected_recipe and
+            'armMuscles' in selected_recipe['parameters'] else ()))
+        if additions != sorted(expected_additions):
             raise ValueError('Unexpected public morph inventory change')
         report['sexes'][sex] = {'publicReaderValid': True, 'nifBytesExact': True,
             'publicTargetCount': len({m for n, m in decoded}), 'newNames': additions,

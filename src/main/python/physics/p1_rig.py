@@ -1,4 +1,4 @@
-"""Explicit current-TRI P1 rig stage for expressive v3; no retained runtime assets."""
+"""Versioned current-TRI P1 rig stages; no retained runtime assets."""
 from __future__ import annotations
 import argparse
 import hashlib
@@ -14,10 +14,39 @@ sys.path.insert(0, str(TOOLS))
 import breast_rig as rig
 
 
+V3_PROFILE = "expressive-v3-current-tri-existing-xp32-p1-v1"
+V4_PROFILE = "expressive-v4-current-tri-existing-xp32-p1-v1"
+V4_SEMANTICS = "expressive-body-v4-separate-biceps-triceps-soft-arm-girth"
+V4_PUBLIC_MORPHS = tuple(sorted((
+    "CLAWArmBiceps", "CLAWArmTriceps", "CLAWArmClawLong", "CLAWArmGirth",
+    "CLAWArmLean", "CLAWArmPawSize", "CLAWHeadEarSize", "CLAWHeadEarTilt",
+    "CLAWHeadMuzzleLong", "CLAWHeadMuzzleWide", "CLAWHeadSize",
+    "CLAWLegCalfGirth", "CLAWLegCalfLean", "CLAWLegClawLong", "CLAWLegDigitigrade",
+    "CLAWLegPawSize", "CLAWLegThighGirth", "CLAWLegThighLean", "CLAWTailFluff",
+    "CLAWTailLength", "CLAWTailLift", "CLAWTorsoBackWide", "CLAWTorsoBellyRound",
+    "CLAWTorsoBreastSize", "CLAWTorsoChestSize", "CLAWTorsoFlankWidth",
+    "CLAWTorsoGirth", "CLAWTorsoLean", "CLAWTorsoNeckGirth",
+    "CLAWTorsoShoulderGirth", "CLAWTorsoWaistNarrow",
+)))
+
+
+def profile_generation(profile):
+    name = profile.get("name")
+    if name == V3_PROFILE:
+        return "v3"
+    if name == V4_PROFILE:
+        return "v4"
+    raise ValueError("Select an explicit versioned current-TRI P1 profile")
+
+
 def validate_profile(profile):
     template = json.loads((TOOLS / "../../resources/recipes/breast-rig-canonical.json").resolve().read_text())
-    if profile.get("schemaVersion") != 1 or profile.get("name") != "expressive-v3-current-tri-existing-xp32-p1-v1":
-        raise ValueError("Select the explicit current-TRI v3 P1 profile")
+    generation = profile_generation(profile)
+    if profile.get("schemaVersion") != 1:
+        raise ValueError("Current-TRI P1 profile schema differs")
+    if generation == "v4" and (profile.get("semanticVersion") != V4_SEMANTICS or
+                                profile.get("publicMorphNames") != list(V4_PUBLIC_MORPHS)):
+        raise ValueError("Current-TRI v4 requires its separate biceps/triceps public contract")
     for key in ("spineBone", "p1Bones", "requiredNodes", "publicMorph", "mobility", "layers", "verification", "outputRelativeNif"):
         if profile.get(key) != template[key]:
             raise ValueError("Current-TRI rig must retain existing bounded rig policy: " + key)
@@ -25,15 +54,24 @@ def validate_profile(profile):
     if profile.get("collar") != expected_collar:
         raise ValueError("Current-TRI rig requires its measured53anchor collar")
     inputs = profile.get("inputs", {})
-    if (inputs.get("sourceNodeCount"), inputs.get("outputNodeCount"), inputs.get("anchorCount"), inputs.get("publicMorphCount")) != (85, 91, 53, 29):
-        raise ValueError("Current-TRI v3 resource structure differs")
+    morph_count = 29 if generation == "v3" else 31
+    if (inputs.get("sourceNodeCount"), inputs.get("outputNodeCount"), inputs.get("anchorCount"), inputs.get("publicMorphCount")) != (85, 91, 53, morph_count):
+        raise ValueError("Current-TRI " + generation + " resource structure differs")
     for key in ("bodyNifSha256", "triSha256", "skeletonSha256"):
         value = inputs.get(key, "")
         if len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
-            raise ValueError("Current-TRI v3 profile requires exact resource pins")
+            raise ValueError("Current-TRI " + generation + " profile requires exact resource pins")
     if inputs["skeletonSha256"] != template["inputs"]["skeletonSha256"]:
         raise ValueError("Current-TRI rig cannot replace the reviewed XP32 skeleton")
     return profile
+
+
+def validate_public_morphs(profile, public):
+    public = set(public)
+    if len(public) != profile["inputs"]["publicMorphCount"] or any(not name.startswith("CLAW") for name in public):
+        raise ValueError("Current TRI public morph contract differs")
+    if profile_generation(profile) == "v4" and public != set(V4_PUBLIC_MORPHS):
+        raise ValueError("Current TRI does not contain the exact expressive-v4 public inventory")
 
 
 def mobility(vertices, delta, anchors, profile):
@@ -63,8 +101,8 @@ def mobility(vertices, delta, anchors, profile):
 def build_candidate(body, tri, skeleton, profile_file, output, pynifly_directory=None):
     body, tri, skeleton, profile_file = [Path(p).resolve(strict=True) for p in (body, tri, skeleton, profile_file)]
     p = validate_profile(json.loads(profile_file.read_text(encoding="utf-8-sig")))
-    # This is a separate authored input contract, not a relaxation of the older
-    # rig's frozen 55-anchor/moderate-TRI contract.
+    # These are separate authored input contracts. The v3 and older
+    # 55-anchor/moderate-TRI profiles retain their own frozen resource contracts.
     source_files = [Path(__file__), TOOLS / "breast_rig.py", TOOLS / "surface_collar.py", profile_file,
                     ROOT / "src/main/resources/recipes/breast-rig-canonical.json"]
     pins = {str(path): rig.sha256(path) for path in (body, tri, skeleton, *source_files)}
@@ -81,8 +119,7 @@ def build_candidate(body, tri, skeleton, profile_file, output, pynifly_directory
     shapes = {shape.name: shape for shape in nif.shapes}
     raw = TripFile.from_filepath(str(tri)).shapes
     public = {name for morphs in raw.values() for name in morphs}
-    if len(public) != p["inputs"]["publicMorphCount"] or any(not name.startswith("CLAW") for name in public):
-        raise ValueError("Current TRI public morph contract differs")
+    validate_public_morphs(p, public)
     vertices = {name: np.asarray(shape.verts) for name, shape in shapes.items()}
     faces = {name: np.asarray(shape.tris) for name, shape in shapes.items()}
     collar = rig.surface.Collar(vertices["body"], faces["body"], vertices["head"], faces["head"], p["collar"],
@@ -118,7 +155,8 @@ def build_candidate(body, tri, skeleton, profile_file, output, pynifly_directory
     rig._write_rig(api, body, skeleton, p, planned, target)
     shutil.copyfile(tri, target.with_suffix(".tri"))
     verification = rig.verify_candidate(api, body, target, skeleton, tri, raw, p, planned, collar.anchors)
-    verification["poseConvention"] = verification["poseConvention"].replace("moderate BreastSize", "actual current v3 BreastSize")
+    generation = profile_generation(p)
+    verification["poseConvention"] = verification["poseConvention"].replace("moderate BreastSize", "actual current " + generation + " BreastSize")
     for path, expected in {**pins, **dependencies}.items():
         if rig.sha256(path) != expected:
             raise ValueError("P1 input/source/dependency changed during build: " + path)
@@ -130,6 +168,9 @@ def build_candidate(body, tri, skeleton, profile_file, output, pynifly_directory
               "limits": ["Current BreastSize states 0/.5/1 and existing151controlled skeletal poses; other morph combinations need later bounds/acceptance",
                          "Per-layer capacity guards do not establish common fur/skin motion or visually closed seams",
                          "No retained moderate TRI, NIF or weight blob used; body geometry and current TRI remain fixed"]}
+    if generation == "v4":
+        report["semanticVersion"] = p["semanticVersion"]
+        report["publicMorphNames"] = sorted(public)
     report_path = out / "report.json"
     report_path.write_text(json.dumps(report, indent=2) + "\n")
     pending.unlink()

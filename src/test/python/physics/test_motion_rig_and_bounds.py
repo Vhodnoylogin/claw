@@ -57,6 +57,37 @@ class CurrentTriRigTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 rig.mobility([[8, 30, 96]], [[0, 0, value]], [], self.profile())
 
+    def v4_profile(self):
+        return json.loads((ROOT / "p1-rig-v4.json").read_text(encoding="utf-8-sig"))
+
+    def test_v4_is_separate_explicit_contract_without_weakening_v3(self):
+        v3, v4 = self.profile(), self.v4_profile()
+        rig.validate_profile(v4)
+        self.assertEqual(rig.profile_generation(v3), "v3")
+        self.assertEqual(v3["inputs"]["publicMorphCount"], 29)
+        for change in ("missing-version", "old-count", "unknown-profile", "threshold", "inventory"):
+            p = copy.deepcopy(v4)
+            if change == "missing-version": del p["semanticVersion"]
+            if change == "old-count": p["inputs"]["publicMorphCount"] = 29
+            if change == "unknown-profile": p["name"] = "expressive-v5-current-tri-existing-xp32-p1-v1"
+            if change == "threshold": p["verification"]["normalizedOrdinaryMaxError"] = 1
+            if change == "inventory": p["publicMorphNames"][0] = "CLAWArmMuscle"
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                rig.validate_profile(p)
+        changed_v3 = copy.deepcopy(v3)
+        changed_v3["inputs"]["publicMorphCount"] = 31
+        with self.assertRaises(ValueError):
+            rig.validate_profile(changed_v3)
+
+    def test_v4_tri_requires_both_new_fields_and_exact_inventory(self):
+        p = self.v4_profile()
+        rig.validate_public_morphs(p, rig.V4_PUBLIC_MORPHS)
+        for field in ("CLAWArmBiceps", "CLAWArmTriceps"):
+            public = set(rig.V4_PUBLIC_MORPHS) - {field}
+            public.add("CLAWArmMuscle")  # Same count cannot stand in for new semantics.
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                rig.validate_public_morphs(p, public)
+
 
 class MotionBoundTests(unittest.TestCase):
     def test_five_independently_composed_nominal_joint_perturbations_fit_bound(self):
