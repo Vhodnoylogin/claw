@@ -9,8 +9,10 @@ edges contribute zero. A constant edge uses the explicit empty source column
 For each target, accumulate `gain * F(human[source])` in XML rule order using
 binary64 arithmetic. Clamp the completed sum to [0,1], multiply by the target's
 cap, then round once to float32. All inputs, gains, caps and constant values are
-finite float32. Each target has one consistent cap in (0,1]. NPC weight and
-independent body presets are absent. Unmapped public wolf outputs start at zero.
+finite float32. Each target has one consistent cap in (0,1]. Independent body
+presets are absent. Actor weight contributes only through an explicit matrix
+source; it never multiplies the already-effective RaceMenu inputs or the final
+output. Unmapped public wolf outputs start at zero.
 After float32 normalization, an edge with `abs(gain) <= float32(1e-6)` is absent,
 independently of the current source value. The shared exports
 `claw_matrix_gain_epsilon()` and `claw_matrix_gain_active(float)` define this
@@ -79,6 +81,43 @@ attributes are additive, for example:
 <Rule source="" target="CLAWTorsoChestSize" gain="1" cap="1" function="constant" value="0.4" />
 ```
 
+## Explicit actor weight and the five default matrices
+
+`$actor.weight` is the sole built-in actor input. It is represented as an ordinary
+source column in the matrix. The game adapter reads the current NPC base weight
+in 0..100 and divides it once by 100; the evaluator and offline plugin receive
+the resulting finite float32 in 0..1. It is not a SKEE/TRI morph. Missing or invalid
+weight is an error, not an implicit zero. All other source and target names remain
+data-driven; adding a real morph does not require rebuilding the DLL.
+
+The ASCII-casefolded `$actor.` namespace is reserved. Only the exact spelling
+`$actor.weight` is supported, and reserved names cannot be output targets. The
+shared C++ source-kind and source-value validators are compiled into both native
+and WebAssembly consumers. Ordinary human inputs remain signed, already-effective
+SKEE values. The scalar is recaptured on refresh, including for originally-beast
+actors, and stored in the same source snapshot as the other declared inputs.
+Scalar-only matrices neither request OBody generation nor depend on human TRI
+availability. Mixed matrices still let OBody supply their ordinary morph inputs.
+
+The canonical file contains HIMBO male, CBBE female, 3BA female, Vanilla male and
+Vanilla female matrices. Every matrix explicitly includes weight. Installation
+selects exactly one male and one female matrix independently; no random matrix
+distribution or runtime mesh-name guess is involved. Existing saved assignments
+remain authoritative until explicitly rebound to a selected default.
+
+For the modded families, the new centered weight terms affect torso lean/girth;
+their combined contribution is zero at weight 50. The original calibrated morph
+edges are retained. At the weight endpoints the added torso contributions are
+bounded to 0.125. Vanilla uses only weight and constant bias cells: weight 50 is
+neutral, lower weights add lean fields and higher weights add growth fields for
+limbs, torso and belly. These are conservative authored defaults, not a new
+artistic calibration or a claim of installed-game acceptance.
+
+The Morphbench plugin keeps the scalar in a separate `actorWeight` field. It
+never writes `$actor.weight` into a human model's morph controls. Both previews
+use explicitly selected fixed NIFs; changing the scalar does not interpolate
+the human neutral `_0`/`_1` geometry. The preview states that limitation.
+
 JavaScript uses the same fields in a profile's `rules` array; gain/cap/value are
 numbers and exponent is an integer. `CLAWLink.validateMatrix(profile)` returns a
 validated profile, `evaluateMatrix(profile,humanValues)` returns the usual values,
@@ -87,9 +126,12 @@ MorphLinkProfiles XML. `evaluate(catalog,id,humanValues)` retains its existing A
 Explicit linear and omitted linear produce identical outputs. The matrix keeps
 ordered sparse edges rather than reordering a sum through a dense table.
 
-Actor co-save record v5 persists each rule's function code, exponent and constant
-value. Readers retain versions 1..4: v1 is independent, v2..4 rules migrate to
-linear. The v5 wire layout remains unchanged for generic target strings. On load,
+Actor co-save record v6 persists each rule's function code, exponent and constant
+value. Readers retain versions 1..5: v1 is independent, v2..4 rules migrate to
+linear. Version 6 retains the v5 byte layout, but identifies the explicit actor
+source semantics. A pre-v6 assignment containing a now-reserved `$actor.` name
+is retained as suppressed and requires an explicit rebind; it is never silently
+reinterpreted as an actor scalar or replaced by a new default. On load,
 now-inactive saved rules and their declared source-snapshot entries are removed;
 unrelated entries, missing active values and nonfinite values still reject the
 record. A saved neutral/all-omitted link remains linked. This deliberately applies

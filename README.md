@@ -4,6 +4,12 @@ Human body morphs shape male and female werewolves through editable coefficient
 and function matrices for HIMBO, CBBE and CBBE+3BA. Optional OBody integration
 supplies human preset inputs to actors first encountered as werewolves.
 
+The development branch also provides separate male/female Vanilla matrices.
+Every matrix can read the explicit `$actor.weight` input, independently of the
+already-effective RaceMenu morph values. The installer selects one male and one
+female family. Native and Morphbench use the same compiled evaluator; this new
+candidate has offline checks and still requires installed-game acceptance.
+
 [Download CLAW 0.7.0.0](https://github.com/Vhodnoylogin/claw/releases/tag/claw/0.7.0.0)
 · [Nexus](https://www.nexusmods.com/skyrimspecialedition/mods/194798)
 · [Русский](README.ru.md)
@@ -60,7 +66,9 @@ reported as successful coverage.
 
 ## Installation and scope
 
-The working mod is one FOMOD archive. HIMBO and CBBE are required; 3BA is optional.
+The working mod is one FOMOD archive. The published 0.7 installer requires HIMBO
+and CBBE; 3BA is optional. The development installer additionally offers Vanilla
+for either sex without a replacement human body.
 Install Elegant Werewolf Replacer for its textures, a compatible XP32 skeleton,
 runtime-matched SKSE, RaceMenu/SKEE, Address Library and Microsoft Visual C++ x64
 runtime. OBody and its own requirements apply when automatic preset distribution
@@ -73,8 +81,8 @@ transformation/return, human-value preservation, save/load and born werewolves.
 Other runtime boundaries and CBBE have offline coverage. A fresh build or source
 layout change does not establish new game acceptance.
 
-Physics, fitted colliders, distinct neutral weight endpoints and a first-person
-VR body remain development work. See the [roadmap](src/main/docs/roadmap.md),
+Physics, fitted colliders and a first-person VR body remain development work.
+See the [roadmap](src/main/docs/roadmap.md),
 [release record](src/main/resources/publication/CLAW-0.7.0.0.md),
 [matrix contract](src/main/docs/matrix-contract.md) and
 [reusable inspection configuration](src/test/resources/inspection/README.md).

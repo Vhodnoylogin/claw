@@ -2,6 +2,30 @@
 
 Owner-defined priorities, revised 31 October 2026. No release dates are promised.
 
+## Active owner queue (latest instruction)
+
+This list supersedes every older release sequence below.
+
+1. **First queue:** finish generic sparse coefficient/function matrices and the
+   independent Morphbench plugin. Include HIMBO, CBBE, 3BA and both Vanilla sexes.
+   `$actor.weight` is the one built-in actor scalar and is explicitly present in
+   every matrix; Vanilla uses only weight and constant bias cells. Share compiled
+   native/WASM logic, validate exact install choices, and check the finished mod
+   in game. No expansion of the general testing infrastructure belongs here.
+2. **Second queue:** head/face conversion; human-driven ears, tail and claws;
+   individual skin/fur colours and human appearance links.
+3. **Third queue:** natural female breast shape, motion physics, more expressive
+   lean/growth endpoints and better human-to-wolf calibration.
+4. **Fourth queue:** fitted/morph-responsive collisions, first-person VR body,
+   and additional or replacement wolf morphs.
+5. **Fifth queue:** separate adult anatomy and its physics.
+
+There is no separate active `_0`/`_1` body-authoring task. The owner rejected that
+item as a misunderstanding. Matrix weight input is first-queue work; creating
+different neutral meshes is not implied by it. The body-v2 geometry candidate and
+its integration patch are preserved separately, without selecting it for this
+first-queue build. No further geometry/calibration work precedes the first queue.
+
 The 0.7.0.0 matrix and visible-contrast slice has recorded SE acceptance; see
 [its verification record](verification-20261031.md). The later sections retain
 the earlier planning/baseline history and do not override that result. Repository
@@ -88,8 +112,8 @@ existing actor states; saved/custom matrices must not be silently overwritten.
 4. **Physics and collisions:** finish ear/tail motion and contact, breast rig and
    physics, close body collision fitting and morph-responsive collider resizing.
    Prefer existing XP32 bones; actual provider ownership and game behavior remain
-   unaccepted. Distinct male/female `_0`/`_1` shapes remain queued alongside this
-   stage, linked to human actor weight without weighting effective morphs twice.
+   unaccepted. The older separate `_0`/`_1` authoring item was withdrawn by the
+   latest owner queue above; explicit matrix weight is a separate input contract.
 5. **First-person VR body:** finish model dispatch, selective head visibility,
    morph synchronization, camera clearance, IK and interaction acceptance.
 6. **Ear, tail, head and claw selection:** design how an actor's ear size, tail
