@@ -3,20 +3,20 @@
   "date": "2026-10-31",
   "sourceCommit": "22834eb5d8a8259b17d1b29675c666ab9321753e",
   "modId": 194798,
-  "fileId": 829608,
-  "fileDisplayName": "CLAW - Human-to-Werewolf Morphs",
-  "archiveSha256": "b5f4a6f029b8db109542ed83d6b2ba874499d0977ecee87b4d6e05dd6d9b0cd2",
-  "archiveBytes": 22027929,
+  "fileId": 829735,
+  "fileDisplayName": "CLAW",
+  "archiveSha256": "dec2a2a9abca26c6d597e21f415875b175d82675eb9a6c67949e1d649080feec",
+  "archiveBytes": 14506411,
   "uploadVerified": true,
-  "downloadAvailable": false,
-  "status": "quarantined-awaiting-nexus-review",
+  "downloadAvailable": true,
+  "status": "published-download-verified",
   "supportReviewRequested": true,
   "descriptionVerified": true,
   "requiredFileGroups": 7,
-  "nativeMO2InstallVerified": true,
+  "nativeMO2InstallVerified": false,
   "selectedRuntimeFiles": 12,
-  "testKitPath": "test/",
-  "cleanup": "deferred until the public file is available; final archive and evidence retained",
+  "testKitPath": "src/test/",
+  "cleanup": "published runtime and source retained; preserve final archives, provenance and original screenshots",
   "media": [
     {
       "id": "male-front",
@@ -48,5 +48,19 @@
       "kind": "photo",
       "image": "https://staticdelivery.nexusmods.com/mods/1704/images/194798/194798-1793449717-1326675058.jpg"
     }
-  ]
+  ],
+  "supersededUpload": {
+    "fileId": 829608,
+    "archiveSha256": "b5f4a6f029b8db109542ed83d6b2ba874499d0977ecee87b4d6e05dd6d9b0cd2",
+    "archiveBytes": 22027929,
+    "status": "quarantined-awaiting-nexus-review"
+  },
+  "modDisplayName": "CLAW - The Beast Within",
+  "archiveName": "CLAW.zip",
+  "packagingOnlyCorrection": true,
+  "githubDownload": "https://github.com/Vhodnoylogin/claw/releases/download/claw/0.7.0.0/CLAW.zip",
+  "runtimeFilesMatchPreviouslyInstalled": true,
+  "downloadedSha256Verified": true,
+  "downloadedCrcPassed": true,
+  "supportReviewForFileId": 829608
 }

@@ -1,5 +1,36 @@
 # CLAW 0.7.0.0
 
+## Current runtime-only package
+
+The public title is **CLAW - The Beast Within**; the current download and Nexus
+update group are named **CLAW**, with the version stored separately.
+
+The packaging-only correction is published as
+[CLAW.zip on GitHub](https://github.com/Vhodnoylogin/claw/releases/download/claw/0.7.0.0/CLAW.zip).
+It was uploaded to Nexus as file **829735**, replacing and archiving **829608**.
+Nexus completed scanning and enabled downloads. An actual browser download of
+file **829735** matches the SHA-256 and byte size below and passes ZIP CRC.
+This does not imply a moderator decision about the superseded file **829608**.
+
+| Property | Value |
+|---|---|
+| Archive | `CLAW.zip` |
+| SHA-256 | `dec2a2a9abca26c6d597e21f415875b175d82675eb9a6c67949e1d649080feec` |
+| Bytes | 14,506,411 |
+| Archive members | 32; runtime/install files, required notices and brief user instructions |
+| Installed combinations | HIMBO+CBBE or HIMBO+CBBE+3BA; optional OBody host; 10/12 files |
+
+All runtime sources and destinations in the four selections and both FOMOD XML
+files are byte-identical to the accepted v3 package below. The DLL remains
+`e7b238c82428f76cbefb58a322d25d05580519553ab3aa307d7ce6cc080ac3d5`.
+Fifteen licence texts are retained byte-for-byte. Source ZIPs, build recipes,
+developer headers and verification/build material were removed; matching native
+source is linked at commit `22834eb5d8a8259b17d1b29675c666ab9321753e`.
+No fresh compilation, installation or new game qualification is claimed for
+this packaging change. The source-only current layout is maintained on `main`.
+
+## Original v3 package history (superseded transport)
+
 Prepared and uploaded on 31 October 2026 as Nexus file **829608**. The upload is
 quarantined by Nexus and is not yet available for download. The review request
 has been sent to Nexus support with the public source and build instructions.
@@ -43,7 +74,7 @@ The FOMOD requires active RaceMenu/HIMBO/CBBE plugin markers. An active `3BBB.es
 recommends and enables 3BA; CBBE remains selectable. These markers do not prove
 the effective mesh winners, compatible DLL versions or recursive dependencies.
 
-## Verification scope
+## Original runtime and transport verification
 
 The 31 October core105 and born27 SE mechanisms passed on the exact universal
 DLL and expressive body resources. The owner subsequently confirmed visible
@@ -54,8 +85,8 @@ human-body output. Packaging has not modified that running session.
 One CommonLib DLL serves the seven declared SE/AE/VR load boundaries. Actual game
 acceptance is SE 1.7.104.0 / SKSE 2.3.1 with HIMBO/3BA and official RaceMenu.
 Other runtime boundaries and the CBBE mapping have offline coverage only. See
-[the runtime contract](../docs/universal-runtime.md) and
-[the game verification record](../docs/verification-20261031.md).
+[the runtime contract](../../docs/universal-runtime.md) and
+[the game verification record](../../docs/verification-20261031.md).
 
 Four FOMOD combinations select only the expected 10/12 game files. Dependency
 gates and recommendations, pinned FOMOD5 schema validation, 10 retained packaging
@@ -67,6 +98,10 @@ NIF-source copies. All 12 selected files, original profile files, priorities,
 plugin states and protected test/NeverNude resources passed independent checks.
 MO2's native Installed accounting and Nexus mod/file identity 194798/829608 are
 verified. This installation check did not launch another game session.
+
+The source-companion and size-reduction details below describe the historical
+v3 transport only. No source archive or developer bundle remains in the current
+runtime-only download.
 
 The minimal transport stores one NIF source per sex and maps it explicitly to
 both runtime weight-endpoint paths. This removes duplicate compressed data while
