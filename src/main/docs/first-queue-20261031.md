@@ -66,9 +66,10 @@ analyzer requires the collector's independent actor/session/world weight witness
 never a fake SKEE field or a guessed value. It uses the native graph rather than
 duplicating the cutoff or conversion arithmetic in Python. Thirty-seven actual
 CLI integration tests include missing/malformed identity and scalar observations.
-The sex-binding DLL follow-up passed all six native suites; its archive has not
-been repackaged, installed or game-tested. The earlier archive above is not this
-follow-up and must not be presented as its verified runtime package.
+The sex-binding DLL follow-up passed all six native suites. It was subsequently
+installed for the manual scene below, without repackaging or publication. The
+earlier archive above is not this follow-up and must not be presented as its
+verified runtime package.
 
 The plugin's `0.4.0-dev.4` dependency is pinned to that same committed native
 revision. The shared kernel and XML bytes are unchanged, and the recompiled WASM
@@ -85,7 +86,35 @@ and twelve did not run. The old installed CLAW was used, so this is not candidat
 acceptance. Environment restoration was verified. Automatic menu exit was also
 unconfirmed because the installed provider rejected `select-quit`; the final
 process exit code was zero with an unknown termination cause. The failed
-qualification reservation remains held. No new tooling source was changed here.
+qualification reservation was subsequently settled under the owner's new direct
+manual launch instruction and independent restoration/idle review. The failed
+qualification remains historical evidence. No new tooling source was changed.
+
+The current manual scene then loaded DLL SHA256
+`d142ce92fc885c0df0dba5e04e792a86c552ea22b87413620d859a925f3a3ed0`
+and selected HIMBO/3BA matrices. Six fresh same-base human pairs had equal complete
+keyed source vectors and weights before one member of each pair became a wolf.
+All six transformations completed. Thirty full captures, including 855 requested
+target values, matched the current native CLI with maximum absolute error
+`4.935302722053336e-10`; 60 additional passive samples also passed. Twelve before/
+after comparisons preserved human sources, raw weight and observed foreign keys.
+Two final position samples had zero drift and maximum placement error0.00151game
+units. Captured global AI/Collision Off preceded all creation; NeverNude and the
+test lighting were active. This does not attest the entire provider namespace.
+
+The owner confirmed the new mechanism works and requested that the next game
+run address queue two. They exited through the game menu. The held executor
+records an expected manual game-identity end as a failed technical session;
+that label does not describe a failed morph assertion or an observed crash.
+Native cleanup, copied-profile archiving/removal and all optional custody/host
+restoration were independently verified. Vanilla, weight endpoints, save/load
+and sex-change cases were not exercised by this scene.
+
+At identical observed human inputs, comparing the old and current matrices
+changes only torso lean/girth in these six cases; Runa at weight50 is identical.
+The current NPC weight100 of the slim fixtures partly offsets their lean input.
+No new body geometry or large visible improvement was promised by this slice.
+The owner flagged female breast transfer quality for the third queue.
 
 Before release, test the exact candidate: generic/removed-target cleanup and
 foreign-key preservation; both sexes at weights 0/50/100; mixed and Vanilla-only

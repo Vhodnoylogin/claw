@@ -1,1 +1,1 @@
-Human presets shape male and female werewolves. Requires HIMBO + CBBE (3BA optional), RaceMenu/SKSE, Address Library, XP32 and Elegant textures. OBody supplies presets for wild werewolves. One DLL for SE/AE/VR.
+Human presets shape male and female werewolves. Your character's build carries into beast form.

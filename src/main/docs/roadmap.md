@@ -20,6 +20,37 @@ This list supersedes every older release sequence below.
    and additional or replacement wolf morphs.
 5. **Fifth queue:** separate adult anatomy and its physics.
 
+### Owner review after the first-queue manual scene
+
+The owner confirmed that the new mechanism works after inspecting the current
+HIMBO/3BA pairs. The next game run is explicitly for queue two. The inspected
+scene verifies that installation and these six transformations, not unperformed
+Vanilla, save/load or sex-rebinding cases. No new public release is implied.
+
+Queue two implements head/face links, ears/tail/claws and individual colour.
+Inventory actual available human and wolf inputs first; route supported traits
+through the shared native/WASM matrix kernel and expose the same controls in
+the independent Morphbench plugin. Separate muzzle/jaw/head proportions from
+ear/tail/claw length and thickness. Missing readable traits need an explicit
+fallback. Treat skin and fur as separate materials; investigate per-actor Elegant
+texture selection and tint from actual human hair/skin data. A global Timber
+installation is a photography setting, not per-actor colour implementation.
+
+Queue three improves body shape and calibration: more expressive lean/bulky
+endpoints, arm/thigh/abdomen silhouette, natural breast growth and motion physics.
+The owner observed that Runa and Mira have similar human breast size but Runa's
+wolf breasts are visible while Mira's are almost absent; Lada's human breasts
+are only moderately smaller but likewise disappear on her wolf. Preserve this
+as a transfer-quality regression case, alongside downward/broad static growth,
+axilla continuity and coordinated fur deformation. Do not mistake different
+slider names or equal raw coefficients for equal visible breast volume.
+
+The next comparison fixture needs a simple dedicated photo room for all twelve
+actors, light neutral backdrops and uniform illumination for both sexes. Retain
+the accepted compact pair separation, NeverNude human meshes, AI/collision Off
+and numeric placement checks. This room is planned, not built or game-qualified.
+The original accepted QASmoke layout remains retained for reproducibility.
+
 There is no separate active `_0`/`_1` body-authoring task. The owner rejected that
 item as a misunderstanding. Matrix weight input is first-queue work; creating
 different neutral meshes is not implied by it. The body-v2 geometry candidate and
