@@ -1,0 +1,8 @@
+{
+  "kind": "publication-artwork-source",
+  "date": "2026-10-31",
+  "file": "cover.png",
+  "origin": "Built-in image_gen; concept cover, not a game screenshot",
+  "ownerInstruction": "Remove the MORPHBENCH PLUGIN line and use this image as the main CLAW cover as well.",
+  "edit": "Remove only the bottom MORPHBENCH PLUGIN text. Preserve both busts, background, mesh lines, arrow, CLAW and HUMAN ↔ WEREWOLF titles."
+}

@@ -6,16 +6,16 @@ editable many-to-many CLAW conversion. Wolf coefficients are derived and read-on
 there is no inverse conversion. Rotating either panel follows the other through
 the host's native orientation link. Zoom, pan and framing remain independent.
 
-This plugin requires Morphbench's independent previews and packaged WebAssembly
-support, with the optional generic parent-window export service. The qualified
-development host is `feature/addon-multi-view` at
-[`2b0811b9a9c130effe6572bb3ed1e69567dda7ad`](https://github.com/Vhodnoylogin/morphbench/tree/2b0811b9a9c130effe6572bb3ed1e69567dda7ad),
-Application `0.8.0-sdk-dev2` (archive SHA256
-`e88a1f498cfecfcbe5d70059eca5b3d256a10fa44ebbc2bda80ca93cf40f1d6a`).
-See its pinned [API contract](https://github.com/Vhodnoylogin/morphbench/blob/2b0811b9a9c130effe6572bb3ed1e69567dda7ad/docs/addons.md)
-and [WASM contract](https://github.com/Vhodnoylogin/morphbench/blob/2b0811b9a9c130effe6572bb3ed1e69567dda7ad/docs/addon-wasm.md).
-Stable Application 0.8.0 is insufficient. There is no separate JavaScript formula
-fallback: every calculated coefficient uses the shared compiled kernel.
+This plugin requires [Morphbench Application 0.8.5 and Launcher v1](https://github.com/Vhodnoylogin/morphbench/releases/tag/v0.8.5).
+The exact qualified Application ZIP has SHA256
+`c24ab0f44431b4bff0d3ed5f708ede4a30523f724bed96c5d42e894383b10f19`.
+See its pinned [API contract](https://github.com/Vhodnoylogin/morphbench/blob/v0.8.5/docs/addons.md)
+and [WASM contract](https://github.com/Vhodnoylogin/morphbench/blob/v0.8.5/docs/addon-wasm.md).
+Independent previews and packaged WebAssembly are required; scoped geometry and
+parent-window downloads are optional capabilities. Stable Application 0.8.0 is
+insufficient. There is no separate JavaScript formula fallback: every calculated
+coefficient uses the shared compiled kernel. Root Builder is optional for the
+host's MO2-managed root deployment; separate Python and Blender are not needed.
 
 Actual CLAW browser checks on31October opened male/female pairs, applied real
 thin/muscular vectors, rotated both directions, downloaded an18837-byte matrix,
@@ -40,8 +40,8 @@ manifest filename `addon.json` and its keys keep Morphbench's public names.
 
 1. Install the plugin ZIP through Morphbench's manager, explicitly enable it
    and open its inspector. Updating the same ID requires disabling it, using the
-   manager's update operation, and enabling it again. The shared-kernel candidate
-   retains `claw-human-link-dev-001` and uses version `0.3.0-dev.8`.
+   manager's update operation, and enabling it again. The shared-kernel plugin
+   retains the existing ID `claw-human-link-dev-001` and uses version `0.3.0`.
 2. Declare the actual human resources: **HIMBO 5.8 male**, **CBBE 2.0.3 female** or
    **3BA 2.48 female**. Select the exact human and wolf catalog entries and click
    **Open comparison pair**. The plugin opens no models automatically.
@@ -91,7 +91,7 @@ absolute difference and RMS. Missing reference targets use preview zero.
 
 Exports expose all text through a bounded pageable viewer with a suggested UTF-8
 filename. Small presets fit one page; large vertex snapshots retain the complete
-text without placing a multi-megabyte value in the DOM. The pinned host's optional
+text without placing a multi-megabyte value in the DOM. The qualified host's optional
 `exports.prepare` service creates an
 immutable download in the parent window, outside the plugin sandbox. A host
 without that service retains text export; no hidden filesystem write or

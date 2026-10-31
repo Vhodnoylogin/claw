@@ -1,4 +1,4 @@
-[b]Description[/b]
+[size=5][color=#D0B17A][b]Description[/b][/color][/size]
 
 How should a slim, muscular or rounded human look after becoming a werewolf?
 
@@ -6,7 +6,7 @@ CLAW's Morphbench plugin lets you work on that connection with both bodies in vi
 
 The human sliders are your inputs. The wolf's sliders show the result of the selected conversion. You can tune that conversion, compare it with the original and save your own wolf preset.
 
-[b]What you can do[/b]
+[size=5][color=#D0B17A][b]What you can do[/b][/color][/size]
 
 [list]
 [*]Compare male or female human and werewolf bodies side by side.
@@ -18,17 +18,17 @@ The human sliders are your inputs. The wolf's sliders show the result of the sel
 
 This is an authoring plugin for Morphbench. It works outside the game. Applying changes updates the two previews; it does not install changes into Skyrim or assign bodies to actors.
 
-[b]Requirements[/b]
+[size=5][color=#D0B17A][b]Requirements[/b][/color][/size]
 
 [list]
-[*][url=https://github.com/Vhodnoylogin/morphbench]Morphbench Application[/url] 0.8.5 and its required Morphbench Launcher v1.
-[*]Your own human body NIF and TRI resources: HIMBO 5.8 for male comparisons, or CBBE 2.0.3 / 3BA 2.48 for female comparisons. Install the family you intend to use; all three are not required.
-[*]Matching CLAW werewolf NIF and TRI resources containing CLAWArmLean, CLAWLegThighLean, CLAWLegCalfLean and CLAWTorsoLean. The historical Nexus CLAW 0.6.2.0 download does not contain these new targets. A compatible body-resource download will be linked here before this page is published.
+[*][url=https://www.nexusmods.com/skyrimspecialedition/mods/194795]Morphbench Application[/url] 0.8.5 or later, with its required Morphbench Launcher v1. [url=https://github.com/Vhodnoylogin/morphbench/releases/tag/v0.8.5]Matching Application and Launcher downloads on GitHub[/url] are available if a Nexus file is unavailable.
+[*]Your own human body NIF and TRI resources: [url=https://www.nexusmods.com/skyrimspecialedition/mods/46311]HIMBO[/url] 5.8 for male comparisons, or [url=https://www.nexusmods.com/skyrimspecialedition/mods/198]CBBE[/url] 2.0.3 / [url=https://www.nexusmods.com/skyrimspecialedition/mods/30174]CBBE 3BA[/url] 2.48 for female comparisons. Choose the family you intend to compare; 3BA is an optional CBBE extension.
+[*][url=https://github.com/Vhodnoylogin/claw/releases/tag/claw/0.7.0.0]CLAW 0.7.0.0 werewolf resources[/url]. Use the NIF/TRI files from the working archive; the separate test_CLAW archive is unnecessary. The older 0.6.2.0 bodies lack the Lean morphs used by this plugin's default matrices.
 [/list]
 
 Human bodies, werewolf bodies and textures are not included in this download. OBody and RaceMenu are not needed to use the offline comparison itself. They remain part of the separate in-game setup when applicable.
 
-[b]Getting started[/b]
+[size=5][color=#D0B17A][b]Getting started[/b][/color][/size]
 
 [list=1]
 [*]Open Morphbench's plugin manager, install this ZIP and enable it. Keep the ZIP intact for the manager; do not install it as a Skyrim Data mod.
@@ -40,13 +40,13 @@ Human bodies, werewolf bodies and textures are not included in this download. OB
 
 When updating an existing installation, disable the plugin, use the manager's update operation with the replacement ZIP, then enable it again. Existing CLAW development installations use the same plugin ID.
 
-[b]Current scope[/b]
+[size=5][color=#D0B17A][b]Current scope[/b][/color][/size]
 
 The supplied conversion covers body proportions. Human-to-wolf head, ear, tail and claw relationships, fur colour and physics are separate development work.
 
 The previews show the selected body files in their rest geometry. They help compare shape and measurements; textured appearance, animation and in-game behaviour still need their own checks. For an endpoint comparison, select the corresponding _0 or _1 models in both panels.
 
-[b]Technical guide for modders[/b]
+[size=5][color=#D0B17A][b]Technical guide for modders[/b][/color][/size]
 [spoiler]
 A wolf preset is an ordered sparse coefficient-and-function matrix. Several human morphs can contribute to one wolf morph, and one human morph can affect several wolf morphs. Constant rules can define an independent wolf shape.
 
@@ -62,11 +62,11 @@ BodySlide small/big coefficients can be interpolated for a chosen weight, but th
 
 Large geometry exports may exceed the host's default download limit. Configure Morphbench's prepared-export limit when needed; the host supports up to 32 MiB. The pageable text viewer retains the complete export rather than only its displayed page.
 
-[url=https://github.com/Vhodnoylogin/claw/tree/feature/morphbench-paired-preview/tools/morphbench-addon]Plugin source and detailed instructions[/url]
-[url=https://github.com/Vhodnoylogin/claw/blob/feature/morphbench-paired-preview/docs/matrix-contract.md]Matrix format and arithmetic contract[/url]
+[url=https://github.com/Vhodnoylogin/claw/tree/main/tools/morphbench-addon]Plugin source and detailed instructions[/url]
+[url=https://github.com/Vhodnoylogin/claw/blob/main/docs/matrix-contract.md]Matrix format and arithmetic contract[/url]
 [/spoiler]
 
-[b]Credits & source[/b]
+[size=5][color=#D0B17A][b]Credits & source[/b][/color][/size]
 
 [url=https://github.com/Vhodnoylogin]Vhodnoylogin[/url] — CLAW and its comparison plugin.
 [url=https://github.com/Vhodnoylogin/morphbench]Morphbench[/url] — preview rendering, plugin hosting and the public SDK.
