@@ -1,5 +1,9 @@
 # CLAW VR body resource prototype
 
+The [Elegant donor-only author-review source](../../docs/elegant-author-review.md)
+has a separate reproducible exporter under `src/main/python/build-tools/`.
+It reuses the canonical splitter and does not include these composed VR bodies.
+
 ## First-person Neck attachment candidate
 
 `audit_head_isolation.py` measures, and with `--write-candidate` prepares, a
