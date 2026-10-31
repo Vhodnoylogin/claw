@@ -30,7 +30,8 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[4]
-NAME = "CLAW - The Beast Within"
+NAME = "CLAW - Customizable Lycanthrope Appearance and Weight"
+ARCHIVE_NAME = "CLAW - Customizable Lycanthrope Appearance and Weight.zip"
 VERSION = "0.7.0.0"
 MESH = "Meshes/Actors/WerewolfBeast/Character Assets"
 ARCHIVES = {".zip", ".7z", ".rar", ".tar", ".gz", ".gzip", ".tgz", ".bz2", ".bzip2",
@@ -440,7 +441,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
         raise ValueError("Literal ZIP/readback installation differs from the recorded payload")
     inputs.verify()
     output.mkdir(parents=True, exist_ok=False)
-    archive = output / "CLAW.zip"
+    archive = output / ARCHIVE_NAME
     archive.write_bytes(packed)
     receipt.update(archive=str(archive), sha256=sha(packed), bytes=len(packed), archiveFiles=len(entries),
                    inputs={str(path): {"sha256": sha(data), "bytes": len(data)} for path, data in inputs.records.items()})

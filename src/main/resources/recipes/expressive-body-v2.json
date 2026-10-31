@@ -1,0 +1,182 @@
+{
+  "schema": "claw-expressive-body/1",
+  "name": "rest-frame-opposed-body-v2",
+  "status": "offline-candidate-not-installed",
+  "baselineSha256": {
+    "femalebodywerewolf.tri": "3fd1ce64adafa5d77a510d1829077b9b3aa06a23eb741377a4803432416fb28b",
+    "femalebodywerewolf_0.nif": "033c9828661e371d4d9eadbf85202235391ccd31408777e149631d57baafa3ff",
+    "femalebodywerewolf_1.nif": "033c9828661e371d4d9eadbf85202235391ccd31408777e149631d57baafa3ff",
+    "malebodywerewolf.tri": "1e2dd49812870620072d3a426124a957486f292504d5173978fd3b5edb8db285",
+    "malebodywerewolf_0.nif": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef",
+    "malebodywerewolf_1.nif": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef"
+  },
+  "parameters": {
+    "arm": {
+      "axisX": [
+        20,
+        33,
+        42,
+        52,
+        64
+      ],
+      "axisY": [
+        14,
+        8,
+        9,
+        16,
+        25
+      ],
+      "axisZ": [
+        106,
+        96,
+        89,
+        82,
+        75
+      ],
+      "range": [
+        18,
+        66
+      ],
+      "fade": 13,
+      "radiusFull": 14,
+      "radiusFade": 19,
+      "base": 0.72,
+      "upperPeak": 0.3,
+      "upperCentre": 33,
+      "upperWidth": 9,
+      "forePeak": 0.18,
+      "foreCentre": 52,
+      "foreWidth": 8,
+      "depthAspect": 1.12,
+      "lean": -0.416,
+      "growth": 0.572
+    },
+    "thigh": {
+      "axisZ": [
+        36,
+        48,
+        62,
+        84
+      ],
+      "axisY": [
+        16,
+        10,
+        2,
+        -3
+      ],
+      "axisX": [
+        14.5,
+        14.5,
+        14,
+        13
+      ],
+      "range": [
+        34,
+        87
+      ],
+      "fade": 16,
+      "centreFade": 9,
+      "radiusFull": 16,
+      "radiusFade": 20,
+      "depthAspect": 1.08,
+      "lean": -0.495,
+      "growth": 0.442
+    },
+    "calf": {
+      "axisZ": [
+        9,
+        20,
+        32,
+        56
+      ],
+      "axisY": [
+        -6,
+        -4,
+        1,
+        17
+      ],
+      "axisX": [
+        14.5,
+        14.5,
+        14.5,
+        14.5
+      ],
+      "range": [
+        9,
+        58
+      ],
+      "fade": 12,
+      "centreFade": 6,
+      "radiusFull": 12,
+      "radiusFade": 12,
+      "depthAspect": 1,
+      "lean": -0.28,
+      "growth": 0.38
+    },
+    "torso": {
+      "range": [
+        56,
+        119
+      ],
+      "fade": 18,
+      "widthFull": 21,
+      "widthFade": 20,
+      "frontFull": 0,
+      "frontFade": 48,
+      "axisY": -2,
+      "lean": [
+        -0.312,
+        -0.286
+      ],
+      "growth": [
+        0.416,
+        0.39
+      ]
+    },
+    "belly": {
+      "range": [
+        53,
+        108
+      ],
+      "fade": 20,
+      "widthFull": 12,
+      "widthFade": 15,
+      "backZero": -12,
+      "backFade": 24,
+      "skinFrontFull": 34,
+      "skinFrontFade": 15,
+      "forward": 18,
+      "down": 2.7,
+      "lateral": 0.15,
+      "dome": {
+        "centreZ": 80.5,
+        "sigmaX": 16,
+        "sigmaZ": 18
+      }
+    },
+    "shoulder": {
+      "rangeX": [
+        12,
+        44
+      ],
+      "fade": 14,
+      "growth": 0.16
+    },
+    "chest": {
+      "range": [
+        82,
+        119
+      ],
+      "fade": 15,
+      "widthFull": 10,
+      "widthFade": 18,
+      "backZero": 2,
+      "backFade": 18,
+      "frontFull": 0,
+      "frontFade": 48,
+      "forward": 5.5,
+      "down": 0.8,
+      "lateral": 0.18
+    }
+  }
+}

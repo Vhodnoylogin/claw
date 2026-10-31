@@ -95,7 +95,8 @@ class SourcePackageTests(unittest.TestCase):
         result = package.build(**self.arguments())
         self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [10, 12, 10, 12])
         files = package.read_zip(Path(result["archive"]).read_bytes())
-        self.assertEqual(Path(result["archive"]).name, "CLAW.zip")
+        self.assertEqual(Path(result["archive"]).name,
+                         "CLAW - Customizable Lycanthrope Appearance and Weight.zip")
         self.assertEqual(sum(name.endswith(".dll") for name in files), 1)
         self.assertEqual(sum(name.endswith(".nif") for name in files), 2)
         self.assertFalse(result["gameOrManagerExecuted"])
