@@ -42,6 +42,10 @@ file identities. Do not upload rejected draft media or test assets as production
 content. Record exactly what was published; pending or blocked steps remain
 pending rather than being reported as complete.
 
+Keep the public Nexus file display name independent of its version. Use the
+separate version field; preserve the owner's chosen display name. Local archive
+filenames may retain a version for unambiguous provenance.
+
 ## Cleanup after publication and restoration
 
 After the release is published and the corresponding source/test configuration

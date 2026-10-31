@@ -1,0 +1,52 @@
+{
+  "version": "0.7.0.0",
+  "date": "2026-10-31",
+  "sourceCommit": "22834eb5d8a8259b17d1b29675c666ab9321753e",
+  "modId": 194798,
+  "fileId": 829608,
+  "fileDisplayName": "CLAW - Human-to-Werewolf Morphs",
+  "archiveSha256": "b5f4a6f029b8db109542ed83d6b2ba874499d0977ecee87b4d6e05dd6d9b0cd2",
+  "archiveBytes": 22027929,
+  "uploadVerified": true,
+  "downloadAvailable": false,
+  "status": "quarantined-awaiting-nexus-review",
+  "supportReviewRequested": true,
+  "descriptionVerified": true,
+  "requiredFileGroups": 7,
+  "nativeMO2InstallVerified": true,
+  "selectedRuntimeFiles": 12,
+  "testKitPath": "test/",
+  "cleanup": "deferred until the public file is available; final archive and evidence retained",
+  "media": [
+    {
+      "id": "male-front",
+      "kind": "native-comparison",
+      "image": "https://staticdelivery.nexusmods.com/mods/1704/images/194798/194798-1793449189-1265333343.jpg"
+    },
+    {
+      "id": "male-side",
+      "kind": "native-comparison",
+      "image": "https://staticdelivery.nexusmods.com/mods/1704/images/194798/194798-1793449282-576150353.jpg"
+    },
+    {
+      "id": "female-front",
+      "kind": "native-comparison",
+      "image": "https://staticdelivery.nexusmods.com/mods/1704/images/194798/194798-1793449582-1624339884.jpg"
+    },
+    {
+      "id": "female-side",
+      "kind": "native-comparison",
+      "image": "https://staticdelivery.nexusmods.com/mods/1704/images/194798/194798-1793449671-1581445472.jpg"
+    },
+    {
+      "id": "grom-profile",
+      "kind": "photo",
+      "image": "https://staticdelivery.nexusmods.com/mods/1704/images/194798/194798-1793449717-1869462698.jpg"
+    },
+    {
+      "id": "runa-profile",
+      "kind": "photo",
+      "image": "https://staticdelivery.nexusmods.com/mods/1704/images/194798/194798-1793449717-1326675058.jpg"
+    }
+  ]
+}

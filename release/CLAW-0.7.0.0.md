@@ -1,7 +1,9 @@
 # CLAW 0.7.0.0
 
-Prepared on 31 October 2026. Publication is a separate operation; this record
-identifies the checked archive rather than asserting a Nexus upload.
+Prepared and uploaded on 31 October 2026 as Nexus file **829608**. The upload is
+quarantined by Nexus and is not yet available for download. The review request
+has been sent to Nexus support with the public source and build instructions.
+This record does not claim that the quarantine is resolved.
 
 | Property | Value |
 |---|---|
@@ -59,8 +61,12 @@ Four FOMOD combinations select only the expected 10/12 game files. Dependency
 gates and recommendations, pinned FOMOD5 schema validation, 10 retained packaging
 tests, nested source/payload hashes, one-DLL PE metadata and source-extracted
 byte-identical package reproduction passed. The 3BA/OBody selection matches the
-current screenshot installation byte for byte. The final versioned FOMOD itself
-has not yet been installed or associated with an MO2 download record.
+current screenshot installation byte for byte. The final versioned FOMOD was
+subsequently installed through the native MO2 Bridge, including both repeated
+NIF-source copies. All 12 selected files, original profile files, priorities,
+plugin states and protected test/NeverNude resources passed independent checks.
+MO2's native Installed accounting and Nexus mod/file identity 194798/829608 are
+verified. This installation check did not launch another game session.
 
 The minimal transport stores one NIF source per sex and maps it explicitly to
 both runtime weight-endpoint paths. This removes duplicate compressed data while
