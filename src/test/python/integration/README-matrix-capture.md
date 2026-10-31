@@ -39,6 +39,8 @@ output are refused. Reports retain input hashes and do not overwrite old evidenc
 - Names retain their spelling; provider identity folds ASCII letters only. Morphs
   are printable ASCII up to 160 characters, provider keys up to 128. Ambiguous
   case aliases, unavailable/nonfinite records and duplicate JSON keys are refused.
+  Supplied direct/nested actor references also require nonempty bounded printable
+  identifiers and must agree; two empty strings cannot establish actor identity.
 - Source aggregates are independently observed inputs. Their values are not
   reconstructed by summing provider keys. Complete source key lists and target
   key lists must agree with their captured availability/presence/scalars.
@@ -52,11 +54,52 @@ output are refused. Reports retain input hashes and do not overwrite old evidenc
   are checked too. Another mod's zero-valued key remains a present foreign key.
 - Before/after comparisons preserve exact foreign values and presence within
   the observed lists. Passive intervals also require unchanged own storage.
-- The CLI currently reports values, not its active source/target graph. Therefore
-  coverage conservatively requires every declared nonconstant XML source and
-  target to be observed, including omitted edges. A valid sparse capture can be
-  incomplete under this rule; it must not be accepted by guessing zero inputs or
-  copying the native epsilon policy into Python.
+- `claw-preset-tool matrix-info <XML> <profile>` reports the canonical **active**
+  graph after the native parser's gain omission/validation. Sources carry kind
+  `skee-morph` or `actor-weight`, and targets are actual active names. Coverage
+  requires the active SKEE reads/targets only. Constant/zero/tiny rows do not
+  create invented human reads; Python does not copy the cutoff or parse rules
+  into a second evaluator.
+
+## Independent actor weight
+
+`$actor.weight` is an actor scalar, never a SKEE name or provider-key assignment.
+The current collector already retains World Observer's sampled actor weight in
+`raw.identity.actor.weight`, within its actor/world/provider identity bracket:
+
+```json
+{
+  "identity": {
+    "sessionId": "ACTUAL-OBSERVER-SESSION", "loadGeneration": 1,
+    "identity": {"form": "0xACTUALREF"},
+    "actor": {"weight": {"status": "available", "rawNPCWeight": 25,
+                         "normalizedNPCWeight": 0.25}}
+  },
+  "weightRaw": 25, "weightNormalized": 0.25
+}
+```
+
+This is a shape example, not a game witness. The observer source emits the actual
+`TESNPC::weight` property; the collector copies it after checking the surrounding
+identity. The analyzer requires available weight plus the observed reference,
+session and world generation when the native graph includes the scalar. Flat
+`weightRaw` alone or a fake `$actor.weight` SKEE record is insufficient. Missing
+weight is unavailable; no cached human history or guessed zero is substituted.
+Convenience fields, when present, must equal their independently retained sample.
+
+The analyzer passes raw NPC weight through native CLI option
+`matrix <XML> <profile> --actor-weight-raw <NPC0..100>`. That uses the runtime's
+`captureActor`/`normalizedActorWeight` path for validation, float32 and division by
+100. Python supplies no normalization formula. The collector's normalized value
+is retained as producer evidence, not substituted for native calculation. The
+original normalized `$actor.weight<TAB>value` CLI input remains supported for
+offline vectors; combining it with the raw option is rejected.
+
+Scalar-free historical XML/captures retain their old requirements. Constant-only,
+empty and inactive-scalar graphs need no weight. Before/after comparisons report
+raw actor-weight preservation separately from SKEE aggregates/foreign keys; two
+independent weight witnesses are required for that claim. None of these checks
+qualifies the producer or retrospectively creates a missing game measurement.
 
 ## Optional complete provider namespace
 
@@ -93,5 +136,6 @@ python -m unittest discover -s src/test/python/integration -p test_matrix_captur
 The CLI is mandatory; a missing integration input fails rather than silently
 skipping coverage. Synthetic cases exercise native nonlinear/constant/empty and
 epsilon boundaries, structural zero-key rejection, case identity, foreign-key
-preservation, complete-namespace failure flags and run-parser provenance. They
+preservation, active sparse graph coverage, scalar-only/mixed raw weight,
+missing/invalid weight, complete-namespace failure flags and run-parser provenance. They
 do not claim a game run or visual acceptance.

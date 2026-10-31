@@ -33,6 +33,15 @@ Its pinned shared dependency is the commit above, not another formula implementa
 
 ## Evidence and remaining gates
 
+A narrow source follow-up now guards the sex stored with a linked assignment.
+Changing an actor's sex does not recapture the other body's sources, change its
+saved/custom matrix or report that matrix applied. The runtime clears its own
+output key and reports a binding error while retaining the original assignment
+and bound sex. Restoring the original sex resumes that policy; an explicit
+`ConfigureMorphFamily` or `ConfigureMorphLink` instead captures and binds the new
+readable sex. The serialized layout/version stays unchanged. This follow-up is
+not included in the archive hashes above and needs its own build/runtime check.
+
 Six native CTest suites, 32 focused matrix/calibration/package tests, all twelve
 serialized installer selections and 131 plugin tests passed. The latter includes
 22 tests using the released Morphbench 0.8.5 SDK and scripts extracted from the

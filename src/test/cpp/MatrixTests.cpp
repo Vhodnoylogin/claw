@@ -23,6 +23,46 @@ int main() {
     try {
         using F = claw::MorphFunction;
         {
+            // Retained/default and custom matrices have the same binding
+            // contract. A different installed default must not replace either.
+            claw::MorphProfileCatalog profiles;
+            auto defaultXml = document("<Rule source=\"Human\" target=\"Wolf\" gain=\"0.5\" cap=\"1\"/>");
+            defaultXml.insert(defaultXml.find('>') + 1, "<Defaults male=\"Matrix\" female=\"\"/>");
+            for (const bool custom : {false, true}) {
+                require(profiles.loadXml(defaultXml), "sex-binding fixture default rejected");
+                auto saved = profiles.defaultFor(claw::Sex::male)->link;
+                if (custom) saved.profile = "Owner.Custom";
+                saved.captureActor([](std::string_view) { return .8F; }, 50.F, claw::Sex::male, claw::Sex::male);
+                const auto originalSources = saved.sourceValues, originalOutput = saved.compose(claw::Sex::male);
+                const auto originalProfile = saved.profile;
+                auto revisedXml = defaultXml;
+                revisedXml.replace(revisedXml.find("gain=\"0.5\""), std::string("gain=\"0.5\"").size(), "gain=\"0.9\"");
+                require(profiles.loadXml(revisedXml), "revised default fixture rejected");
+                unsigned reads{}; bool refused = false;
+                try { saved.captureActor([&](std::string_view) { ++reads; return .1F; }, 20.F, claw::Sex::male, claw::Sex::female); }
+                catch (const std::exception& error) { refused = std::string_view(error.what()).find("explicitly rebind") != std::string_view::npos; }
+                require(refused && reads == 0 && saved.sourceValues == originalSources && saved.profile == originalProfile,
+                        "changed sex read a different body's sources or silently replaced the retained matrix");
+                require(saved.rules[0].gain == .5F && saved.compose(claw::Sex::male) == originalOutput,
+                        "sex mismatch or revised installed default corrupted the saved matrix/source authority");
+                // A mismatch is not a sticky replacement/suppression: returning
+                // to the original sex recaptures through the original policy.
+                saved.captureActor([](std::string_view) { return .6F; }, 50.F, claw::Sex::male, claw::Sex::male);
+                require(saved.profile == originalProfile && saved.compose(claw::Sex::male).at("Wolf") == .3F,
+                        "restored original sex could not resume its retained matrix");
+                // Explicit configure binds the new current sex, even for an
+                // opaque custom profile which has no catalog sex metadata.
+                auto explicitLink = saved; explicitLink.profile = custom ? "Owner.Rebound" : "NewFemaleFamily";
+                const auto reboundSex = claw::Sex::female;
+                explicitLink.captureActor([](std::string_view) { return .2F; }, 50.F, reboundSex, claw::Sex::female);
+                require(explicitLink.bindingError(reboundSex, claw::Sex::female).empty() && explicitLink.compose(reboundSex).at("Wolf") == .1F,
+                        "explicit policy adoption did not restore a usable new-sex binding");
+                require(!explicitLink.bindingError(reboundSex, claw::Sex::male).empty(), "explicit adoption retained the obsolete bound sex");
+            }
+            claw::MorphLink independent;
+            require(independent.bindingError(claw::Sex::male, claw::Sex::female).empty(), "linked guard changed independent preset sex selection");
+        }
+        {
             const auto kind = [](std::string_view name) { return claw_matrix_source_kind(name.data(), static_cast<std::uint32_t>(name.size())); };
             require(kind("$actor.weight") == 1 && kind("Weight") == 0 && kind("CLAWCustomHuman") == 0,
                     "shared source binding changed ordinary morph names");

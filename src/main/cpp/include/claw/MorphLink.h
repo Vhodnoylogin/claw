@@ -82,6 +82,10 @@ struct MorphLink {
     Morphs sourceValues;
     bool captured{};
     [[nodiscard]] bool enabled() const { return !profile.empty(); }
+    [[nodiscard]] std::string_view bindingError(Sex boundSex, Sex currentSex) const {
+        return enabled() && boundSex != currentSex ?
+            "linked profile sex differs from the actor; restore the bound sex or explicitly rebind the morph policy" : "";
+    }
     [[nodiscard]] bool hasProviderSources() const {
         return std::any_of(rules.begin(), rules.end(), [](const auto& rule) {
             return rule.active() && !rule.constant() && morphSourceKind(rule.source) == 0;
@@ -168,6 +172,11 @@ struct MorphLink {
         capture([&](std::string_view source) {
             return actorWeightSource(source) ? normalizedActorWeight(rawNPCWeight) : readMorph(source);
         });
+    }
+    void captureActor(const std::function<float(std::string_view)>& readMorph, float rawNPCWeight,
+        Sex boundSex, Sex currentSex) {
+        if (const auto error = bindingError(boundSex, currentSex); !error.empty()) throw std::runtime_error(std::string(error));
+        captureActor(readMorph, rawNPCWeight);
     }
     [[nodiscard]] Morphs compose(Sex sex) const {
         if (!valid(sex) || !captured) throw std::runtime_error("morph link profile/source is unavailable or invalid");

@@ -36,13 +36,15 @@ profiles remain neutral linked policies. Exact active source/output collisions
 are rejected, and capture also refuses sources overlapping existing own-key
 outputs. No prefix is assumed to identify a human or wolf morph.
 
-Actor records now write v5 with every function and parameter. Readers retain
-v1..v4 support; old rules initialize to the original exact linear evaluation.
+Actor records now write semantic version 6 with every function and parameter.
+Readers retain v1..v5 support; old ordinary rules retain their original evaluation.
 Saved matrices remain authoritative, so existing actors adopt revised XML only
 through an explicit ConfigureMorphFamily request. All-constant profiles capture
 no human values and cannot depend on an OBody source bootstrap. Fresh game,
 existing-save refresh and rendered geometry still require runtime acceptance.
-The wire record remains v5. Loading removes now-inactive saved edges and their
+Version 6 retains the v5 byte layout but reserves the actor-input namespace.
+Pre-v6 assignments using that namespace are suppressed until explicit rebind;
+they are not reinterpreted as actor weight. Loading removes inactive saved edges and their
 declared source values without substituting an installed profile; undeclared,
 missing active or nonfinite source snapshots still fail. Runtime cleanup visits
 all names under the exact `CLAW.Distribution` key before mutation, including stale
@@ -250,17 +252,25 @@ multiplies by its configured cap; it never reapplies actor weight to those human
 values. Linked output starts with all public own morphs neutral for the actor's
 sex; every unmapped trait, including ears and tail, stays zero. Female breast
 mapping is available in the matching measured female resource profiles; its
-appearance still needs acceptance. No independent preset, catalog or actor
-weight contributes, even if an older independent assignment is retained for
+appearance still needs acceptance. No independent preset or catalog contributes.
+Actor weight contributes only through the explicit `$actor.weight` source,
+normalized once from NPC weight 0..100 to 0..1; all five canonical matrices
+include it. It never multiplies already-effective SKEE inputs or the completed
+output. These rules hold even if an older independent assignment is retained for
 `DisableMorphLink`. `GetAssigned` is empty while linkage is enabled. The profile is explicit;
 there is no universally calibrated default or automatic body-family detection.
 Normal `AssignPreset` disables linkage. `ClearOwn` retains the mapping while
 suppressing distribution; a valid explicit configuration resumes it. Disabling
 linkage does not clear suppression. The existing
-single own key is retained. Actor co-save v5 stores the mapping, functions and parameters, captured source
-values and optional actual weight observations. Readers retain v1/v2/v3/v4 support;
-v2 retains its 32-row budget, while v3/v4/v5 allow 128 rows. Version1 migrates to
+single own key is retained. Actor co-save v6 stores the mapping, functions and parameters, captured source
+values and optional actual weight observations. Readers retain v1..v5 support;
+v2 retains its 32-row budget, while v3..v6 allow 128 rows. Version1 migrates to
 independent mode. Linked records use the direct neutral baseline after refresh.
+The recorded sex binds the saved link. A changed actor sex clears only owned
+outputs and refuses source recapture until explicit configuration for the new
+sex; it does not silently replace a saved or custom matrix. Returning to the
+original sex can resume its retained matrix. Historical saves already affected
+by the previous overwrite bug may require explicit rebind.
 Real source aggregation and actual
 save/load/transform behavior require separate acceptance evidence. The API queues
 work: wait for the previous request to complete before submitting the next one.

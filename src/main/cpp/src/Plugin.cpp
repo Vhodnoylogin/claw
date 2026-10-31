@@ -301,7 +301,7 @@ std::uint64_t newNamespace() {
 }
 
 ::TESObjectREFR* skeeReference(RE::Actor* actor);
-void captureSources(RE::Actor* actor, claw::MorphLink& link);
+void captureSources(RE::Actor* actor, claw::MorphLink& link, claw::Sex boundSex);
 State* stateFor(RE::Actor* actor, bool create, bool adoptDefaults = true) {
     if (!currentOwner(actor) || !actor->GetActorBase()) return nullptr;
     const auto id = actor->GetFormID();
@@ -349,7 +349,7 @@ State* stateFor(RE::Actor* actor, bool create, bool adoptDefaults = true) {
     if (adoptDefaults) if (const auto* profile = morphProfiles.defaultFor(state.sex)) {
         if (!morphs) return nullptr; // No empty identity is minted before a full source capture.
         auto link = profile->link;
-        try { captureSources(actor, link); }
+        try { captureSources(actor, link, state.sex); }
         catch (const std::exception& error) { SKSE::log::warn("CLAW default family source capture: {}", error.what()); return nullptr; }
         state.link = std::move(link);
         state.adoptedDefault = true;
@@ -420,7 +420,7 @@ bool sourceBootstrapLive(RE::Actor* actor, State& state) {
         // Name presence protects zero-valued keys too; a sum of zero is not unassigned.
         if (value != 0 || morphs->HasBodyMorphName(skeeReference(actor), name.c_str())) { revokeSourceBootstrap(state); return false; }
     }
-    try { captureSources(actor, state.link); }
+    try { captureSources(actor, state.link, state.sex); }
     catch (const std::exception&) { return false; }
     for (const auto& [name, value] : state.link.sourceValues) {
         if (claw::actorWeightSource(name)) continue;
@@ -631,13 +631,17 @@ claw::Morphs ownMorphSnapshot(RE::Actor* actor) {
     return std::move(visitor.values);
 }
 
-void captureSources(RE::Actor* actor, claw::MorphLink& link) {
+void captureSources(RE::Actor* actor, claw::MorphLink& link, claw::Sex boundSex) {
+    const auto* base = actor->GetActorBase();
+    if (!base || (base->GetSex() != RE::SEX::kMale && base->GetSex() != RE::SEX::kFemale))
+        throw std::runtime_error("actor has no readable NPC sex");
+    const auto currentSex = base->GetSex() == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
+    if (const auto error = link.bindingError(boundSex, currentSex); !error.empty()) throw std::runtime_error(std::string(error));
     const auto previous = ownMorphSnapshot(actor);
     if (const auto conflict = link.sourceConflict(previous); !conflict.empty())
         throw std::runtime_error("human source overlaps an existing CLAW-owned output; clear before rebinding: " + conflict);
-    const auto* base = actor->GetActorBase();
     link.captureActor([actor](std::string_view name) { return morphs->GetBodyMorphs(skeeReference(actor), name.data()); },
-        base ? base->weight : std::numeric_limits<float>::quiet_NaN());
+        base->weight, boundSex, currentSex);
 }
 
 bool readback(RE::Actor* actor, const claw::Morphs& expected) {
@@ -664,6 +668,10 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         morphProfiles.defaultFor(actorSex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male);
     State* state = stateFor(actor, beast || defaultDeclared);
     if (!state || state->quarantined || !boundTo(*state, actor)) return;
+    if (actorSex != RE::SEX::kMale && actorSex != RE::SEX::kFemale) { logError(*state, "actor has no readable NPC sex"); return; }
+    const auto desiredSex = actorSex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
+    const bool bindingMismatch = !state->link.bindingError(state->sex, desiredSex).empty();
+    if (bindingMismatch) revokeSourceBootstrap(*state);
     const auto* weightBase = actor->GetActorBase();
     const float rawNPCWeight = weightBase ? weightBase->weight : std::numeric_limits<float>::quiet_NaN();
     const float observedWeight = std::isfinite(rawNPCWeight) && rawNPCWeight >= 0 && rawNPCWeight <= 100 ? rawNPCWeight / 100.0F : -1.0F;
@@ -673,10 +681,10 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     if (!morphs) { logError(*state, "SKEE BodyMorph API is unavailable", Status::providerUnavailable); return; }
     // Human coefficients already include the provider's weight interpolation.
     // Re-read during both forms: source deletion/zero must not revive cached values.
-    std::string sourceError;
-    if (state->link.enabled()) {
+    std::string sourceError(state->link.bindingError(state->sex, desiredSex));
+    if (state->link.enabled() && !bindingMismatch) {
         try {
-            captureSources(actor, state->link);
+            captureSources(actor, state->link, state->sex);
             if (state->adoptedDefault && !state->sourceRevoked) for (const auto& [name, value] : state->link.sourceValues) {
                 if (claw::actorWeightSource(name)) continue;
                 (void)value;
@@ -685,7 +693,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         } catch (const std::exception& error) { sourceError = error.what(); }
     }
     const auto root = reinterpret_cast<std::uintptr_t>(actor->Get3D());
-    if (!beast || state->suppressed) {
+    if (!beast || state->suppressed || bindingMismatch) {
         bool hasOwnValue = false;
         // Zero-valued names can still affect a provider's aggregate policy.
         try { hasOwnValue |= !ownMorphSnapshot(actor).empty(); }
@@ -701,9 +709,6 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         return;
     }
     if (!sourceError.empty()) { logError(*state, sourceError); return; }
-    const auto sex = actor->GetActorBase()->GetSex();
-    if (sex != RE::SEX::kMale && sex != RE::SEX::kFemale) { logError(*state, "actor has no readable NPC sex"); return; }
-    const auto desiredSex = sex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
     if (state->sex != desiredSex) revokeSourceBootstrap(*state);
     const bool linked = state->link.enabled();
     float weight = -1; // Linked mode never interpolates output; explicit input was captured above.
@@ -1087,9 +1092,9 @@ bool actorRequest(RE::Actor* actor, Operation operation, std::string presetName 
             std::string reason;
             if (!link.canonicalize(sex, &reason)) { fail("invalid morph-to-morph profile: " + reason); return; }
             if (!morphs) { fail("SKEE BodyMorph API is unavailable; previous link retained"); return; }
-            try { captureSources(target, link); }
+            try { captureSources(target, link, sex); }
             catch (const std::exception& error) { fail(error.what()); return; }
-            state->link = link; state->suppressed = false; // Explicit opt-in resumes this policy.
+            state->link = link; state->sex = sex; state->suppressed = false; // Explicit opt-in binds this readable sex.
         } else if (operation == Operation::disableMorphLink) state->link = {};
         else if (operation == Operation::clear) state->suppressed = true;
         state->dirty = true;

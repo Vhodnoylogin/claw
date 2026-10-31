@@ -14,7 +14,6 @@ from pathlib import Path
 import re
 import subprocess
 import sys
-import xml.etree.ElementTree as ET
 
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 STAGES = {"linked-beast", "human-own-clear", "suppressed-own-clear"}
@@ -152,11 +151,41 @@ def captured_reference(raw):
         raise ValueError("Captured identity object unavailable")
     nested = context.get("identity", {}).get("form")
     direct = raw.get("reference")
-    if any(value is not None and not isinstance(value, str) for value in (direct, nested)):
-        raise ValueError("Captured reference string unavailable")
+    for value in (direct, nested):
+        if value is not None:
+            identifier(value)
     if direct is not None and nested is not None and identity(direct) != identity(nested):
         raise ValueError("Captured reference witnesses disagree")
     return direct if direct is not None else nested
+
+
+def actor_weight_witness(raw, *, required=False):
+    """Read the independent observer actor sample, never a SKEE pseudo-morph."""
+    context = raw.get("identity", {})
+    actor = context.get("actor", {}) if isinstance(context, dict) else {}
+    weight = actor.get("weight") if isinstance(actor, dict) else None
+    if weight is None:
+        if required:
+            raise ValueError("Actor weight unavailable: independent identity.actor.weight witness required")
+        return None
+    if (not isinstance(weight, dict) or weight.get("status") != "available" or
+            not isinstance(context.get("sessionId"), str) or not context["sessionId"] or
+            type(context.get("loadGeneration")) is not int or context["loadGeneration"] < 0 or
+            not isinstance(context.get("identity"), dict) or
+            not isinstance(context["identity"].get("form"), str) or
+            captured_reference(raw) is None):
+        raise ValueError("Actor weight unavailable: observed actor/session/world identity required")
+    value = number(weight.get("rawNPCWeight"))
+    # The native captureActor path owns float32/raw-domain validation and /100.
+    # Convenience fields from the existing collector must agree with its sample.
+    if "weightRaw" in raw and number(raw["weightRaw"]) != value:
+        raise ValueError("Actor raw weight convenience value disagrees with independent witness")
+    if "weightNormalized" in raw:
+        if number(raw["weightNormalized"]) != number(weight.get("normalizedNPCWeight")):
+            raise ValueError("Actor normalized weight convenience value disagrees with independent witness")
+    return {"rawNPCWeight": value, "source": "identity.actor.weight",
+            "reference": context["identity"]["form"], "sessionId": context["sessionId"],
+            "loadGeneration": context["loadGeneration"]}
 
 
 def normalize(raw):
@@ -198,7 +227,8 @@ def normalize(raw):
                 captured = {key: value["value"] for key, value in row["keys"].items() if value["present"]}
                 if expected != captured:
                     raise ValueError("Requested key list disagrees with full namespace: " + row["name"])
-    return {"stage": stage, "ownKey": own_key, "sources": sources, "own": own, "namespace": namespace}
+    return {"stage": stage, "ownKey": own_key, "sources": sources, "own": own, "namespace": namespace,
+            "actorWeight": actor_weight_witness(raw)}
 
 
 class NativeMatrix:
@@ -209,24 +239,15 @@ class NativeMatrix:
         self.pins = {self.xml: xml_sha256, self.cli: cli_sha256}
         self.timeout = timeout
         self.cache = {}
+        self.graph_cache = {}
         self.invocations = 0
         if not 0 < timeout <= 60:
             raise ValueError("Native CLI timeout must be in (0,60] seconds")
         self.verify()
-        raw_xml = self.xml.read_bytes()
-        if b"<!" in raw_xml:
-            raise ValueError("XML declarations/entities are unsupported")
-        tree = ET.fromstring(raw_xml)
-        self.profiles = {}
-        for profile in tree.findall("Profile"):
-            profile_id = profile.get("id")
-            if profile_id in self.profiles:
-                raise ValueError("Ambiguous duplicate profile ID")
-            self.profiles[profile_id] = profile
         catalog = self._run(["families", str(self.xml)])
         self.catalog = {row["id"]: row for row in catalog["profiles"]}
-        if set(self.profiles) != set(self.catalog):
-            raise ValueError("XML profile inventory differs from native parser")
+        if len(catalog["profiles"]) != len(self.catalog):
+            raise ValueError("Ambiguous duplicate native profile ID")
 
     def verify(self):
         for path, expected in self.pins.items():
@@ -245,6 +266,28 @@ class NativeMatrix:
             raise ValueError("Native matrix response exceeds bound")
         return json.loads(process.stdout, object_pairs_hook=_object_pairs)
 
+    def graph(self, selected):
+        self.verify()
+        if selected not in self.graph_cache:
+            graph = self._run(["matrix-info", str(self.xml), selected])
+            if (graph.get("schema") != "claw-matrix-input-graph/1" or graph.get("profile") != selected or
+                    graph.get("sex") != self.catalog[selected]["sex"] or
+                    not isinstance(graph.get("sources"), list) or len(graph["sources"]) > 128 or
+                    not isinstance(graph.get("targets"), list) or len(graph["targets"]) > 64):
+                raise ValueError("Native active input graph unavailable")
+            sources = {}
+            for row in graph["sources"]:
+                name = identifier(row.get("name"))
+                kind = row.get("kind")
+                if kind not in {"skee-morph", "actor-weight"} or identity(name) in sources:
+                    raise ValueError("Native input graph has unknown/ambiguous source kind")
+                sources[identity(name)] = {"name": name, "kind": kind}
+            targets = {identity(identifier(name)) for name in graph["targets"]}
+            if len(targets) != len(graph["targets"]):
+                raise ValueError("Native input graph has ambiguous target identities")
+            self.graph_cache[selected] = {"sources": sources, "targets": targets}
+        return self.graph_cache[selected]
+
     def evaluate(self, raw, profile_id=None):
         self.verify()
         values = normalize(raw)
@@ -254,22 +297,25 @@ class NativeMatrix:
             raise ValueError("Captured profile is not the selected XML profile")
         if raw.get("sex") != self.catalog[selected]["sex"]:
             raise ValueError("Captured sex differs from selected profile")
-        # No copied cutoff policy: require all declared nonconstant source reads.
-        # This conservative coverage may over-require inactive source/target reads;
-        # the CLI alone decides which rows actually contribute.
-        profile = self.profiles[selected]
-        declared_sources = {identity(rule.get("source", "")) for rule in profile.findall("Rule")
-                            if rule.get("function", "linear") != "constant"}
-        declared_targets = {identity(rule.get("target", "")) for rule in profile.findall("Rule")}
+        graph = self.graph(selected)
+        declared_sources = {name for name, row in graph["sources"].items() if row["kind"] == "skee-morph"}
+        scalar_sources = {name for name, row in graph["sources"].items() if row["kind"] == "actor-weight"}
+        declared_targets = graph["targets"]
         if declared_sources - values["sources"].keys():
             raise ValueError("Missing declared source observations: " + str(sorted(declared_sources - values["sources"].keys())))
         if declared_targets - values["own"].keys():
             raise ValueError("Missing declared target observations: " + str(sorted(declared_targets - values["own"].keys())))
-        text = "".join(row["name"] + "\t" + format(row["value"], ".17g") + "\n"
-                       for _, row in sorted(values["sources"].items()))
-        key = selected, text
+        if scalar_sources & values["sources"].keys():
+            raise ValueError("Actor scalar must not be supplied as a SKEE morph/key observation")
+        witness = actor_weight_witness(raw, required=True) if scalar_sources else None
+        text = "".join(graph["sources"][name]["name"] + "\t" + format(values["sources"][name]["value"], ".17g") + "\n"
+                       for name in sorted(declared_sources))
+        arguments = ["matrix", str(self.xml), selected]
+        if witness is not None:
+            arguments += ["--actor-weight-raw", format(witness["rawNPCWeight"], ".17g")]
+        key = selected, text, tuple(arguments[3:])
         if key not in self.cache:
-            output = self._run(["matrix", str(self.xml), selected], text)
+            output = self._run(arguments, text)
             checked = named_map(output, "native output")
             self.cache[key] = {name: {"name": spelling, "value": number(value)}
                                for name, (spelling, value) in checked.items()}
@@ -325,7 +371,11 @@ def analyze_capture(capture, evaluator, profile_id=None, tolerance=1e-4):
             "coefficientValuesWithinTolerance": all(row["absoluteError"] is not None and row["absoluteError"] <= tolerance for row in checked),
             "ownPresencePolicyPassed": all(row["present"] == (row["expected"] != 0) and
                                           (row["expected"] == 0 or row["actual"] > 0) for row in checked),
-            "sourceCoveragePolicy": "All declared nonconstant XML sources, conservatively including inactive rows; no copied epsilon formula",
+            "sourceCoveragePolicy": "Native canonical active graph; SKEE aggregates/keys and independent actor weight are separate; no copied epsilon or normalization formula",
+            "actorWeightWitness": values["actorWeight"],
+            "actorWeightNormalization": ("native captureActor raw NPC0..100 input"
+                if any(row["kind"] == "actor-weight" for row in evaluator.graph(selected)["sources"].values())
+                else "not used by this matrix"),
             "ownNamespaceCoverage": ("complete: VisitMorphValues stored keypair wire contract; producer qualification required" if namespace is not None else
                                      "unavailable: current capture enumerates keys for specified targets only"),
             "ownNamespaceEntries": ({row["name"]: row["keys"][values["ownKey"]]["value"] for row in namespace_own.values()}
@@ -381,8 +431,14 @@ def compare_captures(before, after):
                     if (keys := _key_signature(row["keys"], value["ownKey"]))}
         left, right = foreign_namespace(a), foreign_namespace(b)
         global_foreign_changes = [name for name in sorted(set(left) | set(right)) if left.get(name) != right.get(name)]
-    return {"passed": not changed_sources and not changed_foreign and not global_foreign_changes,
-            "sourcePreservationPassed": not changed_sources, "changedSources": changed_sources,
+    weight_a, weight_b = a["actorWeight"], b["actorWeight"]
+    weight_observed = weight_a is not None and weight_b is not None
+    weight_same = weight_a["rawNPCWeight"] == weight_b["rawNPCWeight"] if weight_observed else None
+    weight_consistent = (weight_same is True) if weight_a is not None or weight_b is not None else True
+    return {"passed": not changed_sources and not changed_foreign and not global_foreign_changes and weight_consistent,
+            "sourcePreservationPassed": not changed_sources and weight_consistent, "changedSources": changed_sources,
+            "actorWeightPreservationPassed": weight_same,
+            "actorWeightCoverage": "same-reference independent raw NPC samples" if weight_observed else "unavailable: two independent actor-weight witnesses required",
             "foreignTargetKeyPreservationPassed": not changed_foreign, "changedForeignTargets": changed_foreign,
             "globalForeignKeyPreservationPassed": not global_foreign_changes if global_foreign_changes is not None else None,
             "changedGlobalForeignMorphs": global_foreign_changes,

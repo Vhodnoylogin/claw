@@ -31,6 +31,16 @@ def snapshot(value=0.5, expected=0.5, *, present=True, target='Ear.Size'):
             'targetKeys': {target: [key('CLAW.Distribution', expected)] if present else []}}
 
 
+def with_actor_weight(raw, value=25, normalized=0.25):
+    """Synthetic observer-shaped witness, not evidence of a game measurement."""
+    raw['identity'] = {'sessionId': 'synthetic-observer', 'loadGeneration': 1,
+                       'identity': {'form': raw['reference']},
+                       'actor': {'weight': {'status': 'available', 'rawNPCWeight': value,
+                                            'normalizedNPCWeight': normalized}}}
+    raw['weightRaw'], raw['weightNormalized'] = value, normalized
+    return raw
+
+
 def namespace(raw):
     entries = []
     for name, row in raw['sources'].items():
@@ -92,6 +102,104 @@ class MatrixCaptureNativeIntegration(unittest.TestCase):
         raw = snapshot(expected=0.25)
         raw['sources'] = {}
         self.assertTrue(capture.analyze_capture(raw, evaluator)['passed'])
+
+    def test_native_graph_separates_actual_weight_from_skee_and_omits_sparse_edges(self):
+        evaluator = self.evaluator(
+            '<Rule source="$actor.weight" target="Ear.Size" gain="1" cap="1"/>'
+            '<Rule source="HumanVolume" target="Ear.Size" gain="0.2" cap="1"/>'
+            '<Rule source="Ignored" target="Not.Required" gain="1e-50" cap="1"/>')
+        graph = evaluator.graph('Test')
+        self.assertEqual(graph['sources'], {
+            '$actor.weight': {'name': '$actor.weight', 'kind': 'actor-weight'},
+            'humanvolume': {'name': 'HumanVolume', 'kind': 'skee-morph'}})
+        self.assertEqual(graph['targets'], {'ear.size'})
+        self.assertTrue(capture.analyze_capture(with_actor_weight(snapshot(expected=0.35)), evaluator)['passed'])
+
+    def test_scalar_only_uses_independent_raw_weight_and_native_normalization(self):
+        evaluator = self.evaluator('<Rule source="$actor.weight" target="Ear.Size" gain="1" cap="1"/>')
+        for raw_value, expected in ((0, 0), (25, 0.25), (50, 0.5), (100, 1)):
+            raw = with_actor_weight(snapshot(expected=expected, present=expected != 0), raw_value, expected)
+            raw['sources'] = {}
+            result = capture.analyze_capture(raw, evaluator)
+            self.assertTrue(result['passed'])
+            self.assertEqual(result['sourcesObserved'], 0)
+            self.assertEqual(result['actorWeightWitness']['rawNPCWeight'], raw_value)
+            self.assertIn('native captureActor', result['actorWeightNormalization'])
+
+    def test_weight_requires_actor_witness_not_flat_value_or_fake_provider_keys(self):
+        evaluator = self.evaluator('<Rule source="$actor.weight" target="Ear.Size" gain="1" cap="1"/>')
+        raw = snapshot(expected=0.25)
+        raw['sources'] = {};raw['weightRaw'] = 25;raw['weightNormalized'] = 0.25
+        with self.assertRaisesRegex(ValueError, 'Actor weight unavailable'):
+            capture.analyze_capture(raw, evaluator)
+        raw = with_actor_weight(snapshot(expected=0.25))
+        raw['sources'] = {'$actor.weight': {**scalar(0.25, True), 'keys': [key('OBody', 0.25)]}}
+        with self.assertRaisesRegex(ValueError, 'must not be supplied as a SKEE'):
+            capture.analyze_capture(raw, evaluator)
+        raw['sources'] = {}
+        raw['identity']['actor']['weight']['status'] = 'unavailable'
+        with self.assertRaisesRegex(ValueError, 'Actor weight unavailable'):
+            capture.analyze_capture(raw, evaluator)
+
+    def test_invalid_raw_actor_weight_and_incoherent_convenience_values_reject(self):
+        evaluator = self.evaluator('<Rule source="$actor.weight" target="Ear.Size" gain="1" cap="1"/>')
+        for value in (-1, 101, float('nan'), float('inf'), True):
+            raw = with_actor_weight(snapshot(expected=0.25), value)
+            raw['sources'] = {}
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                capture.analyze_capture(raw, evaluator)
+        for field, wrong in (('weightRaw', 26), ('weightNormalized', 0.5)):
+            raw = with_actor_weight(snapshot(expected=0.25));raw['sources'] = {};raw[field] = wrong
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'disagrees'):
+                capture.analyze_capture(raw, evaluator)
+        raw = with_actor_weight(snapshot(expected=0.25));raw['sources'] = {}
+        raw['identity']['identity']['form'] = '0xFF000002'
+        with self.assertRaisesRegex(ValueError, 'witnesses disagree'):
+            capture.analyze_capture(raw, evaluator)
+
+    def test_actor_weight_rejects_empty_whitespace_control_and_oversized_references(self):
+        evaluator = self.evaluator('<Rule source="$actor.weight" target="Ear.Size" gain="1" cap="1"/>')
+        for bad in ('', ' ', '\t', 'actor\x01', 'x'*161):
+            raw = with_actor_weight(snapshot(expected=0.25));raw['sources'] = {}
+            raw['reference'] = raw['identity']['identity']['form'] = bad
+            with self.subTest(reference=bad), self.assertRaisesRegex(ValueError, 'Bounded printable identifier'):
+                capture.analyze_capture(raw, evaluator)
+
+    def test_supplied_reference_validation_also_applies_to_ordinary_morph_captures(self):
+        evaluator = self.evaluator()
+        for bad in ('', ' ', 'actor\x01', 'x'*161):
+            raw = snapshot();raw['reference'] = bad
+            with self.subTest(reference=bad), self.assertRaisesRegex(ValueError, 'Bounded printable identifier'):
+                capture.analyze_capture(raw, evaluator)
+
+    def test_native_raw_option_preserves_legacy_normalized_input_and_rejects_double_supply(self):
+        evaluator = self.evaluator('<Rule source="$actor.weight" target="Ear.Size" gain="1" cap="1"/>')
+        args = ['matrix', str(evaluator.xml), 'Test']
+        self.assertEqual(evaluator._run(args, '$actor.weight\t0.25\n')['Ear.Size'], 0.25)
+        self.assertEqual(evaluator._run(args+['--actor-weight-raw', '25'])['Ear.Size'], 0.25)
+        for extra, text in (([], ''), (['--actor-weight-raw', '101'], ''),
+                            (['--actor-weight-raw', '25'], '$actor.weight\t0.25\n')):
+            with self.subTest(extra=extra, text=text), self.assertRaisesRegex(ValueError, 'Native matrix CLI rejected'):
+                evaluator._run(args+extra, text)
+
+    def test_native_active_graph_does_not_require_omitted_sources_or_targets(self):
+        evaluator = self.evaluator(
+            '<Rule source="Never.Read" target="Never.Observe" gain="0" cap="1"/>'
+            '<Rule source="$actor.weight" target="Also.Omitted" gain="1e-50" cap="1"/>'
+            '<Rule source="" target="Ear.Size" gain="1" cap="1" function="constant" value="0.25"/>')
+        raw = snapshot(expected=0.25);raw['sources'] = {}
+        self.assertTrue(capture.analyze_capture(raw, evaluator)['passed'])
+        self.assertEqual(evaluator.graph('Test')['sources'], {})
+
+    def test_actor_weight_preservation_is_observed_separately_from_provider_keys(self):
+        before = with_actor_weight(snapshot())
+        after = copy.deepcopy(before)
+        self.assertTrue(capture.compare_captures(before, after)['actorWeightPreservationPassed'])
+        with_actor_weight(after, 50, 0.5)
+        result = capture.compare_captures(before, after)
+        self.assertFalse(result['passed'])
+        self.assertFalse(result['actorWeightPreservationPassed'])
+        self.assertEqual(result['changedSources'], [])
 
     def test_empty_profile_is_observed_neutral_with_no_global_namespace_claim(self):
         evaluator = self.evaluator('')
