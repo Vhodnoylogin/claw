@@ -3,6 +3,10 @@
 This page records the original read-only diagnostic and the separate opt-in
 anatomical resource builders. None implements a runtime head-hiding policy.
 
+The separate [Elegant donor-only author review](elegant-author-review.md) exports
+the original unmodified-donor split contribution from the same canonical code.
+It is distinct from the composed CLAW body/weight experiments described here.
+
 ## Selected composed resource family
 
 The selected 26 October offline family is now one actual composition, rather than
