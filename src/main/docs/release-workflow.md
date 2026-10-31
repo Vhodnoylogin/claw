@@ -72,6 +72,12 @@ credits last. Respect the owner's gallery and formatting decisions. On Nexus use
 a descriptive version-free public file display name and its separate version
 field. Local archive filenames may retain a version for immutable provenance.
 
+The public product title is **CLAW - The Beast Within**. Use **CLAW** for the
+current game download and its persistent Nexus update-group name, with the
+version in the separate version field. Required tool groups use the stable
+names **Morphbench Application** and **Morphbench Launcher**. Keep historical
+records and game plugin identifiers unchanged when changing presentation names.
+
 Apply the prepared content only within the owner's publication authority, then
 verify public file/page identities and actual download availability. Uploaded,
 quarantined, reviewed and downloadable are different states. Preserve the source

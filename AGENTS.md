@@ -1,4 +1,4 @@
-# CLAW — Configurable Lycanthrope Anatomy and Weight
+# CLAW — The Beast Within
 
 Repository: https://github.com/Vhodnoylogin/claw
 Default branch: main
