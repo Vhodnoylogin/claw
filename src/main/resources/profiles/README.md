@@ -44,7 +44,12 @@ These are explicit `$human.*` engine inputs, not SKEE body morph names. Muzzle
 rows use captured human face records. Head/ear size, tail length and claw length
 use a documented artistic stature analogy centered at height ratio 1. Missing
 human history remains unavailable with neutral arithmetic and a diagnostic.
-Ear tilt, tail lift/fluff and paw controls remain neutral by default.
+V4 adds face-breadth ear size/tilt and real body/forearm source analogies for tail
+radial bulk and modest claw variation. Tail posture and paw controls remain
+neutral by default. Local Biceps/Triceps separate muscle from soft ArmGirth;
+[the v4 calibration input](anatomy-v4-calibration.json) and
+[mapping rationale](../../docs/anatomy-v4.md) record measured target responses,
+authored source budgets and the 256-edge shared capacity.
 A shape with no opposed wolf deformation
 cannot reproduce both human directions; such clipping is recorded, not hidden
 by an invented neutral offset.

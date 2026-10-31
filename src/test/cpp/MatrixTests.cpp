@@ -23,6 +23,32 @@ int main() {
     try {
         using F = claw::MorphFunction;
         {
+            require(claw_matrix_max_rules() == 256 && claw_matrix_max_targets() == 64, "shared matrix capacity exports changed");
+            require(claw::actorRuleLimit(2) == 32 && claw::actorRuleLimit(7) == 128 && claw::actorRuleLimit(8) == 256,
+                    "co-save version-specific rule bounds were silently reinterpreted");
+            require(claw::actorRecordByteLimit(7) == 131072 && claw::actorRecordByteLimit(8) == 262144,
+                    "v8 rule/source/cache worst-case record has no byte budget");
+            claw::MorphLink expanded{"Expanded", {}, {}, false};
+            for (unsigned index = 0; index < 256; ++index)
+                expanded.rules.push_back({"Human" + std::to_string(index), "Wolf", .001F, 1.F});
+            expanded.capture([](auto) { return .5F; });
+            Record record;
+            for (const auto& rule : expanded.rules) claw::writeMorphRule(rule,
+                [&](const auto& value) { record.strings.push_back(value); }, [&](auto value) { record.integers.push_back(value); });
+            auto restored = expanded; restored.rules.clear();
+            for (unsigned index = 0; index < 256; ++index) restored.rules.push_back(claw::readMorphRule(record, 8));
+            require(restored.canonicalize(claw::Sex::male) && restored.compose(claw::Sex::male) == expanded.compose(claw::Sex::male),
+                    "v8 256-rule function/source roundtrip changed arithmetic or authority");
+            expanded.rules.push_back({"Excess", "Wolf", 0.F, 1.F});
+            require(!expanded.valid(claw::Sex::male), "inactive 257th raw edge bypassed the structural budget");
+            std::vector<CLAWMatrixRule> numeric(256, {0, 0, 2, .5F, .001F, 1.F, 0.F});
+            float output{}; double sum{};
+            require(claw_matrix_evaluate(numeric.data(), 256, &output, &sum, 1) == 0 && std::abs(output - .128F) < 1e-6F,
+                    "shared kernel still has the obsolete 128-edge limit");
+            numeric.push_back({0, 0, 2, 0.F, 0.F, 1.F, 0.F});
+            require(claw_matrix_evaluate(numeric.data(), 257, &output, &sum, 1) == 1, "kernel 256-rule bound bypassed");
+        }
+        {
             // Retained/default and custom matrices have the same binding
             // contract. A different installed default must not replace either.
             claw::MorphProfileCatalog profiles;

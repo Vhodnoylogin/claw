@@ -32,7 +32,7 @@ edges. No process-locale case conversion is used. Linked
 targets have no body-prefix or compiled sex/name allowlist; actual model TRI
 availability must be checked by the resource consumer. The generated native XML
 format retains its existing printable ASCII/entity-free restrictions. Legacy
-independent-preset validation is unchanged. At most 128 structural edges and 64
+independent-preset validation is unchanged. At most 256 structural edges and 64
 distinct active targets are supported. Native output metadata also retains the
 legacy neutral names outside those 64 numeric target slots.
 
@@ -127,8 +127,8 @@ MorphLinkProfiles XML. `evaluate(catalog,id,humanValues)` retains its existing A
 Explicit linear and omitted linear produce identical outputs. The matrix keeps
 ordered sparse edges rather than reordering a sum through a dense table.
 
-Actor co-save record v7 persists each rule's function code, exponent and constant
-value, and appends a human-trait snapshot. Readers retain versions 1..6: v1 is
+Actor co-save record v8 persists each rule's function code, exponent and constant
+value, and retains the v7 human-trait snapshot. Readers retain versions 1..7: v1 is
 independent, v2..4 rules migrate to linear. Version 6 retains the v5 byte layout,
 but identifies the explicit actor
 source semantics. A pre-v6 assignment containing a now-reserved `$actor.` name
@@ -149,7 +149,7 @@ then clears those names after enumeration. Removed/custom names cannot survive
 because a new catalog no longer lists them, and other providers' keys are not
 cleared. Actual writes omit zero coefficients; zeros remain part of legacy
 coefficient metadata/readback without affecting SKEE's aggregate source policy.
-Linked cache metadata is bounded by 64 active targets plus 29 legacy neutral
+Linked cache metadata is bounded by 64 active targets plus 31 public neutral
 names. Original independent-preset cache validation remains sex/allowlist based.
 
 The current default profiles retain their explicit family IDs and existing
@@ -192,13 +192,23 @@ No scalar is written to human SKEE controls. Offline consumers must supply these
 explicit values separately from model morphs and preserve this availability
 distinction. The source kind does not change the shared numeric evaluation.
 
-Each canonical matrix appends 15 authored edges: five face-to-muzzle edges and
-centered `height-1` growth terms for head size, ear size, tail length and both
-claw lengths. HIMBO uses 127 of the retained 128 structural slots. Current IDs
-are unchanged; the calibration marker identifies the new human-trait revision.
-The stature projection is an explicit artistic analogy; tail posture/fluff,
-ear tilt and paw controls have no default invented source. Direction, attachment
+Each canonical matrix retains five face-to-muzzle edges and centered `height-1`
+growth terms, and adds bounded face-to-ear and body-to-tail/claw analogies.
+The v4 arm projection separates soft size from local Biceps/Triceps and reduces
+generic shoulder bulk using measured target-region responses. Profiles use 137
+HIMBO, 116 CBBE/3BA, and 41 Vanilla structural slots. Current IDs are unchanged;
+the calibration marker identifies the new revision. Tail posture and paw controls
+have no default invented source. Direction, attachment
 quality and race-specific geometry still need game acceptance. See
 [human head traits](human-head-traits.md) for the exact reads, gains and limits.
 Pre-v7 assignments containing the now-reserved `$human.` namespace are
 suppressed until explicit rebind; established v6 `$actor.weight` remains valid.
+
+The shared `claw_matrix_max_rules()`/`claw_matrix_max_targets()` exports report
+256/64; WASM buffers use those values. The rule ABI remains 28 bytes. Co-save v8
+keeps the v7 layout with 256 rules/sources and a 262144-byte record budget;
+historical v1..v7 rule and byte bounds remain version-specific. The existing
+Papyrus parallel-array ConfigureMorphLink transport retains 128 rows; explicit
+file-family bindings use the full shared budget. See [v4 anatomy](anatomy-v4.md)
+for measured response data, authored budgets, actual fixture regressions and
+the distinction between direct sources and artistic appendage analogies.

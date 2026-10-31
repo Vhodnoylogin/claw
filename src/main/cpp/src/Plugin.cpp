@@ -973,7 +973,7 @@ void load(SKSE::SerializationInterface* interface) {
         if (claw::appearance::loadRecord(interface, type, version, length)) continue;
         if (type != sessionRecord && type != actorRecord) continue;
         if ((version != 1 && !(type == actorRecord && (version >= 2 && version <= claw::actorMatrixRecordVersion))) ||
-            length > (type == actorRecord && version >= 3 ? 131072U : 16384U)) { SKSE::log::error("Unsupported/corrupt CLAW record"); continue; }
+            length > (type == actorRecord ? claw::actorRecordByteLimit(version) : 16384U)) { SKSE::log::error("Unsupported/corrupt CLAW record"); continue; }
         Bytes bytes(length);
         if (interface->ReadRecordData(bytes.data(), length) != length) { SKSE::log::error("Truncated CLAW record"); continue; }
         try {
@@ -1000,7 +1000,7 @@ void load(SKSE::SerializationInterface* interface) {
             bool scalarRebindRequired = false;
             if (version >= 2) {
                 state.link.profile = reader.string(); const auto ruleCount = reader.u32();
-                const std::uint32_t maxLinkEntries = version >= 3 ? 128U : 32U;
+                const std::uint32_t maxLinkEntries = claw::actorRuleLimit(version);
                 if (ruleCount > maxLinkEntries) throw std::runtime_error("excessive morph link rules");
                 for (std::uint32_t index = 0; index < ruleCount; ++index) {
                     state.link.rules.push_back(claw::readMorphRule(reader, version));
@@ -1245,6 +1245,8 @@ bool clearRequest(RE::StaticFunctionTag*, RE::Actor* actor) { return actorReques
 bool refreshRequest(RE::StaticFunctionTag*, RE::Actor* actor) { return actorRequest(actor, Operation::refresh); }
 bool configureMorphLink(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString profile,
     std::vector<RE::BSFixedString> sources, std::vector<RE::BSFixedString> targets, std::vector<float> gains, std::vector<float> caps) {
+    // Retain the established Papyrus parallel-array API bound. Family XML and
+    // co-save v8 use the shared 256-rule budget without Papyrus array transport.
     if (sources.size() > 128 || targets.size() != sources.size() || gains.size() != sources.size() || caps.size() != sources.size()) return false;
     claw::MorphLink link; link.profile = profile.c_str();
     if (!claw::morphLinkIdentifier(link.profile)) return false;

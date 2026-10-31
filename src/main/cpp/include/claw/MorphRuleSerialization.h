@@ -3,8 +3,15 @@
 #include <bit>
 
 namespace claw {
-inline constexpr std::uint32_t actorMatrixRecordVersion = 7;
+inline constexpr std::uint32_t actorMatrixRecordVersion = 8;
+inline constexpr std::uint32_t actorRuleLimit(std::uint32_t version) {
+    return version >= 8 ? CLAW_MATRIX_MAX_RULES : version >= 3 ? 128U : 32U;
+}
+inline constexpr std::uint32_t actorRecordByteLimit(std::uint32_t version) {
+    return version >= 8 ? 262144U : version >= 3 ? 131072U : 16384U;
+}
 // v6 introduced actor scalars; v7 appends a human snapshot to the actor record.
+// v8 retains the layout and supports 256 rules; old version-specific bounds stay intact.
 // Never reinterpret an old SKEE source/output from a newly reserved namespace.
 inline bool legacyActorInputNeedsRebind(const MorphLink& link, std::uint32_t version) {
     if (version >= actorMatrixRecordVersion) return false;

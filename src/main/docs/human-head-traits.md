@@ -28,7 +28,10 @@ reference scale and skeleton/node overrides. The height-to-ear/tail/claw relatio
 is an explicit artistic stature analogy, not a claim that humans have a tail or
 that stature measures nails. Height 1 gives zero on these rows; height 1.1 gives
 head/ear 0.15, tail 0.2 and claw 0.125. Shorter values cannot shrink these existing
-nonnegative targets below their donor neutral. Ear tilt, tail lift/fluff and paw
+nonnegative targets below their donor neutral. The [v4 projection](anatomy-v4.md)
+also uses real face breadth for modest ear size/tilt, real body mass for tail
+radial bulk, and forearm/limb strength for modest claws. These are explicitly
+authored analogies, not measured human ear/nail anatomy. Tail lift and paw
 size retain zero unless an owner authors rules for actual supported inputs.
 No categorical HeadPart index is converted into a continuous trait.
 

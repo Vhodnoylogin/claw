@@ -15,6 +15,9 @@ typedef struct CLAWMatrixRule {
     float cap;
     float value;       // constant only; zero otherwise
 } CLAWMatrixRule;
+enum { CLAW_MATRIX_MAX_RULES = 256, CLAW_MATRIX_MAX_TARGETS = 64 };
+uint32_t claw_matrix_max_rules(void);
+uint32_t claw_matrix_max_targets(void);
 
 // Caller validates the rule before requesting contribution diagnostics.
 double claw_matrix_transform(double input, uint32_t function, uint32_t exponent, float value);

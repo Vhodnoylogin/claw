@@ -25,7 +25,7 @@ the loaded model must actually provide them. SKEE interns names without ASCII
 case distinctions, so case-only aliases and source/output overlaps are rejected
 using deterministic ASCII identity. Bound morph names use printable ASCII; no
 locale-dependent case conversion or arbitrary-prefix inference is performed.
-The legacy 28 shared names plus female breast
+The 30 public shared names plus female breast
 remain neutral coefficient metadata, while up to 64 active target names enter
 the shared kernel. Independent preset validation retains its original allowlist.
 
@@ -36,15 +36,19 @@ profiles remain neutral linked policies. Exact active source/output collisions
 are rejected, and capture also refuses sources overlapping existing own-key
 outputs. No prefix is assumed to identify a human or wolf morph.
 
-Actor records now write version 7 with every function/parameter and a separate
+Actor records now write version 8 with every function/parameter and a separate
 human FaceGen/stature snapshot with provenance and per-channel availability.
-Readers retain v1..v6 support; old ordinary rules retain their original evaluation.
+Readers retain v1..v7 support; old ordinary rules retain their original evaluation.
 Saved matrices remain authoritative, so existing actors adopt revised XML only
 through an explicit ConfigureMorphFamily request. All-constant profiles capture
 no human values and cannot depend on an OBody source bootstrap. Fresh game,
 existing-save refresh and rendered geometry still require runtime acceptance.
 Version 6 retained the v5 byte layout but reserved the actor-input namespace;
 v7 appends the human snapshot and reserves the explicit `$human.` namespace.
+Version 8 retains that layout and raises the shared/file rule budget to 256;
+old record versions retain their original 32/128-row and byte bounds. Shared
+capacity exports supply the WASM adapter's buffer sizes. The legacy Papyrus
+parallel-array ConfigureMorphLink transport remains 128 rows.
 Pre-v6 assignments using that namespace are suppressed until explicit rebind;
 they are not reinterpreted as actor weight. Loading removes inactive saved edges and their
 declared source values without substituting an installed profile; undeclared,
@@ -109,12 +113,14 @@ Use exactly `CLAW Male` or `CLAW Female` as `set`; no name-based sex inference.
 100 and interpolated once using the actor NPC weight in **0..100**. BodySlide's
 omitted endpoint semantics apply: an omitted small or big endpoint is zero, and
 an entirely omitted morph contributes zero. A typed preset with no `SetSlider`
-elements is accepted as the neutral body, and readback checks all 29 owned public
+elements is accepted as the neutral body, and readback checks all 31 owned public
 morphs, including zeros for every omitted morph. This candidate intentionally rejects
 negative/extrapolated values. Different values are not certified safe geometry.
 
-The allowlist matches the published 0.6.2.0 base resource contract: 28 shared
-morphs plus female-only `CLAWTorsoBreastSize`. Adult and unknown morphs, wrong-sex
+The current catalog has 30 shared morphs plus female-only `CLAWTorsoBreastSize`.
+V4 adds local `CLAWArmBiceps` and `CLAWArmTriceps` while retaining every older
+name; [the anatomy contract](../docs/anatomy-v4.md) records the required resource
+fields and the separation from soft ArmGirth. Adult and unknown morphs, wrong-sex
 morphs, unknown tags/attributes, malformed XML, duplicate preset names across files
 or families, duplicate endpoints and unreadable files are errors. A catalog with
 **any** such error is unavailable, with diagnostics in `CLAWDistribution.log`;
@@ -268,7 +274,7 @@ suppressing distribution; a valid explicit configuration resumes it. Disabling
 linkage does not clear suppression. The existing
 single own key is retained. Actor co-save v6 stores the mapping, functions and parameters, captured source
 values and optional actual weight observations. Readers retain v1..v5 support;
-v2 retains its 32-row budget, while v3..v6 allow 128 rows. Version1 migrates to
+v2 retains its 32-row budget, while v3..v7 allow 128 rows and v8 allows 256. Version1 migrates to
 independent mode. Linked records use the direct neutral baseline after refresh.
 The recorded sex binds the saved link. A changed actor sex clears only owned
 outputs and refuses source recapture until explicit configuration for the new

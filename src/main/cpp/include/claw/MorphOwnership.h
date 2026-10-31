@@ -5,7 +5,7 @@ namespace claw {
 // At most 64 active named kernel outputs, plus the legacy neutral metadata.
 // Only nonzero outputs are written to SKEE, so neutral metadata cannot alter
 // its aggregate source calculation or claim additional actual morph keys.
-inline constexpr std::size_t maxLinkedCacheMorphs = 64 + 29;
+inline constexpr std::size_t maxLinkedCacheMorphs = CLAW_MATRIX_MAX_TARGETS + 31;
 inline constexpr std::size_t maxObservedOwnMorphs = 128;
 
 inline bool validMorphCache(const Morphs& values, Sex sex, bool linked) {

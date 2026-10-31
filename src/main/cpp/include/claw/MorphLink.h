@@ -94,7 +94,7 @@ struct MorphLink {
     }
     [[nodiscard]] std::string validationError(Sex sex) const {
         if (!enabled()) return rules.empty() && sourceValues.empty() && !captured ? "" : "disabled morph link contains state";
-        if (!morphLinkIdentifier(profile) || rules.size() > 128) return "invalid profile identifier or excessive rules";
+        if (!morphLinkIdentifier(profile) || rules.size() > CLAW_MATRIX_MAX_RULES) return "invalid profile identifier or excessive rules";
         std::set<std::pair<std::string, std::string>> pairs;
         std::map<std::string, float> caps;
         (void)sex; // The model's available names, not a compiled sex whitelist, determine geometry support.
@@ -114,7 +114,7 @@ struct MorphLink {
             if (!inserted && it->second != rule.cap) return "inconsistent active target caps";
             if (!rule.constant()) sources.emplace(rule.source);
         }
-        if (outputIdentities.size() > 64) return "excessive linked output targets";
+        if (outputIdentities.size() > CLAW_MATRIX_MAX_TARGETS) return "excessive linked output targets";
         for (const auto& rule : rules)
             if (rule.active() && sourceIdentities.contains(morphProviderIdentity(rule.target))) return "active human source overlaps a wolf output: " + rule.target;
         if (!captured) return sourceValues.empty() ? "" : "uncaptured morph link contains source values";
@@ -130,7 +130,7 @@ struct MorphLink {
     bool canonicalize(Sex sex, std::string* error = nullptr) {
         auto fail = [&](std::string reason) { if (error) *error = std::move(reason); return false; };
         if (!enabled() && (!rules.empty() || !sourceValues.empty() || captured)) return fail("disabled morph link contains state");
-        if (rules.size() > 128) return fail("excessive morph link rules");
+        if (rules.size() > CLAW_MATRIX_MAX_RULES) return fail("excessive morph link rules");
         if (!captured && !sourceValues.empty()) return fail("uncaptured morph link contains source values");
         MorphLink staged = *this;
         std::set<std::string> declared, activeSources;

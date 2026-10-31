@@ -13,6 +13,7 @@ namespace claw::appearance {
 struct Surface {
     RE::NiPointer<RE::BSGeometry> geometry;
     RE::NiPointer<RE::BSShaderProperty> original, own;
+    bool skin{};
 };
 struct Entry {
     RE::FormID base{};
@@ -105,12 +106,17 @@ inline bool applyWolf(RE::Actor* actor, IOverrideInterface* provider) {
     auto* root = actor->Get3D(false);
     if (!root) { unbind(entry); entry.status = "unloaded"; return false; }
     if (root == entry.root.get() && !entry.surfaces.empty()) {
+        const bool stillInScene = std::all_of(entry.surfaces.begin(), entry.surfaces.end(), [root](const auto& surface) {
+            return root->GetObjectByName(surface.geometry->name) == surface.geometry.get();
+        });
         const bool stillOwned = std::all_of(entry.surfaces.begin(), entry.surfaces.end(), [](const auto& surface) {
             return surface.geometry->GetGeometryRuntimeData().shaderProperty.get() == surface.own.get();
         });
-        if (stillOwned) return true;
+        if (stillInScene && stillOwned) return true;
         // A later provider wins until model generation changes; no override war.
-        unbind(entry); entry.root.reset(root); entry.status = "yielded to later coat writer"; return false;
+        if (stillInScene) {
+            unbind(entry); entry.root.reset(root); entry.status = "yielded to later coat writer"; return false;
+        }
     }
     if (root == entry.root.get() && entry.status == "yielded to later coat writer") return false;
     unbind(entry);
@@ -119,10 +125,34 @@ inline bool applyWolf(RE::Actor* actor, IOverrideInterface* provider) {
         const bool skin = name == "body" || name == "head";
         if (skin ? !entry.colours.hasSkin : !entry.colours.hasHair) continue;
         RE::BSGeometry* geometry{}; unsigned count{};
+        // NiAVObject uses the engine's case-insensitive interned BSFixedString.
+        // Its retained spelling may come from another earlier model. A bytewise
+        // comparison can miss a surface that GetObjectByName correctly finds.
+        const RE::BSFixedString expected{name.data()};
         visit(root, [&](RE::NiAVObject* object) {
-            if (object->name.c_str() && name == object->name.c_str()) { ++count; geometry = object->AsGeometry(); }
+            if (object->name == expected) { ++count; geometry = object->AsGeometry(); }
         });
-        if (count != 1 || !geometry) { entry.status = "missing/ambiguous coat surface"; return false; }
+        if (count != 1 || !geometry) {
+            const auto reason = "coat surface " + std::string(name) + ": matches=" + std::to_string(count) +
+                ", geometry=" + (geometry ? "yes" : "no");
+            if (entry.status != reason) {
+                std::size_t objects{}, geometries{}; std::string inventory;
+                visit(root, [&](RE::NiAVObject* object) {
+                    ++objects;
+                    if (object->AsGeometry()) ++geometries;
+                    if (objects <= 96) {
+                        if (!inventory.empty()) inventory += "; ";
+                        inventory += object->name.c_str() ? object->name.c_str() : "<unnamed>";
+                        inventory += ":";
+                        const auto* type = object->GetRTTI();
+                        inventory += type ? type->GetName() : "<no RTTI>";
+                    }
+                });
+                SKSE::log::warn("CLAW appearance {:08X}: {}; visited {} objects / {} geometries; {}",
+                    actor->formID, reason, objects, geometries, inventory);
+            }
+            entry.status = reason; return false;
+        }
         auto* original = geometry->lightingShaderProp_cast();
         if (!original || !original->material) { entry.status = "unsupported coat shader"; return false; }
         const auto feature = original->material->GetFeature();
@@ -132,16 +162,14 @@ inline bool applyWolf(RE::Actor* actor, IOverrideInterface* provider) {
         if (!copy || copy.get() == original || !copy->material || copy->material == original->material) {
             entry.status = "material isolation failed"; return false;
         }
-        prepared.push_back({RE::NiPointer<RE::BSGeometry>{geometry}, RE::NiPointer<RE::BSShaderProperty>{original}, copy});
+        prepared.push_back({RE::NiPointer<RE::BSGeometry>{geometry}, RE::NiPointer<RE::BSShaderProperty>{original}, copy, skin});
     }
     if (prepared.empty()) { entry.status = "no human colour sources"; return false; }
     // All surfaces were validated and cloned before any live binding changes.
     entry.surfaces = std::move(prepared); entry.root.reset(root);
     for (auto& surface : entry.surfaces) {
         surface.geometry->GetGeometryRuntimeData().shaderProperty = surface.own;
-        const std::string_view name = surface.geometry->name.c_str();
-        TintValue tint(pack(coatTint(name == "body" || name == "head" ? entry.colours.skin : entry.colours.hair,
-            name != "body" && name != "head")));
+        TintValue tint(pack(coatTint(surface.skin ? entry.colours.skin : entry.colours.hair, !surface.skin)));
         provider->SetNodeProperty(reinterpret_cast<::TESObjectREFR*>(actor), false, surface.geometry->name.c_str(), 7, 0, tint, true);
         // SKEE may replace the clone's material; property ownership remains ours.
         auto* material = surface.own->material;

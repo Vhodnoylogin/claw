@@ -20,7 +20,8 @@ constexpr std::array commonMorphs{
     "CLAWLegThighGirth", "CLAWTailFluff", "CLAWTailLength", "CLAWTailLift",
     "CLAWTorsoBackWide", "CLAWTorsoBellyRound", "CLAWTorsoChestSize", "CLAWTorsoFlankWidth",
     "CLAWTorsoGirth", "CLAWTorsoNeckGirth", "CLAWTorsoShoulderGirth", "CLAWTorsoWaistNarrow",
-    "CLAWArmLean", "CLAWLegThighLean", "CLAWLegCalfLean", "CLAWTorsoLean"
+    "CLAWArmLean", "CLAWLegThighLean", "CLAWLegCalfLean", "CLAWTorsoLean",
+    "CLAWArmBiceps", "CLAWArmTriceps"
 };
 constexpr std::size_t maxFileBytes = 1024 * 1024;
 constexpr std::size_t maxPresets = 4096;
