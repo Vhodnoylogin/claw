@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Inspection profile composition; not an automatic installer or runtime-version attestation",
+  "sourceProfileName": "CLAW",
+  "separateProfileRequired": true,
+  "forbiddenForeignFixturePlugins": ["test_MorphbenchHumanColliders.esp"],
+  "requiredMods": [
+    {"name":"CLAW - Configurable Lycanthrope Anatomy and Weight","version":"0.7.0.0","selection":"HIMBO + CBBE + 3BA, with originally-beast OBody source integration"},
+    {"name":"Elegant Werewolf Replacer","nexusModId":93336,"purpose":"Required wolf textures; CLAW's own body meshes win"},
+    {"name":"RaceMenu","nexusModId":19080,"purpose":"Runtime-matched SKEE body morph mechanism"},
+    {"name":"Address Library for SKSE Plugins","nexusModId":32444,"purpose":"Runtime-matched native address data"},
+    {"name":"XP32 Maximum Skeleton Special Extended","nexusModId":1988,"purpose":"Compatible skeleton and all author-declared requirements"},
+    {"name":"HIMBO","nexusModId":46311,"observedVersion":"5.8","purpose":"Male human body and Build Morphs output"},
+    {"name":"Caliente's Beautiful Bodies Enhancer - CBBE","nexusModId":198,"observedVersion":"2.0.3","purpose":"Base female body dependency"},
+    {"name":"CBBE 3BA (3BBB)","nexusModId":30174,"observedVersion":"2.48","purpose":"Female fixture family and its complete author-declared requirements"},
+    {"name":"OBody NG","nexusModId":77016,"purpose":"Real automatic human preset distribution; include its complete transitive dependency chain"},
+    {"name":"test_CLAW - Human and Werewolf Comparison","purpose":"This test kit's presets, settings and wild fixture plugin"}
+  ],
+  "runtime": {
+    "actual31OctoberInspection":"Skyrim SE 1.7.104.0 / SKSE 2.3.1",
+    "rule":"Use each dependency's build for the actual game runtime. Enabled ESP markers alone do not prove compatible DLL versions or effective mesh winners."
+  },
+  "installationPolicy": "Every independent mod and every required dependency is installed as its own source-accounted mod under its real name. Inspect FOMOD alternatives, install selected files and verify the archive's Installed state. Generated BodySlide output is a separate generated mod.",
+  "photography": {
+    "humanUnderwearRequired":true,
+    "generatedOutputMod":"BodySlide Output - NeverNude",
+    "projects":["CBBE NeverNude","HIMBO Body - Vanilla High Poly Nevernude"],
+    "buildMorphsRequired":true,
+    "neutralAuthorDefaults":"Use neutral visible shape while retaining the author's hidden seam/weight defaults; actor shapes come from OBody.",
+    "overrides":"Generated NeverNude human NIF/TRI output must win over nude generated bodies. Disable The New Gentleman and its plugin in this photography profile.",
+    "redistribution":"Human meshes, textures, skeletons and BodySlide dependencies are not bundled in this repository's test kit. Build or install them from their own authorized mods.",
+    "lighting":"Optional test_CLAWInspectionLighting.esp is built from lighting/ and enabled only in the CLAW inspection profile."
+  }
+}

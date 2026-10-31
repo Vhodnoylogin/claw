@@ -1,0 +1,19 @@
+SpriggitSource:
+  PackageName: Spriggit.Yaml.Skyrim
+  Version: 0.41
+ModKey: test_CLAWInspectionLighting.esp
+GameRelease: SkyrimSE
+ModHeader:
+  Flags:
+  - Localized
+  Stats:
+    Version: 1.7
+  Author: CLAW test scene
+  Description: Test-only neutral fill lights. No gameplay or body changes.
+  MasterReferences:
+  - Master: Skyrim.esm
+    FileSize: 0
+  - Master: Update.esm
+    FileSize: 0
+  - Master: Dragonborn.esm
+    FileSize: 0

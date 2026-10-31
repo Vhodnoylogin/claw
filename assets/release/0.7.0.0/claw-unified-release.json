@@ -1,0 +1,384 @@
+{
+  "acceptance": {
+    "completeArtisticAcceptance": false,
+    "gameMechanisms": [
+      "SE 1.7.104.0 / SKSE 2.3.1 / HIMBO+3BA"
+    ],
+    "otherDeclaredRuntimes": "Offline coverage only; no new game acceptance",
+    "ownerVisualObservation": "All six comparison presets visibly differ"
+  },
+  "candidateArchiveSha256": "cc6e9ec89065715da422fc0ffb9ffafacb68051ef48e790cbabe615ccbeb7412",
+  "installerPolicy": {
+    "baseOnlyAvailable": false,
+    "calculationProfilesUnchanged": [
+      "HIMBO",
+      "CBBE",
+      "3BA"
+    ],
+    "femaleBaseRequired": "CBBE",
+    "femaleChoices": [
+      "CBBE",
+      "CBBE+3BA"
+    ],
+    "humanLinkageRequired": true,
+    "maleBodyRequired": "HIMBO",
+    "markersProveEffectiveBodyMeshes": false,
+    "recommendedFemale": "3BA when 3BBB.esp is Active; CBBE otherwise",
+    "reinstallOnBodyFamilyChange": true,
+    "requiredActiveMarkers": [
+      "HIMBO.esp",
+      "CBBE.esp",
+      "RaceMenu.esp"
+    ],
+    "threebaRequiresActiveMarker": "3BBB.esp",
+    "vanillaSupported": false
+  },
+  "manifestSelfExcluded": true,
+  "name": "CLAW - Configurable Lycanthrope Anatomy and Weight",
+  "nativeSha256": "e7b238c82428f76cbefb58a322d25d05580519553ab3aa307d7ce6cc080ac3d5",
+  "packagerSha256": "3369480165b4a951925fa0908e3a4584e3f91e4ef4e4136e6e75af656d2416db",
+  "payloads": {
+    "00 Base/CLAW.esp": "cac9d75760dfda81315c760dd6769958eb125958c93e69806855b3073b768739",
+    "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf.tri": "096b0a257d61eb3c64a5ac9af63a442d58867ce9bab6124defc4fc5db85263a9",
+    "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_0.nif": "033c9828661e371d4d9eadbf85202235391ccd31408777e149631d57baafa3ff",
+    "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf.tri": "6ca67487b2ab8138696efe77a86c507fbf61e2fa285557dc062d1b68c799095b",
+    "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_0.nif": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef",
+    "10 Native/SKSE/Plugins/CLAWDistribution.dll": "e7b238c82428f76cbefb58a322d25d05580519553ab3aa307d7ce6cc080ac3d5",
+    "10 Native/Scripts/CLAWDistributionNative.pex": "c43b468a14dd0dcc02ee16c3da9d442f94c545ab95dc30c82de22be91cda32fb",
+    "20 Human Family/HIMBO-and-3BA/SKSE/Plugins/CLAW/MorphLinks.xml": "af734995cfb50d24a6a267d96cfa0a60df0af37669b635910174d6ef2d0f0ac4",
+    "20 Human Family/HIMBO-and-CBBE/SKSE/Plugins/CLAW/MorphLinks.xml": "00f0539c54a3080f501f518df330c001f5a008761aa1a628a1c404f851589696",
+    "30 OBody Source/CLAW - OBody Integration.esp": "3258246f77c1750974bdae25ef51d05e456414343e87d5686030f93ee988108c",
+    "30 OBody Source/Scripts/CLAWOBodySourceHost.pex": "ddfd20791231439d1b46c2dadfe54f8b1a78e64950a52b2eb223f8857fd13dbc",
+    "Docs/expressive-body.md": "7c7791e532e5adb5a2ba0bd71ff7132d1d725e491db2ef42455d0ee37197fa2d",
+    "Docs/matrix-contract.md": "4621be3d439fa80608323a9508751091f8f65e81f99b1253e218d79fed67f084",
+    "Docs/rebuild.md": "f1fda45a57ac8d783a7694a1ae701666fd04aed14c748cd191ee2757b0bf8214",
+    "Docs/universal-runtime.md": "95deeea6173705bc0617357d2eeb37c34751a6af96ca0c6a4c9d28d274be1318",
+    "Docs/verification-20261031.md": "3d25ffd3fc267aa229ed88fe7c5c68f0c19fd3e7de1574441c35f71c842b1460",
+    "NOTICES/CLAW-donor-permission-record.md": "4cd36c887f51ea682cc925a8a6cf88502dd0bf0213f992161275a814d2ca9724",
+    "NOTICES/CORRESPONDING-SOURCE.json": "4aec7b5858d79c6d81c5ecf8f26315938248feef892b480601ec1a97d88e4b07",
+    "NOTICES/CommonLibSSE-NG/COPYING.txt": "72d2f09334f8b87dded94a833ba7da05e5280e77a037ca23b251f96eae4cf719",
+    "NOTICES/CommonLibSSE-NG/EXCEPTIONS.md": "d3a3ec90e21ae118d3653d0834a2f6d1e6d32b773cc185023824992ad4bdcfce",
+    "NOTICES/CommonLibSSE-NG/extern/openvr/LICENSE": "f56ff606104d4ef18e617921a75c73ad73b5a1a1d70c69590c29de16919e04ad",
+    "NOTICES/CommonLibSSE-NG/licenses/LICENSE-MIT.txt": "253d41f9a66509071e71deeafaad01d9cd5e1d0e235f38d988f33d4f54cb0fe2",
+    "NOTICES/CommonLibSSE-NG/licenses/LICENSE-hde64.txt": "f9fdcbff6e0ff5cef66b22742777a34bebc48975c72b6ec874642745af9a36a3",
+    "NOTICES/OBODY-API-NOTICE.md": "65a10ef19c7baef07ad1f8071730b356dabda49c754493a2b8452637ae72e891",
+    "NOTICES/OBody-public-API.h": "42a899e88ba53bcc673d2d8e9513e839f0d661ee1e002514fe3551827a98681d",
+    "NOTICES/SKEE-IPluginInterface.h": "875410dd22230f76a014a6841004e7d346f5fa1c748cfff695f9f495234da277",
+    "NOTICES/SimpleIni/copyright": "1f8d19cba3d929f45f74b8e7cdf84b2fee5b96be69d08d0084ed728316f9f2c2",
+    "NOTICES/directxmath/copyright": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+    "NOTICES/directxtk/copyright": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+    "NOTICES/fmt/copyright": "a65fcc5a1095fc33cc37e4fff69366e49d7e92f613558a2b95ed1b70e33758b4",
+    "NOTICES/nlohmann-json/copyright": "46a65cffd1ea955132d95a8dd921640714a8d6b537d2e4e482d31145ae95b603",
+    "NOTICES/pugixml/LICENSE.md": "0d0b3772af2fa45628a548a3b34583707ebcc68bb6f83ec48ca273aab4a510f1",
+    "NOTICES/rapidcsv/copyright": "8e60b029b7a16c4087af1e8dc695e4412f36f46819aa2fe1ef445e7776e40594",
+    "NOTICES/spdlog/copyright": "d678c20826e1392578508e1c78649a1e3c31bda05ef4388d967dbd654461b140",
+    "NOTICES/toml11/copyright": "b547d41695cdfbc1d054b5044578e476a0e9d756849f1e0cb3864cfc83e50a9e",
+    "NOTICES/xbyak/copyright": "7e411d5c5d38501a504843f58afb6824439c828872b35d2ff1e892e73fd1a30d",
+    "README.md": "7c96a4ff3b0c69614aab3f333088edb853b4eeffaf154986b3023662056045cd",
+    "README.ru.md": "9390e4966c0562b0f213f6b99bbecf54d89c6fca145b20cfe41964c359aaec2f",
+    "Source/CLAW-Corresponding-Source-0.7.0.0.zip": "ba5aee5373de1a6512181fefebe21fc36aa3692f2a72966637bfc76664f67ab9",
+    "fomod/ModuleConfig.xml": "640c285d89cae048de0af2bd6f9eb82e6276ca3e25126b9785bb44ea2c6a53c6",
+    "fomod/info.xml": "93d9f56af90a555df72fddef254f415234157e8cca301a3361e6446569f87263",
+    "recipes/expressive-body-v1.json": "7250f0646de42219fb91a2963c8a347c386f61ec1d3a061f58b877c4be2dc0bb"
+  },
+  "releaseId": "claw-0.7.0.0",
+  "runtimePayloadsModified": false,
+  "schemaVersion": 2,
+  "selections": [
+    {
+      "installedFiles": [
+        {
+          "archivePath": "00 Base/CLAW.esp",
+          "bytes": 810,
+          "path": "CLAW.esp",
+          "sha256": "cac9d75760dfda81315c760dd6769958eb125958c93e69806855b3073b768739"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf.tri",
+          "bytes": 3524525,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf.tri",
+          "sha256": "096b0a257d61eb3c64a5ac9af63a442d58867ce9bab6124defc4fc5db85263a9"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_0.nif",
+          "bytes": 8877676,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_0.nif",
+          "sha256": "033c9828661e371d4d9eadbf85202235391ccd31408777e149631d57baafa3ff"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_0.nif",
+          "bytes": 8877676,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_1.nif",
+          "sha256": "033c9828661e371d4d9eadbf85202235391ccd31408777e149631d57baafa3ff"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf.tri",
+          "bytes": 3506277,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf.tri",
+          "sha256": "6ca67487b2ab8138696efe77a86c507fbf61e2fa285557dc062d1b68c799095b"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_0.nif",
+          "bytes": 8959527,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_0.nif",
+          "sha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_0.nif",
+          "bytes": 8959527,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_1.nif",
+          "sha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef"
+        },
+        {
+          "archivePath": "20 Human Family/HIMBO-and-CBBE/SKSE/Plugins/CLAW/MorphLinks.xml",
+          "bytes": 24663,
+          "path": "SKSE/Plugins/CLAW/MorphLinks.xml",
+          "sha256": "00f0539c54a3080f501f518df330c001f5a008761aa1a628a1c404f851589696"
+        },
+        {
+          "archivePath": "10 Native/SKSE/Plugins/CLAWDistribution.dll",
+          "bytes": 910336,
+          "path": "SKSE/Plugins/CLAWDistribution.dll",
+          "sha256": "e7b238c82428f76cbefb58a322d25d05580519553ab3aa307d7ce6cc080ac3d5"
+        },
+        {
+          "archivePath": "10 Native/Scripts/CLAWDistributionNative.pex",
+          "bytes": 1514,
+          "path": "Scripts/CLAWDistributionNative.pex",
+          "sha256": "c43b468a14dd0dcc02ee16c3da9d442f94c545ab95dc30c82de22be91cda32fb"
+        }
+      ],
+      "runtimeFileCount": 10,
+      "selection": "CBBE"
+    },
+    {
+      "installedFiles": [
+        {
+          "archivePath": "30 OBody Source/CLAW - OBody Integration.esp",
+          "bytes": 441,
+          "path": "CLAW - OBody Integration.esp",
+          "sha256": "3258246f77c1750974bdae25ef51d05e456414343e87d5686030f93ee988108c"
+        },
+        {
+          "archivePath": "00 Base/CLAW.esp",
+          "bytes": 810,
+          "path": "CLAW.esp",
+          "sha256": "cac9d75760dfda81315c760dd6769958eb125958c93e69806855b3073b768739"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf.tri",
+          "bytes": 3524525,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf.tri",
+          "sha256": "096b0a257d61eb3c64a5ac9af63a442d58867ce9bab6124defc4fc5db85263a9"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_0.nif",
+          "bytes": 8877676,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_0.nif",
+          "sha256": "033c9828661e371d4d9eadbf85202235391ccd31408777e149631d57baafa3ff"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_0.nif",
+          "bytes": 8877676,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_1.nif",
+          "sha256": "033c9828661e371d4d9eadbf85202235391ccd31408777e149631d57baafa3ff"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf.tri",
+          "bytes": 3506277,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf.tri",
+          "sha256": "6ca67487b2ab8138696efe77a86c507fbf61e2fa285557dc062d1b68c799095b"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_0.nif",
+          "bytes": 8959527,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_0.nif",
+          "sha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_0.nif",
+          "bytes": 8959527,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_1.nif",
+          "sha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef"
+        },
+        {
+          "archivePath": "20 Human Family/HIMBO-and-CBBE/SKSE/Plugins/CLAW/MorphLinks.xml",
+          "bytes": 24663,
+          "path": "SKSE/Plugins/CLAW/MorphLinks.xml",
+          "sha256": "00f0539c54a3080f501f518df330c001f5a008761aa1a628a1c404f851589696"
+        },
+        {
+          "archivePath": "10 Native/SKSE/Plugins/CLAWDistribution.dll",
+          "bytes": 910336,
+          "path": "SKSE/Plugins/CLAWDistribution.dll",
+          "sha256": "e7b238c82428f76cbefb58a322d25d05580519553ab3aa307d7ce6cc080ac3d5"
+        },
+        {
+          "archivePath": "10 Native/Scripts/CLAWDistributionNative.pex",
+          "bytes": 1514,
+          "path": "Scripts/CLAWDistributionNative.pex",
+          "sha256": "c43b468a14dd0dcc02ee16c3da9d442f94c545ab95dc30c82de22be91cda32fb"
+        },
+        {
+          "archivePath": "30 OBody Source/Scripts/CLAWOBodySourceHost.pex",
+          "bytes": 4017,
+          "path": "Scripts/CLAWOBodySourceHost.pex",
+          "sha256": "ddfd20791231439d1b46c2dadfe54f8b1a78e64950a52b2eb223f8857fd13dbc"
+        }
+      ],
+      "runtimeFileCount": 12,
+      "selection": "CBBE-OBody"
+    },
+    {
+      "installedFiles": [
+        {
+          "archivePath": "00 Base/CLAW.esp",
+          "bytes": 810,
+          "path": "CLAW.esp",
+          "sha256": "cac9d75760dfda81315c760dd6769958eb125958c93e69806855b3073b768739"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf.tri",
+          "bytes": 3524525,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf.tri",
+          "sha256": "096b0a257d61eb3c64a5ac9af63a442d58867ce9bab6124defc4fc5db85263a9"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_0.nif",
+          "bytes": 8877676,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_0.nif",
+          "sha256": "033c9828661e371d4d9eadbf85202235391ccd31408777e149631d57baafa3ff"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_0.nif",
+          "bytes": 8877676,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_1.nif",
+          "sha256": "033c9828661e371d4d9eadbf85202235391ccd31408777e149631d57baafa3ff"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf.tri",
+          "bytes": 3506277,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf.tri",
+          "sha256": "6ca67487b2ab8138696efe77a86c507fbf61e2fa285557dc062d1b68c799095b"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_0.nif",
+          "bytes": 8959527,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_0.nif",
+          "sha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_0.nif",
+          "bytes": 8959527,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_1.nif",
+          "sha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef"
+        },
+        {
+          "archivePath": "20 Human Family/HIMBO-and-3BA/SKSE/Plugins/CLAW/MorphLinks.xml",
+          "bytes": 24661,
+          "path": "SKSE/Plugins/CLAW/MorphLinks.xml",
+          "sha256": "af734995cfb50d24a6a267d96cfa0a60df0af37669b635910174d6ef2d0f0ac4"
+        },
+        {
+          "archivePath": "10 Native/SKSE/Plugins/CLAWDistribution.dll",
+          "bytes": 910336,
+          "path": "SKSE/Plugins/CLAWDistribution.dll",
+          "sha256": "e7b238c82428f76cbefb58a322d25d05580519553ab3aa307d7ce6cc080ac3d5"
+        },
+        {
+          "archivePath": "10 Native/Scripts/CLAWDistributionNative.pex",
+          "bytes": 1514,
+          "path": "Scripts/CLAWDistributionNative.pex",
+          "sha256": "c43b468a14dd0dcc02ee16c3da9d442f94c545ab95dc30c82de22be91cda32fb"
+        }
+      ],
+      "runtimeFileCount": 10,
+      "selection": "3BA"
+    },
+    {
+      "installedFiles": [
+        {
+          "archivePath": "30 OBody Source/CLAW - OBody Integration.esp",
+          "bytes": 441,
+          "path": "CLAW - OBody Integration.esp",
+          "sha256": "3258246f77c1750974bdae25ef51d05e456414343e87d5686030f93ee988108c"
+        },
+        {
+          "archivePath": "00 Base/CLAW.esp",
+          "bytes": 810,
+          "path": "CLAW.esp",
+          "sha256": "cac9d75760dfda81315c760dd6769958eb125958c93e69806855b3073b768739"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf.tri",
+          "bytes": 3524525,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf.tri",
+          "sha256": "096b0a257d61eb3c64a5ac9af63a442d58867ce9bab6124defc4fc5db85263a9"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_0.nif",
+          "bytes": 8877676,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_0.nif",
+          "sha256": "033c9828661e371d4d9eadbf85202235391ccd31408777e149631d57baafa3ff"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_0.nif",
+          "bytes": 8877676,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/femalebodywerewolf_1.nif",
+          "sha256": "033c9828661e371d4d9eadbf85202235391ccd31408777e149631d57baafa3ff"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf.tri",
+          "bytes": 3506277,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf.tri",
+          "sha256": "6ca67487b2ab8138696efe77a86c507fbf61e2fa285557dc062d1b68c799095b"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_0.nif",
+          "bytes": 8959527,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_0.nif",
+          "sha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef"
+        },
+        {
+          "archivePath": "00 Base/Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_0.nif",
+          "bytes": 8959527,
+          "path": "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_1.nif",
+          "sha256": "cff0f62e9c089cf8618e39cb4012be5d9041535d7a101c4242bfb87f8b25b0ef"
+        },
+        {
+          "archivePath": "20 Human Family/HIMBO-and-3BA/SKSE/Plugins/CLAW/MorphLinks.xml",
+          "bytes": 24661,
+          "path": "SKSE/Plugins/CLAW/MorphLinks.xml",
+          "sha256": "af734995cfb50d24a6a267d96cfa0a60df0af37669b635910174d6ef2d0f0ac4"
+        },
+        {
+          "archivePath": "10 Native/SKSE/Plugins/CLAWDistribution.dll",
+          "bytes": 910336,
+          "path": "SKSE/Plugins/CLAWDistribution.dll",
+          "sha256": "e7b238c82428f76cbefb58a322d25d05580519553ab3aa307d7ce6cc080ac3d5"
+        },
+        {
+          "archivePath": "10 Native/Scripts/CLAWDistributionNative.pex",
+          "bytes": 1514,
+          "path": "Scripts/CLAWDistributionNative.pex",
+          "sha256": "c43b468a14dd0dcc02ee16c3da9d442f94c545ab95dc30c82de22be91cda32fb"
+        },
+        {
+          "archivePath": "30 OBody Source/Scripts/CLAWOBodySourceHost.pex",
+          "bytes": 4017,
+          "path": "Scripts/CLAWOBodySourceHost.pex",
+          "sha256": "ddfd20791231439d1b46c2dadfe54f8b1a78e64950a52b2eb223f8857fd13dbc"
+        }
+      ],
+      "runtimeFileCount": 12,
+      "selection": "3BA-OBody"
+    }
+  ],
+  "transportDeduplication": {
+    "installedNifDestinations": 4,
+    "nifSources": 2,
+    "requiredBaseUsesExplicitFileMappings": true
+  },
+  "version": "0.7.0.0",
+  "versionScope": "Installer/product release; retained runtime files are not relabelled or rebuilt"
+}

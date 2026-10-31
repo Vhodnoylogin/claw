@@ -38,6 +38,10 @@
 *.wav   filter=lfs diff=lfs merge=lfs -text
 *.fuz   filter=lfs diff=lfs merge=lfs -text
 *.xwm   filter=lfs diff=lfs merge=lfs -text
+*.jpg   filter=lfs diff=lfs merge=lfs -text
+*.jpeg  filter=lfs diff=lfs merge=lfs -text
+*.png   filter=lfs diff=lfs merge=lfs -text
+*.webp  filter=lfs diff=lfs merge=lfs -text
 
 # --- Архивы ---
 *.7z    filter=lfs diff=lfs merge=lfs -text
@@ -53,6 +57,19 @@
 
 # Preserve exact tested release payload bytes, including upstream notices.
 assets/release/se-core-20261030/** -text -whitespace
+assets/release/0.7.0.0/** -text -whitespace
+release/nexus/0.7.0.0/** text eol=lf
+release/media/0.7.0.0/*.json text eol=lf
+scripts/build-working-release.py text eol=lf
+scripts/build-unified-release.py text eol=lf
+release/working-installer/** text eol=lf
+test/**/*.py text eol=lf
+test/**/*.md text eol=lf
+test/**/*.json text eol=lf
+test/**/*.xml text eol=lf
+test/**/*.ini text eol=lf
+test/**/*.yaml text eol=lf
+test/data/** -whitespace
 
 # Keep addon source and its fingerprinted mapping identical after Windows checkouts.
 distribution/profiles/MorphLinks.xml text eol=lf

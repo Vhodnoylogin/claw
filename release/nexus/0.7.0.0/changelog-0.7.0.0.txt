@@ -1,0 +1,8 @@
+Added native human-to-werewolf body morph linkage for male and female actors.
+Added OBody source integration for eligible werewolves first encountered directly in beast form.
+Added stronger lean and growth morph fields for clearer thin, athletic and heavy body variation.
+Updated body geometry with reproducible female breast/axilla and male collar repairs; further shape and seam refinements remain planned.
+Added editable coefficient/function conversion matrices with HIMBO, CBBE and CBBE 3BA mappings.
+Combined the working resources and linkage into one FOMOD installer with required human-body choices and plugin-marker recommendations.
+Included one CommonLib-based DLL for the declared SE/AE/VR load boundaries; actual game verification for this release was performed in Skyrim SE 1.7.104.0 / SKSE 2.3.1.
+Added matching native source and rebuild instructions to the download.

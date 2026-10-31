@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "kind": "operator intent contract; not executable console commands or a testing-tool implementation",
+  "scene": "scene.json",
+  "groups": {
+    "pairs": {
+      "initiallyVisible": true,
+      "placementSource": "scene.json#placements",
+      "members": "All twelve placement tags in scene.json",
+      "appearance": "Each pair starts as visually identical human twins with the same base, face, hair, skin, sex, scale, weight and complete keyed human morph vector. Only the Wolf member transforms after equality is verified."
+    },
+    "wild": {
+      "initiallyVisible": false,
+      "createOnlyOnExplicitCommand": true,
+      "hideOtherGroupBeforeShowing": "pairs",
+      "placementPolicy": "Reuse the corresponding six Wolf placement slots from scene.json after hiding the paired group. Keep its absolute room anchor and sex-specific baseline headings.",
+      "members": [
+        {"tag":"WildMThin","name":"Sever","spokenName":"Север","sex":"male","localFormId":"000800","preset":"CLAW Human Contrast - Male Slim","placementTag":"MThinWolf"},
+        {"tag":"WildMMuscular","name":"Klyk","spokenName":"Клык","sex":"male","localFormId":"000801","preset":"CLAW Human Contrast - Male Muscular","placementTag":"MMuscularWolf"},
+        {"tag":"WildMHeavy","name":"Buryi","spokenName":"Бурый","sex":"male","localFormId":"000802","preset":"CLAW Human Contrast - Male Heavy","placementTag":"MHeavyWolf"},
+        {"tag":"WildFThin","name":"Luna","spokenName":"Луна","sex":"female","localFormId":"000803","preset":"CLAW Human Contrast - Female Slim","placementTag":"FThinWolf"},
+        {"tag":"WildFMuscular","name":"Vyuga","spokenName":"Вьюга","sex":"female","localFormId":"000804","preset":"CLAW Human Contrast - Female Muscular","placementTag":"FMuscularWolf"},
+        {"tag":"WildFHeavy","name":"Tucha","spokenName":"Туча","sex":"female","localFormId":"000805","preset":"CLAW Human Contrast - Female Heavy","placementTag":"FHeavyWolf"}
+      ],
+      "plugin": "test_CLAW - Wild Preset Fixture.esp",
+      "sourcePolicy": "These actors are born as WerewolfBeastRace. Let the real OBody source integration obtain ordinary human preset coefficients without a tester-assigned preset, temporary human transformation or separate wolf-shape preset."
+    }
+  },
+  "groupOperations": {
+    "show pairs": "Hide only this run's wild group, then create or re-enable the registered paired group; never duplicate an existing group.",
+    "hide pairs": "Disable only references created and owned by the current run. Retain the registry, identity and preset state; do not delete NPC bases or unrelated actors.",
+    "show wild": "Hide only this run's paired group, then create or re-enable the registered wild group. First creation requires this explicit command.",
+    "hide wild": "Disable only this run's wild references and preserve their registry; a later show reuses them without a reroll."
+  },
+  "rotationViews": [
+    {"id":"baseline","offsetDegrees":0,"maleHeadingDegrees":90,"femaleHeadingDegrees":270},
+    {"id":"quarter-turn","offsetDegrees":90,"maleHeadingDegrees":180,"femaleHeadingDegrees":0},
+    {"id":"half-turn","offsetDegrees":180,"maleHeadingDegrees":270,"femaleHeadingDegrees":90},
+    {"id":"three-quarter-turn","offsetDegrees":270,"maleHeadingDegrees":0,"femaleHeadingDegrees":180}
+  ],
+  "rotationPolicy": {
+    "operation": "Rotate both members of each requested pair by the same relative angle; preserve every position, scale, preset, weight, AI state and collision state.",
+    "relativeRequests": "For a request such as rotate all by 90 degrees, first read current headings and add 90 modulo 360 exactly once. Do not replay an uncertain operation.",
+    "absoluteViewRequests": "For a named rotation view, add its offset to the recorded baseline heading, not to the previous view. The scene.json baseline is immutable.",
+    "verification": "Read actual current-run reference incarnations and headings after native completion; do not infer applied orientation from a queued call."
+  },
+  "controlPolicy": {
+    "preferredChannel": "The existing qualified DevBench/session channel; use console commands through it only when the current frozen session admits them.",
+    "beforeAnySpawn": "Establish actual AI Off and collision Off. TAI and TCL are toggles: capture their actual result and never blindly repeat them.",
+    "movement": "Apply the tool's explicit locomotion hold to each owned actor and verify two stable position samples after placement and race changes.",
+    "scope": "Never silently extend the session allowlist, replace the executor, open a second game or change an installation during a manual session."
+  }
+}

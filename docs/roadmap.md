@@ -57,6 +57,16 @@ on a separate branch; this does not publish another Nexus version.
 
 ## Post-release backlog
 
+**Vanilla human bodies (deferred by the owner on31October2026):** add explicit
+male/female vanilla conversion profiles using actually available vanilla inputs,
+primarily actor weight. Do not invent HIMBO/CBBE body morphs for a vanilla mesh.
+Qualify neutral and weight-extreme results in game before exposing these choices.
+The nearest release requires HIMBO for males and CBBE or3BA for females; its
+installer checks enabled plugin markers and recommends a family, which is not
+runtime detection of the winning NIF/TRI. Changing the installed body family
+requires reinstalling the matching conversion data and explicit adoption for
+existing actor states; saved/custom matrices must not be silently overwritten.
+
 1. **Abdomen:** transfer the roundness of the human belly more faithfully to the
    wolf. Improve the abdomen field and conversion together, judging contour and
    silhouette rather than only a larger numeric coefficient.

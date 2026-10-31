@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "release": "0.7.0.0",
+  "snapshotDate": "2026-10-31",
+  "purpose": "Portable nonshipping test inputs; source filenames retained without host paths",
+  "files": [
+    {
+      "path": "data/CLAW-Human-Contrast.xml",
+      "bytes": 100879,
+      "sha256": "94ea18847dc87fc94b66b270b3fafa8122249e5c6008a7d6b02d14565ed8e7f7",
+      "sourceRole": "repository human preset fixture",
+      "lfNormalizedSha256": "94ea18847dc87fc94b66b270b3fafa8122249e5c6008a7d6b02d14565ed8e7f7"
+    },
+    {
+      "path": "data/OBody_presetDistributionConfig.json",
+      "bytes": 11482,
+      "sha256": "d1850b90794d4e0b87e48653afd67d2ddacfb03a4c135ef28c47f8fb3b43f8a2",
+      "sourceRole": "retained 31 October inspection source/configuration",
+      "lfNormalizedSha256": "3eb6a2cb15db1aadf2eca374fe1600b87ee3936dc7877f96b7e0ecf7fd2f3907"
+    },
+    {
+      "path": "data/skee64.ini",
+      "bytes": 7254,
+      "sha256": "8871b4ec7ba41bb075cf9c6a5502e02acf70df78574c0b9655d87f77cd107190",
+      "sourceRole": "retained 31 October inspection source/configuration",
+      "lfNormalizedSha256": "c463e8e1d0b2198b87fae1810a121fa2a3cb616d445b9d91fe1ad4e91bfd024d"
+    },
+    {
+      "path": "data/SKSEMenuFramework.ini",
+      "bytes": 1097,
+      "sha256": "5838a1697d051a8786280680c345135229142a828b964815548e46050d0f0044",
+      "sourceRole": "retained 31 October inspection source/configuration",
+      "lfNormalizedSha256": "f4a06615d400ecb773b43f83684c472070ae35492a4840fa545a04e2bf364b83"
+    },
+    {
+      "path": "lighting/build_lighting.py",
+      "bytes": 11049,
+      "sha256": "2e705f597ec99f201e5746bf9eaf2e42674f925cf7bcdae47f98a5c5efc6c828",
+      "sourceRole": "retained 31 October inspection source/configuration",
+      "lfNormalizedSha256": "2e705f597ec99f201e5746bf9eaf2e42674f925cf7bcdae47f98a5c5efc6c828"
+    },
+    {
+      "path": "lighting/verify_lighting.py",
+      "bytes": 2925,
+      "sha256": "e220fd53b748bbd3b1571406bac48faf026ff683d18e01e8603d574c1b139d7b",
+      "sourceRole": "retained 31 October inspection source/configuration",
+      "lfNormalizedSha256": "e220fd53b748bbd3b1571406bac48faf026ff683d18e01e8603d574c1b139d7b"
+    },
+    {
+      "path": "lighting/source/RecordData.yaml",
+      "bytes": 451,
+      "sha256": "410ee25c80c35f9bd0542178f6a5fc375c8536b26208608601ff382cb9dbce23",
+      "sourceRole": "retained 31 October inspection source/configuration",
+      "lfNormalizedSha256": "590c8618e7dacc231167c2e0759ac200fb2a02c343574667112d98d571640927"
+    },
+    {
+      "path": "lighting/source/Cells/GroupRecordData.yaml",
+      "bytes": 4,
+      "sha256": "e3566b3a06430868d71e9287dfd6c6c520a3da027aabea01951d407ee131dc2f",
+      "sourceRole": "retained 31 October inspection source/configuration",
+      "lfNormalizedSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "path": "lighting/source/Lights/test_CLAWInspectionNeutralFill - 000800_test_CLAWInspectionLighting.esp.yaml",
+      "bytes": 190,
+      "sha256": "440cfdffd4f4cc2a7b0c3501c90c0bd9f2b2aab80d8614fd133f91cc1e032306",
+      "sourceRole": "retained 31 October inspection source/configuration",
+      "lfNormalizedSha256": "c83b97be9db62d6e5dc40ea2271099f93ffc1d54876cf278503f1784b06644af"
+    },
+    {
+      "path": "lighting/source/Cells/1/GroupRecordData.yaml",
+      "bytes": 46,
+      "sha256": "782b85679e845d0ae010de12e83df594d969dbb60cbab4af59ff976c9e165c00",
+      "sourceRole": "retained 31 October inspection source/configuration",
+      "lfNormalizedSha256": "3241f7686ae4ebd9224acb23f51b8398e31496931f5c5253cb5eaa72d8f601c2"
+    },
+    {
+      "path": "lighting/source/Cells/1/9/GroupRecordData.yaml",
+      "bytes": 49,
+      "sha256": "e43de70e0b91edded47af16751f10a1cabf1c7290d9883e92b03d16e5a24d3b2",
+      "sourceRole": "retained 31 October inspection source/configuration",
+      "lfNormalizedSha256": "15d51ef8bba103e8420567d078bcb019fab889bded14f84f4069107db38f5c92"
+    },
+    {
+      "path": "lighting/source/Cells/1/9/QASmoke - 032AE7_Skyrim.esm/RecordData.yaml",
+      "bytes": 2177,
+      "sha256": "f0467d86bd485b3f585675e3816ff732cfefc0f285e22bda4fdab721fa361f0a",
+      "sourceRole": "retained 31 October inspection source/configuration",
+      "lfNormalizedSha256": "11ed66407fbac534ad3f1d6b627b5ea7b4ba42c8174423ae8ade0fe8e1534afd"
+    }
+  ],
+  "noSavedReferencesOrCredentials": true,
+  "notInstalledOrRunByThisSnapshot": true,
+  "newlinePolicy": "Original snapshot bytes retained; LF-normalized hashes also allow text checkout line-ending conversion."
+}

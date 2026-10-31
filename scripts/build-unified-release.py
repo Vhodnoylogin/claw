@@ -83,14 +83,17 @@ def plugin_type(plugin, game_version, active, flags):
 
 
 def resolve_selection(config, archive_paths, game_version="1.7.104.0", racemenu=True,
-                      obody=True, native=False, family=None, host=False):
+                      obody=True, native=False, family=None, host=False,
+                      additional_active=()):
     """Evaluate the shipped XML's reviewed subset, returning installed destinations.
 
     Four-component minimum-version and first-matching-pattern semantics match
     the pinned local primary installer implementation. This is offline readback,
     not execution of MO2 or a claim about other installers.
+    additional_active supplies explicit plugin-marker fixtures for newer FOMODs;
+    the frozen installer uses the original empty default.
     """
-    active = ({"RaceMenu.esp"} if racemenu else set()) | ({"OBody.esp"} if obody else set())
+    active = ({"RaceMenu.esp"} if racemenu else set()) | ({"OBody.esp"} if obody else set()) | set(additional_active)
     if family not in (None, "CBBE", "3BA"): raise ValueError("Unknown human resource family")
     if not native and (family is not None or host): raise ValueError("Family/host requires selected native linkage")
     if native and family is None: raise ValueError("Native linkage requires one human family")

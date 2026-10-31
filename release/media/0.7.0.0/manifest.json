@@ -1,0 +1,114 @@
+{
+  "releaseVersion": "0.7.0.0",
+  "editor": "Nexus native interactive comparison; no collages",
+  "comparisons": [
+    {
+      "id": "male-front",
+      "title": "Male: slim and athletic human presets",
+      "before": "20261031131430_1.jpg",
+      "after": "20261031131424_1.jpg",
+      "beforeLabel": "Slim",
+      "afterLabel": "Athletic",
+      "caption": "Human and corresponding werewolf shown together. Different characters and camera positions; not a registered overlay."
+    },
+    {
+      "id": "male-side",
+      "title": "Male profile: slim and athletic human presets",
+      "before": "20261031131800_1.jpg",
+      "after": "20261031131757_1.jpg",
+      "beforeLabel": "Slim",
+      "afterLabel": "Athletic",
+      "caption": "Human and corresponding werewolf shown together. Different characters and camera positions; not a registered overlay."
+    },
+    {
+      "id": "female-front",
+      "title": "Female: slim and athletic human presets",
+      "before": "20261031131441_1.jpg",
+      "after": "20261031131446_1.jpg",
+      "beforeLabel": "Slim",
+      "afterLabel": "Athletic",
+      "caption": "Human and corresponding werewolf shown together. Different characters and camera positions; not a registered overlay."
+    },
+    {
+      "id": "female-side",
+      "title": "Female profile: slim and athletic human presets",
+      "before": "20261031131806_1.jpg",
+      "after": "20261031131810_1.jpg",
+      "beforeLabel": "Slim",
+      "afterLabel": "Athletic",
+      "caption": "Human and corresponding werewolf shown together. Different characters and camera positions; not a registered overlay."
+    }
+  ],
+  "photos": [
+    {
+      "file": "20261031131748_1.jpg",
+      "title": "Grom: heavy human preset and corresponding werewolf, profile"
+    },
+    {
+      "file": "20261031131818_1.jpg",
+      "title": "Runa: heavy human preset and corresponding werewolf, profile"
+    }
+  ],
+  "files": [
+    {
+      "file": "20261031131424_1.jpg",
+      "bytes": 3030547,
+      "sha256": "3d182e5300f7d8ed89f8891d3ae51b5b9657cc4a62e03d55cc4498cd74c084e1",
+      "source": "Unretouched Skyrim SE capture, 31 October 2026"
+    },
+    {
+      "file": "20261031131430_1.jpg",
+      "bytes": 2829180,
+      "sha256": "b1a9e7beb56edb41e69e0edeb4a0059b67f841b470e55cf565021d501e3bced6",
+      "source": "Unretouched Skyrim SE capture, 31 October 2026"
+    },
+    {
+      "file": "20261031131441_1.jpg",
+      "bytes": 1772922,
+      "sha256": "e59ebdb608f86cf50c72caaa86b00adfc6e2eef7173313fd755cc4938e866c1e",
+      "source": "Unretouched Skyrim SE capture, 31 October 2026"
+    },
+    {
+      "file": "20261031131446_1.jpg",
+      "bytes": 1823659,
+      "sha256": "4089a45eea399ff4629786e87f5388c3148ea72aecee029bd908dd576d513b3f",
+      "source": "Unretouched Skyrim SE capture, 31 October 2026"
+    },
+    {
+      "file": "20261031131748_1.jpg",
+      "bytes": 2857215,
+      "sha256": "b6a75389b1418fadf6cd12400963caedc60ccae894126be927e85837976dd807",
+      "source": "Unretouched Skyrim SE capture, 31 October 2026"
+    },
+    {
+      "file": "20261031131757_1.jpg",
+      "bytes": 2858934,
+      "sha256": "3a57d3d9d982bca0014c1b2069cb5e1a9a17bb3f13fd308862c87d0cc8decd66",
+      "source": "Unretouched Skyrim SE capture, 31 October 2026"
+    },
+    {
+      "file": "20261031131800_1.jpg",
+      "bytes": 2713243,
+      "sha256": "1f83574d00ac10c9d72f1ceb703bf161c3103e7346c9d6aa347851814f4ecbf0",
+      "source": "Unretouched Skyrim SE capture, 31 October 2026"
+    },
+    {
+      "file": "20261031131806_1.jpg",
+      "bytes": 1865371,
+      "sha256": "f87c1fed26ac2c9a387fbcdc346d88eb572ab7ef73270efd91538f0366d96c70",
+      "source": "Unretouched Skyrim SE capture, 31 October 2026"
+    },
+    {
+      "file": "20261031131810_1.jpg",
+      "bytes": 1885054,
+      "sha256": "a07e28e8e5b4ccdbb4d02612e335c5b4bd49958b41d1a5d7b313046195a30794",
+      "source": "Unretouched Skyrim SE capture, 31 October 2026"
+    },
+    {
+      "file": "20261031131818_1.jpg",
+      "bytes": 1988206,
+      "sha256": "7919b2d4ce0de8600eb518706592b675315769959a9bba73cd1851182c000821",
+      "source": "Unretouched Skyrim SE capture, 31 October 2026"
+    }
+  ]
+}

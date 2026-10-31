@@ -1,0 +1,371 @@
+{
+  "anchor": {
+    "localFormId": "02A1B9",
+    "plugin": "Dragonborn.esm",
+    "position": [
+      -2633.919189453125,
+      1521.9630126953125,
+      6976.0
+    ]
+  },
+  "appearancePolicy": "Both pair members start from the same human NPC base, face/hair/skin/body family, scale, weight and complete keyed OBody source vector; verify equality before transforming only the Wolf member.",
+  "automaticSpawn": false,
+  "beforeAnyFixtureCreation": {
+    "globalAIEnabled": false,
+    "globalCollisionEnabled": false,
+    "verification": "Capture actual global states before first spawn. TAI/TCL are toggles: do not blindly replay them."
+  },
+  "cell": {
+    "editorId": "QASmoke",
+    "localFormId": "032AE7",
+    "plugin": "Skyrim.esm"
+  },
+  "freshReferencesRequired": true,
+  "kind": "portable owner-accepted paired inspection configuration; not a saved scene",
+  "optionalWildGroup": "Six initially-beast plugin bases are separate optional fixtures; install spawns nothing. Add only on an explicit operator command, not while creating the twelve paired humans.",
+  "pairPitchGameUnits": 300,
+  "pairSeparationGameUnits": 110,
+  "placementPolicy": "Use absolute QASmoke/marker anchors, never current player position. Preserve measured individual floor heights; verify all final positions/headings after race changes with two stable reads.",
+  "placements": [
+    {
+      "headingDegrees": 90,
+      "humanPreset": "CLAW Human Contrast - Male Slim",
+      "initialNpcBase": {
+        "localFormId": "013475",
+        "plugin": "Skyrim.esm"
+      },
+      "initiallyHuman": true,
+      "name": "Iney Human",
+      "pairType": "MThin",
+      "position": [
+        -2697.94482421875,
+        1945.9998779296875,
+        6976.4501953125
+      ],
+      "presetClass": "Slim",
+      "role": "human",
+      "roomMarkerOffset": [
+        -64.025634765625,
+        424.036865234375,
+        0.4501953125
+      ],
+      "sex": "male",
+      "spokenName": "Иней человек",
+      "tag": "MThinHuman",
+      "transformAfterSourceEqualityCheck": false
+    },
+    {
+      "headingDegrees": 90,
+      "humanPreset": "CLAW Human Contrast - Male Slim",
+      "initialNpcBase": {
+        "localFormId": "013475",
+        "plugin": "Skyrim.esm"
+      },
+      "initiallyHuman": true,
+      "name": "Iney Wolf",
+      "pairType": "MThin",
+      "position": [
+        -2697.94482421875,
+        1836.0,
+        6976.4501953125
+      ],
+      "presetClass": "Slim",
+      "role": "wolf",
+      "roomMarkerOffset": [
+        -64.025634765625,
+        314.0369873046875,
+        0.4501953125
+      ],
+      "sex": "male",
+      "spokenName": "Иней волк",
+      "tag": "MThinWolf",
+      "transformAfterSourceEqualityCheck": true
+    },
+    {
+      "headingDegrees": 90,
+      "humanPreset": "CLAW Human Contrast - Male Muscular",
+      "initialNpcBase": {
+        "localFormId": "01347D",
+        "plugin": "Skyrim.esm"
+      },
+      "initiallyHuman": true,
+      "name": "Kedr Human",
+      "pairType": "MMuscular",
+      "position": [
+        -2697.94482421875,
+        1646.0,
+        6976.09912109375
+      ],
+      "presetClass": "Muscular",
+      "role": "human",
+      "roomMarkerOffset": [
+        -64.025634765625,
+        124.0369873046875,
+        0.09912109375
+      ],
+      "sex": "male",
+      "spokenName": "Кедр человек",
+      "tag": "MMuscularHuman",
+      "transformAfterSourceEqualityCheck": false
+    },
+    {
+      "headingDegrees": 90,
+      "humanPreset": "CLAW Human Contrast - Male Muscular",
+      "initialNpcBase": {
+        "localFormId": "01347D",
+        "plugin": "Skyrim.esm"
+      },
+      "initiallyHuman": true,
+      "name": "Kedr Wolf",
+      "pairType": "MMuscular",
+      "position": [
+        -2697.94482421875,
+        1536.0,
+        6976.4501953125
+      ],
+      "presetClass": "Muscular",
+      "role": "wolf",
+      "roomMarkerOffset": [
+        -64.025634765625,
+        14.0369873046875,
+        0.4501953125
+      ],
+      "sex": "male",
+      "spokenName": "Кедр волк",
+      "tag": "MMuscularWolf",
+      "transformAfterSourceEqualityCheck": true
+    },
+    {
+      "headingDegrees": 90,
+      "humanPreset": "CLAW Human Contrast - Male Heavy",
+      "initialNpcBase": {
+        "localFormId": "0A2C90",
+        "plugin": "Skyrim.esm"
+      },
+      "initiallyHuman": true,
+      "name": "Grom Human",
+      "pairType": "MHeavy",
+      "position": [
+        -2697.94482421875,
+        1345.9998779296875,
+        6976.4501953125
+      ],
+      "presetClass": "Heavy",
+      "role": "human",
+      "roomMarkerOffset": [
+        -64.025634765625,
+        -175.963134765625,
+        0.4501953125
+      ],
+      "sex": "male",
+      "spokenName": "Гром человек",
+      "tag": "MHeavyHuman",
+      "transformAfterSourceEqualityCheck": false
+    },
+    {
+      "headingDegrees": 90,
+      "humanPreset": "CLAW Human Contrast - Male Heavy",
+      "initialNpcBase": {
+        "localFormId": "0A2C90",
+        "plugin": "Skyrim.esm"
+      },
+      "initiallyHuman": true,
+      "name": "Grom Wolf",
+      "pairType": "MHeavy",
+      "position": [
+        -2697.94482421875,
+        1236.0,
+        6976.4501953125
+      ],
+      "presetClass": "Heavy",
+      "role": "wolf",
+      "roomMarkerOffset": [
+        -64.025634765625,
+        -285.9630126953125,
+        0.4501953125
+      ],
+      "sex": "male",
+      "spokenName": "Гром волк",
+      "tag": "MHeavyWolf",
+      "transformAfterSourceEqualityCheck": true
+    },
+    {
+      "headingDegrees": 270,
+      "humanPreset": "CLAW Human Contrast - Female Slim",
+      "initialNpcBase": {
+        "localFormId": "0A2C8E",
+        "plugin": "Skyrim.esm"
+      },
+      "initiallyHuman": true,
+      "name": "Lada Human",
+      "pairType": "FThin",
+      "position": [
+        -2377.94482421875,
+        1726.0,
+        6976.0986328125
+      ],
+      "presetClass": "Slim",
+      "role": "human",
+      "roomMarkerOffset": [
+        255.974365234375,
+        204.0369873046875,
+        0.0986328125
+      ],
+      "sex": "female",
+      "spokenName": "Лада человек",
+      "tag": "FThinHuman",
+      "transformAfterSourceEqualityCheck": false
+    },
+    {
+      "headingDegrees": 270,
+      "humanPreset": "CLAW Human Contrast - Female Slim",
+      "initialNpcBase": {
+        "localFormId": "0A2C8E",
+        "plugin": "Skyrim.esm"
+      },
+      "initiallyHuman": true,
+      "name": "Lada Wolf",
+      "pairType": "FThin",
+      "position": [
+        -2377.94482421875,
+        1836.0,
+        6976.4501953125
+      ],
+      "presetClass": "Slim",
+      "role": "wolf",
+      "roomMarkerOffset": [
+        255.974365234375,
+        314.0369873046875,
+        0.4501953125
+      ],
+      "sex": "female",
+      "spokenName": "Лада волк",
+      "tag": "FThinWolf",
+      "transformAfterSourceEqualityCheck": true
+    },
+    {
+      "headingDegrees": 270,
+      "humanPreset": "CLAW Human Contrast - Female Muscular",
+      "initialNpcBase": {
+        "localFormId": "0A2C8F",
+        "plugin": "Skyrim.esm"
+      },
+      "initiallyHuman": true,
+      "name": "Mira Human",
+      "pairType": "FMuscular",
+      "position": [
+        -2377.94482421875,
+        1425.9998779296875,
+        6976.4501953125
+      ],
+      "presetClass": "Muscular",
+      "role": "human",
+      "roomMarkerOffset": [
+        255.974365234375,
+        -95.963134765625,
+        0.4501953125
+      ],
+      "sex": "female",
+      "spokenName": "Мира человек",
+      "tag": "FMuscularHuman",
+      "transformAfterSourceEqualityCheck": false
+    },
+    {
+      "headingDegrees": 270,
+      "humanPreset": "CLAW Human Contrast - Female Muscular",
+      "initialNpcBase": {
+        "localFormId": "0A2C8F",
+        "plugin": "Skyrim.esm"
+      },
+      "initiallyHuman": true,
+      "name": "Mira Wolf",
+      "pairType": "FMuscular",
+      "position": [
+        -2377.94482421875,
+        1536.0,
+        6976.4501953125
+      ],
+      "presetClass": "Muscular",
+      "role": "wolf",
+      "roomMarkerOffset": [
+        255.974365234375,
+        14.0369873046875,
+        0.4501953125
+      ],
+      "sex": "female",
+      "spokenName": "Мира волк",
+      "tag": "FMuscularWolf",
+      "transformAfterSourceEqualityCheck": true
+    },
+    {
+      "headingDegrees": 270,
+      "humanPreset": "CLAW Human Contrast - Female Heavy",
+      "initialNpcBase": {
+        "localFormId": "0A2C91",
+        "plugin": "Skyrim.esm"
+      },
+      "initiallyHuman": true,
+      "name": "Runa Human",
+      "pairType": "FHeavy",
+      "position": [
+        -2377.94482421875,
+        1126.0,
+        6976.4501953125
+      ],
+      "presetClass": "Heavy",
+      "role": "human",
+      "roomMarkerOffset": [
+        255.974365234375,
+        -395.9630126953125,
+        0.4501953125
+      ],
+      "sex": "female",
+      "spokenName": "Руна человек",
+      "tag": "FHeavyHuman",
+      "transformAfterSourceEqualityCheck": false
+    },
+    {
+      "headingDegrees": 270,
+      "humanPreset": "CLAW Human Contrast - Female Heavy",
+      "initialNpcBase": {
+        "localFormId": "0A2C91",
+        "plugin": "Skyrim.esm"
+      },
+      "initiallyHuman": true,
+      "name": "Runa Wolf",
+      "pairType": "FHeavy",
+      "position": [
+        -2377.94482421875,
+        1236.0,
+        6976.4501953125
+      ],
+      "presetClass": "Heavy",
+      "role": "wolf",
+      "roomMarkerOffset": [
+        255.974365234375,
+        -285.9630126953125,
+        0.4501953125
+      ],
+      "sex": "female",
+      "spokenName": "Руна волк",
+      "tag": "FHeavyWolf",
+      "transformAfterSourceEqualityCheck": true
+    }
+  ],
+  "playerPreparation": {
+    "headingDegrees": 90,
+    "playerPreparationPosition": [
+      -2750,
+      1536,
+      6976.447754
+    ]
+  },
+  "rowSeparationGameUnits": 320,
+  "schemaVersion": 1,
+  "initialVisibility": {
+    "pairs": true,
+    "wild": false
+  },
+  "rotationViews": "commands.json#rotationViews",
+  "testDataOnly": true
+}
