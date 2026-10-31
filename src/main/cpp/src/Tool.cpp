@@ -23,12 +23,12 @@ int main(int argc, char** argv) {
             const auto name = line.substr(0, delimiter), text = line.substr(delimiter + 1);
             float value{};
             const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
-            if (!claw::morphLinkIdentifier(name) || name.starts_with("CLAW") || error != std::errc{} ||
-                end != text.data() + text.size() || !std::isfinite(value) || !human.emplace(name, value).second) return 2;
+            if (!claw::morphNameIdentifier(name) || error != std::errc{} ||
+                end != text.data() + text.size() || !std::isfinite(value) || !human.emplace(claw::morphProviderIdentity(name), value).second) return 2;
         }
         auto link = profile->link;
         try {
-            link.capture([&](std::string_view source) { const auto found = human.find(source); return found == human.end() ? 0.F : found->second; });
+            link.capture([&](std::string_view source) { const auto found = human.find(claw::morphProviderIdentity(source)); return found == human.end() ? 0.F : found->second; });
             const auto morphs = link.compose(profile->sex);
             std::cout << std::setprecision(std::numeric_limits<float>::max_digits10) << '{'; bool first = true;
             for (const auto& [target, value] : morphs) { if (!first) std::cout << ','; first = false; std::cout << claw::jsonString(target) << ':' << value; }

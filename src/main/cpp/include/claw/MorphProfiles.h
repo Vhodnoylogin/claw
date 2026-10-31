@@ -92,7 +92,8 @@ public:
                     profile.link.rules.push_back(std::move(edge));
                 }
             } catch (const std::invalid_argument&) { return fail("Invalid family coefficient"); }
-            if (!profile.link.valid(profile.sex)) return fail("Family mapping violates MorphLink contract");
+            std::string reason;
+            if (!profile.link.canonicalize(profile.sex, &reason)) return fail("Family mapping violates MorphLink contract: " + reason);
             const auto key = profile.id;
             if (!staged.emplace(key, std::move(profile)).second || staged.size() > 64)
                 return fail("Duplicate family id or excessive catalog");
@@ -134,9 +135,47 @@ private:
     static float number(std::string_view text) {
         float result{};
         const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), result);
+        if (!text.empty() && end == text.data() + text.size() && error == std::errc::result_out_of_range) {
+            // from_chars reports both overflow and underflow as out_of_range.
+            // Keep its original float32 rounding/syntax for ordinary inputs,
+            // but normalize a finite decimal too small for float32 to signed0.
+            double wide{};
+            const auto [wideEnd, wideError] = std::from_chars(text.data(), text.data() + text.size(), wide);
+            if (wideEnd == text.data() + text.size() &&
+                ((wideError == std::errc{} && std::isfinite(wide) && wide > -1 && wide < 1) ||
+                 (wideError == std::errc::result_out_of_range && negativeDecimalMagnitude(text))))
+                return text.front() == '-' ? -0.F : 0.F;
+        }
         if (text.empty() || end != text.data() + text.size() || error != std::errc{} || !std::isfinite(result))
             throw std::invalid_argument("Invalid finite family coefficient");
         return result;
+    }
+    // Called only after from_chars consumed a syntactically complete decimal.
+    // A range error with decimal magnitude below0 is underflow, never overflow.
+    // Saturating the textual exponent avoids integer overflow on hostile input;
+    // its bound dominates every possible significand offset within this file.
+    static bool negativeDecimalMagnitude(std::string_view text) {
+        if (text.front() == '-') text.remove_prefix(1);
+        const auto e = text.find_first_of("eE");
+        const auto mantissa = text.substr(0, e);
+        const auto point = mantissa.find('.');
+        const auto beforePoint = point == mantissa.npos ? mantissa.size() : point;
+        std::int64_t digit{}, first = -1;
+        for (const char ch : mantissa) if (ch != '.') {
+            if (ch != '0' && first < 0) first = digit;
+            ++digit;
+        }
+        if (first < 0) return true;
+        std::int64_t exponent{};
+        if (e != text.npos) {
+            auto value = text.substr(e + 1);
+            const bool negative = value.front() == '-';
+            if (value.front() == '-' || value.front() == '+') value.remove_prefix(1);
+            const auto bound = static_cast<std::int64_t>(text.size()) * 2 + 1024;
+            for (const char ch : value) exponent = std::min(bound, exponent * 10 + ch - '0');
+            if (negative) exponent = -exponent;
+        }
+        return exponent + static_cast<std::int64_t>(beforePoint) - first - 1 < 0;
     }
     static bool attributes(pugi::xml_node node, std::initializer_list<std::string_view> expected) {
         std::set<std::string_view> found;

@@ -30,7 +30,15 @@ extern "C" double claw_matrix_transform(double input, uint32_t function, uint32_
 }
 
 extern "C" double claw_matrix_contribution(const CLAWMatrixRule* rule) {
+    if (!claw_matrix_gain_active(rule->gain)) return 0.0;
     return claw_matrix_transform(rule->input, rule->function, rule->exponent, rule->value) * static_cast<double>(rule->gain);
+}
+
+extern "C" float claw_matrix_gain_epsilon(void) { return 1.0e-6F; }
+
+extern "C" int claw_matrix_gain_active(float gain) {
+    const float epsilon = claw_matrix_gain_epsilon();
+    return finiteFloat(gain) && (gain > epsilon || gain < -epsilon);
 }
 
 extern "C" double claw_matrix_clamp(double value) {
@@ -39,7 +47,7 @@ extern "C" double claw_matrix_clamp(double value) {
 
 extern "C" int claw_matrix_evaluate(const CLAWMatrixRule* rules, uint32_t count,
     float* outputs, double* rawSums, uint32_t targetCount) {
-    if (!rules || !outputs || !rawSums || count == 0 || count > 128 || targetCount == 0 || targetCount > 64) return 1;
+    if ((!rules && count) || ((!outputs || !rawSums) && targetCount) || count > 128 || targetCount > 64 || (!targetCount && count)) return 1;
     for (uint32_t target = 0; target < targetCount; ++target) { outputs[target] = 0.F; rawSums[target] = 0.0; }
     for (uint32_t index = 0; index < count; ++index) {
         const auto& rule = rules[index];
@@ -47,6 +55,7 @@ extern "C" int claw_matrix_evaluate(const CLAWMatrixRule* rules, uint32_t count,
             (rule.function == 4 ? rule.exponent < 1 || rule.exponent > 8 : rule.exponent != 2) ||
             !finiteFloat(rule.input) || !finiteFloat(rule.gain) || !finiteFloat(rule.cap) || !finiteFloat(rule.value) ||
             rule.cap <= 0.F || rule.cap > 1.F || (rule.function != 5 && rule.value != 0.F)) return 2;
+        if (!claw_matrix_gain_active(rule.gain)) continue;
         if (outputs[rule.target] != 0.F && outputs[rule.target] != rule.cap) return 3;
         outputs[rule.target] = rule.cap;
         rawSums[rule.target] += claw_matrix_contribution(&rule);

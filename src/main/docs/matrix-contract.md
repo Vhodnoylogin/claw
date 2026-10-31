@@ -11,6 +11,37 @@ binary64 arithmetic. Clamp the completed sum to [0,1], multiply by the target's
 cap, then round once to float32. All inputs, gains, caps and constant values are
 finite float32. Each target has one consistent cap in (0,1]. NPC weight and
 independent body presets are absent. Unmapped public wolf outputs start at zero.
+After float32 normalization, an edge with `abs(gain) <= float32(1e-6)` is absent,
+independently of the current source value. The shared exports
+`claw_matrix_gain_epsilon()` and `claw_matrix_gain_active(float)` define this
+inclusive cutoff for native/WASM consumers. Rule syntax and finite parameters
+are validated before omission; active duplicate/cap checks, source capture,
+target binding and canonical save/export operate on the surviving ordered edges.
+This is not a contribution/output threshold. A large-gain edge with a zero input
+is retained. The separate runtime readback tolerance remains 1e-4.
+
+Source and target names preserve their authored spelling. Provider-bound names
+are printable ASCII of at most 160 bytes without surrounding whitespace/control
+characters. SKEE's `SKEEFixedString` uses `hash_lower`/`_stricmp` identity, so active
+names differing only in ASCII case cannot represent independent game controls.
+The adapters use deterministic A-Z to a-z identity, reject case-only source or
+target aliases, and keep repeated identical spellings for valid many-to-many
+edges. No process-locale case conversion is used. Linked
+targets have no body-prefix or compiled sex/name allowlist; actual model TRI
+availability must be checked by the resource consumer. The generated native XML
+format retains its existing printable ASCII/entity-free restrictions. Legacy
+independent-preset validation is unchanged. At most 128 structural edges and 64
+distinct active targets are supported. Native output metadata also retains the
+legacy neutral names outside those 64 numeric target slots.
+
+An active source must not share provider identity with an active output target,
+including across
+different edges. This rejects refresh feedback rather than treating the DLL's
+own wolf output as a new human input. Runtime capture also refuses an input name
+that currently exists under CLAW's exact output key; clear that prior assignment
+before explicitly rebinding. Other valid human source prefixes are accepted.
+An empty/all-omitted profile remains an enabled, neutral linked profile and reads
+no human sources; it never falls back to an independent beast preset.
 The one implementation is `src/main/cpp/shared/MatrixKernel.cpp`, compiled into
 the native DLL and into the plugin's WebAssembly module. JavaScript validates and
 marshals profiles; it does not provide an alternative numeric implementation.
@@ -37,8 +68,9 @@ than platform transcendental math. All-constant profiles capture an empty source
 snapshot and require no human input. Constant-only columns never appear in source
 capture or the mapped-human set, including in a mixed profile.
 
-Existing schemaVersion=1 XML remains readable with precisely its original linear
-math. New attributes are additive, for example:
+Existing schemaVersion=1 XML remains readable; retained linear edges keep their
+original arithmetic, subject to the explicit coefficient cutoff above. Function
+attributes are additive, for example:
 
 ```xml
 <Rule source="Muscle" target="CLAWTorsoGirth" gain="0.7" cap="1" />
@@ -57,11 +89,24 @@ ordered sparse edges rather than reordering a sum through a dense table.
 
 Actor co-save record v5 persists each rule's function code, exponent and constant
 value. Readers retain versions 1..4: v1 is independent, v2..4 rules migrate to
-linear. Saved rules remain authoritative after load; replacing a family XML does
+linear. The v5 wire layout remains unchanged for generic target strings. On load,
+now-inactive saved rules and their declared source-snapshot entries are removed;
+unrelated entries, missing active values and nonfinite values still reject the
+record. A saved neutral/all-omitted link remains linked. This deliberately applies
+the new coefficient cutoff to old tiny edges, without substituting a current XML
+profile. Saved rules remain authoritative after load; replacing a family XML does
 not silently change a saved actor. Explicit ConfigureMorphFamily binds a fresh
 validated profile. Existing ConfigureMorphLink Papyrus arrays continue to create
 linear rules; new function profiles use ConfigureMorphFamily. No runtime or
 rendered-body qualification follows from offline arithmetic parity.
+
+Runtime cleanup snapshots every name under the exact `CLAW.Distribution` key,
+then clears those names after enumeration. Removed/custom names cannot survive
+because a new catalog no longer lists them, and other providers' keys are not
+cleared. Actual writes omit zero coefficients; zeros remain part of legacy
+coefficient metadata/readback without affecting SKEE's aggregate source policy.
+Linked cache metadata is bounded by 64 active targets plus 29 legacy neutral
+names. Original independent-preset cache validation remains sex/allowlist based.
 
 The current default profiles retain their explicit family IDs and existing
 linear growth edges, and append positive/negative edges for four new authored

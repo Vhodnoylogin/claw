@@ -3,6 +3,7 @@
 #include "claw/RequestOwnership.h"
 #include "claw/MorphLink.h"
 #include "claw/MorphRuleSerialization.h"
+#include "claw/MorphOwnership.h"
 #include "claw/PhysicsObserver.h"
 #include "claw/MorphProfiles.h"
 #include "claw/SourceBootstrapPolicy.h"
@@ -24,6 +25,7 @@
 #include <cstring>
 #include <deque>
 #include <filesystem>
+#include <exception>
 #include <limits>
 #include <map>
 #include <memory>
@@ -299,6 +301,7 @@ std::uint64_t newNamespace() {
 }
 
 ::TESObjectREFR* skeeReference(RE::Actor* actor);
+void captureSources(RE::Actor* actor, claw::MorphLink& link);
 State* stateFor(RE::Actor* actor, bool create, bool adoptDefaults = true) {
     if (!currentOwner(actor) || !actor->GetActorBase()) return nullptr;
     const auto id = actor->GetFormID();
@@ -346,7 +349,7 @@ State* stateFor(RE::Actor* actor, bool create, bool adoptDefaults = true) {
     if (adoptDefaults) if (const auto* profile = morphProfiles.defaultFor(state.sex)) {
         if (!morphs) return nullptr; // No empty identity is minted before a full source capture.
         auto link = profile->link;
-        try { link.capture([actor](std::string_view name) { return morphs->GetBodyMorphs(skeeReference(actor), name.data()); }); }
+        try { captureSources(actor, link); }
         catch (const std::exception& error) { SKSE::log::warn("CLAW default family source capture: {}", error.what()); return nullptr; }
         state.link = std::move(link);
         state.adoptedDefault = true;
@@ -415,7 +418,7 @@ bool sourceBootstrapLive(RE::Actor* actor, State& state) {
         // Name presence protects zero-valued keys too; a sum of zero is not unassigned.
         if (value != 0 || morphs->HasBodyMorphName(skeeReference(actor), name.c_str())) { revokeSourceBootstrap(state); return false; }
     }
-    try { state.link.capture([actor](std::string_view name) { return morphs->GetBodyMorphs(skeeReference(actor), name.data()); }); }
+    try { captureSources(actor, state.link); }
     catch (const std::exception&) { return false; }
     for (const auto& [name, value] : state.link.sourceValues)
         if (value != 0 || morphs->HasBodyMorphName(skeeReference(actor), name.c_str())) { revokeSourceBootstrap(state); return false; }
@@ -607,21 +610,43 @@ void observePhysics(RE::Actor* actor) {
 #endif
 }
 
+claw::Morphs ownMorphSnapshot(RE::Actor* actor) {
+    struct Visitor final : IBodyMorphInterface::MorphValueVisitor {
+        claw::Morphs values;
+        std::exception_ptr error;
+        void Visit(::TESObjectREFR*, const char* name, const char* key, float value) noexcept override {
+            if (error) return;
+            try {
+                if (!name || !key) throw std::runtime_error("null morph name/key in SKEE snapshot");
+                claw::observeOwnMorph(values, name, key, value, claw::morphKey);
+            } catch (...) { error = std::current_exception(); }
+        }
+    } visitor;
+    morphs->VisitMorphValues(skeeReference(actor), visitor);
+    if (visitor.error) std::rethrow_exception(visitor.error);
+    return std::move(visitor.values);
+}
+
+void captureSources(RE::Actor* actor, claw::MorphLink& link) {
+    const auto previous = ownMorphSnapshot(actor);
+    if (const auto conflict = link.sourceConflict(previous); !conflict.empty())
+        throw std::runtime_error("human source overlaps an existing CLAW-owned output; clear before rebinding: " + conflict);
+    link.capture([actor](std::string_view name) { return morphs->GetBodyMorphs(skeeReference(actor), name.data()); });
+}
+
 bool readback(RE::Actor* actor, const claw::Morphs& expected) {
-    return claw::verifyOwnMorphs(expected, [actor](std::string_view name) {
-        return morphs->GetMorph(skeeReference(actor), name.data(), claw::morphKey);
-    }, epsilon);
+    try { return claw::verifyOwnedMorphs(expected, ownMorphSnapshot(actor), epsilon); }
+    catch (const std::exception&) { return false; }
 }
 
 bool clearOwn(RE::Actor* actor) {
-    // Only the exact key and the public base-resource morph allowlist are touched.
-    for (const auto name : claw::recognizedMorphs(claw::Sex::female))
-        morphs->ClearMorph(skeeReference(actor), name.data(), claw::morphKey);
-    for (const auto name : claw::recognizedMorphs(claw::Sex::female)) {
-        const float value = morphs->GetMorph(skeeReference(actor), name.data(), claw::morphKey);
-        if (!std::isfinite(value) || std::abs(value) > epsilon) return false;
-    }
-    return true;
+    // Snapshot first, then mutate only this exact key. Removed/custom names do
+    // not depend on whichever matrix or compiled public list is installed now.
+    try {
+        return claw::clearOwnedMorphs(ownMorphSnapshot(actor), [actor](const std::string& name) {
+            morphs->ClearMorph(skeeReference(actor), name.c_str(), claw::morphKey);
+        }, [actor] { return ownMorphSnapshot(actor); }, epsilon);
+    } catch (const std::exception&) { return false; }
 }
 
 void refreshActor(RE::Actor* actor, bool force = false) {
@@ -645,9 +670,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     std::string sourceError;
     if (state->link.enabled()) {
         try {
-            state->link.capture([actor](std::string_view name) {
-                return morphs->GetBodyMorphs(skeeReference(actor), name.data());
-            });
+            captureSources(actor, state->link);
             if (state->adoptedDefault && !state->sourceRevoked) for (const auto& [name, value] : state->link.sourceValues) {
                 (void)value;
                 if (value != 0 || morphs->HasBodyMorphName(skeeReference(actor), name.c_str())) { revokeSourceBootstrap(*state); break; }
@@ -657,8 +680,9 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     const auto root = reinterpret_cast<std::uintptr_t>(actor->Get3D());
     if (!beast || state->suppressed) {
         bool hasOwnValue = false;
-        for (const auto name : claw::recognizedMorphs(claw::Sex::female))
-            hasOwnValue |= morphs->GetMorph(skeeReference(actor), name.data(), claw::morphKey) != 0;
+        // Zero-valued names can still affect a provider's aggregate policy.
+        try { hasOwnValue |= !ownMorphSnapshot(actor).empty(); }
+        catch (const std::exception&) { hasOwnValue = true; }
         if (force || state->dirty || hasOwnValue || state->lastRoot != root) {
             if (!clearOwn(actor)) { logError(*state, "own-key cleanup readback failed"); return; }
             morphs->ApplyBodyMorphs(skeeReference(actor), false);
@@ -703,7 +727,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         if (!currentOwner(actor) || actor->GetRace() != beastRace || !actor->Is3DLoaded() || !actor->Get3D()) {
             state->dirty = true; state->status = Status::pending; return;
         }
-        for (const auto& [name, value] : expected)
+        for (const auto& [name, value] : expected) if (value != 0)
             morphs->SetMorph(skeeReference(actor), name.c_str(), claw::morphKey, value);
         morphs->ApplyBodyMorphs(skeeReference(actor), false);
         invalidatePhysics(actor->GetFormID());
@@ -839,6 +863,12 @@ void save(SKSE::SerializationInterface* interface) {
     Bytes session; u64(session, saveNamespace); u64(session, nextIdentity);
     if (!interface->WriteRecord(sessionRecord, 1, session.data(), static_cast<std::uint32_t>(session.size()))) SKSE::log::error("Session serialization failed");
     for (const auto& [id, state] : states) {
+        auto savedLink = state.link;
+        std::string normalizationError;
+        if (!savedLink.canonicalize(state.sex, &normalizationError)) {
+            SKSE::log::error("CLAW actor {:08X} cannot save invalid morph link: {}", id, normalizationError);
+            continue;
+        }
         // Zero is already an unavailable VM identity in record v1. Preserve hard
         // quarantine across saves without inventing a new persistence format.
         Bytes row; u32(row, id); u64(row, state.identity); u64(row, state.quarantined ? 0 : state.vmHandle); string(row, state.preset);
@@ -847,12 +877,12 @@ void save(SKSE::SerializationInterface* interface) {
         for (const auto& [name, value] : state.cache) {
             string(row, name); std::uint32_t bits; std::memcpy(&bits, &value, sizeof(bits)); u32(row, bits);
         }
-        string(row, state.link.profile); u32(row, static_cast<std::uint32_t>(state.link.rules.size()));
-        for (const auto& rule : state.link.rules) {
+        string(row, savedLink.profile); u32(row, static_cast<std::uint32_t>(savedLink.rules.size()));
+        for (const auto& rule : savedLink.rules) {
             claw::writeMorphRule(rule, [&](const auto& value) { string(row, value); }, [&](auto value) { u32(row, value); });
         }
-        u32(row, state.link.captured ? 1 : 0); u32(row, static_cast<std::uint32_t>(state.link.sourceValues.size()));
-        for (const auto& [name, value] : state.link.sourceValues) {
+        u32(row, savedLink.captured ? 1 : 0); u32(row, static_cast<std::uint32_t>(savedLink.sourceValues.size()));
+        for (const auto& [name, value] : savedLink.sourceValues) {
             string(row, name); std::uint32_t bits; std::memcpy(&bits, &value, sizeof(bits)); u32(row, bits);
         }
         for (const float weight : {state.humanWeight, state.beastWeight}) {
@@ -901,12 +931,12 @@ void load(SKSE::SerializationInterface* interface) {
             const auto oldID = reader.u32(); State state; state.identity = reader.u64();
             const auto oldHandle = reader.u64(); state.preset = reader.string();
             const auto sex = reader.u32(), suppressed = reader.u32(), count = reader.u32();
-            if (sex > 1 || suppressed > 1 || count > claw::recognizedMorphs(claw::Sex::female).size() || !state.identity || state.identity == std::numeric_limits<std::uint64_t>::max() || !identities.insert(state.identity).second)
+            if (sex > 1 || suppressed > 1 || count > claw::maxLinkedCacheMorphs || !state.identity || state.identity == std::numeric_limits<std::uint64_t>::max() || !identities.insert(state.identity).second)
                 throw std::runtime_error("invalid actor identity/family/cache");
             state.sex = static_cast<claw::Sex>(sex); state.suppressed = suppressed != 0;
             for (std::uint32_t index = 0; index < count; ++index) {
                 const auto name = reader.string(); const auto bits = reader.u32(); float value; std::memcpy(&value, &bits, sizeof(value));
-                if (!claw::recognizedMorph(name, state.sex) || !std::isfinite(value) || value < 0 || value > 1 || !state.cache.emplace(name, value).second)
+                if (!claw::morphNameIdentifier(name) || !std::isfinite(value) || value < 0 || value > 1 || !state.cache.emplace(name, value).second)
                     throw std::runtime_error("invalid serialized morph");
             }
             if (version >= 2) {
@@ -923,8 +953,11 @@ void load(SKSE::SerializationInterface* interface) {
                     const auto name = reader.string(); const auto bits = reader.u32(); float value; std::memcpy(&value, &bits, sizeof(value));
                     if (!state.link.sourceValues.emplace(name, value).second) throw std::runtime_error("duplicate linked source");
                 }
-                if (!state.link.valid(state.sex)) throw std::runtime_error("invalid saved morph link profile");
+                std::string reason;
+                if (!state.link.canonicalize(state.sex, &reason)) throw std::runtime_error("invalid saved morph link profile: " + reason);
             } // Old v1 state remains independent; a preset name never opts into linkage.
+            if (!claw::validMorphCache(state.cache, state.sex, state.link.enabled()))
+                throw std::runtime_error("invalid saved linked/independent morph cache");
             if (version >= 4) {
                 for (float* weight : {&state.humanWeight, &state.beastWeight}) {
                     const auto bits = reader.u32(); std::memcpy(weight, &bits, sizeof(bits));
@@ -1035,9 +1068,10 @@ bool actorRequest(RE::Actor* actor, Operation operation, std::string presetName 
             if (actorSex != RE::SEX::kMale && actorSex != RE::SEX::kFemale) { fail("actor has no readable NPC sex"); return; }
             const auto sex = target->GetActorBase()->GetSex() == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
             if (requiredSex && *requiredSex != sex) { fail("morph family does not match the actor's readable NPC sex"); return; }
-            if (!link.valid(sex)) { fail("invalid morph-to-morph profile for actor sex"); return; }
+            std::string reason;
+            if (!link.canonicalize(sex, &reason)) { fail("invalid morph-to-morph profile: " + reason); return; }
             if (!morphs) { fail("SKEE BodyMorph API is unavailable; previous link retained"); return; }
-            try { link.capture([target](std::string_view name) { return morphs->GetBodyMorphs(skeeReference(target), name.data()); }); }
+            try { captureSources(target, link); }
             catch (const std::exception& error) { fail(error.what()); return; }
             state->link = link; state->suppressed = false; // Explicit opt-in resumes this policy.
         } else if (operation == Operation::disableMorphLink) state->link = {};
@@ -1101,11 +1135,12 @@ bool clearRequest(RE::StaticFunctionTag*, RE::Actor* actor) { return actorReques
 bool refreshRequest(RE::StaticFunctionTag*, RE::Actor* actor) { return actorRequest(actor, Operation::refresh); }
 bool configureMorphLink(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString profile,
     std::vector<RE::BSFixedString> sources, std::vector<RE::BSFixedString> targets, std::vector<float> gains, std::vector<float> caps) {
-    if (sources.empty() || sources.size() > 128 || targets.size() != sources.size() || gains.size() != sources.size() || caps.size() != sources.size()) return false;
+    if (sources.size() > 128 || targets.size() != sources.size() || gains.size() != sources.size() || caps.size() != sources.size()) return false;
     claw::MorphLink link; link.profile = profile.c_str();
+    if (!claw::morphLinkIdentifier(link.profile)) return false;
     for (std::size_t index = 0; index < sources.size(); ++index)
         link.rules.push_back({sources[index].c_str(), targets[index].c_str(), gains[index], caps[index]});
-    if (!link.valid(claw::Sex::male) && !link.valid(claw::Sex::female)) return false;
+    if (!link.canonicalize(claw::Sex::male)) return false;
     return actorRequest(actor, Operation::configureMorphLink, {}, std::move(link));
 }
 bool disableMorphLink(RE::StaticFunctionTag*, RE::Actor* actor) { return actorRequest(actor, Operation::disableMorphLink); }

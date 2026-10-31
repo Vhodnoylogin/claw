@@ -80,10 +80,10 @@ int main() {
             claw::MorphLink link{"Explicit-v1", {{"CLAWTorsoGirth", "CLAWTorsoGirth", 1, .25F}}, {}, false};
             require(!link.valid(claw::Sex::male), "CLAW source feedback accepted");
             link.rules[0] = {"Human", "CLAWHeadEarSize", 1, .25F};
-            require(!link.valid(claw::Sex::male), "individual head trait entered linked body domain");
+            require(link.valid(claw::Sex::male), "generic head target refused");
             link.rules[0].target = "CLAWTorsoBreastSize";
             require(link.valid(claw::Sex::female), "explicit female body-resource breast link refused");
-            require(!link.valid(claw::Sex::male), "female breast target accepted for male");
+            require(link.valid(claw::Sex::male), "generic target interpretation was incorrectly inferred from its name");
         }},
         {"morph linkage rejects ambiguous or unbounded profiles", [] {
             claw::MorphLink link{"Explicit-v1", {{"HumanA", "CLAWTorsoGirth", 1, .25F}, {"HumanB", "CLAWTorsoGirth", 1, .5F}}, {}, false};

@@ -1,8 +1,10 @@
 #include "claw/MorphProfiles.h"
 #include "claw/MorphRuleSerialization.h"
+#include "claw/MorphOwnership.h"
 #include <bit>
 #include <iostream>
 #include <limits>
+#include <cmath>
 
 namespace {
 void require(bool value, const char* message) { if (!value) throw std::runtime_error(message); }
@@ -71,7 +73,180 @@ int main() {
             "<Rule source=\"Human\" target=\"CLAWArmGirth\" gain=\"1\" cap=\"1\" value=\"0.5\"/>",
             "<Rule source=\"\" target=\"CLAWArmGirth\" gain=\"1\" cap=\"1\" function=\"constant\" value=\"nan\"/>"})
             require(!catalog.loadXml(document(bad)) && !catalog.valid(), "malformed function XML accepted");
-        std::cout << "Matrix functions, constant independence, v5 serialization and v2..4 migration passed\n";
+        {
+            const float cutoff = claw_matrix_gain_epsilon();
+            const float below = std::nextafter(cutoff, 0.F), above = std::nextafter(cutoff, 1.F);
+            require(cutoff == 1e-6F, "gain cutoff is not float32 1e-6");
+            for (const float gain : {0.F, -0.F, below, -below, cutoff, -cutoff}) {
+                require(!claw_matrix_gain_active(gain), "inclusive signed cutoff failed");
+                CLAWMatrixRule rule{0, 0, 2, std::numeric_limits<float>::max(), gain, .5F, 0};
+                float value{42}; double sum{42};
+                require(claw_matrix_evaluate(&rule, 1, &value, &sum, 1) == 0 && value == 0 && sum == 0,
+                        "inactive edge was multiplied by a large source");
+                require(claw_matrix_contribution(&rule) == 0, "contribution diagnostic retained absent edge");
+            }
+            require(claw_matrix_gain_active(above) && claw_matrix_gain_active(-above), "adjacent active float was lost");
+            CLAWMatrixRule rule{0, 0, 2, -1, -above, 1, 0};
+            float value{}; double sum{};
+            require(claw_matrix_evaluate(&rule, 1, &value, &sum, 1) == 0 && value == above && sum == above,
+                    "active negative gain changed");
+            require(claw_matrix_evaluate(nullptr, 0, nullptr, nullptr, 0) == 0, "zero-dimension neutral kernel rejected");
+            require(claw_matrix_evaluate(nullptr, 0, &value, &sum, 1) == 0 && value == 0 && sum == 0,
+                    "empty matrix was not neutral");
+            rule.gain = 0;
+            for (const float invalid : {std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()}) {
+                rule.input = invalid;
+                require(claw_matrix_evaluate(&rule, 1, &value, &sum, 1) == 2, "nonfinite input hidden by pruning");
+                rule.input = 0; rule.gain = invalid;
+                require(claw_matrix_evaluate(&rule, 1, &value, &sum, 1) == 2, "nonfinite gain hidden by pruning");
+                rule.gain = 0; rule.value = invalid;
+                require(claw_matrix_evaluate(&rule, 1, &value, &sum, 1) == 2, "nonfinite parameter hidden by pruning");
+                rule.value = 0;
+            }
+            rule.input = rule.gain = std::numeric_limits<float>::max();
+            require(claw_matrix_evaluate(&rule, 1, &value, &sum, 1) == 0 && std::isfinite(sum) && value == 1,
+                    "finite float32 maximum multiplication overflowed before double accumulation");
+            CLAWMatrixRule edges[]{{0, 0, 2, 1, 0, .8F, 0}, {0, 0, 2, 1, .5F, .2F, 0}};
+            require(claw_matrix_evaluate(edges, 2, &value, &sum, 1) == 0 && value == .1F,
+                    "inactive edge claimed target cap");
+        }
+        {
+            const auto generic = document("<Rule source=\"CLAWCustomHuman\" target=\"Ear.Size\" gain=\"0.5\" cap=\"1\"/>"
+                                          "<Rule source=\"Human\" target=\"Tail.Size\" gain=\"1\" cap=\"1\"/>");
+            require(catalog.loadXml(generic), "generic authored target/source spelling rejected");
+            auto link = catalog.find("Matrix", claw::Sex::male)->link;
+            link.capture([](std::string_view source) { return source == "Human" ? .25F : .5F; });
+            const auto values = link.compose(claw::Sex::male);
+            require(values.at("Ear.Size") == .25F && values.at("Tail.Size") == .25F, "generic authored spelling changed");
+            require(values.at("CLAWTailLength") == 0, "legacy neutral metadata changed");
+            require(link.sourceConflict({{"CLAWCustomHuman", 0.F}}) == "CLAWCustomHuman", "old zero-valued own source collision missed");
+            require(link.sourceConflict({{"clawcustomhuman", .5F}}) == "CLAWCustomHuman", "provider case alias bypassed old-output conflict");
+            require(!catalog.loadXml(document("<Rule source=\"Human\" target=\"Ear.Size\" gain=\"1\" cap=\"1\"/>"
+                                              "<Rule source=\"Other\" target=\"ear.size\" gain=\"1\" cap=\"1\"/>")) &&
+                    catalog.error().find("case-ambiguous") != std::string::npos, "case-only target aliases were accepted");
+            require(!catalog.loadXml(document("<Rule source=\"Human\" target=\"Ear\" gain=\"1\" cap=\"1\"/>"
+                                              "<Rule source=\"human\" target=\"Tail\" gain=\"1\" cap=\"1\"/>")),
+                    "case-only source aliases were accepted");
+            require(!catalog.loadXml(document("<Rule source=\"Human\" target=\"human\" gain=\"1\" cap=\"1\"/>")),
+                    "folded source/output alias bypassed feedback rejection");
+            require(claw::morphNameIdentifier("Custom.FUR-Size") && !claw::morphNameIdentifier("\xD0\x92\xD0\xBE\xD0\xBB\xD0\xBA"),
+                    "provider-bound name domain is not deterministic printable ASCII");
+            const auto cross = document("<Rule source=\"HumanA\" target=\"HumanB\" gain=\"1\" cap=\"1\"/>"
+                                        "<Rule source=\"HumanB\" target=\"Wolf\" gain=\"1\" cap=\"1\"/>");
+            require(!catalog.loadXml(cross) && catalog.error().find("overlaps") != std::string::npos,
+                    "cross-edge source/output feedback lacked clear rejection");
+            claw::MorphLink caseVariant{"Case", {{"Human", "clawarmgirth", 1, 1}}, {}, false};
+            caseVariant.capture([](std::string_view) { return .5F; });
+            const auto variantValues = caseVariant.compose(claw::Sex::male);
+            require(!variantValues.contains("CLAWArmGirth") && variantValues.at("clawarmgirth") == .5F &&
+                    claw::validMorphCache(variantValues, claw::Sex::male, true), "active spelling collided with legacy neutral metadata");
+        }
+        {
+            const auto pruned = document("<Rule source=\"Unobservable\" target=\"Discarded\" gain=\"0.000001\" cap=\"0.3\"/>"
+                                         "<Rule source=\"Unobservable\" target=\"Discarded\" gain=\"-0.000001\" cap=\"0.8\"/>");
+            require(catalog.loadXml(pruned), "inactive duplicate/cap rules affected semantic validation");
+            auto link = catalog.find("Matrix", claw::Sex::male)->link;
+            require(link.enabled() && link.rules.empty(), "parser retained absent edges or disabled neutral link");
+            link.capture([](std::string_view) -> float { throw std::runtime_error("pruned source must never be read"); });
+            const auto values = link.compose(claw::Sex::male);
+            require(link.valid(claw::Sex::male) && link.sourceValues.empty() && !values.contains("Discarded"),
+                    "absent target/source survived composition");
+            require(claw::resolveMorphs(link, claw::Sex::male, []() -> claw::Morphs { throw std::runtime_error("neutral linked mode selected independent preset"); }) == values,
+                    "empty link lost linked policy");
+            for (const auto& bad : {
+                "<Rule source=\"Human\" target=\"Wolf\" gain=\"1e100\" cap=\"1\"/>",
+                "<Rule source=\"Human\" target=\"Wolf\" gain=\"0\" cap=\"1e100\"/>",
+                "<Rule source=\"\" target=\"Wolf\" gain=\"0\" cap=\"1\" function=\"constant\" value=\"1e100\"/>",
+                "<Rule source=\"Human\" target=\"Wolf\" gain=\"0\" cap=\"1\" function=\"power\" exponent=\"9\"/>"})
+                require(!catalog.loadXml(document(bad)), "overflow/invalid syntax was concealed by zero gain");
+            require(catalog.loadXml(document("")) && catalog.find("Matrix", claw::Sex::male)->link.enabled(),
+                    "explicit empty XML profile rejected");
+            for (const auto* gain : {"1e-50", "-1e-50", "1e-9999", "-1e-9999", "0.000000000000000000000000000000000000000000000000001"}) {
+                require(catalog.loadXml(document(std::string("<Rule source=\"Absent\" target=\"Absent\" gain=\"") + gain + "\" cap=\"1\"/>")) &&
+                        catalog.find("Matrix", claw::Sex::male)->link.rules.empty(), "finite decimal underflow failed to become an absent edge");
+            }
+            for (const auto* gain : {"1e9999", "-1e9999", "nan", "inf", "1e-50junk", "1e-50 ", "1e--50"})
+                require(!catalog.loadXml(document(std::string("<Rule source=\"Human\" target=\"Wolf\" gain=\"") + gain + "\" cap=\"1\"/>")),
+                        "underflow handling weakened overflow/nonfinite/syntax rejection");
+            require(!catalog.loadXml(document("<Rule source=\"Human\" target=\"Wolf\" gain=\"1\" cap=\"1e-50\"/>")),
+                    "underflowed zero cap was accepted");
+            const std::string hugeMantissa(400, '9');
+            require(!catalog.loadXml(document("<Rule source=\"Human\" target=\"Wolf\" gain=\"" + hugeMantissa + "e-1\" cap=\"1\"/>")),
+                    "negative textual exponent concealed overflowing mantissa");
+            claw::MorphLink many{"Capacity", {}, {}, false};
+            for (unsigned index=0; index<64; ++index) many.rules.push_back({"Human", "Custom"+std::to_string(index), 1, 1});
+            require(many.valid(claw::Sex::female), "legacy zero metadata consumed numeric target capacity");
+            many.capture([](std::string_view) { return .5F; });
+            require(many.compose(claw::Sex::female).size() == claw::maxLinkedCacheMorphs, "64 custom outputs or legacy zeros lost");
+            many.rules.push_back({"Human", "Custom64", 1, 1});
+            require(!many.valid(claw::Sex::female), "65 active targets accepted");
+        }
+        {
+            claw::MorphLink saved{"Saved-authority", {{"Obsolete", "OldTarget", 1e-6F, 1}, {"Retained", "CustomWolf", .5F, .8F}},
+                {{"Obsolete", 2.F}, {"Retained", .25F}}, true};
+            require(saved.canonicalize(claw::Sex::male), "old captured source snapshot did not migrate");
+            require(saved.profile == "Saved-authority" && saved.rules.size() == 1 && saved.sourceValues.size() == 1 &&
+                    !saved.sourceValues.contains("Obsolete") && saved.compose(claw::Sex::male).at("CustomWolf") == .1F,
+                    "saved rules were replaced or stale sources retained");
+            Record record;
+            for (const auto& edge : saved.rules)
+                claw::writeMorphRule(edge, [&](const auto& value) { record.strings.push_back(value); }, [&](auto value) { record.integers.push_back(value); });
+            require(record.strings == std::vector<std::string>{"Retained", "CustomWolf"}, "canonical v5 serialization retained absent edge");
+            auto restored = saved; restored.rules = {claw::readMorphRule(record, 5)};
+            require(restored.canonicalize(claw::Sex::male) && restored.compose(claw::Sex::male) == saved.compose(claw::Sex::male),
+                    "generic v5 roundtrip changed saved arithmetic");
+            auto bad = saved; bad.sourceValues.emplace("Unrelated", 0.F);
+            const auto original = bad.sourceValues;
+            require(!bad.canonicalize(claw::Sex::male) && bad.sourceValues == original,
+                    "normalization silently repaired unrelated snapshot or mutated rejected state");
+            bad = saved; bad.sourceValues.clear();
+            require(!bad.canonicalize(claw::Sex::male), "migration fabricated missing active source");
+            bad = {"Uncaptured", {{"Dropped", "Wolf", 0, 1}}, {{"Dropped", 0.F}}, false};
+            require(!bad.canonicalize(claw::Sex::male), "pruning concealed corrupt uncaptured source state");
+            bad = {"", {{"Dropped", "Wolf", 0, 1}}, {}, false};
+            require(!bad.canonicalize(claw::Sex::male), "pruning concealed corrupt disabled link state");
+            require(claw::validMorphCache({{"Arbitrary.Wolf", .5F}}, claw::Sex::male, true), "generic linked cache rejected");
+            require(!claw::validMorphCache({{"Arbitrary.Wolf", .5F}}, claw::Sex::male, false), "legacy independent cache validation broadened");
+            require(!claw::validMorphCache({{"Arbitrary.Wolf", std::numeric_limits<float>::infinity()}}, claw::Sex::male, true),
+                    "nonfinite saved generic cache accepted");
+            require(!claw::validMorphCache({{"Ear", .5F}, {"ear", .2F}}, claw::Sex::male, true),
+                    "provider-ambiguous saved cache accepted");
+        }
+        {
+            std::map<std::string, std::map<std::string, float>> provider{
+                {"CustomRemoved", {{"CLAW.Distribution", .8F}, {"AnotherMod", .4F}}},
+                {"AnotherOnly", {{"AnotherMod", .2F}}},
+                {"CustomCurrent", {{"CLAW.Distribution", .3F}}},
+                {"NonfiniteOld", {{"CLAW.Distribution", std::numeric_limits<float>::quiet_NaN()}}}};
+            auto snapshot = [&] {
+                claw::Morphs values;
+                for (const auto& [name, keys] : provider) for (const auto& [key, value] : keys)
+                    claw::observeOwnMorph(values, name, key, value, "CLAW.Distribution");
+                return values;
+            };
+            const auto observed = snapshot();
+            require(observed.size() == 3 && !observed.contains("AnotherOnly"), "snapshot claimed another provider's key");
+            require(!claw::verifyOwnedMorphs({{"CustomCurrent", .3F}}, observed, .0001F), "stale/nonfinite own outputs passed readback");
+            require(claw::clearOwnedMorphs(observed, [&](const std::string& name) { provider.at(name).erase("CLAW.Distribution"); }, snapshot, .0001F),
+                    "generic own-key cleanup failed");
+            require(provider.at("CustomRemoved").at("AnotherMod") == .4F && provider.at("AnotherOnly").at("AnotherMod") == .2F && snapshot().empty(),
+                    "custom cleanup changed another mod's values");
+            require(claw::verifyOwnedMorphs({{"NeutralCustom", 0.F}}, {}, .0001F), "unstored neutral output failed readback");
+            for (const float residual : {0.F, .00005F}) {
+                const claw::Morphs stale{{"Stale", residual}};
+                require(!claw::verifyOwnedMorphs({}, stale, .0001F), "unexpected zero/tiny own key passed structural readback");
+                require(!claw::clearOwnedMorphs(stale, [](const std::string&) {}, [&] { return stale; }, .0001F),
+                        "no-op clear with a zero/tiny own key was accepted");
+            }
+            require(!claw::verifyOwnedMorphs({{"TinyWanted", .00005F}}, {}, .0001F), "missing nonzero own key passed tolerance readback");
+            require(!claw::verifyOwnedMorphs({{"Neutral", 0.F}}, {{"Neutral", 0.F}}, .0001F), "stored neutral key was accepted");
+            claw::Morphs foldedOwn;
+            claw::observeOwnMorph(foldedOwn, "eAr", "cLaW.Distribution", .4F, "CLAW.Distribution");
+            require(claw::verifyOwnedMorphs({{"Ear", .4F}}, foldedOwn, .0001F), "SKEE-interned spelling broke own-key readback");
+            require(!claw::verifyOwnedMorphs({{"Ear", .4F}, {"ear", .4F}}, foldedOwn, .0001F),
+                    "case-ambiguous expected ownership was accepted");
+        }
+        std::cout << "Matrix functions, generic targets, shared gain omission, exact-key ownership, v5 roundtrip and old migration passed\n";
         return 0;
     } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }

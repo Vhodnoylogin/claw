@@ -20,7 +20,21 @@ linear, positive/negative, smoothstep, bounded integer power and human-independe
 constant edges, ordered arithmetic and strict parameters. No expressions execute.
 Current profiles retain the family IDs, append four authored lean targets and use
 `authored-opposed-matrix1`; the frozen 30 October release remains unchanged.
-This candidate owns 28 shared public morphs plus female-only breast size.
+Linked targets are now opaque morph identifiers with preserved authored spelling;
+the loaded model must actually provide them. SKEE interns names without ASCII
+case distinctions, so case-only aliases and source/output overlaps are rejected
+using deterministic ASCII identity. Bound morph names use printable ASCII; no
+locale-dependent case conversion or arbitrary-prefix inference is performed.
+The legacy 28 shared names plus female breast
+remain neutral coefficient metadata, while up to 64 active target names enter
+the shared kernel. Independent preset validation retains its original allowlist.
+
+Gains are float32 before the shared inclusive `abs(gain) <= 1e-6F` omission rule.
+Inactive edges are removed before duplicate/cap checks, source capture and save
+output; their other fields must still be well formed and finite. Empty linked
+profiles remain neutral linked policies. Exact active source/output collisions
+are rejected, and capture also refuses sources overlapping existing own-key
+outputs. No prefix is assumed to identify a human or wolf morph.
 
 Actor records now write v5 with every function and parameter. Readers retain
 v1..v4 support; old rules initialize to the original exact linear evaluation.
@@ -28,6 +42,12 @@ Saved matrices remain authoritative, so existing actors adopt revised XML only
 through an explicit ConfigureMorphFamily request. All-constant profiles capture
 no human values and cannot depend on an OBody source bootstrap. Fresh game,
 existing-save refresh and rendered geometry still require runtime acceptance.
+The wire record remains v5. Loading removes now-inactive saved edges and their
+declared source values without substituting an installed profile; undeclared,
+missing active or nonfinite source snapshots still fail. Runtime cleanup visits
+all names under the exact `CLAW.Distribution` key before mutation, including stale
+custom names. Other providers' keys are preserved. Neutral outputs are not stored
+as zero-valued SKEE keys, although coefficient readback still reports their zeros.
 
 This optional native SKSE companion writes only the `CLAW.Distribution` morph
 key. Its independent mode reads third-party **CLAW** presets and assigns them to
@@ -210,7 +230,7 @@ The coordinator owns the user menu and optional human OBody route.
 | `GetOwnMorph(actor, name)` | Last verified own coefficient, zero unless status is applied |
 | `ClearOwn(actor)` | Queued scoped cleanup; saved suppression until explicit assign/configure |
 | `Refresh(actor)` | Queued lifecycle/readback refresh |
-| `ConfigureMorphLink(actor, profile, sources[], targets[], gains[], caps[])` | Queued explicit morph-to-morph profile, 1..128 rules; actual SKEE source coefficients, no preset-name pairs |
+| `ConfigureMorphLink(actor, profile, sources[], targets[], gains[], caps[])` | Queued explicit morph-to-morph profile, 0..128 structural rules; actual SKEE source coefficients, no preset-name pairs |
 | `GetMorphFamilies(female)` / `ConfigureMorphFamily(actor, profileId)` | Enumerate and bind a validated body-resource mapping; setup must declare the actual installed family |
 | `GetHumanWeight(actor)` / `GetBeastWeight(actor)` | Last observed normalized NPC weight in each form; -1 means unavailable, and neither getter sets weight |
 | `DisableMorphLink(actor)` | Queued return to the retained independent preset |

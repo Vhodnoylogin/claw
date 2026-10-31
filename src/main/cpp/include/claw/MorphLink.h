@@ -35,6 +35,7 @@ struct MorphLinkRule {
     std::uint32_t exponent{2};
     float value{};
     [[nodiscard]] bool constant() const { return function == MorphFunction::constant; }
+    [[nodiscard]] bool active() const { return claw_matrix_gain_active(gain) != 0; }
     [[nodiscard]] double transform(double input) const {
         return claw_matrix_transform(input, static_cast<std::uint32_t>(function), exponent, value);
     }
@@ -44,9 +45,23 @@ inline bool morphLinkIdentifier(std::string_view value) {
     for (const unsigned char c : value) if (c < 32 || c == 127) return false;
     return true;
 }
-inline bool linkedBodyMorph(std::string_view name) {
-    return name.starts_with("CLAWTorso") || name == "CLAWArmGirth" || name == "CLAWLegCalfGirth" || name == "CLAWLegThighGirth" ||
-        name == "CLAWArmLean" || name == "CLAWLegCalfLean" || name == "CLAWLegThighLean";
+inline bool morphNameIdentifier(std::string_view value) {
+    if (!morphLinkIdentifier(value)) return false;
+    return std::all_of(value.begin(), value.end(), [](unsigned char ch) { return ch >= 32 && ch < 127; });
+}
+inline std::string morphProviderIdentity(std::string_view value) {
+    // SKEE interns names case-insensitively. Restrict bound names to ASCII and
+    // fold deterministically; never use process-locale-dependent tolower.
+    std::string result(value);
+    for (auto& ch : result) if (ch >= 'A' && ch <= 'Z') ch = static_cast<char>(ch + ('a' - 'A'));
+    return result;
+}
+inline bool morphRuleWellFormed(const MorphLinkRule& rule) {
+    return (rule.constant() ? rule.source.empty() : morphNameIdentifier(rule.source)) &&
+        morphNameIdentifier(rule.target) && !morphFunctionName(rule.function).empty() &&
+        std::isfinite(rule.gain) && std::isfinite(rule.cap) && std::isfinite(rule.value) &&
+        rule.cap > 0 && rule.cap <= 1 && (rule.constant() || rule.value == 0) &&
+        (rule.function == MorphFunction::power ? rule.exponent >= 1 && rule.exponent <= 8 : rule.exponent == 2);
 }
 struct MorphLink {
     std::string profile;
@@ -54,31 +69,75 @@ struct MorphLink {
     Morphs sourceValues;
     bool captured{};
     [[nodiscard]] bool enabled() const { return !profile.empty(); }
-    [[nodiscard]] bool valid(Sex sex) const {
-        if (!enabled()) return rules.empty() && sourceValues.empty() && !captured;
-        if (!morphLinkIdentifier(profile) || rules.empty() || rules.size() > 128) return false;
+    [[nodiscard]] std::string validationError(Sex sex) const {
+        if (!enabled()) return rules.empty() && sourceValues.empty() && !captured ? "" : "disabled morph link contains state";
+        if (!morphLinkIdentifier(profile) || rules.size() > 128) return "invalid profile identifier or excessive rules";
         std::set<std::pair<std::string, std::string>> pairs;
         std::map<std::string, float> caps;
+        (void)sex; // The model's available names, not a compiled sex whitelist, determine geometry support.
         std::set<std::string> sources;
+        std::map<std::string, std::string> sourceIdentities, outputIdentities;
         for (const auto& rule : rules) {
-            if ((rule.constant() ? !rule.source.empty() : (!morphLinkIdentifier(rule.source) || rule.source.starts_with("CLAW"))) ||
-                morphFunctionName(rule.function).empty() || !std::isfinite(rule.value) ||
-                (rule.function == MorphFunction::power ? (rule.exponent < 1 || rule.exponent > 8) : rule.exponent != 2) ||
-                (!rule.constant() && rule.value != 0) || !recognizedMorph(rule.target, sex) || !linkedBodyMorph(rule.target) ||
-                !std::isfinite(rule.gain) || !std::isfinite(rule.cap) || rule.cap <= 0 || rule.cap > 1 ||
-                !pairs.emplace(rule.source, rule.target).second) return false;
+            if (!morphRuleWellFormed(rule)) return "invalid morph rule identifier, finite parameter or function";
+            if (!rule.active()) continue;
+            const auto [output, newOutput] = outputIdentities.emplace(morphProviderIdentity(rule.target), rule.target);
+            if (!newOutput && output->second != rule.target) return "case-ambiguous wolf target: " + rule.target;
+            if (!rule.constant()) {
+                const auto [source, newSource] = sourceIdentities.emplace(morphProviderIdentity(rule.source), rule.source);
+                if (!newSource && source->second != rule.source) return "case-ambiguous human source: " + rule.source;
+            }
+            if (!pairs.emplace(rule.source, rule.target).second) return "duplicate active source/target edge";
             const auto [it, inserted] = caps.emplace(rule.target, rule.cap);
-            if (!inserted && it->second != rule.cap) return false;
+            if (!inserted && it->second != rule.cap) return "inconsistent active target caps";
             if (!rule.constant()) sources.emplace(rule.source);
         }
-        if (!captured) return sourceValues.empty();
-        if (sourceValues.size() != sources.size()) return false;
-        for (const auto& [name, value] : sourceValues) if (!sources.contains(name) || !std::isfinite(value)) return false;
+        if (outputIdentities.size() > 64) return "excessive linked output targets";
+        for (const auto& rule : rules)
+            if (rule.active() && sourceIdentities.contains(morphProviderIdentity(rule.target))) return "active human source overlaps a wolf output: " + rule.target;
+        if (!captured) return sourceValues.empty() ? "" : "uncaptured morph link contains source values";
+        if (sourceValues.size() != sources.size()) return "source snapshot does not match active rules";
+        for (const auto& [name, value] : sourceValues)
+            if (!sources.contains(name) || !std::isfinite(value)) return "invalid active source snapshot";
+        return "";
+    }
+    [[nodiscard]] bool valid(Sex sex) const { return validationError(sex).empty(); }
+    // Atomic configuration/load normalization. Old co-saves can retain values
+    // for now-inactive sources; only those declared by the old rules may be
+    // removed. Unrelated/missing active/nonfinite entries remain errors.
+    bool canonicalize(Sex sex, std::string* error = nullptr) {
+        auto fail = [&](std::string reason) { if (error) *error = std::move(reason); return false; };
+        if (!enabled() && (!rules.empty() || !sourceValues.empty() || captured)) return fail("disabled morph link contains state");
+        if (rules.size() > 128) return fail("excessive morph link rules");
+        if (!captured && !sourceValues.empty()) return fail("uncaptured morph link contains source values");
+        MorphLink staged = *this;
+        std::set<std::string> declared, activeSources;
+        for (const auto& rule : rules) {
+            if (!morphRuleWellFormed(rule)) return fail("invalid morph rule identifier, finite parameter or function");
+            if (!rule.constant()) {
+                declared.emplace(rule.source);
+                if (rule.active()) activeSources.emplace(rule.source);
+            }
+        }
+        for (const auto& [name, value] : sourceValues)
+            if (!declared.contains(name) || !std::isfinite(value)) return fail("invalid declared source snapshot");
+        std::erase_if(staged.rules, [](const auto& rule) { return !rule.active(); });
+        std::erase_if(staged.sourceValues, [&](const auto& row) { return !activeSources.contains(row.first); });
+        if (auto reason = staged.validationError(sex); !reason.empty()) return fail(std::move(reason));
+        *this = std::move(staged);
+        if (error) error->clear();
         return true;
+    }
+    [[nodiscard]] std::string sourceConflict(const Morphs& previousOutputs) const {
+        for (const auto& rule : rules) if (rule.active() && !rule.constant())
+            for (const auto& [name, value] : previousOutputs) {
+                (void)value;
+                if (morphProviderIdentity(name) == morphProviderIdentity(rule.source)) return rule.source;
+            }
+        return {};
     }
     void capture(const std::function<float(std::string_view)>& read) {
         Morphs observed;
-        for (const auto& rule : rules) if (!rule.constant() && !observed.contains(rule.source)) {
+        for (const auto& rule : rules) if (rule.active() && !rule.constant() && !observed.contains(rule.source)) {
             const auto value = read(rule.source);
             if (!std::isfinite(value)) throw std::runtime_error("nonfinite applied human morph");
             observed.emplace(rule.source, value);
@@ -90,20 +149,26 @@ struct MorphLink {
         // Linked output starts neutral. Independent presets, actor weight and
         // unmapped traits cannot contribute to this mode.
         Morphs result;
-        for (const auto name : recognizedMorphs(sex)) result.emplace(name, 0.F);
+        std::set<std::string> activeIdentities;
+        for (const auto& rule : rules) if (rule.active()) activeIdentities.emplace(morphProviderIdentity(rule.target));
+        for (const auto name : recognizedMorphs(sex))
+            if (!activeIdentities.contains(morphProviderIdentity(name))) result.emplace(name, 0.F);
+        for (const auto& rule : rules) if (rule.active()) result.emplace(rule.target, 0.F);
         std::map<std::string, std::uint32_t> targets;
+        for (const auto& rule : rules) if (rule.active()) targets.emplace(rule.target, 0);
         std::uint32_t next{};
-        for (const auto& [name, value] : result) targets.emplace(name, next++);
+        for (auto& [name, index] : targets) index = next++;
         std::vector<CLAWMatrixRule> matrix;
         matrix.reserve(rules.size());
         for (const auto& rule : rules) {
+            if (!rule.active()) continue;
             matrix.push_back({targets.at(rule.target), static_cast<std::uint32_t>(rule.function), rule.exponent,
                 rule.constant() ? 0.F : sourceValues.at(rule.source), rule.gain, rule.cap, rule.value});
         }
-        std::vector<float> output(result.size()); std::vector<double> sums(result.size());
+        std::vector<float> output(targets.size()); std::vector<double> sums(targets.size());
         if (claw_matrix_evaluate(matrix.data(), static_cast<std::uint32_t>(matrix.size()), output.data(), sums.data(), next))
             throw std::runtime_error("morph matrix kernel rejected profile/arithmetic");
-        for (auto& [target, value] : result) value = output.at(targets.at(target));
+        for (const auto& [target, index] : targets) result.at(target) = output.at(index);
         return result;
     }
 };
