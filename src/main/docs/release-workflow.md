@@ -72,9 +72,12 @@ credits last. Respect the owner's gallery and formatting decisions. On Nexus use
 a descriptive version-free public file display name and its separate version
 field. Local archive filenames may retain a version for immutable provenance.
 
-The public product title is **CLAW - The Beast Within**. Use **CLAW** for the
-current game download and its persistent Nexus update-group name, with the
-version in the separate version field. Required tool groups use the stable
+The owner-set public product title is **CLAW - Customizable Lycanthrope Appearance
+and Weight**. Nexus file/update-group fields have a 50-character limit; their
+saved version-free label is **CLAW - Custom Lycanthrope Appearance and Weight**.
+The version belongs in its separate field. Preserve the owner's current page
+title; changing a download label never authorizes a separate General-page rename.
+Required tool groups use the stable
 names **Morphbench Application** and **Morphbench Launcher**. Keep historical
 records and game plugin identifiers unchanged when changing presentation names.
 

@@ -4,7 +4,7 @@
   "sourceCommit": "22834eb5d8a8259b17d1b29675c666ab9321753e",
   "modId": 194798,
   "fileId": 829735,
-  "fileDisplayName": "CLAW",
+  "fileDisplayName": "CLAW - Custom Lycanthrope Appearance and Weight",
   "archiveSha256": "dec2a2a9abca26c6d597e21f415875b175d82675eb9a6c67949e1d649080feec",
   "archiveBytes": 14506411,
   "uploadVerified": true,
@@ -55,7 +55,7 @@
     "archiveBytes": 22027929,
     "status": "quarantined-awaiting-nexus-review"
   },
-  "modDisplayName": "CLAW - The Beast Within",
+  "modDisplayName": "CLAW - Customizable Lycanthrope Appearance and Weight",
   "archiveName": "CLAW.zip",
   "packagingOnlyCorrection": true,
   "githubDownload": "https://github.com/Vhodnoylogin/claw/releases/download/claw/0.7.0.0/CLAW.zip",

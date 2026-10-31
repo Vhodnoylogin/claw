@@ -1,4 +1,4 @@
-# CLAW — The Beast Within
+# CLAW — Customizable Lycanthrope Appearance and Weight
 
 **CLAW 0.7.0.0** связывает морфы человеческого тела с телом вервольфа обоих полов.
 Худой, атлетичный или полный человек получает соответствующую звериную форму.
