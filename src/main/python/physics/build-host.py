@@ -110,7 +110,8 @@ def main(argv=None):
         run([str(args.spriggit.resolve()), "deserialize", "--InputPath", str(again), "--OutputPath", str(roundtrip)], ROOT, "spriggit-rebuild")
         if wiring.validate_plugin(roundtrip, contract) != decoded:
             raise ValueError("Quest/VMAD binary wiring changed after text round-trip")
-        run([sys.executable, "-m", "unittest", "discover", "-s", "physics/tests", "-v"], ROOT.parent, "offline-tests")
+        run([sys.executable, "-m", "unittest", "discover", "-s",
+             str(ROOT.parents[2] / "test/python/physics"), "-v"], ROOT.parents[3], "offline-tests")
         if inputs != input_hashes():
             raise ValueError("Physics sources changed while building; candidate is not a verified snapshot")
         build.verify_fitted_unchanged(fitted)

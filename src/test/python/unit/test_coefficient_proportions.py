@@ -69,8 +69,13 @@ class ProportionsTests(unittest.TestCase):
   self.assertEqual(compose('HIMBO',{'Muscle':.2,'TorsoWaistSize':.2})['CLAWTorsoWaistNarrow'],0)
   self.assertAlmostEqual(compose('HIMBO',{'TorsoWaistSize':.2})['CLAWTorsoWaistNarrow'],.76709574)
 
- def test_breast_coefficients_and_native_output_contract_are_preserved(self):
-  self.assertAlmostEqual(compose('3BA',{'Breasts':.15})['CLAWTorsoBreastSize'],.53963454)
+ def test_breast_transfer_retains_range_for_broader_v3_shape(self):
+  # Real Mira/Runa observations: avoid the old Runa saturation while the larger
+  # v3 field produces more breadth/downward growth at these lower coefficients.
+  mira=compose('3BA',{'Breasts':.15})['CLAWTorsoBreastSize']
+  runa=compose('3BA',{'Breasts':.28})['CLAWTorsoBreastSize']
+  self.assertAlmostEqual(mira,.296799)
+  self.assertGreater(runa,mira);self.assertLess(runa,.7)
   for family in ['HIMBO','3BA','CBBE']:
    rr=rules(family);self.assertLessEqual(len(rr),128)
    self.assertTrue(all(0<float(r['cap'])<=1 and math.isfinite(float(r['gain'])) for r in rr))

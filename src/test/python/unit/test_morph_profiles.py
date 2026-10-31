@@ -46,8 +46,11 @@ class ShippedFamilyTests(unittest.TestCase):
             self.assertTrue(any(rule.get('source')=='$actor.weight' for rule in profile))
             if family=='Vanilla':
                 self.assertEqual(profile.get('version'),'game-weight-v1')
-                self.assertEqual(len(profile),20)
-                self.assertEqual({rule.get('source') for rule in profile},{'','$actor.weight'})
+                body=[r for r in profile if not r.get('source','').startswith('$human.')
+                      and not (r.get('source')=='' and r.get('target') in {'CLAWHeadSize','CLAWHeadEarSize','CLAWTailLength','CLAWArmClawLong','CLAWLegClawLong'})]
+                self.assertEqual({rule.get('source') for rule in body},{'','$actor.weight'})
+                self.assertTrue(any(rule.get('source')=='$human.height' for rule in profile))
+                self.assertTrue(any(rule.get('source')=='$human.face.noseLength' for rule in profile))
                 self.assertTrue(all((rule.get('function')=='constant') == (rule.get('source')=='') for rule in profile))
 
     def test_actual_source_girth_sign_is_preserved(self):

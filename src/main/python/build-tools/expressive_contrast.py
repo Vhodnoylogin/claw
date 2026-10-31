@@ -104,7 +104,7 @@ def compare_measures(reference, candidate, required_ratio=1.25):
     return rows
 
 
-def analyze(reference, candidate, output, pynifly=None):
+def analyze(reference, candidate, output, pynifly=None, recipe=None):
     reference, candidate, output = map(lambda path: Path(path).resolve(), (reference, candidate, output))
     body.authored_output(output)
     api, _ = body.load_api(pynifly)
@@ -115,6 +115,11 @@ def analyze(reference, candidate, output, pynifly=None):
     # to avoid normal turns changes its support even though its amplitude stays.
     changed = {name for _, _, lean, growth in REGIONS.values() for name in (lean, growth) if name}
     changed.add('CLAWTorsoShoulderGirth')
+    selected_recipe = json.loads(Path(recipe).read_text(encoding='utf-8')) if recipe else None
+    if selected_recipe and 'femaleBreast' in selected_recipe['parameters']:
+        changed.add(body.BREAST)
+    if selected_recipe:
+        changed.update(selected_recipe['parameters'].get('headIsolation', {}).get('morphs', ()))
     for sex in ('male', 'female'):
         for ending in ('_0.nif', '_1.nif'):
             name = sex + 'bodywerewolf' + ending
@@ -126,8 +131,9 @@ def analyze(reference, candidate, output, pynifly=None):
         counts = {name: len(value) for name, value in geometry.items()}
         decoded = {label: body.decode((folder/(sex+'bodywerewolf.tri')).read_bytes(), counts)
                    for label, folder in (('reference', reference), ('candidate', candidate))}
-        if decoded['reference'].keys() != decoded['candidate'].keys():
-            raise ValueError('Morph/shape inventory changed')
+        inventory_difference = decoded['reference'].keys() ^ decoded['candidate'].keys()
+        if any(name not in changed for _, name in inventory_difference):
+            raise ValueError('Protected morph/shape inventory changed')
         protected = [key for key in decoded['reference'] if key[1] not in changed]
         if any(not np.array_equal(decoded['reference'][key], decoded['candidate'][key]) for key in protected):
             raise ValueError('A protected field outside the scoped regions changed')
@@ -150,6 +156,7 @@ if __name__ == '__main__':
     parser.add_argument('--candidate', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--pynifly', type=Path)
+    parser.add_argument('--recipe', type=Path)
     args = parser.parse_args()
-    result = analyze(args.reference, args.candidate, args.out, args.pynifly)
+    result = analyze(args.reference, args.candidate, args.out, args.pynifly, args.recipe)
     print(json.dumps({'report': str(args.out), 'passesContrastGate': result['passesContrastGate']}))

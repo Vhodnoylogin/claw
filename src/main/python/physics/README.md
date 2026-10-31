@@ -1,5 +1,11 @@
 # CLAW.Physics: CBPC ear/tail candidate
 
+The separate [motion adapters](motion-adapters.md) provide installable offline
+CBPC and FSMP alternatives, independent of the finite collider host. The
+current-TRI P1 rig and nominal motion-sphere stage compose with expressive v3
+without retained runtime assets. Game acceptance remains pending; the source
+contracts below retain their separate contact scope.
+
 ## Current automatic source integration
 
 The optional Distribution DLL now observes the provider's actual effective

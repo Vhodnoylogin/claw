@@ -24,6 +24,12 @@ NAMES = ('CLAWArmLean', 'CLAWLegThighLean', 'CLAWLegCalfLean', 'CLAWTorsoLean',
          'CLAWArmGirth', 'CLAWLegThighGirth', 'CLAWLegCalfGirth',
          'CLAWTorsoGirth', 'CLAWTorsoBellyRound', 'CLAWTorsoShoulderGirth', 'CLAWTorsoChestSize')
 COAT = ('fur_arms', 'fur_back', 'fur_belly', 'fur_chest', 'fur_shoulders', 'ChestBlend')
+BREAST = 'CLAWTorsoBreastSize'
+
+
+def authored_names(recipe, sex):
+    return (NAMES + ((BREAST,) if sex == 'female' and 'femaleBreast' in recipe['parameters'] else ())
+            + tuple(recipe['parameters'].get('headIsolation', {}).get('morphs', ())))
 
 
 def smooth(value):
@@ -33,6 +39,52 @@ def smooth(value):
 
 def window(value, low, high, fade):
     return smooth((value-low)/fade) * smooth((high-value)/fade)
+
+
+def muzzle_support(vertices, rule):
+    """Keep the old Head/Jaw-authored muzzle fields off the chest-shaped mesh.
+
+    Head skin weights on this donor extend into the breast/neck surface. The
+    source fields already carry the actual Head/Jaw weights, so an anatomical
+    forward transition removes that spill without moving the jaw separately.
+    The same continuous rest-frame mask is used for skin, mouth and fur.
+    """
+    if rule['morphs'] != ['CLAWHeadMuzzleLong', 'CLAWHeadMuzzleWide']:
+        raise ValueError('Only the two authored muzzle fields may be isolated')
+    low, high = rule['forwardZero'], rule['forwardFull']
+    if not np.isfinite([low, high]).all() or high <= low:
+        raise ValueError('Muzzle support requires ordered finite forward bounds')
+    return smooth((quality.positions(vertices)[:, 1]-low)/(high-low))
+
+
+def breast_field(vertices, rule):
+    """Broad supported mass whose lower lobe grows chiefly down the torso.
+
+    This field does not reuse the sharp legacy source mask. The axillary and
+    sternum transitions share a continuous chest support; fur is bound to the
+    resulting skin field later, and body/head attachment offsets stay frozen.
+    """
+    positive = ('fadeZ', 'widthFade', 'backFade', 'frontFade', 'lobeWidth',
+                'lowerWidth', 'lateral', 'forward', 'down', 'apexFade')
+    if any(isinstance(rule[k], bool) or not isinstance(rule[k], (int, float)) or
+           not np.isfinite(rule[k]) or rule[k] <= 0 for k in positive):
+        raise ValueError('Positive finite breast support dimensions and amplitudes required')
+    if not 0 <= rule['apexForwardFraction'] <= 1:
+        raise ValueError('Breast apex forward fraction must be bounded')
+    x, y, z = quality.positions(vertices).T
+    ax = abs(x)
+    support = window(z, *rule['rangeZ'], rule['fadeZ'])
+    support *= 1-smooth((ax-rule['widthFull'])/rule['widthFade'])
+    support *= smooth((y-rule['backZero'])/rule['backFade'])
+    support *= 1-smooth((y-rule['frontFull'])/rule['frontFade'])
+    support *= np.exp(-.5*((ax-rule['lobeCentreX'])/rule['lobeWidth'])**2)
+    lower = smooth((rule['lowerTop']-z)/rule['lowerWidth'])
+    # The existing projecting apex receives less forward growth; extra mass
+    # spreads laterally and settles down, instead of sharpening its projection.
+    forward = 1-(1-rule['apexForwardFraction'])*smooth((y-rule['apexStart'])/rule['apexFade'])
+    return np.c_[np.sign(x)*smooth(ax/4)*rule['lateral']*support,
+                 rule['forward']*forward*support,
+                 -rule['down']*(.25+.75*lower)*support]
 
 
 def belly_support(vertices, shape, rule):
@@ -177,7 +229,7 @@ def authored_output(path, inputs=()):
     return out
 
 
-def coat_followers(geometry, faces, generated):
+def coat_followers(geometry, faces, generated, morph_names=NAMES):
     """Rigid per-card followers with explicit frozen skin-triangle bindings.
 
     A KD-tree proposes root candidates; exact point/triangle projection chooses
@@ -192,7 +244,7 @@ def coat_followers(geometry, faces, generated):
     skin = np.r_[geometry['body'], geometry['head']]
     skin_faces = np.r_[faces['body'], faces['head']+len(geometry['body'])]
     tree = cKDTree(skin)
-    skin_delta = {m: np.r_[generated['body'][m], generated['head'][m]] for m in NAMES}
+    skin_delta = {m: np.r_[generated['body'][m], generated['head'][m]] for m in morph_names}
     incident = [[] for _ in skin]
     for index, face in enumerate(skin_faces):
         for vertex in face:
@@ -222,7 +274,7 @@ def coat_followers(geometry, faces, generated):
                     best = dist, index, face, surface.barycentric(point, skin[face])
             dist, index, face, bary = best
             root_distances.append(float(dist))
-            for morph in NAMES:
+            for morph in morph_names:
                 if morph == 'CLAWTorsoBellyRound':
                     continue
                 inherited = np.sum(skin_delta[morph][face]*bary[:, None], axis=0)
@@ -271,15 +323,24 @@ def section(vertices, faces, axis, level, mask=None):
             'central90Depth': float(np.ptp(np.quantile(q[:, 1], [.05, .95])))}
 
 
-def audit(geometry, faces, before, after, extra_states=()):
+def audit(geometry, faces, before, after, extra_states=(), morph_names=NAMES):
     joins = quality.freeze_join(geometry['body'], faces['body'], geometry['head'], faces['head'])
     collar = make_collar(geometry, faces)
     states = [('neutral', {})]
-    for name in NAMES:
+    for name in morph_names:
         states += [(name+'='+str(value), {name: value}) for value in (.25, .5, .75, 1.)]
     states += [('lean-all', dict.fromkeys(NAMES[:4], 1.)),
                ('growth-all', dict.fromkeys(NAMES[4:], 1.)),
                ('mixed-half', dict.fromkeys(NAMES, .5))]
+    if BREAST in morph_names:
+        states += [('growth-and-breast-all', dict.fromkeys(morph_names[4:], 1.)),
+                   ('lean-and-breast-all', dict.fromkeys((*NAMES[:4], BREAST), 1.)),
+                   ('chest-and-breast', {BREAST: 1., 'CLAWTorsoChestSize': 1.})]
+    muzzle_names = tuple(m for m in morph_names if m.startswith('CLAWHeadMuzzle'))
+    if muzzle_names:
+        states += [('muzzle-pair', dict.fromkeys(muzzle_names, 1.)),
+                   ('body-and-muzzle-all', dict.fromkeys((*NAMES[4:], *muzzle_names,
+                       *((BREAST,) if BREAST in morph_names else ())), 1.))]
     states += list(extra_states)
     states += [('baseline:'+n, state) for n, state in extra_states]
     rows = {}
@@ -302,7 +363,7 @@ def audit(geometry, faces, before, after, extra_states=()):
               'belly80': (2, 80., lambda p: abs(p[:, 0])<10),
               'belly84': (2, 84., lambda p: abs(p[:, 0])<10)}
     measurements = {}
-    for label, state in [('neutral', {}), *[(m, {m: 1.}) for m in NAMES],
+    for label, state in [('neutral', {}), *[(m, {m: 1.}) for m in morph_names],
                          *[('baseline:'+m, {m: 1.}) for m in NAMES[4:]],
                          *extra_states, *[('baseline:'+n, v) for n, v in extra_states]]:
         measurements[label] = {}
@@ -374,15 +435,26 @@ def build(base, recipe_path, out, pynifly=None, vectors=None):
             raise ValueError('Recipe requires identity shape frames')
         magic, records = trip_records(original[sex+'bodywerewolf.tri'])
         before = decode(original[sex+'bodywerewolf.tri'], {n: len(v) for n, v in geometry.items()})
+        morph_names = authored_names(recipe, sex)
         generated = {n: fields(v, n, recipe['parameters']) for n, v in geometry.items()}
+        if BREAST in morph_names:
+            for name, vertices in geometry.items():
+                generated[name][BREAST] = (breast_field(vertices, recipe['parameters']['femaleBreast'])
+                    if name in ('body', 'head') else np.zeros_like(vertices))
+        isolation = recipe['parameters'].get('headIsolation')
+        if isolation:
+            for name, vertices in geometry.items():
+                support = muzzle_support(vertices, isolation)
+                for morph in isolation['morphs']:
+                    generated[name][morph] = before.get((name, morph), np.zeros_like(vertices))*support[:, None]
         collar = make_collar(geometry, faces)
-        for morph in NAMES:
+        for morph in morph_names:
             generated['head'][morph] = collar.reconcile(generated['body'][morph], generated['head'][morph])
-        coat_bindings = coat_followers(geometry, faces, generated)
+        coat_bindings = coat_followers(geometry, faces, generated, morph_names)
         by_shape = {n: rows for n, rows in records}
         for shape in geometry:
             rows = by_shape.setdefault(shape, [])
-            changed = {name: encode_field(name, generated[shape][name]) for name in NAMES}
+            changed = {name: encode_field(name, generated[shape][name]) for name in morph_names}
             # Keep all non-body records exact and retain existing relative order.
             rows[:] = [changed.pop(row[0], row) for row in rows]
             rows.extend(row for name, row in changed.items() if row[2])
@@ -395,12 +467,19 @@ def build(base, recipe_path, out, pynifly=None, vectors=None):
         available = {m for n, m in after}
         if any(c and m not in available for _, state in extra_states for m, c in state.items()):
             raise ValueError('Nonzero fixture target absent from serialized TRI')
-        measurements = audit(geometry, faces, before, after, extra_states)
+        measurements = audit(geometry, faces, before, after, extra_states, morph_names)
+        measurements['authoredMorphs'] = list(morph_names)
+        if isolation:
+            protected_chest = (geometry['head'][:, 1] <= isolation['forwardZero'])
+            measurements['muzzleIsolation'] = {'forwardZero': isolation['forwardZero'],
+                'forwardFull': isolation['forwardFull'], 'protectedHeadShapeChestVertices': int(protected_chest.sum()),
+                'maximumDecodedChestMovement': max(float(np.linalg.norm(after.get(('head', morph),
+                    np.zeros_like(geometry['head']))[protected_chest], axis=1).max(initial=0)) for morph in isolation['morphs'])}
         measurements['coatBindings'] = coat_bindings
         protected = geometry['head'][:, 1] >= max(recipe['parameters']['torso']['frontFull']+recipe['parameters']['torso']['frontFade'],
                                                    recipe['parameters']['belly']['skinFrontFull']+recipe['parameters']['belly']['skinFrontFade'])
         measurements['protectedHeadAheadOfBodySupport'] = {'vertices': int(protected.sum()),
-            'maximumDecodedAuthoredDisplacement': max(float(np.linalg.norm(after.get(('head', m), np.zeros_like(geometry['head']))[protected], axis=1).max(initial=0)) for m in NAMES)}
+            'maximumDecodedAuthoredDisplacement': max(float(np.linalg.norm(after.get(('head', m), np.zeros_like(geometry['head']))[protected], axis=1).max(initial=0)) for m in (*NAMES, *((BREAST,) if BREAST in morph_names else ())))}
         measurements['baselineSkinWeightsFiniteNonnegative'] = True
         report['sexes'][sex] = measurements
         payload[sex+'bodywerewolf.tri'] = result
