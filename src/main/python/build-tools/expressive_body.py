@@ -35,6 +35,32 @@ def window(value, low, high, fade):
     return smooth((value-low)/fade) * smooth((high-value)/fade)
 
 
+def belly_support(vertices, shape, rule):
+    """Compact abdomen support, with an optional smooth elliptical dome.
+
+    The released v1 recipe deliberately retains its original plateau. New
+    recipes can redistribute forward growth towards the abdominal centre
+    without changing vertex indices, joins, materials or runtime coefficients.
+    This is an authored geometric profile, not an anatomical calibration.
+    """
+    x, y, z = quality.positions(vertices).T
+    support = window(z, *rule['range'], rule['fade'])
+    support *= 1-smooth((np.abs(x)-rule['widthFull'])/rule['widthFade'])
+    support *= smooth((y-rule['backZero'])/rule['backFade'])
+    if shape in ('body', 'head', 'genitals'):
+        support *= 1-smooth((y-rule['skinFrontFull'])/rule['skinFrontFade'])
+    dome = rule.get('dome')
+    if dome is not None:
+        if (not isinstance(dome, dict) or set(dome) != {'centreZ', 'sigmaX', 'sigmaZ'} or
+                any(isinstance(value, bool) or not isinstance(value, (int, float)) or
+                    not np.isfinite(value) for value in dome.values()) or
+                dome['sigmaX'] <= 0 or dome['sigmaZ'] <= 0):
+            raise ValueError('Finite dome centre and positive X/Z widths required')
+        support *= np.exp(-.5*((x/dome['sigmaX'])**2 +
+                              ((z-dome['centreZ'])/dome['sigmaZ'])**2))
+    return support
+
+
 def fields(vertices, shape, recipe):
     """One continuous anatomical rest-frame warp, shared at welded vertices.
 
@@ -94,11 +120,7 @@ def fields(vertices, shape, recipe):
     result['CLAWTorsoChestSize'][:, 1] = chest['forward']*support
     result['CLAWTorsoChestSize'][:, 2] = -chest['down']*support
     belly = recipe['belly']
-    support = window(z, *belly['range'], belly['fade'])
-    support *= 1-smooth((ax-belly['widthFull'])/belly['widthFade'])
-    support *= smooth((y-belly['backZero'])/belly['backFade'])
-    if shape in ('body', 'head', 'genitals'):
-        support *= 1-smooth((y-belly['skinFrontFull'])/belly['skinFrontFade'])
+    support = belly_support(v, shape, belly)
     result['CLAWTorsoBellyRound'][:, 1] = belly['forward']*support
     result['CLAWTorsoBellyRound'][:, 2] = -belly['down']*support
     result['CLAWTorsoBellyRound'][:, 0] = x*belly['lateral']*support
