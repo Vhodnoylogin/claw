@@ -7,8 +7,10 @@ supplies human preset inputs to actors first encountered as werewolves.
 The development branch also provides separate male/female Vanilla matrices.
 Every matrix can read the explicit `$actor.weight` input, independently of the
 already-effective RaceMenu morph values. The installer selects one male and one
-female family. Native and Morphbench use the same compiled evaluator; this new
-candidate has offline checks and still requires installed-game acceptance.
+female family. Native and Morphbench use the same compiled evaluator. The
+1 November development checks cover the installed HIMBO/3BA transformation and
+born-werewolf lifecycle; see the [verification record](src/main/docs/verification-20261101.md)
+for the exact build, remaining runtime boundaries and appearance limitations.
 
 [Download CLAW 0.7.0.0](https://github.com/Vhodnoylogin/claw/releases/tag/claw/0.7.0.0)
 · [Nexus](https://www.nexusmods.com/skyrimspecialedition/mods/194798)

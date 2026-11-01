@@ -1,6 +1,9 @@
 # Human appearance to individual coat tint
 
-Development feature, 1 November 2026; not a published or game-accepted feature.
+Development feature, 1 November 2026; not yet published. The exact engine-factory
+build has passed the SE lifecycle and private-material health checks described
+in [the verification record](verification-20261101.md). Independent rendered
+colour, alpha and artistic acceptance are separate checks.
 
 CLAW captures human colour before transformation. The inherited face NPC's QNAM
 supplies record skin RGB; HCLF supplies record hair RGB. A unique consistent
@@ -61,8 +64,13 @@ transformation in runs four and five. The fifth run's actual dump shows stock
 SKEE key7 constructing a tint material whose GetFeature vtable entry resolves
 to the non-executable SKEE module base. The engine-factory path above avoids
 that constructor entirely, without replacing or patching RaceMenu. This new
-candidate compiled and passed nine native suites but is not yet game accepted.
-Earlier morph-vector parity does not qualify colour or this corrective path.
+candidate compiled and passed nine native suites. Game06 then completed all six
+transformations and returns, model refresh and save/load, with advancing frames
+and all six private-material health statuses applied. Game08 separately checked
+five originally-beast actors and a transformed control through refresh/save/load.
+The five beasts retain unavailable human colour history; the control retains its
+own tint status. Neither test reports independent raw shader RGB or rendered
+alpha measurements, so those aspects remain unqualified.
 
 Each clone receives a newly allocated boolean `NO_TINT=true` extra. An inherited
 extra is removed only from the clone's independent array; its object is never
