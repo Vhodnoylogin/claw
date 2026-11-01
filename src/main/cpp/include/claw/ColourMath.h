@@ -18,6 +18,17 @@ inline std::uint32_t pack(const RGB& rgb) {
     for (float x : rgb) value = (value << 8) | static_cast<std::uint32_t>(std::lround(std::clamp(x, 0.0F, 1.0F) * 255));
     return value;
 }
+// CCLR v1 persists the source palette as RGB bytes. Use that same precision
+// before the first application, so saving/loading cannot change a final tint.
+inline std::optional<RGB> paletteColour(const RGB& rgb) {
+    if (!valid(rgb)) return std::nullopt;
+    return unpack(pack(rgb));
+}
+// SKEE's immediate key7 write unpacks an RGB integer to the material. Compare
+// at that transport's precision, while rejecting non-finite shader values.
+inline bool matchesPackedTint(const RGB& actual, std::uint32_t expected) {
+    return expected <= 0xFFFFFF && valid(actual) && pack(actual) == expected;
+}
 // Multiplicative material tint, not replacement albedo. Keep enough light to
 // read dark fur; it cannot turn a baked dark diffuse into a white texture.
 inline RGB coatTint(const RGB& human, bool fur) {

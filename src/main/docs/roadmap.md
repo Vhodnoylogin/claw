@@ -31,6 +31,20 @@ The previously separate adult-anatomy/physics idea remains deferred and is not
 silently added to any of these three current queues. This ordering supersedes
 all numbered queue/release lists retained below as historical planning.
 
+### Additional body-family compatibility investigation
+
+The owner proposed UNP-family support on 1 November and offered the UNP Renewal
+(Nexus1699) and BHUNP (Nexus31126) archives for local inspection. This is planned
+compatibility work, not an implemented or tested body-family declaration.
+BHUNP advertises BodySlide/RaceMenu morph support; UNP Renewal primarily supplies
+ready meshes/textures and directs shape editing to Legacy UUNP or BHUNP.
+Inspect the actual chosen archive's OSP/OSD/TRI morph names and effective ranges
+before authoring a separate female matrix and installer choice. Do not substitute
+CBBE coefficients merely because some slider names look similar. A static UNP
+mesh can use only verified available inputs, including actor weight; the mesh's
+UNP texture layout alone does not establish support for UUNP/BHUNP morphs.
+No replacement body or physics dependencies are installed as part of this research.
+
 ### Mechanical scope after the combined queue-two/three scene
 
 The owner requested maximum functional implementation first and moved visual

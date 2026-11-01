@@ -6,6 +6,11 @@ CLAW captures human colour before transformation. The inherited face NPC's QNAM
 supplies record skin RGB; HCLF supplies record hair RGB. A unique consistent
 loaded HairTint material takes precedence for hair, using RaceMenu's documented
 local implementation convention of twice the normalized RGB components.
+Valid rendered RGB is normalized to the same 8-bit-per-channel palette used by
+CCLR v1 before ambiguity comparison, storage and first application. QNAM and
+record hair colours already use that palette. A free-float third-party hair tint
+is deliberately rounded once; saving/loading never introduces a second colour
+policy or shifts the resulting packed coat tint.
 Ambiguous rendered hair falls back to the record with an explicit status.
 Eyebrow/beard/head-part textures and FaceGen makeup are not separately sampled.
 An originally-beast actor without human observation has no invented colours.
@@ -23,13 +28,54 @@ the current comparison texture option.
 
 On the game thread, every selected surface must have exactly one matching name
 and a supported lighting material. All properties are cloned before binding any;
-both property and material must differ from the donor pointers. Failure leaves
+if a distinct property clone has a missing or shared material, the engine's
+`SetMaterial(source, true)` creates its unique material copy. The source property
+is never passed as the destination. Both property and material must differ from
+the donor pointers, and the source shader feature must be preserved. Failure leaves
 the actor unchanged and records a reason. SKEE Override v2 key7 applies transient
 per-node colour to these private properties. No persistent SKEE override or NPC
 base edit is registered. Model generations are retained by NiPointer, avoiding
 reused raw-root-address aliases. A later property writer wins until model reload.
 Restoration rebinds only properties still owned by CLAW; it never undoes a later
 writer's property. Alpha properties and texture slots remain intact.
+
+`appearance::Runtime` owns its surface leases, actor entries and collection
+privately. Distribution uses lifecycle operations, a read-only `status(id)` and
+`retainIf(predicate)` when rejecting stale loaded identities; it does not inspect
+or mutate the collection. The caller retains the existing Distribution lock.
+Yielding to a later material writer is private runtime state, independent of its
+display message. RGB validation, palette conversion and tint composition remain
+pure functions in `ColourMath.h`. This boundary changes no CCLR bytes or Papyrus
+API, and introduces no engine cleanup in a destructor: reset/revert remains an
+explicit lifecycle operation.
+
+The second installed mechanism run reached the material-isolation guard for all
+six wolves, rather than applying colour. Its single generic failure did not
+distinguish a null/reused property from a null/shared material, so the exact
+cloning result was not observed. The unique-material preparation above and
+surface-specific failure diagnostics are a corrective candidate, not a claimed
+runtime colour pass. Morph-vector parity in that run does not qualify colour.
+
+Each clone receives a newly allocated boolean `NO_TINT=true` extra. An inherited
+extra is removed only from the clone's independent array; its object is never
+mutated. This protects the separate skin/fur colours from SKEE's ordinary
+`UpdateModelColor_Recursive` skin/hair refresh. Direct transient key7 writes do
+not use that recursive guard. Application verifies the actual material tint at
+the key7 RGB transport precision, the guard, and private material ownership.
+The unchanged-model fast path checks those invariants too: a later writer that
+changes the property, removes the guard or changes its tint wins until reload;
+CLAW does not repeatedly fight it. These source-level protections still require
+the runtime checks below, rather than proving colour persistence by compilation.
+
+After the first key7 write, each surface retains the exact material, private
+guard and texture-set identities. Material uses its `BSIntrusiveRefCounted`
+smart-pointer policy; the guard and texture set use `NiPointer`. Fast-path and
+restoration checks reject identity changes before inspecting the live tint.
+Consequently SKEE's supported texture write, which replaces a texture set inside
+the same material while preserving RGB and `NO_TINT`, also wins. The retained
+witnesses prevent pointer reuse from making a replacement look unchanged. This
+bounded lease does not claim to detect arbitrary edits to every shader field or
+in-place changes of texture paths inside an unchanged texture-set object.
 
 Separate bounded `CCLR` co-save records retain human colour, base/sex identity and
 source availability, never engine pointers. They are accepted only alongside a
@@ -38,6 +84,15 @@ valid Distribution actor record and cleared on quarantine/deletion/revert.
 does not establish colour success. Required game checks include two actors
 sharing a base, both sexes, transform/return, 3D rebuild, save/load, untouched
 control/excluded shapes, and actual rendered tint/alpha inspection.
+Also refresh the wolf's ordinary skin/hair colour while it retains the same
+model, then verify independent expected skin/fur RGB, all private guards and an
+untouched human/control actor. After returning to human, no CLAW clone or guard
+must remain attached to the human model. On a new wolf model the clones and
+guards must be newly owned; restored co-save source colours must produce the
+same packed tints.
+Test a supported SKEE texture write and a material/guard replacement preserving
+the same RGB: CLAW must yield and restore/reset must retain the later property,
+material and texture choice rather than rebinding its donor over that writer.
 
 Primary implementation references are the pinned public SKEE
 `IPluginInterface.h` Override v2 contract, `ShaderUtilities.cpp` key7 shader

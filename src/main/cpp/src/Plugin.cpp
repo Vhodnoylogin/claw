@@ -248,7 +248,7 @@ bool boundTo(const State& state, const RE::Actor* actor) {
     return state.runtimeSerial && state.runtimePointer == actor;
 }
 void quarantine(State& state, std::string error) {
-    for (const auto& [id, candidate] : states) if (&candidate == &state) { claw::appearance::forget(id); break; }
+    for (const auto& [id, candidate] : states) if (&candidate == &state) { claw::appearance::runtime.forget(id); break; }
     revokeSourceBootstrap(state);
     state.quarantined = true; state.runtimeSerial = 0; state.runtimePointer = nullptr;
     state.runtimeHandle.reset(); state.cache.clear();
@@ -263,13 +263,13 @@ void checkRuntimeInstances() {
             quarantine(state, "runtime actor handle expired or changed; saved assignment quarantined");
         } else if (actor->IsDeleted()) {
             if (const auto pin = pins.find(actor.get()); pin != pins.end()) requests.eraseOwner(it->first, pin->second->serial);
-            claw::appearance::forget(it->first);
+            claw::appearance::runtime.forget(it->first);
             it = states.erase(it);
             continue;
         } else if (RE::TESForm::LookupByID<RE::Actor>(it->first) != actor.get()) {
             quarantine(state, "runtime actor no longer owns saved FormID; assignment quarantined");
         } else if (!actor->Is3DLoaded() || !actor->Get3D()) {
-            claw::appearance::restore(actor.get());
+            claw::appearance::runtime.restore(actor.get());
             state.status = Status::unloaded; state.dirty = true;
             if (state.defaultRoot) revokeSourceBootstrap(state);
         }
@@ -679,7 +679,7 @@ bool readback(RE::Actor* actor, const claw::Morphs& expected) {
 }
 
 bool clearOwn(RE::Actor* actor) {
-    claw::appearance::restore(actor);
+    claw::appearance::runtime.restore(actor);
     // Snapshot first, then mutate only this exact key. Removed/custom names do
     // not depend on whichever matrix or compiled public list is installed now.
     try {
@@ -710,9 +710,9 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     const float observedWeight = std::isfinite(rawNPCWeight) && rawNPCWeight >= 0 && rawNPCWeight <= 100 ? rawNPCWeight / 100.0F : -1.0F;
     if (beast) state->beastWeight = observedWeight;
     else { state->humanWeight = observedWeight; state->observedHuman = true; revokeSourceBootstrap(*state); }
-    if (!actor->Is3DLoaded() || !actor->Get3D()) { claw::appearance::restore(actor); state->status = Status::unloaded; state->dirty = true; return; }
-    if (beastRace && !beast && !bindingMismatch && currentRace && currentRace->HasKeywordString("ActorTypeNPC")) claw::appearance::captureHuman(actor);
-    if (!beast || state->suppressed || bindingMismatch) claw::appearance::restore(actor);
+    if (!actor->Is3DLoaded() || !actor->Get3D()) { claw::appearance::runtime.restore(actor); state->status = Status::unloaded; state->dirty = true; return; }
+    if (beastRace && !beast && !bindingMismatch && currentRace && currentRace->HasKeywordString("ActorTypeNPC")) claw::appearance::runtime.captureHuman(actor);
+    if (!beast || state->suppressed || bindingMismatch) claw::appearance::runtime.restore(actor);
     if (!morphs) { logError(*state, "SKEE BodyMorph API is unavailable", Status::providerUnavailable); return; }
     // Human coefficients already include the provider's weight interpolation.
     // Re-read during both forms: source deletion/zero must not revive cached values.
@@ -785,7 +785,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         invalidatePhysics(actor->GetFormID());
         if (!readback(actor, expected)) { logError(*state, "SKEE own morph readback differs from requested values"); return; }
     }
-    (void)claw::appearance::applyWolf(actor, appearanceOverrides);
+    (void)claw::appearance::runtime.applyWolf(actor, appearanceOverrides);
     state->sex = desiredSex; state->cache = std::move(expected); state->lastRoot = root; state->lastWeight = weight;
     state->dirty = false; state->status = Status::applied; state->error.clear();
 }
@@ -944,14 +944,14 @@ void save(SKSE::SerializationInterface* interface) {
         claw::writeHumanTraits(state.humanTraits, [&](auto value) { u32(row, value); }, [&](const auto& value) { string(row, value); });
         if (!interface->WriteRecord(actorRecord, claw::actorMatrixRecordVersion, row.data(), static_cast<std::uint32_t>(row.size()))) SKSE::log::error("Actor {:08X} serialization failed", id);
     }
-    claw::appearance::save(interface);
+    claw::appearance::runtime.save(interface);
 }
 
 void revert(SKSE::SerializationInterface*) {
     enabled = false; ++epoch;
     {
         std::lock_guard lock(mutex);
-        claw::appearance::reset();
+        claw::appearance::runtime.reset();
         states.clear(); requests.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = 0; nextIdentity = 1;
         physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
         obodySourcePopulationEnabled = false;
@@ -962,7 +962,7 @@ void revert(SKSE::SerializationInterface*) {
 void load(SKSE::SerializationInterface* interface) {
     enabled = false; ++epoch;
     std::lock_guard lock(mutex);
-    claw::appearance::reset();
+    claw::appearance::runtime.reset();
     states.clear(); requests.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = 0; nextIdentity = 1;
     physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
     obodySourcePopulationEnabled = false;
@@ -970,7 +970,7 @@ void load(SKSE::SerializationInterface* interface) {
     bool sessionFound = false;
     std::set<std::uint64_t> identities;
     while (interface->GetNextRecordInfo(type, version, length)) {
-        if (claw::appearance::loadRecord(interface, type, version, length)) continue;
+        if (claw::appearance::runtime.loadRecord(interface, type, version, length)) continue;
         if (type != sessionRecord && type != actorRecord) continue;
         if ((version != 1 && !(type == actorRecord && (version >= 2 && version <= claw::actorMatrixRecordVersion))) ||
             length > (type == actorRecord ? claw::actorRecordByteLimit(version) : 16384U)) { SKSE::log::error("Unsupported/corrupt CLAW record"); continue; }
@@ -1057,15 +1057,13 @@ void load(SKSE::SerializationInterface* interface) {
             }
         } catch (const std::exception& error) { SKSE::log::error("CLAW co-save: {}", error.what()); }
     }
-    if (!sessionFound) { states.clear(); claw::appearance::reset(); saveNamespace = newNamespace(); nextIdentity = 1; }
+    if (!sessionFound) { states.clear(); claw::appearance::runtime.reset(); saveNamespace = newNamespace(); nextIdentity = 1; }
     // Colour records cannot outlive the Distribution identity that owns them.
     // A rejected/quarantined actor record must not become a fresh colour lease.
-    for (auto it = claw::appearance::entries.begin(); it != claw::appearance::entries.end();) {
-        const auto state = states.find(it->first);
-        if (state == states.end() || state->second.quarantined) {
-            const auto id = it->first; ++it; claw::appearance::forget(id);
-        } else ++it;
-    }
+    claw::appearance::runtime.retainIf([](RE::FormID id) {
+        const auto state = states.find(id);
+        return state != states.end() && !state->second.quarantined;
+    });
     for (const auto& [id, state] : states) { (void)id; nextIdentity = std::max(nextIdentity, state.identity + 1); }
 }
 
@@ -1101,7 +1099,7 @@ void deleted(RE::VMHandle handle) {
         }
         if (actor && !actor->IsDeleted() && RE::TESForm::LookupByID<RE::Actor>(receipt.id) == actor.get()) return;
         if (receipt.requestOwner) requests.eraseOwner(receipt.id, receipt.requestOwner);
-        claw::appearance::forget(receipt.id);
+        claw::appearance::runtime.forget(receipt.id);
         states.erase(found);
     });
     if (!receipts.empty()) queuePinCollection();
@@ -1205,8 +1203,7 @@ RE::BSFixedString appearanceStatus(RE::StaticFunctionTag*, RE::Actor* actor) {
     const auto* state = cachedState(actor);
     if (!state || state->quarantined) return {};
     if (!appearanceOverrides) return RE::BSFixedString("SKEE Override API unavailable");
-    const auto entry = claw::appearance::entries.find(actor->formID);
-    return RE::BSFixedString(entry == claw::appearance::entries.end() ? "human appearance unavailable" : entry->second.status);
+    return RE::BSFixedString(claw::appearance::runtime.status(actor->formID));
 }
 RE::BSFixedString assigned(RE::StaticFunctionTag*, RE::Actor* actor) {
     std::lock_guard lock(mutex);
