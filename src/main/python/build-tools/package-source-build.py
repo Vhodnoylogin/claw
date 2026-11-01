@@ -32,7 +32,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[4]
 NAME = "CLAW - Customizable Lycanthrope Appearance and Weight"
 ARCHIVE_NAME = "CLAW - Customizable Lycanthrope Appearance and Weight.zip"
-VERSION = "0.7.0.0"
+VERSION = "0.8.0"
 MESH = "Meshes/Actors/WerewolfBeast/Character Assets"
 ARCHIVES = {".zip", ".7z", ".rar", ".tar", ".gz", ".gzip", ".tgz", ".bz2", ".bzip2",
             ".tbz", ".tbz2", ".xz", ".txz", ".lz", ".lzma", ".zst", ".zstd", ".tzst",
@@ -219,7 +219,7 @@ def companion(inputs, directory, native_sha, native_sources, commonlib_commit):
 
 
 MALE_FAMILIES = ("HIMBO", "Vanilla")
-FEMALE_FAMILIES = ("CBBE", "3BA", "Vanilla")
+FEMALE_FAMILIES = ("CBBE", "3BA", "BHUNP", "Vanilla")
 
 
 def profiles(data, family, male_family="HIMBO"):
@@ -230,12 +230,13 @@ def profiles(data, family, male_family="HIMBO"):
     tree = ET.fromstring(data)
     rows = tree.findall("Profile")
     inventory = {(row.get("sex"), row.get("family")) for row in rows}
-    if (tree.tag != "MorphLinkProfiles" or len(rows) != 5 or inventory !=
+    if (tree.tag != "MorphLinkProfiles" or len(rows) != 6 or inventory !=
             {("male", "HIMBO"), ("female", "CBBE"), ("female", "3BA"),
+             ("female", "BHUNP"),
              ("male", "Vanilla"), ("female", "Vanilla")}):
-        raise ValueError("Expected the canonical five sex-specific body-family matrices")
-    if any(not row.get('id') for row in rows) or len({row.get('id') for row in rows}) != 5:
-        raise ValueError("Canonical matrices require five distinct explicit profile identifiers")
+        raise ValueError("Expected the canonical six sex-specific body-family matrices")
+    if any(not row.get('id') for row in rows) or len({row.get('id') for row in rows}) != 6:
+        raise ValueError("Canonical matrices require six distinct explicit profile identifiers")
     for old in tree.findall("Defaults"):
         tree.remove(old)
     selected = {("male", male_family), ("female", family)}
@@ -290,25 +291,40 @@ def installer(template, entries):
         for marker in markers:
             ET.SubElement(required, "fileDependency", file=marker, state="Active")
         ET.SubElement(pattern, "type", name=kind)
+    def no_active_markers_pattern(parent, markers):
+        pattern = ET.SubElement(parent, "pattern")
+        dependencies = ET.SubElement(pattern, "dependencies", operator="And")
+        for marker in markers:
+            absent = ET.SubElement(dependencies, "dependencies", operator="Or")
+            for state in ("Missing", "Inactive"):
+                ET.SubElement(absent, "fileDependency", file=marker, state=state)
+        ET.SubElement(pattern, "type", name="Recommended")
     for sex, families in (("male", MALE_FAMILIES), ("female", FEMALE_FAMILIES)):
         group = ET.SubElement(groups, "group", name=sex.title()+" human body", type="SelectExactlyOne")
         options = ET.SubElement(group, "plugins", order="Explicit")
         for family in families:
             choice = ET.SubElement(options, "plugin", name=family)
             ET.SubElement(choice, "description").text = (
-                "Uses this sex's actual NPC weight as the only human input. No replacement human body mod is required."
+                "Body shape follows this sex's actual NPC weight; available head and stature traits are still inherited. No replacement human body mod is required."
                 if family == "Vanilla" else
-                "Select only when these human meshes are installed. Plugin markers recommend or gate the choice; they cannot verify winning meshes or the full dependency chain. Human bodies and physics are not bundled.")
+                "Choose the body whose meshes actually win in your mod manager. Plugin markers only recommend a choice; they cannot determine winning meshes, especially when several body mods are installed. Every family remains selectable. Human bodies and physics are not bundled."
+                + (" Requires BHUNP 3.34 Advanced Ver4 built with body morphs." if family == "BHUNP" else ""))
             ET.SubElement(ET.SubElement(choice, "conditionFlags"), "flag", name=sex+"Family").text = family
             dependent = ET.SubElement(ET.SubElement(choice, "typeDescriptor"), "dependencyType")
-            ET.SubElement(dependent, "defaultType", name="Recommended" if family == "Vanilla" else "NotUsable")
+            ET.SubElement(dependent, "defaultType", name="Optional")
             patterns = ET.SubElement(dependent, "patterns")
             if family == "HIMBO": marker_pattern(patterns, ("HIMBO.esp",), "Recommended")
             elif family == "CBBE":
-                marker_pattern(patterns, ("CBBE.esp", "3BBB.esp"), "Optional")
+                marker_pattern(patterns, ("BHUNP3BBB.esp",), "Optional")
+                marker_pattern(patterns, ("3BBB.esp",), "Optional")
                 marker_pattern(patterns, ("CBBE.esp",), "Recommended")
-            elif family == "3BA": marker_pattern(patterns, ("CBBE.esp", "3BBB.esp"), "Recommended")
-            else: marker_pattern(patterns, ("HIMBO.esp",) if sex == "male" else ("CBBE.esp",), "Optional")
+            elif family == "3BA":
+                marker_pattern(patterns, ("BHUNP3BBB.esp",), "Optional")
+                marker_pattern(patterns, ("3BBB.esp",), "Recommended")
+            elif family == "BHUNP": marker_pattern(patterns, ("BHUNP3BBB.esp",), "Recommended")
+            else:
+                no_active_markers_pattern(patterns, ("HIMBO.esp",) if sex == "male" else
+                                          ("BHUNP3BBB.esp", "3BBB.esp", "CBBE.esp"))
     old = config.find("conditionalFileInstalls")
     if old is not None: config.remove(old)
     patterns = ET.SubElement(ET.SubElement(config, "conditionalFileInstalls"), "patterns")
@@ -346,6 +362,7 @@ def selection_audit(entries):
             active = ({"HIMBO.esp"} if male == "HIMBO" else set())
             active |= ({"CBBE.esp"} if family in {"CBBE", "3BA"} else set())
             active |= ({"3BBB.esp"} if family == "3BA" else set())
+            active |= ({"BHUNP3BBB.esp"} if family == "BHUNP" else set())
             installed = reader.resolve_selection(config, entries, native=True, male_family=male,
                                                 family=family, host=host, additional_active=active)
             for item in required:
@@ -470,13 +487,13 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     entries.update(notices)
     entries["README.md"] = ("# " + NAME + "\n\n"
         "Human body morphs carried into werewolf shape.\n"
-        "Install through FOMOD: choose HIMBO or Vanilla for males and CBBE, 3BA or Vanilla for females.\n"
+        "Install through FOMOD: choose HIMBO or Vanilla for males and CBBE, 3BA, BHUNP or Vanilla for females.\n"
+        "Installed plugin markers suggest a choice; every body option remains selectable. Choose the body that actually wins your mod conflicts.\n"
+        "The BHUNP matrix targets BHUNP 3.34 Advanced Ver4 with generated body morphs.\n"
         "Requires Elegant textures, XP32 and matching SKSE/RaceMenu/Address Library. Replacement human bodies are required only for their selected matrix.\n"
         "Vanilla matrices use NPC weight. OBody integration supplies morph inputs to eligible born wolves using a morph-based matrix.\n\n"
-        "Optional coat patterns use a separate local library prepared from your own Elegant archive. "
-        "Follow the [local preparation guide](" + reference["repository"] + "/blob/" + (reference["commit"] or "main") + "/src/main/docs/coat-library.md) "
-        "and install its generated folder as a local mod. The library enables automatic hair-based pattern selection; individual overrides use CLAW's Papyrus API. "
-        "Human-derived skin/fur tint also works without this library. Keep Elegant installed for its shared texture maps.\n\n"
+        "Human skin and hair colours can tint the werewolf's existing materials. "
+        "Automatic distribution of different coat patterns is planned for 0.8.5.\n\n"
         "Elegant Werewolf Replacer assets by [Wolflady500](https://www.nexusmods.com/profile/Wolflady500) "
         "and [KaienHash](https://www.nexusmods.com/profile/KaienHash).\n\n"
         "Source code: " + reference["url"] + "\n").encode("utf-8")

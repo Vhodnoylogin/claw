@@ -1,6 +1,7 @@
 """Direct-source packaging contracts using synthetic headers, not game fixtures."""
 import hashlib
 import importlib.util
+import itertools
 import json
 from pathlib import Path
 import re
@@ -96,9 +97,9 @@ class SourcePackageTests(unittest.TestCase):
             values.update(obody_esp=self.host, obody_pex=self.host_pex)
         return values
 
-    def test_full_package_has_literal_minimal_twelve_selections_and_no_development_payload(self):
+    def test_full_package_has_literal_minimal_sixteen_selections_and_no_development_payload(self):
         result = package.build(**self.arguments())
-        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [10, 12]*6)
+        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [10, 12]*8)
         self.assertEqual({(row['maleFamily'], row['family'], row['obody']) for row in result['selections']},
                          {(male, female, host) for male in package.MALE_FAMILIES
                           for female in package.FEMALE_FAMILIES for host in (False, True)})
@@ -176,16 +177,16 @@ class SourcePackageTests(unittest.TestCase):
                 direct = ET.fromstring(files[name])
                 processed = ET.fromstring(vortex_stream(files[name]))
                 self.assertEqual(ET.tostring(direct), ET.tostring(processed))
-        self.assertEqual([row['runtimeFiles'] for row in result['selections']], [10, 12]*6)
+        self.assertEqual([row['runtimeFiles'] for row in result['selections']], [10, 12]*8)
 
     def test_absent_optional_host_has_no_broken_host_choice(self):
         result = package.build(**self.arguments(host=False))
-        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [10]*6)
+        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [10]*8)
         files = package.read_zip(Path(result["archive"]).read_bytes())
         self.assertNotIn(b'folder source="30 OBody Source"', files["fomod/ModuleConfig.xml"])
         self.assertFalse(any(name.startswith("30 OBody Source/") for name in files))
 
-    def test_independent_family_gates_allow_vanilla_without_replacement_body_mods(self):
+    def test_independent_families_remain_selectable_without_plugin_markers(self):
         result = package.build(**self.arguments())
         files = package.read_zip(Path(result['archive']).read_bytes())
         config = ET.fromstring(files['fomod/ModuleConfig.xml'])
@@ -196,18 +197,38 @@ class SourcePackageTests(unittest.TestCase):
         self.assertNotIn(b'1.7.104', files['fomod/ModuleConfig.xml'])
         with self.assertRaisesRegex(ValueError, 'Module dependency'):
             select(male_family='Vanilla', family='Vanilla', racemenu=False)
-        for kwargs in ({'male_family': 'HIMBO', 'family': 'Vanilla'},
-                       {'male_family': 'Vanilla', 'family': 'CBBE'},
-                       {'male_family': 'Vanilla', 'family': '3BA', 'additional_active': {'CBBE.esp'}},
-                       {'male_family': 'Vanilla', 'family': '3BA', 'additional_active': {'3BBB.esp'}},
-                       {'male_family': 'Vanilla', 'family': 'Vanilla', 'host': True, 'obody': False}):
-            with self.subTest(kwargs=kwargs), self.assertRaisesRegex(ValueError, 'dependency-blocked'):
-                select(**kwargs)
-        # Markers recommend a choice; they must not force either sex to use it.
-        all_markers = {'HIMBO.esp', 'CBBE.esp', '3BBB.esp'}
-        select(male_family='Vanilla', family='Vanilla', additional_active=all_markers)
-        select(male_family='HIMBO', family='CBBE', additional_active=all_markers)
-        select(male_family='HIMBO', family='3BA', additional_active=all_markers)
+        with self.assertRaisesRegex(ValueError, 'dependency-blocked'):
+            select(male_family='Vanilla', family='Vanilla', host=True, obody=False)
+        for male in package.MALE_FAMILIES:
+            for female in package.FEMALE_FAMILIES:
+                with self.subTest(male=male, female=female):
+                    installed = select(male_family=male, family=female)
+                    self.assertIn(male+'-and-'+female, installed[reader.FAMILY_DEST])
+
+    def test_body_markers_recommend_exactly_one_choice_without_blocking_manual_choices(self):
+        result = package.build(**self.arguments())
+        files = package.read_zip(Path(result['archive']).read_bytes())
+        config = ET.fromstring(files['fomod/ModuleConfig.xml'])
+        groups = config.find("installSteps/installStep[@name='Select your actual male and female bodies']/optionalFileGroups")
+        markers = ('HIMBO.esp', 'CBBE.esp', '3BBB.esp', 'BHUNP3BBB.esp')
+        for bits in itertools.product((False, True), repeat=len(markers)):
+            active = {marker for marker, present in zip(markers, bits) if present}
+            expected = {'male': 'HIMBO' if 'HIMBO.esp' in active else 'Vanilla',
+                        'female': ('BHUNP' if 'BHUNP3BBB.esp' in active else
+                                   '3BA' if '3BBB.esp' in active else
+                                   'CBBE' if 'CBBE.esp' in active else 'Vanilla')}
+            for group in groups:
+                sex = group.get('name').split()[0].lower()
+                choices = {choice.get('name'): reader.plugin_type(choice, '1.4.15.0', active, {})
+                           for choice in group.findall('plugins/plugin')}
+                with self.subTest(active=sorted(active), sex=sex):
+                    self.assertEqual(group.get('type'), 'SelectExactlyOne')
+                    self.assertEqual({kind for kind in choices.values()}, {'Optional', 'Recommended'})
+                    self.assertEqual([name for name, kind in choices.items() if kind == 'Recommended'], [expected[sex]])
+            for male in package.MALE_FAMILIES:
+                for female in package.FEMALE_FAMILIES:
+                    reader.resolve_selection(config, files, native=True, male_family=male,
+                                             family=female, additional_active=active)
 
     def test_conditional_mapping_missing_or_duplicated_cannot_pass_selection_audit(self):
         result = package.build(**self.arguments())

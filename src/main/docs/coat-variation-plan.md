@@ -3,6 +3,19 @@
 Owner-directed plan, 1 November 2026. Mechanisms precede physics/VR, which
 precede visual polish. This plan does not publish another version.
 
+Latest owner release sequence: first publish the FOMOD-only 0.7.0 compatibility
+update, then 0.8.0 with completed mechanisms and freely selectable body families.
+Finish and demonstrate discrete coat distribution afterwards as 0.8.5. The
+owner rejected archive extraction as an end-user dependency installation flow;
+the existing helper remains development preparation, not the proposed public UX.
+Assess a complete texture bundle under the donor's actual runtime reuse terms.
+The earlier private permission about excluding textures from Git applied to
+repository storage; it was incorrectly generalized to every runtime archive.
+The public donor instructions allow derivative texture use but also require
+non-obsolescence ("no full vanilla replacer please"). A self-contained release
+therefore needs that scope resolved rather than a fabricated blanket prohibition
+or unrestricted grant. Colour policy and texture publication remain outside 0.8.0.
+
 ## Verified starting point
 
 The current development source is `ebb8f66f6f527eb0921d78e10a1656172500b81c`.
@@ -122,9 +135,10 @@ one-click installer before implementing and verifying one, or turn this into a
 general MO2/tooling project. Public CLAW contains its runtime/install files and
 brief usage, not foreign DDS, donor archives or developer source bundles.
 
-Current recorded permission excludes texture redistribution. Loading local
-copies is distinct from publishing them. A direct public texture bundle would
-need the relevant permission; it is not a prerequisite for local variation.
+The repository-only permission excludes putting donor textures in Git. Runtime
+reuse has separate public conditions, including attribution and not making
+Elegant obsolete. A complete self-contained bundle must satisfy that actual
+scope; the repository condition alone does not establish a universal DDS ban.
 
 ## Execution order and completion criteria
 

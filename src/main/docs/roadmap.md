@@ -11,6 +11,12 @@ the verified game11 mechanisms, remaining installation/appearance policy work,
 and the order of practical acceptance before physics and VR. Its passed
 mechanical coverage is separate from the abnormal process exit after checks.
 
+The current release sequence is the 0.7.0 FOMOD compatibility update, then 0.8.0
+for completed mechanisms/body-family choices, followed by demonstrated coat
+variation as 0.8.5. The owner clarified UNP/BHUNP as a female family: 0.8's new
+matrix targets BHUNP 3.34 Advanced Ver4 with Build Morphs, not classic UNP or a
+male UNP body. Installer markers recommend a choice but never block alternatives.
+
 1. **Technical mechanisms:** generic sparse coefficient/function matrices;
    shared game/Morphbench evaluator and independent comparison plugin;
    human-to-wolf body/head/face links, including ears, tail and claws;

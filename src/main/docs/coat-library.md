@@ -3,9 +3,13 @@
 This tool prepares all 34 coat patterns from the user's existing **Elegant
 Werewolf Replacer 2K**, Nexus mod 93336, file 791439, version 2.1. It does not
 download, install, enable or publish a mod. The resulting DDS files are local
-dependency resources; **never include them in CLAW, Git or a public archive**.
-The recorded donor permission covers the two meshes and explicitly excludes
-texture redistribution. Original Elegant remains required for shared normal,
+dependency resources; **never include the generated library in Git**. This helper
+is development preparation, not the owner-approved end-user installation flow.
+The private repository permission covers the two meshes and excludes textures
+from that repository. Public runtime reuse terms separately permit derivative
+texture use subject to attribution and non-obsolescence; they are not an
+unrestricted grant to redistribute the full donor as a replacement. Original
+Elegant remains required by the current package for shared normal,
 specular, eye, claw and mouth resources.
 
 Only this exact source archive is qualified:
@@ -214,6 +218,7 @@ the repository's applicable terms. No blanket licence grant is introduced here,
 and no new texture redistribution permission is asserted.
 
 Original Elegant textures remain credited to Wolflady500 and KaienHash and are
-subject to their original terms. Public donor-mesh permission is not texture
-redistribution permission. The local library is for the user's installation only;
-no generated texture, library ZIP or texture pixel is included in source patches.
+subject to their original terms. A repository-only mesh permission does not
+replace the separate runtime reuse terms. Current source patches contain no
+generated texture, library ZIP or texture pixel. The planned 0.8.5 distribution
+must resolve the full-bundle scope and provide a normal end-user installation.

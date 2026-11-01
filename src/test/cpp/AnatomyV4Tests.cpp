@@ -5,10 +5,10 @@
 
 namespace {
 void require(bool yes, const char* message) { if (!yes) throw std::runtime_error(message); }
-claw::Morphs evaluate(const claw::MorphFamilyProfile& profile, const claw::Morphs& sources) {
+claw::Morphs evaluate(const claw::MorphFamilyProfile& profile, const claw::Morphs& sources, float rawWeight = 50.F) {
     auto link = profile.link;
     link.captureActor([&](std::string_view name) { const auto it = sources.find(name); return it == sources.end() ? 0.F : it->second; },
-        50.F, [&](std::string_view source) { const auto it = sources.find(source); return it == sources.end() ? claw_matrix_source_neutral(claw::morphSourceKind(source)) : it->second; });
+        rawWeight, [&](std::string_view source) { const auto it = sources.find(source); return it == sources.end() ? claw_matrix_source_neutral(claw::morphSourceKind(source)) : it->second; });
     return link.compose(profile.sex);
 }
 }
@@ -48,6 +48,53 @@ int main(int argc, char** argv) {
         const auto face = evaluate(*male, {{"$human.face.chinWidth", .5F}}), fore = evaluate(*male, {{"ArmsFore", .5F}});
         require(face.at("CLAWHeadEarSize") > 0 && face.at("CLAWHeadEarTilt") > 0 && fore.at("CLAWArmClawLong") > 0,
                 "declared face/forearm analogies did not add bounded independent variation");
+        {
+            const auto* bhunp = catalog.find("CLAW.BHUNP.3.34.AdvancedV4", claw::Sex::female);
+            require(bhunp && bhunp->sourceFamily == "BHUNP" && bhunp->sourceVersion == "3.34" &&
+                    !catalog.find(bhunp->id, claw::Sex::male), "BHUNP resource contract or sex binding lost");
+            const auto neutral = evaluate(*bhunp, {});
+            // In the actual BHUNP OSD/TRI, these positive deltas SHRINK. The
+            // BodySlide baked invert flag is not a runtime SKEE sign switch.
+            const auto narrow = evaluate(*bhunp, {{"Arms", 1.F}, {"Legs", 1.F}});
+            const auto wide = evaluate(*bhunp, {{"Arms", -1.F}, {"Legs", -1.F}});
+            require(narrow.at("CLAWArmLean") > 0 && narrow.at("CLAWArmGirth") == 0 &&
+                    wide.at("CLAWArmGirth") > 0 && wide.at("CLAWArmLean") == 0 &&
+                    narrow.at("CLAWLegThighLean") > 0 && narrow.at("CLAWLegCalfLean") > 0 &&
+                    wide.at("CLAWLegThighGirth") > 0 && wide.at("CLAWLegCalfGirth") > 0,
+                    "BHUNP inverted baked sliders were confused with raw runtime delta directions");
+            const auto smaller = evaluate(*bhunp, {{"Breasts", .2F}});
+            const auto larger = evaluate(*bhunp, {{"Breasts", -.2F}});
+            require(smaller.at("CLAWTorsoBreastSize") < neutral.at("CLAWTorsoBreastSize") &&
+                    larger.at("CLAWTorsoBreastSize") > neutral.at("CLAWTorsoBreastSize") &&
+                    evaluate(*bhunp, {{"BreastsGone", 1.F}}).at("CLAWTorsoBreastSize") == 0,
+                    "BHUNP shrinking breast channels were treated as CBBE growth");
+            const auto biceps = evaluate(*bhunp, {{"Biceps", 1.F}});
+            const auto triceps = evaluate(*bhunp, {{"Triceps", 1.F}});
+            const auto fat = evaluate(*bhunp, {{"ChubbyArms", 1.F}});
+            require(biceps.at("CLAWArmBiceps") > 0 && biceps.at("CLAWArmTriceps") == 0 && biceps.at("CLAWArmGirth") == 0 &&
+                    triceps.at("CLAWArmTriceps") > 0 && triceps.at("CLAWArmBiceps") == 0 &&
+                    fat.at("CLAWArmGirth") > 0 && fat.at("CLAWArmBiceps") == 0 && fat.at("CLAWArmTriceps") == 0,
+                    "BHUNP local muscle and soft arm mass were conflated");
+            const auto low = evaluate(*bhunp, {}, 0.F), high = evaluate(*bhunp, {}, 100.F);
+            require(low.at("CLAWTorsoLean") > neutral.at("CLAWTorsoLean") && high.at("CLAWTorsoGirth") > neutral.at("CLAWTorsoGirth") &&
+                    low.at("CLAWTorsoBreastSize") == high.at("CLAWTorsoBreastSize"),
+                    "BHUNP explicit weight is absent or multiplied into ordinary outputs");
+            const auto traits = evaluate(*bhunp, {{"$human.height", 1.1F}, {"$human.face.jawWidth", .3F}});
+            require(traits.at("CLAWHeadEarSize") > neutral.at("CLAWHeadEarSize") &&
+                    traits.at("CLAWTailLength") > neutral.at("CLAWTailLength") && traits.at("CLAWArmClawLong") > 0,
+                    "BHUNP omitted body-independent real source contracts");
+            const auto unrelated = evaluate(*bhunp, {{"MuscleMoreArms_v2", 2.F}, {"UNP", 1.F}});
+            require(unrelated == neutral, "BHUNP used a CBBE-only key or invented signed full-body runtime name");
+            const auto full = evaluate(*bhunp, {{"UNP Low", 1.F}});
+            require(full != neutral && bhunp->link.hasProviderSources(), "BHUNP actual Low/High full-body keys were not consumed");
+            for (const float value : {-2.F, 2.F}) {
+                claw::Morphs sources;
+                for (const auto& rule : bhunp->link.rules) if (!rule.constant() && claw::morphSourceKind(rule.source) == 0) sources.emplace(rule.source, value);
+                for (const auto& [target, output] : evaluate(*bhunp, sources)) {
+                    (void)target; require(std::isfinite(output) && output >= 0 && output <= 1, "BHUNP RaceMenu part range escaped output bounds");
+                }
+            }
+        }
         for (const auto sex : {claw::Sex::male, claw::Sex::female}) for (const auto& name : catalog.names(sex)) {
             const auto* profile = catalog.find(name, sex);
             for (const float value : {-1.F, 0.F, 1.F}) {

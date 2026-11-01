@@ -33,11 +33,12 @@ class ShippedFamilyTests(unittest.TestCase):
         expected={('male','HIMBO'):'CLAW.HIMBO.5.8.Geometry1',
                   ('female','CBBE'):'CLAW.CBBE.2.0.3.Geometry1',
                   ('female','3BA'):'CLAW.3BA.2.48.Geometry1',
+                  ('female','BHUNP'):'CLAW.BHUNP.3.34.AdvancedV4',
                   ('male','Vanilla'):'CLAW.VanillaMale.Weight1',
                   ('female','Vanilla'):'CLAW.VanillaFemale.Weight1'}
-        self.assertEqual(len(self.root.findall('Profile')),5)
+        self.assertEqual(len(self.root.findall('Profile')),6)
         self.assertEqual({key:node.get('id') for key,node in self.profiles.items()},expected)
-        self.assertEqual(len({node.get('id') for node in self.profiles.values()}),5)
+        self.assertEqual(len({node.get('id') for node in self.profiles.values()}),6)
         self.assertIsNone(self.root.find('Defaults'))
         for (sex,family),profile in self.profiles.items():
             self.assertEqual(profile.get('sex'),sex)
@@ -78,7 +79,9 @@ class ShippedFamilyTests(unittest.TestCase):
         epsilon=f32(1e-6)
         for identity,profile in self.profiles.items():
             rules=[rule.attrib for rule in profile]
-            self.assertLessEqual(len(rules),128)
+            # V4 file-family matrices share the 256-edge native/WASM budget;
+            # Papyrus arrays and historical co-save versions keep their limits.
+            self.assertLessEqual(len(rules),256)
             self.assertEqual(len(rules),len({(r['source'],r['target']) for r in rules}))
             self.assertLessEqual(len({r['target'] for r in rules}),64)
             caps={}

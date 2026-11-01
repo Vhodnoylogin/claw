@@ -51,9 +51,12 @@ class ProportionsTests(unittest.TestCase):
   self.assertEqual(samples,sorted(samples));self.assertEqual(samples[0],0);self.assertLess(samples[-1],1)
 
  def test_muscular_shoulders_and_human_chest_width_use_logical_sources(self):
-  self.assertAlmostEqual(compose('HIMBO',{'TorsoShoulderInc':.2})['CLAWTorsoShoulderGirth'],.68191105)
+  # V4 separates upper-arm muscles from shoulder bulk. The authored deltoid
+  # budgets (.45/.12 per source unit) use the measured unit-field responses
+  # recorded in anatomy-v4-calibration.json, rather than the old broad gains.
+  self.assertAlmostEqual(compose('HIMBO',{'TorsoShoulderInc':.2})['CLAWTorsoShoulderGirth'],.2*.45/1.185114862837707)
   self.assertEqual(compose('3BA',{'ChestWidth':.9})['CLAWTorsoChestSize'],0)
-  self.assertAlmostEqual(compose('3BA',{'ChestWidth':.9})['CLAWTorsoShoulderGirth'],.22995423)
+  self.assertAlmostEqual(compose('3BA',{'ChestWidth':.9})['CLAWTorsoShoulderGirth'],.9*.12/1.2009408241978943)
   self.assertGreater(compose('HIMBO',{'TorsoWaistSize':.2})['CLAWTorsoWaistNarrow'],0)
   self.assertEqual(compose('HIMBO',{'TorsoWaistSize':-.4})['CLAWTorsoWaistNarrow'],0)
 
