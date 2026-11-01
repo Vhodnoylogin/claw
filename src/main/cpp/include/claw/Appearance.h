@@ -4,6 +4,7 @@
 #include <SKSE/SKSE.h>
 #include <IPluginInterface.h>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -51,16 +52,10 @@ private:
         std::vector<Surface> surfaces;
         std::string status;
     };
-    class TintValue final : public IOverrideInterface::SetVariant {
-    public:
-        explicit TintValue(std::uint32_t value) : value_(static_cast<skee_i32>(value)) {}
-        Type GetType() override { return Type::Int; }
-        skee_i32 Int() override { return value_; }
-    private:
-        skee_i32 value_;
-    };
     template<class F> static void visit(RE::NiAVObject* object, F&& f);
     static void unbind(Entry& entry);
+    static std::string_view prepareTintMaterial(RE::BSShaderProperty* copy,
+        const RE::BSShaderProperty* original, std::uint32_t tint);
     static bool protectPrivateTint(RE::BSShaderProperty* copy, const RE::BSShaderProperty* original);
     static bool healthyPrivateTint(const Surface& surface);
     inline static constexpr std::array<std::string_view, 12> surfaceNames{
@@ -139,6 +134,39 @@ inline void Runtime::captureHuman(RE::Actor* actor) {
     entry.base = base->formID; entry.sex = static_cast<std::uint32_t>(base->GetSex()); entry.colours = colours;
     entry.handle = actor->GetHandle(); entry.loaded = false;
     entry.status = ambiguous ? "record-hair-fallback: ambiguous rendered hair" : "human colours captured";
+}
+inline std::string_view Runtime::prepareTintMaterial(RE::BSShaderProperty* copy,
+    const RE::BSShaderProperty* original, std::uint32_t tint) {
+    using Base = RE::BSLightingShaderMaterialBase;
+    using Feature = RE::BSShaderMaterial::Feature;
+    const auto feature = original->material->GetFeature() == Feature::kHairTint ? Feature::kHairTint : Feature::kFaceGenRGBTint;
+    auto* manager = RE::MemoryManager::GetSingleton();
+    auto* heap = manager ? manager->GetThreadScrapHeap() : nullptr;
+    if (!heap) return "material scratch heap unavailable";
+    // The factory installs the engine's real vtable. A C++-constructed tint
+    // material in the stock SKEE key7 conversion has invalid virtual targets on
+    // the observed runtime. Never pass through that conversion or adopt this
+    // scratch allocation into a long-lived property with SetMaterial(false).
+    const auto release = [heap](Base* temporary) {
+        if (temporary) { temporary->~BSLightingShaderMaterialBase(); heap->Deallocate(temporary); }
+    };
+    std::unique_ptr<Base, decltype(release)> temporary{Base::CreateMaterial(feature), release};
+    if (!temporary || temporary->GetFeature() != feature) return "engine tint material unavailable";
+    temporary->CopyBaseMembers(static_cast<Base*>(original->material));
+    const auto rgb = unpack(tint);
+    if (feature == Feature::kHairTint) {
+        static_cast<RE::BSLightingShaderMaterialHairTint*>(temporary.get())->tintColor = {rgb[0], rgb[1], rgb[2]};
+    } else {
+        static_cast<RE::BSLightingShaderMaterialFacegenTint*>(temporary.get())->tintColor = {rgb[0], rgb[1], rgb[2]};
+        copy->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kFace, false);
+        copy->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kFaceGenRGBTint, true);
+    }
+    // true requests an independent engine-owned copy. Only the temporary is
+    // destroyed through the matching captured scratch heap at this scope exit.
+    copy->SetMaterial(temporary.get(), true);
+    if (!copy->material || copy->material == original->material) return "private tint material unavailable";
+    if (copy->material->GetFeature() != feature) return "private tint feature mismatch";
+    return {};
 }
 inline bool Runtime::protectPrivateTint(RE::BSShaderProperty* copy, const RE::BSShaderProperty* original) {
     // Clone extra-data objects may retain references to donor data. Never flip
@@ -251,27 +279,22 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider) {
         };
         if (!copy) return isolationFailure("property clone unavailable");
         if (copy.get() == original) return isolationFailure("property clone aliases source");
-        // A cloned shader property need not own an independent material. Use
-        // the engine's unique-material copy operation, as SKEE does, before
-        // changing any metadata or exposing the property to the live geometry.
-        if (!copy->material || copy->material == original->material) copy->SetMaterial(original->material, true);
-        if (!copy->material) return isolationFailure("unique material unavailable");
-        if (copy->material == original->material) return isolationFailure("unique material aliases source");
-        if (copy->material->GetFeature() != feature) return isolationFailure("unique material changed shader feature");
+        const auto tint = pack(coatTint(skin ? entry.colours.skin : entry.colours.hair, !skin));
+        if (const auto failure = prepareTintMaterial(copy.get(), original, tint); !failure.empty()) return isolationFailure(failure);
         if (!protectPrivateTint(copy.get(), original)) { entry.status = "private tint protection failed"; return false; }
         prepared.push_back({RE::NiPointer<RE::BSGeometry>{geometry}, RE::NiPointer<RE::BSShaderProperty>{original}, copy,
-            pack(coatTint(skin ? entry.colours.skin : entry.colours.hair, !skin))});
+            tint});
     }
     if (prepared.empty()) { entry.status = "no human colour sources"; return false; }
     // All surfaces were validated and cloned before any live binding changes.
     entry.surfaces = std::move(prepared); entry.root.reset(root);
     for (auto& surface : entry.surfaces) {
         surface.geometry->GetGeometryRuntimeData().shaderProperty = surface.own;
-        TintValue tint(surface.expectedTint);
-        provider->SetNodeProperty(reinterpret_cast<::TESObjectREFR*>(actor), false, surface.geometry->name.c_str(), 7, 0, tint, true);
-        // SKEE may replace the clone's material; property ownership remains ours.
-        if (!healthyPrivateTint(surface)) {
-            unbind(entry); entry.status = "tint conversion failed"; return false;
+        // CommonLib's virtual FinishSetupGeometry calls the engine shader
+        // initializer on this property; unlike a private relocation it uses the
+        // active runtime's own vtable on SE/AE/VR.
+        if (!surface.own->FinishSetupGeometry(surface.geometry.get()) || !healthyPrivateTint(surface)) {
+            unbind(entry); entry.status = "private tint initialization failed"; return false;
         }
         surface.material.reset(surface.own->material);
         surface.guard.reset(netimmerse_cast<RE::NiBooleanExtraData*>(surface.own->GetExtraData("NO_TINT")));

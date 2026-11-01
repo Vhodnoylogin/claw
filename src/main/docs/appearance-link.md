@@ -28,13 +28,19 @@ the current comparison texture option.
 
 On the game thread, every selected surface must have exactly one matching name
 and a supported lighting material. All properties are cloned before binding any;
-if a distinct property clone has a missing or shared material, the engine's
-`SetMaterial(source, true)` creates its unique material copy. The source property
-is never passed as the destination. Both property and material must differ from
-the donor pointers, and the source shader feature must be preserved. Failure leaves
-the actor unchanged and records a reason. SKEE Override v2 key7 applies transient
-per-node colour to these private properties. No persistent SKEE override or NPC
-base edit is registered. Model generations are retained by NiPointer, avoiding
+the engine material factory creates a temporary FaceGenRGBTint material, or a
+HairTint material for an existing HairTint donor. `CopyBaseMembers` preserves
+the donor textures, UV transforms and lighting parameters, then CLAW assigns
+the packed RGB directly. `SetMaterial(temporary, true)` creates a distinct
+engine-owned copy on the private property. The factory temporary is destroyed
+and deallocated through its captured thread scrap heap; it is never adopted
+as a long-lived material. Default/FaceGen donors disable Face and enable
+FaceGenRGBTint, while HairTint donors retain their feature. After binding,
+the property's virtual `FinishSetupGeometry` initializes its shader through
+the active runtime's vtable. No private runtime relocation or SKEE colour
+mutation is used. Failure restores still-owned properties and records a reason.
+No persistent SKEE override or NPC base edit is registered.
+Model generations are retained by NiPointer, avoiding
 reused raw-root-address aliases. A later property writer wins until model reload.
 Restoration rebinds only properties still owned by CLAW; it never undoes a later
 writer's property. Alpha properties and texture slots remain intact.
@@ -50,24 +56,26 @@ API, and introduces no engine cleanup in a destructor: reset/revert remains an
 explicit lifecycle operation.
 
 The second installed mechanism run reached the material-isolation guard for all
-six wolves, rather than applying colour. Its single generic failure did not
-distinguish a null/reused property from a null/shared material, so the exact
-cloning result was not observed. The unique-material preparation above and
-surface-specific failure diagnostics are a corrective candidate, not a claimed
-runtime colour pass. Morph-vector parity in that run does not qualify colour.
+six wolves. The first corrective candidate subsequently crashed on its first
+transformation in runs four and five. The fifth run's actual dump shows stock
+SKEE key7 constructing a tint material whose GetFeature vtable entry resolves
+to the non-executable SKEE module base. The engine-factory path above avoids
+that constructor entirely, without replacing or patching RaceMenu. This new
+candidate compiled and passed nine native suites but is not yet game accepted.
+Earlier morph-vector parity does not qualify colour or this corrective path.
 
 Each clone receives a newly allocated boolean `NO_TINT=true` extra. An inherited
 extra is removed only from the clone's independent array; its object is never
 mutated. This protects the separate skin/fur colours from SKEE's ordinary
-`UpdateModelColor_Recursive` skin/hair refresh. Direct transient key7 writes do
-not use that recursive guard. Application verifies the actual material tint at
-the key7 RGB transport precision, the guard, and private material ownership.
+`UpdateModelColor_Recursive` skin/hair refresh. CLAW's direct private-material
+write does not use that recursive guard. Application verifies the actual material
+tint at the stored 8-bit palette precision, the guard and private ownership.
 The unchanged-model fast path checks those invariants too: a later writer that
 changes the property, removes the guard or changes its tint wins until reload;
 CLAW does not repeatedly fight it. These source-level protections still require
 the runtime checks below, rather than proving colour persistence by compilation.
 
-After the first key7 write, each surface retains the exact material, private
+After private shader initialization, each surface retains the exact material, private
 guard and texture-set identities. Material uses its `BSIntrusiveRefCounted`
 smart-pointer policy; the guard and texture set use `NiPointer`. Fast-path and
 restoration checks reject identity changes before inspecting the live tint.
