@@ -71,15 +71,15 @@
         </group>
       </optionalFileGroups>
     </installStep>
-    <installStep name="Optional wild-werewolf source generation">
+    <installStep name="Wild werewolves">
       <visible operator="And">
         <flagDependency flag="humanLink" value="Yes" />
       </visible>
       <optionalFileGroups order="Explicit">
-        <group name="OBody integration" type="SelectAny">
+        <group name="OBody presets for wild werewolves" type="SelectAny">
           <plugins order="Explicit">
-            <plugin name="Originally-beast OBody source integration">
-              <description>Installs the CLAW source host for eligible actors first encountered as wolves. Requires active OBody.esp and its complete dependency chain. OBody supplies ordinary human source values; CLAW converts them to wolf morphs. Skip to omit this host.</description>
+            <plugin name="Use OBody presets for wild werewolves?">
+              <description>Ask OBody to assign an ordinary human body preset to an eligible werewolf first encountered in beast form. CLAW uses those values to shape the wolf. Existing assignments and OBody exclusions are respected. The normal human-to-werewolf morph link works with this option off. Requires OBody and its dependencies.</description>
               <files>
                 <folder source="30 OBody Source" destination="" priority="0" />
               </files>

@@ -165,3 +165,6 @@ checks do not establish textured appearance.
 
 Next: inspect the textured paired scene and choose proportions. Head/ear/tail/claw traits,
 coat colour, breast redesign, physics and VR remain separate later work.
+
+The post-0.7 [abdomen dome candidate](abdomen-dome.md) is a separate opt-in recipe
+and profile measurement tool. It does not change this released default.

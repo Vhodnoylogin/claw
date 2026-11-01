@@ -1,6 +1,7 @@
 """Direct-source packaging contracts using synthetic headers, not game fixtures."""
 import hashlib
 import importlib.util
+import itertools
 import json
 from pathlib import Path
 import re
@@ -15,6 +16,10 @@ SCRIPT = ROOT / "src/main/python/build-tools/package-source-build.py"
 SPEC = importlib.util.spec_from_file_location("claw_source_package_contract", SCRIPT)
 package = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(package)
+READER_SPEC = importlib.util.spec_from_file_location('claw_fomod_selection_contract',
+    ROOT/'src/main/python/build-tools/build-unified-release.py')
+reader = importlib.util.module_from_spec(READER_SPEC)
+READER_SPEC.loader.exec_module(reader)
 PIN = "1" * 40
 
 
@@ -38,7 +43,7 @@ class SourcePackageTests(unittest.TestCase):
             self.write("src/main/resources/publication/unified-installer/" + name,
                        (ROOT / "src/main/resources/publication/unified-installer" / name).read_bytes())
         self.write("src/main/resources/profiles/MorphLinks.xml",
-                   (ROOT / "src/main/resources/profiles/MorphLinks.xml").read_bytes())
+                   (ROOT/"src/main/resources/profiles/MorphLinks.xml").read_bytes())
         self.write("README.md", b"Synthetic package contract fixture; no real native source closure claim.\n")
         for name in ("src/main/papyrus/claw/CLAWDistributionNative.psc",
                      "src/main/papyrus/obody/CLAWOBodySourceHost.psc",
@@ -92,10 +97,15 @@ class SourcePackageTests(unittest.TestCase):
             values.update(obody_esp=self.host, obody_pex=self.host_pex)
         return values
 
-    def test_full_package_has_literal_minimal_four_selections_and_no_development_payload(self):
+    def test_full_package_has_literal_minimal_sixteen_selections_and_no_development_payload(self):
         result = package.build(**self.arguments())
-        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [10, 12, 10, 12])
+        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [10, 12]*8)
+        self.assertEqual({(row['maleFamily'], row['family'], row['obody']) for row in result['selections']},
+                         {(male, female, host) for male in package.MALE_FAMILIES
+                          for female in package.FEMALE_FAMILIES for host in (False, True)})
         files = package.read_zip(Path(result["archive"]).read_bytes())
+        self.assertEqual(Path(result["archive"]).name,
+                         "CLAW - Customizable Lycanthrope Appearance and Weight.zip")
         self.assertEqual(sum(name.endswith(".dll") for name in files), 1)
         self.assertEqual(sum(name.endswith(".nif") for name in files), 2)
         self.assertFalse(result["gameOrManagerExecuted"])
@@ -122,8 +132,29 @@ class SourcePackageTests(unittest.TestCase):
                          | {"fomod/ModuleConfig.xml", "fomod/info.xml", "README.md", "NOTICES/CommonLib.txt", "NOTICES/THIRD-PARTY.txt"})
         for row in result["selections"]:
             matrix = next(item for item in row["files"] if item["path"].endswith("MorphLinks.xml"))
-            defaults = ET.fromstring(files[matrix["source"]]).find("Defaults")
-            self.assertIn(row["family"], defaults.get("female"))
+            installed_matrix = ET.fromstring(files[matrix["source"]])
+            defaults = installed_matrix.find("Defaults")
+            installed_profiles = installed_matrix.findall("Profile")
+            self.assertEqual(len(installed_profiles), 2)
+            self.assertEqual({(profile.get('sex'), profile.get("family")) for profile in installed_profiles},
+                             {('male', row['maleFamily']), ('female', row["family"])})
+            self.assertEqual({profile.get("id") for profile in installed_profiles},
+                             {defaults.get("male"), defaults.get("female")})
+
+    def test_selected_profiles_preserve_each_authored_rule_and_reject_unknown_family(self):
+        original = (self.root / "src/main/resources/profiles/MorphLinks.xml").read_bytes()
+        source = ET.fromstring(original)
+        for male in package.MALE_FAMILIES:
+            for family in package.FEMALE_FAMILIES:
+                actual = ET.fromstring(package.profiles(original, family, male))
+                for profile in actual.findall("Profile"):
+                    donor = next(row for row in source.findall("Profile") if row.get("id") == profile.get("id"))
+                    self.assertEqual(profile.attrib, donor.attrib)
+                    self.assertEqual([rule.attrib for rule in profile], [rule.attrib for rule in donor])
+        with self.assertRaisesRegex(ValueError, "supported male and female body"):
+            package.profiles(original, "Unknown")
+        with self.assertRaisesRegex(ValueError, "supported male and female body"):
+            package.profiles(original, 'CBBE', 'Unknown')
 
     def test_packaged_fomod_survives_vortex_string_stream_encoding(self):
         # Nexus-Mods/fomod-installer XmlScriptType.StringStream at
@@ -146,14 +177,83 @@ class SourcePackageTests(unittest.TestCase):
                 direct = ET.fromstring(files[name])
                 processed = ET.fromstring(vortex_stream(files[name]))
                 self.assertEqual(ET.tostring(direct), ET.tostring(processed))
-        self.assertEqual([row['runtimeFiles'] for row in result['selections']], [10, 12]*2)
+        self.assertEqual([row['runtimeFiles'] for row in result['selections']], [10, 12]*8)
 
     def test_absent_optional_host_has_no_broken_host_choice(self):
         result = package.build(**self.arguments(host=False))
-        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [10, 10])
+        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [10]*8)
         files = package.read_zip(Path(result["archive"]).read_bytes())
         self.assertNotIn(b'folder source="30 OBody Source"', files["fomod/ModuleConfig.xml"])
         self.assertFalse(any(name.startswith("30 OBody Source/") for name in files))
+
+    def test_independent_families_remain_selectable_without_plugin_markers(self):
+        result = package.build(**self.arguments())
+        files = package.read_zip(Path(result['archive']).read_bytes())
+        config = ET.fromstring(files['fomod/ModuleConfig.xml'])
+        select = lambda **kwargs: reader.resolve_selection(config, files, native=True, **kwargs)
+        installed = select(male_family='Vanilla', family='Vanilla', obody=False)
+        self.assertIn(reader.FAMILY_DEST, installed)
+        self.assertIn('Vanilla-and-Vanilla', installed[reader.FAMILY_DEST])
+        self.assertNotIn(b'1.7.104', files['fomod/ModuleConfig.xml'])
+        with self.assertRaisesRegex(ValueError, 'Module dependency'):
+            select(male_family='Vanilla', family='Vanilla', racemenu=False)
+        with self.assertRaisesRegex(ValueError, 'dependency-blocked'):
+            select(male_family='Vanilla', family='Vanilla', host=True, obody=False)
+        for male in package.MALE_FAMILIES:
+            for female in package.FEMALE_FAMILIES:
+                with self.subTest(male=male, female=female):
+                    installed = select(male_family=male, family=female)
+                    self.assertIn(male+'-and-'+female, installed[reader.FAMILY_DEST])
+
+    def test_body_markers_recommend_exactly_one_choice_without_blocking_manual_choices(self):
+        result = package.build(**self.arguments())
+        files = package.read_zip(Path(result['archive']).read_bytes())
+        config = ET.fromstring(files['fomod/ModuleConfig.xml'])
+        steps = config.findall('installSteps/installStep')
+        self.assertEqual([step.get('name') for step in steps][1:3], ['Male body', 'Female body'])
+        groups = [step.find('optionalFileGroups/group') for step in steps[1:3]]
+        self.assertTrue(all(len(step.findall('optionalFileGroups/group')) == 1 for step in steps[1:3]))
+        markers = ('HIMBO.esp', 'CBBE.esp', '3BBB.esp', 'BHUNP3BBB.esp')
+        for bits in itertools.product((False, True), repeat=len(markers)):
+            active = {marker for marker, present in zip(markers, bits) if present}
+            expected = {'male': 'HIMBO' if 'HIMBO.esp' in active else 'Vanilla',
+                        'female': ('BHUNP' if 'BHUNP3BBB.esp' in active else
+                                   '3BA' if '3BBB.esp' in active else
+                                   'CBBE' if 'CBBE.esp' in active else 'Vanilla')}
+            for group in groups:
+                sex = group.get('name').split()[0].lower()
+                choices = {choice.get('name'): reader.plugin_type(choice, '1.4.15.0', active, {})
+                           for choice in group.findall('plugins/plugin')}
+                with self.subTest(active=sorted(active), sex=sex):
+                    self.assertEqual(group.get('type'), 'SelectExactlyOne')
+                    self.assertEqual({kind for kind in choices.values()}, {'Optional', 'Recommended'})
+                    self.assertEqual([name for name, kind in choices.items() if kind == 'Recommended'], [expected[sex]])
+            for male in package.MALE_FAMILIES:
+                for female in package.FEMALE_FAMILIES:
+                    reader.resolve_selection(config, files, native=True, male_family=male,
+                                             family=female, additional_active=active)
+
+    def test_conditional_mapping_missing_or_duplicated_cannot_pass_selection_audit(self):
+        result = package.build(**self.arguments())
+        files = package.read_zip(Path(result['archive']).read_bytes())
+        for change in ('missing', 'duplicate'):
+            config = ET.fromstring(files['fomod/ModuleConfig.xml'])
+            patterns = config.find('conditionalFileInstalls/patterns')
+            if change == 'missing': patterns.remove(patterns[0])
+            else: patterns.append(ET.fromstring(ET.tostring(patterns[0])))
+            modified = {**files, 'fomod/ModuleConfig.xml': ET.tostring(config)}
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, 'runtime|Conflicting'):
+                package.selection_audit(modified)
+
+    def test_legacy_combined_family_resolver_retains_historical_native_version_boundary(self):
+        config = ET.fromstring((ROOT/'src/main/resources/publication/unified-installer/ModuleConfig.xml').read_bytes())
+        files = {'00 Base/CLAW.esp': b'fixture', '10 Native/SKSE/Plugins/CLAWDistribution.dll': b'fixture',
+                 '20 Human Family/HIMBO-and-CBBE/'+reader.FAMILY_DEST: b'fixture'}
+        installed = reader.resolve_selection(config, files, native=True, family='CBBE')
+        self.assertIn(reader.FAMILY_DEST, installed)
+        for game in ('1.4.15.0', '1.5.97.0', '1.6.1170.0', '1.7.104.1'):
+            with self.subTest(game=game), self.assertRaisesRegex(ValueError, 'Unsupported'):
+                reader.resolve_selection(config, files, native=True, family='CBBE', game_version=game)
 
     def test_missing_pex_and_half_supplied_host_fail_before_output(self):
         for change in ("missing", "half-host"):

@@ -51,6 +51,33 @@ class ExpressiveBodyTests(unittest.TestCase):
         self.assertEqual([row[0] for row in record[2]], [1, 2])
 
 
+    def test_optional_dome_has_central_prominence_and_preserves_exclusions(self):
+        # Existing growth has a flat full-support strip across these points.
+        # A new dome should produce a centre bulge without moving the face or
+        # abdomen boundaries, and remain left/right symmetric.
+        rule = dict(self.parameters['belly'])
+        points = np.array([[0., 15., 80.5], [10., 15., 80.5], [-10., 15., 80.5],
+                           [0., 15., 74.], [0., 65., 120.], [0., 15., 53.]])
+        old = body.belly_support(points, 'body', rule)
+        self.assertEqual(old[0], old[1])
+        rule['dome'] = {'centreZ': 80.5, 'sigmaX': 16, 'sigmaZ': 18}
+        new = body.belly_support(points, 'body', rule)
+        self.assertGreater(new[0], new[1])
+        self.assertGreater(new[0], new[3])
+        self.assertEqual(new[1], new[2])
+        np.testing.assert_array_equal(new[-2:], [0, 0])
+        self.assertTrue(np.all((new >= 0) & (new <= old)))
+
+    def test_invalid_dome_is_rejected_before_authoring_geometry(self):
+        rule = dict(self.parameters['belly'])
+        for dome in ({'centreZ': 80, 'sigmaX': 0, 'sigmaZ': 18},
+                     {'centreZ': float('nan'), 'sigmaX': 16, 'sigmaZ': 18},
+                     {'centreZ': 80, 'sigmaX': 16, 'sigmaZ': 18, 'extra': 1},
+                     {'centreZ': 80, 'sigmaX': 'wide', 'sigmaZ': 18}, []):
+            rule['dome'] = dome
+            with self.assertRaises(ValueError):
+                body.belly_support(np.array([[0., 15., 80.]]), 'body', rule)
+
 
 if __name__ == '__main__':
     unittest.main()

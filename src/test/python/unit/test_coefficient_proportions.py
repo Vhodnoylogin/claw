@@ -6,8 +6,13 @@ spec=importlib.util.spec_from_file_location("refine",ROOT/'src/main/python/build
 
 
 def rules(family):
+ # Retain the reviewed ordinary linear calibration at neutral actor weight .5.
+ # Centered actor rows then contribute zero; the legacy helper intentionally
+ # does not interpret actor scalars, constants or nonlinear lean extensions.
+ # The shared native/WASM kernel is the full matrix evaluator.
  p=next(p for p in ET.parse(ROOT/'src/main/resources/profiles/MorphLinks.xml').getroot().findall("Profile") if p.attrib["family"]==family)
- return [dict(r.attrib) for r in p.findall("Rule")]
+ return [dict(r.attrib) for r in p.findall("Rule") if r.get('source')
+         and not r.get('source').startswith('$actor.') and r.get('function','linear')=='linear']
 
 
 def compose(family,sources):
@@ -24,7 +29,7 @@ class ProportionsTests(unittest.TestCase):
   result=refine.refine(source,policy);self.assertEqual(result.find('Profile/Rule').attrib['gain'],'1.0')
   with self.assertRaises(ValueError):refine.refine(source+b' ',policy)
 
- def test_zero_remains_neutral_without_preset_or_actor_identity(self):
+ def test_calibrated_linear_zero_remains_neutral_at_neutral_actor_weight(self):
   for family in ['HIMBO','3BA','CBBE']:self.assertFalse(any(compose(family,{}).values()))
 
  def test_girth_quality_cap_preserves_subcap_slope_and_bounds_extremes(self):
@@ -46,9 +51,12 @@ class ProportionsTests(unittest.TestCase):
   self.assertEqual(samples,sorted(samples));self.assertEqual(samples[0],0);self.assertLess(samples[-1],1)
 
  def test_muscular_shoulders_and_human_chest_width_use_logical_sources(self):
-  self.assertAlmostEqual(compose('HIMBO',{'TorsoShoulderInc':.2})['CLAWTorsoShoulderGirth'],.68191105)
+  # V4 separates upper-arm muscles from shoulder bulk. The authored deltoid
+  # budgets (.45/.12 per source unit) use the measured unit-field responses
+  # recorded in anatomy-v4-calibration.json, rather than the old broad gains.
+  self.assertAlmostEqual(compose('HIMBO',{'TorsoShoulderInc':.2})['CLAWTorsoShoulderGirth'],.2*.45/1.185114862837707)
   self.assertEqual(compose('3BA',{'ChestWidth':.9})['CLAWTorsoChestSize'],0)
-  self.assertAlmostEqual(compose('3BA',{'ChestWidth':.9})['CLAWTorsoShoulderGirth'],.22995423)
+  self.assertAlmostEqual(compose('3BA',{'ChestWidth':.9})['CLAWTorsoShoulderGirth'],.9*.12/1.2009408241978943)
   self.assertGreater(compose('HIMBO',{'TorsoWaistSize':.2})['CLAWTorsoWaistNarrow'],0)
   self.assertEqual(compose('HIMBO',{'TorsoWaistSize':-.4})['CLAWTorsoWaistNarrow'],0)
 
@@ -64,8 +72,13 @@ class ProportionsTests(unittest.TestCase):
   self.assertEqual(compose('HIMBO',{'Muscle':.2,'TorsoWaistSize':.2})['CLAWTorsoWaistNarrow'],0)
   self.assertAlmostEqual(compose('HIMBO',{'TorsoWaistSize':.2})['CLAWTorsoWaistNarrow'],.76709574)
 
- def test_breast_coefficients_and_native_output_contract_are_preserved(self):
-  self.assertAlmostEqual(compose('3BA',{'Breasts':.15})['CLAWTorsoBreastSize'],.53963454)
+ def test_breast_transfer_retains_range_for_broader_v3_shape(self):
+  # Real Mira/Runa observations: avoid the old Runa saturation while the larger
+  # v3 field produces more breadth/downward growth at these lower coefficients.
+  mira=compose('3BA',{'Breasts':.15})['CLAWTorsoBreastSize']
+  runa=compose('3BA',{'Breasts':.28})['CLAWTorsoBreastSize']
+  self.assertAlmostEqual(mira,.296799)
+  self.assertGreater(runa,mira);self.assertLess(runa,.7)
   for family in ['HIMBO','3BA','CBBE']:
    rr=rules(family);self.assertLessEqual(len(rr),128)
    self.assertTrue(all(0<float(r['cap'])<=1 and math.isfinite(float(r['gain'])) for r in rr))

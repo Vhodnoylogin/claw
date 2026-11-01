@@ -30,8 +30,47 @@ extern "C" double claw_matrix_transform(double input, uint32_t function, uint32_
 }
 
 extern "C" double claw_matrix_contribution(const CLAWMatrixRule* rule) {
+    if (!claw_matrix_gain_active(rule->gain)) return 0.0;
     return claw_matrix_transform(rule->input, rule->function, rule->exponent, rule->value) * static_cast<double>(rule->gain);
 }
+
+extern "C" float claw_matrix_gain_epsilon(void) { return 1.0e-6F; }
+extern "C" uint32_t claw_matrix_max_rules(void) { return CLAW_MATRIX_MAX_RULES; }
+extern "C" uint32_t claw_matrix_max_targets(void) { return CLAW_MATRIX_MAX_TARGETS; }
+
+extern "C" int claw_matrix_gain_active(float gain) {
+    const float epsilon = claw_matrix_gain_epsilon();
+    return finiteFloat(gain) && (gain > epsilon || gain < -epsilon);
+}
+
+extern "C" int32_t claw_matrix_source_kind(const char* name, uint32_t length) {
+    if (!name || !length || length > 160 || name[0] <= 32 || name[length - 1] <= 32) return -1;
+    for (uint32_t index = 0; index < length; ++index)
+        if (static_cast<unsigned char>(name[index]) < 32 || static_cast<unsigned char>(name[index]) >= 127) return -1;
+    const auto matches = [&](const char* value, bool prefix, bool fold) {
+        uint32_t index{};
+        for (; value[index]; ++index) {
+            if (index >= length) return false;
+            const char ch = fold && name[index] >= 'A' && name[index] <= 'Z' ? static_cast<char>(name[index] + ('a' - 'A')) : name[index];
+            if (ch != value[index]) return false;
+        }
+        return prefix || index == length;
+    };
+    if (matches("$actor.", true, true)) return matches("$actor.weight", false, false) ? 1 : -1;
+    if (!matches("$human.", true, true)) return 0;
+    if (matches("$human.height", false, false)) return 3;
+    constexpr const char* channels[]{"$human.face.noseLength", "$human.face.jawWidth", "$human.face.jawForward",
+        "$human.face.chinWidth", "$human.face.chinForward"};
+    for (const auto* value : channels)
+        if (matches(value, false, false)) return 2;
+    return -1;
+}
+
+extern "C" uint32_t claw_matrix_source_value_valid(int32_t kind, float value) {
+    return finiteFloat(value) && (kind == 0 || (kind == 1 && value >= 0.F && value <= 1.F) ||
+        (kind == 2 && value != 3.40282346638528859812e38F) || (kind == 3 && value > 0.F));
+}
+extern "C" float claw_matrix_source_neutral(int32_t kind) { return kind == 3 ? 1.F : 0.F; }
 
 extern "C" double claw_matrix_clamp(double value) {
     return value < 0.0 ? 0.0 : value > 1.0 ? 1.0 : value;
@@ -39,7 +78,7 @@ extern "C" double claw_matrix_clamp(double value) {
 
 extern "C" int claw_matrix_evaluate(const CLAWMatrixRule* rules, uint32_t count,
     float* outputs, double* rawSums, uint32_t targetCount) {
-    if (!rules || !outputs || !rawSums || count == 0 || count > 128 || targetCount == 0 || targetCount > 64) return 1;
+    if ((!rules && count) || ((!outputs || !rawSums) && targetCount) || count > CLAW_MATRIX_MAX_RULES || targetCount > CLAW_MATRIX_MAX_TARGETS || (!targetCount && count)) return 1;
     for (uint32_t target = 0; target < targetCount; ++target) { outputs[target] = 0.F; rawSums[target] = 0.0; }
     for (uint32_t index = 0; index < count; ++index) {
         const auto& rule = rules[index];
@@ -47,6 +86,7 @@ extern "C" int claw_matrix_evaluate(const CLAWMatrixRule* rules, uint32_t count,
             (rule.function == 4 ? rule.exponent < 1 || rule.exponent > 8 : rule.exponent != 2) ||
             !finiteFloat(rule.input) || !finiteFloat(rule.gain) || !finiteFloat(rule.cap) || !finiteFloat(rule.value) ||
             rule.cap <= 0.F || rule.cap > 1.F || (rule.function != 5 && rule.value != 0.F)) return 2;
+        if (!claw_matrix_gain_active(rule.gain)) continue;
         if (outputs[rule.target] != 0.F && outputs[rule.target] != rule.cap) return 3;
         outputs[rule.target] = rule.cap;
         rawSums[rule.target] += claw_matrix_contribution(&rule);

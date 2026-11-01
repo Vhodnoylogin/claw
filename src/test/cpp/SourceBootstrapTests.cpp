@@ -29,6 +29,8 @@ int main() {
     state.observedHuman = true; assert(!state.allows());
     state.observedHuman = false; state.humanWeightKnown = true; assert(!state.allows());
     state.humanWeightKnown = false; state.claimed = true; assert(!state.allows());
+    state = {true,true,false,false,false,false,false,false,false};
+    state.providerSources = false; assert(!state.allows()); // Vanilla weight is not an OBody source assignment.
     // A stale completion cannot remove a newer matching pending intent gate.
     const auto old = requests.begin(id,epoch,owner,pin);
     const auto newer = requests.begin(id,epoch,owner,pin);

@@ -6,8 +6,9 @@ namespace claw {
 struct SourceBootstrapPolicy {
     bool freshDefault{}, firstSeenBeast{}, observedHuman{}, humanWeightKnown{};
     bool revoked{}, suppressed{}, quarantined{}, claimed{}, pendingRequest{};
+    bool providerSources{true};
     bool allows() const {
-        return freshDefault && firstSeenBeast && !observedHuman && !humanWeightKnown &&
+        return providerSources && freshDefault && firstSeenBeast && !observedHuman && !humanWeightKnown &&
             !revoked && !suppressed && !quarantined && !claimed && !pendingRequest;
     }
 };

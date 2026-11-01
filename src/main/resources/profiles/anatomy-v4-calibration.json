@@ -1,0 +1,250 @@
+{
+  "schemaVersion": 1,
+  "calibration": "anatomy-v4-response-normalized",
+  "method": "Authored desired mean radial displacement per unit source, divided by the measured target ROI response; gains are normalized to float32 by the shared matrix adapter.",
+  "metric": "Model-space radial displacement of body skin in upper-arm front/back and deltoid ROIs; not rendered size, posed anatomy or a volume measure.",
+  "measurementEvidence": {
+    "sourceRecipe": "src/main/resources/recipes/expressive-body-v4.json",
+    "fields": [
+      "CLAWArmBiceps",
+      "CLAWArmTriceps",
+      "CLAWArmGirth",
+      "CLAWTorsoShoulderGirth"
+    ],
+    "measurementIdentity": "expressive-v4-arm-unit-responses/1",
+    "measurementContentSha256": "bb58badbb2236c4d5367471244baa7757a9551800ff7a0839b565e838c4974a6",
+    "coordinateSpace": "NIF-root model-space body skin",
+    "regionDefinitions": {
+      "biceps": "right upper arm model X28..40, radial direction Y >0.25",
+      "triceps": "right upper arm model X28..40, radial direction Y <-0.25",
+      "deltoid": "right upper arm model X16..25"
+    },
+    "qualification": "Offline unit-field authoring evidence. Measured responses are included in each profile budget; no external filesystem path is required to interpret this source."
+  },
+  "profileBudgets": {
+    "CLAW.3BA.2.48.Geometry1": {
+      "Back -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.1,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.2009408241978943,
+        "gain": 0.08326804950342977
+      },
+      "BackWing_v2 -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.05,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.2009408241978943,
+        "gain": 0.04163402475171488
+      },
+      "ChestWidth -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.12,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.2009408241978943,
+        "gain": 0.09992165940411571
+      },
+      "MuscleArms -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.04,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.2009408241978943,
+        "gain": 0.033307219801371905
+      },
+      "MuscleBack_v2 -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.1,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.2009408241978943,
+        "gain": 0.08326804950342977
+      },
+      "MuscleMoreArms_v2 -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.04,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.2009408241978943,
+        "gain": 0.033307219801371905
+      },
+      "ShoulderWidth -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": -0.3,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.2009408241978943,
+        "gain": -0.2498041485102893
+      },
+      "MuscleArms -> CLAWArmBiceps": {
+        "desiredMeanRadialPerUnitSource": 0.75,
+        "targetRegion": "biceps",
+        "measuredUnitResponse": 3.3314048209492384,
+        "gain": 0.22513024994251457
+      },
+      "MuscleMoreArms_v2 -> CLAWArmBiceps": {
+        "desiredMeanRadialPerUnitSource": 1.25,
+        "targetRegion": "biceps",
+        "measuredUnitResponse": 3.3314048209492384,
+        "gain": 0.3752170832375243
+      },
+      "MuscleArms -> CLAWArmTriceps": {
+        "desiredMeanRadialPerUnitSource": 0.6,
+        "targetRegion": "triceps",
+        "measuredUnitResponse": 2.577757176550098,
+        "gain": 0.23276048087779966
+      },
+      "MuscleMoreArms_v2 -> CLAWArmTriceps": {
+        "desiredMeanRadialPerUnitSource": 1.0,
+        "targetRegion": "triceps",
+        "measuredUnitResponse": 2.577757176550098,
+        "gain": 0.38793413479633276
+      }
+    },
+    "CLAW.HIMBO.5.8.Geometry1": {
+      "TorsoShoulderDec -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": -0.45,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.185114862837707,
+        "gain": -0.37971002989743474
+      },
+      "TorsoShoulderInc -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.45,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.185114862837707,
+        "gain": 0.37971002989743474
+      },
+      "TorsoWidth -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.05,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.185114862837707,
+        "gain": 0.042190003321937196
+      },
+      "ArmsBiceps -> CLAWArmBiceps": {
+        "desiredMeanRadialPerUnitSource": 1.6,
+        "targetRegion": "biceps",
+        "measuredUnitResponse": 3.0929514536759988,
+        "gain": 0.5173052419230139
+      },
+      "ArmsBrachio -> CLAWArmBiceps": {
+        "desiredMeanRadialPerUnitSource": 0.8,
+        "targetRegion": "biceps",
+        "measuredUnitResponse": 3.0929514536759988,
+        "gain": 0.25865262096150693
+      },
+      "ArmsBicepsBack -> CLAWArmTriceps": {
+        "desiredMeanRadialPerUnitSource": 1.25,
+        "targetRegion": "triceps",
+        "measuredUnitResponse": 2.613948888602101,
+        "gain": 0.47820368846939487
+      },
+      "Muscle -> CLAWArmBiceps": {
+        "desiredMeanRadialPerUnitSource": 1.25,
+        "targetRegion": "biceps",
+        "measuredUnitResponse": 3.0929514536759988,
+        "gain": 0.4041447202523546
+      },
+      "Muscle -> CLAWArmTriceps": {
+        "desiredMeanRadialPerUnitSource": 1.25,
+        "targetRegion": "triceps",
+        "measuredUnitResponse": 2.613948888602101,
+        "gain": 0.47820368846939487
+      },
+      "ArmsDelts -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.45,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.185114862837707,
+        "gain": 0.37971002989743474
+      },
+      "ArmsDeltsBack -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.3,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.185114862837707,
+        "gain": 0.25314001993162316
+      },
+      "ArmsDeltsLower -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.3,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.185114862837707,
+        "gain": 0.25314001993162316
+      },
+      "ArmsDeltsShape -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.35,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.185114862837707,
+        "gain": 0.29533002325356034
+      },
+      "ArmsDeltsUpper -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.3,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.185114862837707,
+        "gain": 0.25314001993162316
+      },
+      "ArmsShoulders -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.3,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.185114862837707,
+        "gain": 0.25314001993162316
+      }
+    },
+    "CLAW.CBBE.2.0.3.Geometry1": {
+      "Back -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.1,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.2009408241978943,
+        "gain": 0.08326804950342977
+      },
+      "BackWing_v2 -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.05,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.2009408241978943,
+        "gain": 0.04163402475171488
+      },
+      "ChestWidth -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.12,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.2009408241978943,
+        "gain": 0.09992165940411571
+      },
+      "MuscleArms -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.04,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.2009408241978943,
+        "gain": 0.033307219801371905
+      },
+      "MuscleBack_v2 -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.1,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.2009408241978943,
+        "gain": 0.08326804950342977
+      },
+      "MuscleMoreArms_v2 -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": 0.04,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.2009408241978943,
+        "gain": 0.033307219801371905
+      },
+      "ShoulderWidth -> CLAWTorsoShoulderGirth": {
+        "desiredMeanRadialPerUnitSource": -0.3,
+        "targetRegion": "deltoid",
+        "measuredUnitResponse": 1.2009408241978943,
+        "gain": -0.2498041485102893
+      },
+      "MuscleArms -> CLAWArmBiceps": {
+        "desiredMeanRadialPerUnitSource": 0.75,
+        "targetRegion": "biceps",
+        "measuredUnitResponse": 3.3314048209492384,
+        "gain": 0.22513024994251457
+      },
+      "MuscleMoreArms_v2 -> CLAWArmBiceps": {
+        "desiredMeanRadialPerUnitSource": 1.25,
+        "targetRegion": "biceps",
+        "measuredUnitResponse": 3.3314048209492384,
+        "gain": 0.3752170832375243
+      },
+      "MuscleArms -> CLAWArmTriceps": {
+        "desiredMeanRadialPerUnitSource": 0.6,
+        "targetRegion": "triceps",
+        "measuredUnitResponse": 2.577757176550098,
+        "gain": 0.23276048087779966
+      },
+      "MuscleMoreArms_v2 -> CLAWArmTriceps": {
+        "desiredMeanRadialPerUnitSource": 1.0,
+        "targetRegion": "triceps",
+        "measuredUnitResponse": 2.577757176550098,
+        "gain": 0.38793413479633276
+      }
+    }
+  },
+  "softMassPolicy": "Existing neutral-size/soft-mass ArmGirth coefficients remain. Positive muscle inputs drive only local muscle or declared shoulder/appendage fields. New local biceps/triceps are absent from Vanilla defaults because weight does not distinguish muscle from fat.",
+  "appendagePolicy": "Face breadth-to-ear, body mass-to-tail radial bulk and forearm/limb-strength-to-claw relations are explicit artistic analogies using real already-supported sources; no extra anatomical measurement is implied."
+}

@@ -7,7 +7,7 @@ from pathlib import Path
 import expressive_body as body
 
 
-def verify(candidate, output, base=None, pynifly=None):
+def verify(candidate, output, base=None, pynifly=None, recipe=None):
     candidate, output = Path(candidate).resolve(), Path(output).resolve()
     base = Path(base or body.ROOT / 'target/bodies/fresh/repaired/Meshes/Actors/WerewolfBeast/Character Assets').resolve()
     body.authored_output(output)
@@ -17,6 +17,7 @@ def verify(candidate, output, base=None, pynifly=None):
     report = {'schema': 'claw-expressive-public-reader-verification/1',
               'scriptSha256': body.sha(Path(__file__).read_bytes()), 'sexes': {}}
     api, _ = body.load_api(pynifly)
+    selected_recipe = json.loads(Path(recipe).read_text(encoding='utf-8')) if recipe else None
     for sex in ('male', 'female'):
         for suffix in ('_0.nif', '_1.nif'):
             name = sex+'bodywerewolf'+suffix
@@ -33,11 +34,14 @@ def verify(candidate, output, base=None, pynifly=None):
         _, new = body.trip_records(tri.read_bytes())
         old = {(n, row[0]): row for n, rows in old for row in rows}
         new = {(n, row[0]): row for n, rows in new for row in rows}
-        protected = {key: value for key, value in old.items() if key[1] not in body.NAMES}
+        authored = body.authored_names(selected_recipe, sex) if selected_recipe else body.NAMES
+        protected = {key: value for key, value in old.items() if key[1] not in authored}
         if any(new.get(key) != value for key, value in protected.items()):
             raise ValueError('Unrelated named morph record changed')
         additions = sorted({m for n, m in new}-{m for n, m in old})
-        if additions != sorted(body.NAMES[:4]):
+        expected_additions = (*body.NAMES[:4], *(body.ARM_MUSCLES if selected_recipe and
+            'armMuscles' in selected_recipe['parameters'] else ()))
+        if additions != sorted(expected_additions):
             raise ValueError('Unexpected public morph inventory change')
         report['sexes'][sex] = {'publicReaderValid': True, 'nifBytesExact': True,
             'publicTargetCount': len({m for n, m in decoded}), 'newNames': additions,
@@ -55,5 +59,6 @@ if __name__ == '__main__':
     p.add_argument('--out', type=Path, required=True)
     p.add_argument('--base', type=Path)
     p.add_argument('--pynifly', type=Path)
+    p.add_argument('--recipe', type=Path, help='Explicit recipe permits its dedicated female breast field')
     a = p.parse_args()
-    print(json.dumps(verify(a.candidate, a.out, a.base, a.pynifly), indent=2))
+    print(json.dumps(verify(a.candidate, a.out, a.base, a.pynifly, a.recipe), indent=2))

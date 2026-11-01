@@ -1,6 +1,114 @@
 # CLAW — future plans
 
-Owner-defined priorities, revised 31 October 2026. No release dates are promised.
+Owner-defined priorities, revised 1 November 2026. No release dates are promised.
+
+## Active owner queue (latest instruction)
+
+This list supersedes every older release sequence below.
+
+The [current execution and discrete-coat plan](coat-variation-plan.md) records
+the verified game11 mechanisms, remaining installation/appearance policy work,
+and the order of practical acceptance before physics and VR. Its passed
+mechanical coverage is separate from the abnormal process exit after checks.
+
+The current release sequence is the 0.7.1 installer-only update, then 0.8.0
+for completed mechanisms/body-family choices, followed by demonstrated coat
+variation as 0.8.5. The owner clarified UNP/BHUNP as a female family: 0.8's new
+matrix targets BHUNP 3.34 Advanced Ver4 with Build Morphs, not classic UNP or a
+male UNP body. Installer markers recommend a choice but never block alternatives.
+
+1. **Technical mechanisms:** generic sparse coefficient/function matrices;
+   shared game/Morphbench evaluator and independent comparison plugin;
+   human-to-wolf body/head/face links, including ears, tail and claws;
+   individual skin/fur appearance links; source preservation, transformation,
+   model refresh and save/load. Include HIMBO, CBBE, 3BA, BHUNP and both Vanilla sexes.
+   Every matrix explicitly supports `$actor.weight`; Vanilla body deformation
+   uses weight rather than invented body morphs. Validate exact installation
+   choices and actual game behavior. General testing-tool development is outside
+   this product queue.
+2. **Physics and VR body:** ear/tail/breast motion providers; coarse fitted SE
+   collisions, detailed VR contact, morph-responsive collider bounds;
+   first-person body dispatch, visibility, morph synchronization and interaction.
+   Prefer existing XP32 bones and separate provider-specific adapters. A built
+   configuration is not evidence of actual provider motion or collision.
+3. **Visual quality and morph authoring:** improve existing morphs and their
+   transfer calibration, natural breast shape, lean/growth endpoints and local
+   musculature; fix self-intersections and remaining surface defects; develop
+   additional or replacement morphs. This work is deferred while mechanisms
+   take priority. Do not continue aesthetic iteration merely to call an extreme
+   shape attractive.
+
+The previously separate adult-anatomy/physics idea remains deferred and is not
+silently added to any of these three current queues. This ordering supersedes
+all numbered queue/release lists retained below as historical planning.
+
+### Additional body-family compatibility investigation
+
+The owner proposed UNP-family support on 1 November and supplied the UNP Renewal
+(Nexus1699) and BHUNP (Nexus31126) archives for local inspection. After inspection,
+the owner explicitly excluded classic UNP Renewal1699 from support. Do not add
+a classic UNP matrix or installer option. Keep its archive findings as reference.
+BHUNP31126 now has a separate 3.34 Advanced Ver4 matrix, authored from the actual
+OSP/OSD and checked against the officially generated NeverNude TRI. All 47 mapped
+ordinary source keys have matching deformation directions. Its installer choice
+is implemented; installed-game acceptance is the remaining release gate.
+UNP Renewal primarily supplies ready meshes/textures and remains excluded as a
+matrix family. A compatible UNP skin remains a separate human-body dependency;
+neither human meshes nor their textures are part of CLAW's working archive.
+
+### Mechanical scope after the combined queue-two/three scene
+
+The owner requested maximum functional implementation first and moved visual
+attractiveness to queue three. Retain appearance observations as deferred
+feedback, rather than spending this slice on breast naturalness, attractive
+proportions or repeated endpoint calibration. Functional channels, human-source
+links, per-actor colour, native/preview parity, persistence and actual provider
+motion remain active. Separate muscle and soft-mass channels address a missing
+control mechanism; their final artistic tuning remains deferred. Abdomen/thigh
+self-intersection is a known mesh defect in queue three, not a completed repair
+or a reason to declare unrelated mechanisms nonfunctional. Its bounded partial
+repair and captured-pose evidence are retained without further tuning now.
+
+Do not invent an age slider or synthetic age input. An age-related conversion
+requires a verified existing readable source; investigate actual game markers
+before proposing any implementation.
+
+### First-queue inspection record
+
+The owner confirmed that the new mechanism works after inspecting the current
+HIMBO/3BA pairs. The next game run is explicitly for queue two. The inspected
+scene verifies that installation and these six transformations, not unperformed
+Vanilla, save/load or sex-rebinding cases. No new public release is implied.
+
+The first technical queue implements head/face links, ears/tail/claws and individual colour.
+Inventory actual available human and wolf inputs first; route supported traits
+through the shared native/WASM matrix kernel and expose the same controls in
+the independent Morphbench plugin. Separate muzzle/jaw/head proportions from
+ear/tail/claw length and thickness. Missing readable traits need an explicit
+fallback. Treat skin and fur as separate materials; investigate per-actor Elegant
+texture selection and tint from actual human hair/skin data. A global Timber
+installation is a photography setting, not per-actor colour implementation.
+
+The deferred queue-three appearance work improves body shape and calibration: more expressive lean/bulky
+endpoints, arm/thigh/abdomen silhouette, natural breast growth and motion physics.
+The owner observed that Runa and Mira have similar human breast size but Runa's
+wolf breasts are visible while Mira's are almost absent; Lada's human breasts
+are only moderately smaller but likewise disappear on her wolf. Preserve this
+as a transfer-quality regression case, alongside downward/broad static growth,
+axilla continuity and coordinated fur deformation. Do not mistake different
+slider names or equal raw coefficients for equal visible breast volume.
+
+The next comparison fixture needs a simple dedicated photo room for all twelve
+actors, light neutral backdrops and uniform illumination for both sexes. Retain
+the accepted compact pair separation, NeverNude human meshes, AI/collision Off
+and numeric placement checks. This room is planned, not built or game-qualified.
+The original accepted QASmoke layout remains retained for reproducibility.
+
+There is no separate active `_0`/`_1` body-authoring task. The owner rejected that
+item as a misunderstanding. Matrix weight input is first-queue work; creating
+different neutral meshes is not implied by it. The body-v2 geometry candidate and
+its integration patch are preserved separately, without selecting it for this
+first-queue build. No further geometry/calibration work precedes the first queue.
 
 The 0.7.0.0 matrix and visible-contrast slice has recorded SE acceptance; see
 [its verification record](verification-20261031.md). The later sections retain
@@ -10,7 +118,7 @@ all six 0.7 body destinations bytewise, without a new installation or game run.
 The comparison plugin is now an [independent product](https://github.com/Vhodnoylogin/claw-morphbench-plugin)
 with a pinned shared-kernel dependency, rather than a component stored here.
 
-## Current release sequence
+## Historical release sequence (superseded by the active three queues)
 
 The 31 October owner instruction supersedes the earlier six-release estimate.
 
@@ -88,8 +196,8 @@ existing actor states; saved/custom matrices must not be silently overwritten.
 4. **Physics and collisions:** finish ear/tail motion and contact, breast rig and
    physics, close body collision fitting and morph-responsive collider resizing.
    Prefer existing XP32 bones; actual provider ownership and game behavior remain
-   unaccepted. Distinct male/female `_0`/`_1` shapes remain queued alongside this
-   stage, linked to human actor weight without weighting effective morphs twice.
+   unaccepted. The older separate `_0`/`_1` authoring item was withdrawn by the
+   latest owner queue above; explicit matrix weight is a separate input contract.
 5. **First-person VR body:** finish model dispatch, selective head visibility,
    morph synchronization, camera clearance, IK and interaction acceptance.
 6. **Ear, tail, head and claw selection:** design how an actor's ear size, tail

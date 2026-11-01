@@ -1,10 +1,19 @@
 # CLAW — Customizable Lycanthrope Appearance and Weight
 
 Human body morphs shape male and female werewolves through editable coefficient
-and function matrices for HIMBO, CBBE and CBBE+3BA. Optional OBody integration
-supplies human preset inputs to actors first encountered as werewolves.
+and function matrices. The 0.8 source supports HIMBO, CBBE, CBBE+3BA, BHUNP and
+separate male/female Vanilla matrices. Available human face and stature inputs
+also influence the head, ears, tail and claws; skin and hair colours tint existing
+werewolf materials. Optional OBody integration supplies human preset inputs to
+eligible actors first encountered as werewolves.
 
-[Download CLAW 0.7.0.0](https://github.com/Vhodnoylogin/claw/releases/tag/claw/0.7.0.0)
+Every matrix explicitly reads `$actor.weight`, independently of the already
+effective RaceMenu morph values. The installer selects one male and one female
+family. Native and the matching development Morphbench plugin use the same
+compiled evaluator. Installed-game evidence is recorded separately from source
+features in the [verification record](src/main/docs/verification-20261101.md).
+
+[Download CLAW 0.7.1](https://github.com/Vhodnoylogin/claw/releases/tag/claw/0.7.1)
 · [Nexus](https://www.nexusmods.com/skyrimspecialedition/mods/194798)
 · [Русский](README.ru.md)
 
@@ -36,7 +45,8 @@ Miscellaneous download on the main CLAW Nexus page. It opens human and werewolf
 previews side by side, edits conversion matrices and exports authoring data.
 Install its ZIP through Morphbench's plugin manager, then select matching human
 and CLAW resources and apply a human preset. Skyrim does not need to be running.
-Its [independent source repository](https://github.com/Vhodnoylogin/claw-morphbench-plugin)
+The published 0.3 plugin targets the 0.7 matrix format; use the matching plugin
+revision for the expanded 0.8 matrices. Its [independent source repository](https://github.com/Vhodnoylogin/claw-morphbench-plugin)
 consumes a pinned revision of this repository's shared evaluator.
 
 ## Build and checks
@@ -64,12 +74,18 @@ reported as successful coverage.
 
 ## Installation and scope
 
-The working mod is one FOMOD archive. HIMBO and CBBE are required; 3BA is optional.
+The working mod is one FOMOD archive. The 0.8 installer has separate male and
+female pages: HIMBO or Vanilla for males; CBBE, CBBE+3BA, BHUNP 3.34 Advanced Ver4
+or Vanilla for females. Choices stay available; active plugin markers only suggest
+a default. When multiple body mods are installed, choose the actual winning body
+resources and build morphs for that body. Vanilla body deformation uses weight.
 Install Elegant Werewolf Replacer for its textures, a compatible XP32 skeleton,
 runtime-matched SKSE, RaceMenu/SKEE, Address Library and Microsoft Visual C++ x64
 runtime. OBody and its own requirements apply when automatic preset distribution
 or the optional originally-beast source host is used. Dependencies remain separate
-mods; no human bodies, textures or skeleton are bundled.
+mods; no human bodies, textures or skeleton are bundled. Existing saved actors
+keep their stored conversion matrices after an update; a new game adopts the new
+defaults. Reinstalling a family choice alone does not reset existing actors.
 
 One CommonLib DLL targets SE, AE and VR. Actual 0.7 game acceptance covers Skyrim
 SE 1.7.104 / SKSE 2.3.1 with HIMBO/3BA and official RaceMenu: both sexes,
@@ -77,8 +93,8 @@ transformation/return, human-value preservation, save/load and born werewolves.
 Other runtime boundaries and CBBE have offline coverage. A fresh build or source
 layout change does not establish new game acceptance.
 
-Physics, fitted colliders, distinct neutral weight endpoints and a first-person
-VR body remain development work. See the [roadmap](src/main/docs/roadmap.md),
+Physics, fitted colliders and a first-person VR body remain development work.
+See the [roadmap](src/main/docs/roadmap.md),
 [release record](src/main/resources/publication/CLAW-0.7.0.0.md),
 [matrix contract](src/main/docs/matrix-contract.md) and
 [reusable inspection configuration](src/test/resources/inspection/README.md).

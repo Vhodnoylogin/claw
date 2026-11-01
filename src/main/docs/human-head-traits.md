@@ -2,7 +2,78 @@
 
 Tags: CLAW, head, face, morphs, transformation
 
-Research and implementation proposal, 30 October 2026. Baseline: CLAW
+## Implemented candidate, 1 November 2026
+
+The development DLL now captures five vanilla FaceGen values and human stature,
+and the five default resource-family matrices explicitly link them. These are
+read-only engine record inputs. They are not invented RaceMenu body morphs,
+custom face slider names, sculpt measurements or a claim to reproduce baked NPC
+FaceGen geometry. The earlier research and frozen geometry audit below remain
+the limits of the available resource evidence; installed-game acceptance is
+still required for the new candidate.
+
+| Matrix source | Read while actually human | Authored default use |
+|---|---|---|
+| `$human.face.noseLength` | Root face NPC `FaceData::morphs[kNose_LongShort]` | Positive side adds muzzle length at gain 0.35 |
+| `$human.face.jawForward` | `kJaw_ForwardBack` | Negative side adds muzzle length at gain 0.2 |
+| `$human.face.chinForward` | `kChin_UnderbiteOverbite` | Negative side adds muzzle length at gain 0.1 |
+| `$human.face.jawWidth` | `kJaw_NarrowWide` | Positive side adds muzzle width at gain 0.3 |
+| `$human.face.chinWidth` | `kChin_NarrowWide` | Positive side adds muzzle width at gain 0.15 |
+| `$human.height` | NPC `height` (NAM6) multiplied once by the current human race's sex-specific height | Above ratio 1: head/ears gain 1.5, tail length gain 2, both claw lengths gain 1.25 |
+
+The raw signed face values retain their engine representation. The default gains
+and sign interpretation are authored projections, pending race/resource visual
+qualification. They are not measured anatomical dimensions. Height omits actor
+reference scale and skeleton/node overrides. The height-to-ear/tail/claw relation
+is an explicit artistic stature analogy, not a claim that humans have a tail or
+that stature measures nails. Height 1 gives zero on these rows; height 1.1 gives
+head/ear 0.15, tail 0.2 and claw 0.125. Shorter values cannot shrink these existing
+nonnegative targets below their donor neutral. The [v4 projection](anatomy-v4.md)
+also uses real face breadth for modest ear size/tilt, real body mass for tail
+radial bulk, and forearm/limb strength for modest claws. These are explicitly
+authored analogies, not measured human ear/nail anatomy. Tail lift and paw
+size retain zero unless an owner authors rules for actual supported inputs.
+No categorical HeadPart index is converted into a continuous trait.
+
+`HumanTraits` preserves source race, base NPC, root face NPC, sex, and a map of
+available values separately from the matrix's numeric input snapshot. A present
+zero is supported neutral data. Null FaceData, the engine default sentinel,
+nonfinite values or missing provenance remain unavailable. Missing face inputs
+use arithmetic neutral 0; missing height uses ratio 1. A warning lists unavailable
+declared channels when that list changes. These fallbacks do not mark a channel
+available and do not stop the existing body/weight conversion.
+
+Source capture requires a current non-werewolf race carrying `ActorTypeNPC`;
+other creature forms retain the preceding human snapshot and cannot overwrite
+it with creature records. Within this eligible form, human refresh atomically
+replaces the snapshot, including removals and changed
+race/face/sex. Wolf refresh reads the retained snapshot and never reads the wolf
+face as human. A new born wolf has no human snapshot; OBody body bootstrap cannot
+create one. A changed NPC identity invalidates the retained snapshot. Existing sex
+binding still refuses a different sex until explicit rebind. Co-save v7 appends
+the snapshot, remaps its FormIDs, and invalidates it if provenance cannot resolve.
+The next human refresh recaptures it. Existing v1..v6 ordinary/weight matrices
+remain authoritative and receive no new rows until explicit family rebind. A
+pre-v7 `$human.` token is retained suppressed until rebind rather than silently
+changing from an old SKEE name to an engine source.
+
+The shared native/WASM source-kind validator reserves the case-insensitive
+`$human.` namespace and accepts only the six exact spellings above. Targets cannot
+use it. Ordinary SKEE names remain data-driven. There is no unsafe private
+FaceMorph ABI call and no export-file polling. The game adapter checks the slot
+indices against the pinned CommonLib enum at compile time. Focused offline tests
+cover availability, real neutral values, explicit routing, lifecycle replacement,
+default sentinels, co-save roundtrip and old namespace migration.
+
+The candidate also scales every CBBE/3BA breast-target calibrated gain by 0.55,
+preserving relative signs and cancellation, for the larger expressive-v3 breast
+field. This prevents the retained high fixture saturating before the new field
+can express differences; it is an authored geometry-dependent change, not a new
+measured calibration. A zero breast coefficient retains the nonzero donor mesh.
+
+## Earlier research and frozen audit
+
+Research and implementation proposal, 30 October 2026. Historical baseline: CLAW
 `689e5bdbbdf74ab524e16153a8af74becf581b25`, development branch
 `feature/shape-physics-fur`. No runtime adapter, mapping gains or new targets are
 enabled by this document. The running game and frozen release are unchanged.

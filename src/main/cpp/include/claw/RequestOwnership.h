@@ -87,6 +87,24 @@ private:
     std::map<std::uint32_t, Request> rows_;
 };
 
+// Body policy and coat choice have independent latest-wins sequences. Sharing
+// the actor pin does not authorize one policy to supersede the other's intent.
+template<class Owner>
+class RequestChannels final {
+public:
+    explicit RequestChannels(std::size_t limit) : body_(limit), coat_(limit) {}
+    RequestLedger<Owner>& body() { return body_; }
+    RequestLedger<Owner>& coat() { return coat_; }
+    const RequestLedger<Owner>& body() const { return body_; }
+    const RequestLedger<Owner>& coat() const { return coat_; }
+    void clear() { body_.clear(); coat_.clear(); }
+    void eraseOwner(std::uint32_t id, std::uint64_t owner) {
+        body_.eraseOwner(id, owner); coat_.eraseOwner(id, owner);
+    }
+private:
+    RequestLedger<Owner> body_, coat_;
+};
+
 // Pending calls use their pool owner. Completed errors need no intrusive pin:
 // a validated State keeps only this token and its runtime binding serial.
 template<class Owner>

@@ -80,10 +80,10 @@ int main() {
             claw::MorphLink link{"Explicit-v1", {{"CLAWTorsoGirth", "CLAWTorsoGirth", 1, .25F}}, {}, false};
             require(!link.valid(claw::Sex::male), "CLAW source feedback accepted");
             link.rules[0] = {"Human", "CLAWHeadEarSize", 1, .25F};
-            require(!link.valid(claw::Sex::male), "individual head trait entered linked body domain");
+            require(link.valid(claw::Sex::male), "generic head target refused");
             link.rules[0].target = "CLAWTorsoBreastSize";
             require(link.valid(claw::Sex::female), "explicit female body-resource breast link refused");
-            require(!link.valid(claw::Sex::male), "female breast target accepted for male");
+            require(link.valid(claw::Sex::male), "generic target interpretation was incorrectly inferred from its name");
         }},
         {"morph linkage rejects ambiguous or unbounded profiles", [] {
             claw::MorphLink link{"Explicit-v1", {{"HumanA", "CLAWTorsoGirth", 1, .25F}, {"HumanB", "CLAWTorsoGirth", 1, .5F}}, {}, false};
@@ -123,12 +123,12 @@ int main() {
         }},
         {"expanded family maps remain finitely bounded", [] {
             claw::MorphLink link;
-            link.profile = "family-128";
-            for (int index = 0; index < 128; ++index)
+            link.profile = "family-256";
+            for (int index = 0; index < CLAW_MATRIX_MAX_RULES; ++index)
                 link.rules.push_back({"Human" + std::to_string(index), "CLAWTorsoGirth", .001F, 1.F});
-            require(link.valid(claw::Sex::male), "128-row resource map rejected");
+            require(link.valid(claw::Sex::male), "256-row resource map rejected");
             link.capture([](std::string_view) { return .5F; });
-            require(std::abs(link.compose(claw::Sex::male).at("CLAWTorsoGirth") - .064F) < 1e-6F, "family expansion changed scalar composition");
+            require(std::abs(link.compose(claw::Sex::male).at("CLAWTorsoGirth") - .128F) < 1e-6F, "family expansion changed scalar composition");
             link.rules.push_back({"Excess", "CLAWTorsoGirth", 1, 1});
             require(!link.valid(claw::Sex::male), "family rule bound bypassed");
         }},

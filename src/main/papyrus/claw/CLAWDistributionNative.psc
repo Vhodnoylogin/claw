@@ -36,6 +36,24 @@ Float Function GetOwnMorph(Actor target, String morphName) Global Native
 Bool Function ClearOwn(Actor target) Global Native
 Bool Function Refresh(Actor target) Global Native
 
+; Cached pre-transformation traits. A missing value differs from observed zero.
+Bool Function HasHumanTrait(Actor target, String source) Global Native
+Float Function GetHumanTrait(Actor target, String source) Global Native
+; Skin/fur sources, private material application, or reason for unavailable colour.
+String Function GetAppearanceStatus(Actor target) Global Native
+
+; Optional local coat library. No third-party DDS are bundled with CLAW.
+String[] Function GetCoatPatterns() Global Native
+; True means queued only. Read GetAppliedCoatPattern/GetCoatPatternStatus after it.
+Bool Function SetCoatPattern(Actor target, String patternId) Global Native
+; Removes the manual override; real human hair may select an automatic pattern.
+Bool Function ClearCoatPattern(Actor target) Global Native
+; Requested manual override, or empty for automatic/tint-only behaviour.
+String Function GetCoatPattern(Actor target) Global Native
+; Cached last successful private-material application; empty after unbind/failure.
+String Function GetAppliedCoatPattern(Actor target) Global Native
+String Function GetCoatPatternStatus(Actor target) Global Native
+
 ; Explicit morph-to-morph developer profile. No preset-name pairing or OBody writes.
 ; Applied signed source values are read from SKEE; weight must not be applied twice.
 ; Equal-size arrays, 1..128 rows. sum(source*gain), clamp 0..1, multiply target cap.
