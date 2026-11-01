@@ -470,7 +470,14 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
         "Human body morphs carried into werewolf shape.\n"
         "Install through FOMOD: choose HIMBO or Vanilla for males and CBBE, 3BA or Vanilla for females.\n"
         "Requires Elegant textures, XP32 and matching SKSE/RaceMenu/Address Library. Replacement human bodies are required only for their selected matrix.\n"
-        "Vanilla matrices use NPC weight. OBody integration supplies morph inputs to eligible born wolves using a morph-based matrix.\n\nSource code: " + reference["url"] + "\n").encode("utf-8")
+        "Vanilla matrices use NPC weight. OBody integration supplies morph inputs to eligible born wolves using a morph-based matrix.\n\n"
+        "Optional coat patterns use a separate local library prepared from your own Elegant archive. "
+        "Follow the [local preparation guide](" + reference["repository"] + "/blob/" + (reference["commit"] or "main") + "/src/main/docs/coat-library.md) "
+        "and install its generated folder as a local mod. The library enables automatic hair-based pattern selection; individual overrides use CLAW's Papyrus API. "
+        "Human-derived skin/fur tint also works without this library. Keep Elegant installed for its shared texture maps.\n\n"
+        "Elegant Werewolf Replacer assets by [Wolflady500](https://www.nexusmods.com/profile/Wolflady500) "
+        "and [KaienHash](https://www.nexusmods.com/profile/KaienHash).\n\n"
+        "Source code: " + reference["url"] + "\n").encode("utf-8")
     validate_no_nested_archives(entries)
     selections = selection_audit(read_zip(zip_bytes(entries)))
     receipt = {"schemaVersion": 1, "status": "packaged-explicit-build-inputs-not-game-qualified-not-published",

@@ -6,6 +6,11 @@ Owner-defined priorities, revised 1 November 2026. No release dates are promised
 
 This list supersedes every older release sequence below.
 
+The [current execution and discrete-coat plan](coat-variation-plan.md) records
+the verified game11 mechanisms, remaining installation/appearance policy work,
+and the order of practical acceptance before physics and VR. Its passed
+mechanical coverage is separate from the abnormal process exit after checks.
+
 1. **Technical mechanisms:** generic sparse coefficient/function matrices;
    shared game/Morphbench evaluator and independent comparison plugin;
    human-to-wolf body/head/face links, including ears, tail and claws;

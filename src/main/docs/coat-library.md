@@ -183,9 +183,18 @@ keep their byte layout. Invalid or unavailable patterns fall back to the origina
 material or existing tint, with a diagnostic; missing files are not accepted as
 a successfully applied pattern.
 
-The runtime extension has passed universal compilation and offline tests. Its
-individual-material application, restoration and persistence require the next
-pinned game test; preparing this library alone does not qualify those behaviors.
+The runtime extension has passed universal compilation and offline tests.
+The 1 November game11 additionally checked automatic Valley Brown, explicit
+Black/Timber on both sexes, same-base per-reference isolation, invalid choices,
+clear, model refresh, six-reference save/load and the control's human return.
+Independent saved-byte checks verified the real source palette and explicit
+pattern records; owner Steam images show simultaneous different coats. After
+functional completion the process exited abnormally before the operator's finish
+request. Environment restoration completed, but the overall run is not marked
+passed and the termination cause is unknown. These checks cover the installed
+SE candidate, not all runtimes, all patterns, every visible surface or artistic
+colour matching. Preparing the library alone establishes none of this runtime
+coverage. See the [remaining variation and release plan](coat-variation-plan.md).
 
 ## Source and verification boundaries
 
