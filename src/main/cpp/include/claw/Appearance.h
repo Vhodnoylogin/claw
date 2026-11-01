@@ -75,7 +75,7 @@ private:
     static bool healthyPrivateTint(const Surface& surface);
     static std::string texturePath(RE::BSTextureSet* set, RE::BSTextureSet::Texture slot);
     std::string resolvedPattern(const Entry& entry) const;
-    bool preparePattern(RE::BSShaderProperty* property, const CoatTexture& texture, const CoatDDSInfo& expected) const;
+    bool preparePattern(RE::BSShaderProperty* property, const CoatTexture& texture, const CoatDDSInfo& expected, std::string& reason) const;
     struct PatternAssets { bool valid{}; std::map<std::string, CoatDDSInfo, std::less<>> dimensions; };
     const PatternAssets& validatePattern(const std::string& key, const CoatPattern& pattern);
     Entry* entryFor(RE::Actor* actor);
@@ -188,19 +188,33 @@ inline const Runtime::PatternAssets& Runtime::validatePattern(const std::string&
     result.valid = result.dimensions.size() == 9;
     return result;
 }
-inline bool Runtime::preparePattern(RE::BSShaderProperty* property, const CoatTexture& texture, const CoatDDSInfo& expected) const {
-    if (!property || !property->material) return false;
+inline bool Runtime::preparePattern(RE::BSShaderProperty* property, const CoatTexture& texture, const CoatDDSInfo& expected, std::string& reason) const {
+    if (!property || !property->material) { reason = "private shader or material unavailable"; return false; }
+    auto* material = static_cast<RE::BSLightingShaderMaterialBase*>(property->material);
+    const auto donorPath = texturePath(material->textureSet.get(), RE::BSTextureSet::Texture::kDiffuse);
+    const auto fail = [&](std::string detail) { reason = std::move(detail) + "; donor diffuse=" + donorPath; return false; };
     RE::NiPointer<RE::NiTexture> loaded;
     RE::BSShaderManager::GetTexture(texture.path.c_str(), true, loaded, false);
+    if (!loaded) return fail("GetTexture returned null");
     auto* source = loaded ? netimmerse_cast<RE::NiSourceTexture*>(loaded.get()) : nullptr;
-    if (!source) return false;
+    if (!source) {
+        const auto* type = loaded->GetRTTI();
+        return fail("loaded texture RTTI=" + std::string(type ? type->GetName() : "<none>") + "; NiSourceTexture cast failed");
+    }
     std::uint32_t width{}, height{}, levels{}, arraySize{};
     source->GetTextureDimensionsAndMipInfo(&width, &height, &levels, &arraySize);
-    if (width != expected.width || height != expected.height || levels == 0 || arraySize != 1) return false;
-    auto* material = static_cast<RE::BSLightingShaderMaterialBase*>(property->material);
-    if (!material->textureSet) return false;
+    if (width != expected.width || height != expected.height || levels == 0 || arraySize != 1) {
+        const auto* renderer = source->rendererTexture;
+        return fail("loaded dimensions=" + std::to_string(width) + "x" + std::to_string(height) +
+            ", mips=" + std::to_string(levels) + ", array=" + std::to_string(arraySize) +
+            "; expected=" + std::to_string(expected.width) + "x" + std::to_string(expected.height) +
+            ", header mips=" + std::to_string(expected.mipLevels) + ", array=1" +
+            "; renderer=" + (renderer ? "yes" : "no") + ", resourceView=" + (renderer && renderer->resourceView ? "yes" : "no"));
+    }
+    if (!material->textureSet) return fail("donor textureSet unavailable");
     RE::NiPointer<RE::BSTextureSet> set{RE::BSShaderTextureSet::Create()};
-    if (!set || set.get() == material->textureSet.get()) return false;
+    if (!set) return fail("private textureSet creation returned null");
+    if (set.get() == material->textureSet.get()) return fail("private textureSet aliases donor");
     for (std::uint32_t i = 0; i < RE::BSTextureSet::Texture::kTotal; ++i) {
         const auto slot = static_cast<RE::BSTextureSet::Texture>(i);
         const auto original = texturePath(material->textureSet.get(), slot);
@@ -208,8 +222,11 @@ inline bool Runtime::preparePattern(RE::BSShaderProperty* property, const CoatTe
     }
     set->SetTexturePath(RE::BSTextureSet::Texture::kDiffuse, texture.path.c_str());
     material->SetTextureSet(set); material->diffuseTexture.reset(source);
-    return material->textureSet.get() == set.get() && material->diffuseTexture.get() == source &&
-        texturePath(set.get(), RE::BSTextureSet::Texture::kDiffuse) == texture.path;
+    if (material->textureSet.get() != set.get()) return fail("private textureSet assignment readback mismatch");
+    if (material->diffuseTexture.get() != source) return fail("diffuse texture assignment readback mismatch");
+    const auto actualPath = texturePath(set.get(), RE::BSTextureSet::Texture::kDiffuse);
+    if (actualPath != texture.path) return fail("private diffuse path readback=" + actualPath + "; expected=" + texture.path);
+    return true;
 }
 template<class Keep> void Runtime::retainIf(Keep&& keep) {
     for (auto it = entries_.begin(); it != entries_.end();) {
@@ -421,8 +438,12 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider) {
         // Neutral material multiplication does not make a human source available.
         const auto tint = hasColour ? pack(coatTint(skin ? entry.colours.skin : entry.colours.hair, !skin)) : 0xFFFFFFU;
         if (const auto failure = prepareTintMaterial(copy.get(), original, tint); !failure.empty()) return isolationFailure(failure);
-        if (selected && !preparePattern(copy.get(), selected->textures.at(std::string(surfaceSpec.texture)), assets->dimensions.at(std::string(surfaceSpec.texture)))) {
-            patternFailure = "DDS unavailable or texture load failed"; selected = nullptr; retryWithoutPattern = true; break;
+        std::string textureFailure;
+        if (selected && !preparePattern(copy.get(), selected->textures.at(std::string(surfaceSpec.texture)), assets->dimensions.at(std::string(surfaceSpec.texture)), textureFailure)) {
+            const auto& path = selected->textures.at(std::string(surfaceSpec.texture)).path;
+            patternFailure = path + ": " + textureFailure;
+            SKSE::log::warn("CLAW appearance {:08X}: coat {} asset {}: {}", actor->formID, requestedPattern, path, textureFailure);
+            selected = nullptr; retryWithoutPattern = true; break;
         }
         if (!protectPrivateTint(copy.get(), original)) { entry.status = "private tint protection failed"; return false; }
         prepared.push_back({RE::NiPointer<RE::BSGeometry>{geometry}, RE::NiPointer<RE::BSShaderProperty>{original}, copy,
