@@ -37,9 +37,13 @@ meshes are source inputs with recorded provenance; generated NIF/TRI, ESP, PEX,
 DLL and ZIP files belong in `target/` and GitHub Release assets. Older release
 commits and tags retain their historical layout; history has not been rewritten.
 
-The independent [CLAW Morphbench plugin](https://github.com/Vhodnoylogin/claw-morphbench-plugin)
-has its own repository. It consumes a pinned revision of this repository's shared
-evaluator instead of maintaining another conversion implementation.
+The optional [CLAW Morphbench comparison plugin](https://www.nexusmods.com/skyrimspecialedition/mods/194798?tab=files&file_id=830298) is a
+Miscellaneous download on the main CLAW Nexus page. It opens human and werewolf
+previews side by side, edits conversion matrices and exports authoring data.
+Install its ZIP through Morphbench's plugin manager, then select matching human
+and CLAW resources and apply a human preset. Skyrim does not need to be running.
+Its [independent source repository](https://github.com/Vhodnoylogin/claw-morphbench-plugin)
+consumes a pinned revision of this repository's shared evaluator.
 
 ## Build and checks
 

@@ -1,0 +1,6 @@
+Side-by-side human and werewolf previews with synchronized rotation.
+Human BodySlide preset import and editable human morph controls with read-only derived wolf values.
+Editable coefficient and function matrices, custom conversion presets and mapping export.
+Shared C++ conversion evaluator compiled to WebAssembly for offline calculations.
+Numeric comparison and export of vertex positions and displacement from the initial model.
+Verified paired-model preview with Morphbench Application 0.8.7.

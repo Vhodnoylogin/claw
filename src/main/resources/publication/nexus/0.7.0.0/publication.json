@@ -62,5 +62,58 @@
   "runtimeFilesMatchPreviouslyInstalled": true,
   "downloadedSha256Verified": true,
   "downloadedCrcPassed": true,
-  "supportReviewForFileId": 829608
+  "supportReviewForFileId": 829608,
+  "morphbenchPlugin": {
+    "version": "0.3.0",
+    "modId": 194798,
+    "fileId": 830298,
+    "category": "Miscellaneous",
+    "downloadUrl": "https://www.nexusmods.com/skyrimspecialedition/mods/194798?tab=files&file_id=830298",
+    "archiveBytes": 131570,
+    "archiveSha256": "0c999ae234a11a846cb8cb8a2f2fb9990e1178cf0be8c766ec17ca2e5c2b6c25",
+    "sourceRepository": "https://github.com/Vhodnoylogin/claw-morphbench-plugin",
+    "sourceCommit": "81718560bde92fefd5c0398d316affda6a3fa6fd",
+    "descriptionCapturedFromSavedPage": true,
+    "screenshot": {
+      "source": "src/main/resources/publication/media/0.7.0.0/morphbench-comparison.jpg",
+      "sha256": "4a7021c1a0279d3eedbdff49153443182da18b977abf328aed5414a61a3b51d7",
+      "image": "https://staticdelivery.nexusmods.com/mods/1704/images/194798/194798-1793527093-869173617.jpg"
+    },
+    "browserCheck": {
+      "date": "2026-11-01",
+      "application": "0.8.7",
+      "launcherRuntime": "v3",
+      "plugin": "0.3.0",
+      "human": "HIMBO 5.8, full MMuscular vector",
+      "humanValues": 124,
+      "wolf": "Published CLAW 0.7.0.0 body",
+      "wolfOutputs": 15,
+      "scope": "Actual browser pair opened and applied; no new game acceptance."
+    },
+    "standalonePage": {
+      "modId": 197517,
+      "status": "permanently-deleted",
+      "ownerConfirmedAtAction": true,
+      "deletionVerifiedBy": "Nexus redirected to the game landing page after Delete mod"
+    },
+    "description": "Developer plugin for Morphbench. Compare human and werewolf bodies and edit conversion matrices. Install through Morphbench's plugin manager.",
+    "allowModManagerDownload": true,
+    "requirementsPopup": true,
+    "requirements": [
+      {
+        "modId": 194795,
+        "fileName": "Morphbench Application",
+        "minimumVersion": "0.8.7",
+        "maximumVersion": "Latest"
+      }
+    ],
+    "changelog": {
+      "version": "0.3.0",
+      "savedOnNexus": true,
+      "savedDate": "2026-11-01",
+      "sourceFile": "src/main/resources/publication/nexus/0.7.0.0/morphbench-plugin-changelog-0.3.0.txt"
+    }
+  },
+  "fileDescription": "Human presets shape male and female werewolves.\nOne DLL for SE/AE/VR.",
+  "publicationUpdated": "2026-11-01"
 }
