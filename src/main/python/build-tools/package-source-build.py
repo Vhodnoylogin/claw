@@ -277,7 +277,9 @@ def installer(template, entries):
             if any(row.get("source") == "30 OBody Source" for row in step.findall(".//files/folder")):
                 steps.remove(step)
     ET.indent(config)
-    return ET.tostring(config, encoding="utf-8", xml_declaration=True)
+    # Vortex re-encodes this string as UTF-16 but strips only double-quoted
+    # encoding declarations. Omit ElementTree's single-quoted declaration.
+    return ET.tostring(config, encoding="utf-8", xml_declaration=False)
 
 
 def selection_audit(entries):
@@ -398,7 +400,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     info = ET.fromstring(inputs.read(template / "info.xml"))
     info.find("Version").text = version
     info.find("Description").text = "Links human body morphs to werewolf bodies."
-    entries["fomod/info.xml"] = ET.tostring(info, encoding="utf-8", xml_declaration=True)
+    entries["fomod/info.xml"] = ET.tostring(info, encoding="utf-8", xml_declaration=False)
     own, native_sources, commit, source_selection = tracked_source(inputs, obody_esp is not None)
     native_sha = sha(entries["10 Native/SKSE/Plugins/CLAWDistribution.dll"])
     external, licenses, review = companion(inputs, source_companion_dir, native_sha, native_sources, commonlib_commit)
