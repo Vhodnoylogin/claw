@@ -106,7 +106,13 @@
         "minimumVersion": "0.8.7",
         "maximumVersion": "Latest"
       }
-    ]
+    ],
+    "changelog": {
+      "version": "0.3.0",
+      "savedOnNexus": true,
+      "savedDate": "2026-11-01",
+      "sourceFile": "src/main/resources/publication/nexus/0.7.0.0/morphbench-plugin-changelog-0.3.0.txt"
+    }
   },
   "fileDescription": "Human presets shape male and female werewolves.\nOne DLL for SE/AE/VR.",
   "publicationUpdated": "2026-11-01"
