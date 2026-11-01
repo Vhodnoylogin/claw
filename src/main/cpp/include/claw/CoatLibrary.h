@@ -62,6 +62,12 @@ inline CoatSelection readCoatSelection(std::span<const char> bytes) {
     return value;
 }
 struct CoatTexture { std::string path, sha256; std::uint32_t bytes{}; };
+// Keep portable catalog/VFS paths separate from engine-bound texture names.
+inline std::string coatEngineTexturePath(std::string_view path) {
+    std::string result(path);
+    std::replace(result.begin(), result.end(), '/', '\\');
+    return result;
+}
 struct CoatDDSInfo { std::uint32_t width{}, height{}, mipLevels{}; };
 inline std::optional<CoatDDSInfo> coatDDSHeader(std::span<const char> data) {
     if (data.size() < 128 || std::string_view(data.data(), 4) != "DDS ") return std::nullopt;

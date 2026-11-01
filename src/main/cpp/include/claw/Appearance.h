@@ -193,8 +193,9 @@ inline bool Runtime::preparePattern(RE::BSShaderProperty* property, const CoatTe
     auto* material = static_cast<RE::BSLightingShaderMaterialBase*>(property->material);
     const auto donorPath = texturePath(material->textureSet.get(), RE::BSTextureSet::Texture::kDiffuse);
     const auto fail = [&](std::string detail) { reason = std::move(detail) + "; donor diffuse=" + donorPath; return false; };
+    const auto enginePath = coatEngineTexturePath(texture.path);
     RE::NiPointer<RE::NiTexture> loaded;
-    RE::BSShaderManager::GetTexture(texture.path.c_str(), true, loaded, false);
+    RE::BSShaderManager::GetTexture(enginePath.c_str(), true, loaded, false);
     if (!loaded) return fail("GetTexture returned null");
     auto* source = loaded ? netimmerse_cast<RE::NiSourceTexture*>(loaded.get()) : nullptr;
     if (!source) {
@@ -220,12 +221,12 @@ inline bool Runtime::preparePattern(RE::BSShaderProperty* property, const CoatTe
         const auto original = texturePath(material->textureSet.get(), slot);
         set->SetTexturePath(slot, original.c_str());
     }
-    set->SetTexturePath(RE::BSTextureSet::Texture::kDiffuse, texture.path.c_str());
+    set->SetTexturePath(RE::BSTextureSet::Texture::kDiffuse, enginePath.c_str());
     material->SetTextureSet(set); material->diffuseTexture.reset(source);
     if (material->textureSet.get() != set.get()) return fail("private textureSet assignment readback mismatch");
     if (material->diffuseTexture.get() != source) return fail("diffuse texture assignment readback mismatch");
     const auto actualPath = texturePath(set.get(), RE::BSTextureSet::Texture::kDiffuse);
-    if (actualPath != texture.path) return fail("private diffuse path readback=" + actualPath + "; expected=" + texture.path);
+    if (actualPath != enginePath) return fail("private diffuse path readback=" + actualPath + "; expected=" + enginePath);
     return true;
 }
 template<class Keep> void Runtime::retainIf(Keep&& keep) {

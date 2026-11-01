@@ -46,6 +46,11 @@ int main(int argc, char** argv) {
         for (const auto id : {"con", "con.foo", "nul", "aux", "prn", "com1", "lpt9.ext", "trailing.", "..", ".hidden", "x/y", "A", "x:y"})
             require(!coatToken(id), "Unsafe Windows token accepted");
         require(coatToken("elegant-2k-2.1") && coatKey("elegant-2k-2.1/timber") && !coatKey("a/b/c"), "Canonical identity rejected or extra path accepted");
+        const std::string portable = "textures/actors/character/werewolf/claw/elegant-2k-2.1/black/body.dds";
+        const std::string engine = R"(textures\actors\character\werewolf\claw\elegant-2k-2.1\black\body.dds)";
+        require(coatEngineTexturePath(portable) == engine && portable.find('\\') == portable.npos, "Engine conversion altered portable catalog path or left forward separators");
+        require(coatEngineTexturePath(engine) == engine, "Already native texture path changed");
+        require(coatEngineTexturePath("textures/actors\\character/body.dds") == R"(textures\actors\character\body.dds)", "Mixed engine separators were not canonicalized");
         rejects([&] { CoatLibrary::parse(document(black + black)); }, "Duplicate pattern accepted");
         rejects([&] { CoatLibrary::parse(document(pattern("partial", " furR=\".5\""))); }, "Partial measured palette accepted");
         rejects([&] { CoatLibrary::parse(replaced(xml, "furR=\"1\"", "furR=\"nan\"")); }, "NaN palette accepted");
