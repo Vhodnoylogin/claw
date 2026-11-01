@@ -126,6 +126,67 @@ loaded shapes, privately own the texture/material objects, load/bind textures on
 the game thread and handle actor/root lifecycle and later writers. Preparing
 files establishes none of those runtime or visual acceptance claims.
 
+## Game adapter
+
+The development DLL reads `Data/SKSE/Plugins/CLAW/CoatLibrary.xml` once during
+startup. Without this optional catalog, the existing human skin/hair tint remains
+available. The local library supplies diffuse patterns; Elegant still supplies
+the shared remaining textures. The comparison plugin's untextured preview does
+not establish the game's material output.
+
+For an observed human hair colour, the automatic selector compares the measured
+fur palettes in linear RGB and resolves ties by the stable library/pattern ID.
+Rendered hair takes precedence when unambiguous, with the existing record-hair
+fallback. Skin continues to control the separate undercoat material tint. This
+initial deterministic colour metric is not an artistic colour match or a
+biological mask of skin versus hair-covered vertices.
+
+The native `CLAWDistributionNative` Papyrus interface provides:
+
+```text
+String[] GetCoatPatterns()
+Bool SetCoatPattern(Actor target, String patternId)
+Bool ClearCoatPattern(Actor target)
+String GetCoatPattern(Actor target)
+String GetAppliedCoatPattern(Actor target)
+String GetCoatPatternStatus(Actor target)
+```
+
+Use a fully qualified ID returned by the catalog, for example
+`elegant-2k-2.1/timber`. Setting or clearing returns admission to the actor-pinned
+game-thread queue; `true` does not mean the material has been applied. The first
+getter returns the requested override, while `GetAppliedCoatPattern` returns the
+last successfully bound pattern ID, or empty. Status explains pending, unavailable,
+fallback or yielded application. These reads are cached diagnostics from CLAW,
+not independent renderer measurements.
+
+An explicit choice overrides automatic selection. Clearing it resumes automatic
+selection when human hair was observed. A beast without that history can receive
+an explicit pattern with a neutral tint multiplier; it never gains fabricated
+human hair, skin or facial values. Clearing such a choice restores its original
+material. Choices belong to actor references, not their shared NPC base.
+
+Before first use, the adapter checks all nine loose DDS files through the current
+Data view for expected byte size and valid dimensions/header. The preparation
+tool verifies the hashes; the game does not rehash all textures every scan.
+The engine-loaded resource must also report the expected dimensions. Private
+texture sets copy all nine original slots and replace diffuse only. Normal and
+specular resources, alpha properties, eyes, mouth and claws retain their existing
+resources. All selected surfaces are prepared before the live binding transaction.
+
+The surface lease retains material, guard, texture-set and diffuse-resource
+identities plus all texture paths. A later material writer wins; clear/return
+does not restore over its changes. Separate bounded `CCPT` version-1 records keep
+only explicit IDs and actor/base/sex identity. Automatic selection is recomputed
+from the retained real colour source. Existing `CCLR` version-1 colour records
+keep their byte layout. Invalid or unavailable patterns fall back to the original
+material or existing tint, with a diagnostic; missing files are not accepted as
+a successfully applied pattern.
+
+The runtime extension has passed universal compilation and offline tests. Its
+individual-material application, restoration and persistence require the next
+pinned game test; preparing this library alone does not qualify those behaviors.
+
 ## Source and verification boundaries
 
 Pure schema/path/metadata/XML functions are separate from `SevenZipArchive`, the

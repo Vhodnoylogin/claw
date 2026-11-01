@@ -25,8 +25,10 @@ Elegant textures remain a dependency and are never modified or redistributed.
 
 Tint is multiplicative: `floor + (1-floor)*humanRGB`, with floor 0.45 for the
 underlying coat and 0.28 for fur. This keeps dark coats readable; it cannot turn a
-baked dark diffuse into white. Selecting among all Elegant texture variants is
-separate unfinished work, not established by this tint implementation. Timber is
+baked dark diffuse into white. The separate development
+[local coat-library adapter](coat-library.md) adds per-reference texture-pattern
+selection and an explicit override, with a tint-only fallback. Its new runtime
+path is not qualified by the earlier tint-only game06/game08 checks. Timber is
 the current comparison texture option.
 
 On the game thread, every selected surface must have exactly one matching name

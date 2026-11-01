@@ -27,6 +27,7 @@
 #include <cstring>
 #include <deque>
 #include <filesystem>
+#include <fstream>
 #include <exception>
 #include <limits>
 #include <map>
@@ -87,6 +88,7 @@ struct State {
     RE::Actor* runtimePointer{}; // Cached comparison only, never dereferenced by getters.
     std::uint64_t runtimeSerial{}; // Fresh after load; never serialized.
     claw::RequestBinding latestRequest; // Non-owning, process-local terminal request witness.
+    claw::RequestBinding latestCoatRequest; // Coat admission/error cannot replace the body policy's request.
     bool quarantined{};
     // Optional source bootstrap lease: deliberately transient, never restored.
     bool adoptedDefault{}, firstSeenBeast{}, observedHuman{}, sourceRevoked{};
@@ -107,7 +109,9 @@ constexpr float epsilon = 0.0001F;
 claw::Catalog catalog;
 claw::MorphProfileCatalog morphProfiles;
 std::map<RE::FormID, State> states;
-claw::RequestLedger<Pin> requests{maxActors};
+claw::RequestChannels<Pin> requestChannels{maxActors};
+auto& requests = requestChannels.body();
+auto& coatRequests = requestChannels.coat();
 // One intrusive pin per physical Actor, shared by pending tasks/requests/natives.
 // Native callbacks never remove entries: a task can finish before its callback
 // returns, so use_count alone is safe only when THIS pool keeps the last pin.
@@ -262,7 +266,9 @@ void checkRuntimeInstances() {
         if (!claw::sameRuntimeActor(state.runtimePointer, actor.get(), state.runtimePointer)) {
             quarantine(state, "runtime actor handle expired or changed; saved assignment quarantined");
         } else if (actor->IsDeleted()) {
-            if (const auto pin = pins.find(actor.get()); pin != pins.end()) requests.eraseOwner(it->first, pin->second->serial);
+            if (const auto pin = pins.find(actor.get()); pin != pins.end()) requestChannels.eraseOwner(it->first, pin->second->serial);
+            requestChannels.eraseOwner(it->first, state.latestRequest.token.owner);
+            requestChannels.eraseOwner(it->first, state.latestCoatRequest.token.owner);
             claw::appearance::runtime.forget(it->first);
             it = states.erase(it);
             continue;
@@ -288,6 +294,14 @@ const claw::RequestLedger<Pin>::Request* actorRequest(RE::Actor* actor) {
 bool pendingActorRequest(RE::Actor* actor) {
     const auto* request = actorRequest(actor);
     return request && request->error.empty();
+}
+const claw::RequestLedger<Pin>::Request* coatActorRequest(RE::Actor* actor) {
+    if (!actor) return nullptr;
+    const auto pin = pins.find(actor);
+    const auto found = states.find(actor->formID);
+    const State* state = found != states.end() && boundTo(found->second, actor) && !found->second.quarantined ? &found->second : nullptr;
+    return claw::resolveActorRequest(coatRequests, actor->formID, epoch.load(), pin == pins.end() ? 0 : pin->second->serial,
+        state ? &state->latestCoatRequest : nullptr, state ? state->runtimeSerial : 0);
 }
 
 bool sourcePolicyAllows(const State& state, RE::Actor* actor) {
@@ -952,7 +966,7 @@ void revert(SKSE::SerializationInterface*) {
     {
         std::lock_guard lock(mutex);
         claw::appearance::runtime.reset();
-        states.clear(); requests.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = 0; nextIdentity = 1;
+        states.clear(); requestChannels.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = 0; nextIdentity = 1;
         physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
         obodySourcePopulationEnabled = false;
     }
@@ -963,7 +977,7 @@ void load(SKSE::SerializationInterface* interface) {
     enabled = false; ++epoch;
     std::lock_guard lock(mutex);
     claw::appearance::runtime.reset();
-    states.clear(); requests.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = 0; nextIdentity = 1;
+    states.clear(); requestChannels.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = 0; nextIdentity = 1;
     physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
     obodySourcePopulationEnabled = false;
     std::uint32_t type{}, version{}, length{};
@@ -1098,7 +1112,9 @@ void deleted(RE::VMHandle handle) {
             quarantine(found->second, "deletion runtime witness changed; saved assignment quarantined"); return;
         }
         if (actor && !actor->IsDeleted() && RE::TESForm::LookupByID<RE::Actor>(receipt.id) == actor.get()) return;
-        if (receipt.requestOwner) requests.eraseOwner(receipt.id, receipt.requestOwner);
+        if (receipt.requestOwner) requestChannels.eraseOwner(receipt.id, receipt.requestOwner);
+        requestChannels.eraseOwner(receipt.id, found->second.latestRequest.token.owner);
+        requestChannels.eraseOwner(receipt.id, found->second.latestCoatRequest.token.owner);
         claw::appearance::runtime.forget(receipt.id);
         states.erase(found);
     });
@@ -1172,6 +1188,39 @@ bool actorRequest(RE::Actor* actor, Operation operation, std::string presetName 
     return true;
 }
 
+bool coatRequest(RE::Actor* actor, std::optional<std::string> choice) {
+    if (!actor || !tasks || !enabled) return false;
+    const auto id = actor->formID;
+    Pin owner; std::optional<claw::RequestToken> ticket;
+    {
+        std::lock_guard lock(mutex);
+        if (!enabled || (choice && !claw::appearance::runtime.knowsPattern(*choice))) return false;
+        owner = pinActor(actor); if (!owner) return false;
+        ticket = coatRequests.begin(id, epoch.load(), owner->serial, owner); if (!ticket) return false;
+        if (auto found = states.find(id); found != states.end() && boundTo(found->second, actor))
+            found->second.latestCoatRequest = {*ticket, found->second.runtimeSerial};
+        // No body status, body ticket, policy or bootstrap lease is changed.
+    }
+    tasks->AddTask([id, owner = std::move(owner), ticket = *ticket, choice = std::move(choice)] {
+        std::lock_guard lock(mutex);
+        if (!enabled || !coatRequests.owns(id, ticket, epoch.load())) return;
+        const auto fail = [&](std::string error) { coatRequests.finish(id, ticket, epoch.load(), std::move(error)); };
+        auto* target = owner->actor.get();
+        if (!target || !claw::mayRunActorRequest(target, RE::TESForm::LookupByID<RE::Actor>(id), target->formID == id, target->IsDeleted()) ||
+            !target->GetActorBase()) { fail("original coat actor is deleted or no longer owns its FormID"); return; }
+        // An early coat choice retains the ordinary automatic body-default path.
+        auto* state = stateFor(target, true, true);
+        if (!state || state->quarantined || !boundTo(*state, target)) { fail("coat actor identity unavailable or quarantined"); return; }
+        state->latestCoatRequest = {ticket, state->runtimeSerial};
+        if (choice) {
+            if (!claw::appearance::runtime.setPattern(target, *choice)) { fail("coat selection unavailable or identity limit reached"); return; }
+        } else claw::appearance::runtime.clearPattern(target);
+        refreshActor(target, false);
+        coatRequests.finish(id, ticket, epoch.load());
+    });
+    return true;
+}
+
 std::vector<RE::BSFixedString> presetNames(RE::StaticFunctionTag*, bool female) {
     std::lock_guard lock(mutex); std::vector<RE::BSFixedString> result;
     for (const auto& name : catalog.names(female ? claw::Sex::female : claw::Sex::male)) result.emplace_back(name);
@@ -1204,6 +1253,30 @@ RE::BSFixedString appearanceStatus(RE::StaticFunctionTag*, RE::Actor* actor) {
     if (!state || state->quarantined) return {};
     if (!appearanceOverrides) return RE::BSFixedString("SKEE Override API unavailable");
     return RE::BSFixedString(claw::appearance::runtime.status(actor->formID));
+}
+std::vector<RE::BSFixedString> coatPatterns(RE::StaticFunctionTag*) {
+    std::lock_guard lock(mutex); std::vector<RE::BSFixedString> result;
+    for (const auto& id : claw::appearance::runtime.patterns()) result.emplace_back(id);
+    return result;
+}
+bool setCoatPattern(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString id) {
+    return coatRequest(actor, std::string(id.c_str()));
+}
+bool clearCoatPattern(RE::StaticFunctionTag*, RE::Actor* actor) { return coatRequest(actor, std::nullopt); }
+RE::BSFixedString coatPattern(RE::StaticFunctionTag*, RE::Actor* actor) {
+    std::lock_guard lock(mutex); const auto* state = cachedState(actor);
+    return state && !state->quarantined ? RE::BSFixedString(claw::appearance::runtime.pattern(actor->formID)) : RE::BSFixedString{};
+}
+RE::BSFixedString appliedCoatPattern(RE::StaticFunctionTag*, RE::Actor* actor) {
+    std::lock_guard lock(mutex); const auto* state = cachedState(actor);
+    return state && !state->quarantined ? RE::BSFixedString(claw::appearance::runtime.appliedPattern(actor->formID)) : RE::BSFixedString{};
+}
+RE::BSFixedString coatPatternStatus(RE::StaticFunctionTag*, RE::Actor* actor) {
+    std::lock_guard lock(mutex);
+    if (const auto* request = coatActorRequest(actor))
+        return RE::BSFixedString(request->error.empty() ? "coat request pending" : "coat request failed: " + request->error);
+    const auto* state = cachedState(actor);
+    return state && !state->quarantined ? RE::BSFixedString(claw::appearance::runtime.patternStatus(actor->formID)) : RE::BSFixedString{};
 }
 RE::BSFixedString assigned(RE::StaticFunctionTag*, RE::Actor* actor) {
     std::lock_guard lock(mutex);
@@ -1477,6 +1550,12 @@ bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("HasHumanTrait", script, hasHumanTrait);
     vm->RegisterFunction("GetHumanTrait", script, humanTrait);
     vm->RegisterFunction("GetAppearanceStatus", script, appearanceStatus);
+    vm->RegisterFunction("GetCoatPatterns", script, coatPatterns);
+    vm->RegisterFunction("SetCoatPattern", script, setCoatPattern);
+    vm->RegisterFunction("ClearCoatPattern", script, clearCoatPattern);
+    vm->RegisterFunction("GetCoatPattern", script, coatPattern);
+    vm->RegisterFunction("GetAppliedCoatPattern", script, appliedCoatPattern);
+    vm->RegisterFunction("GetCoatPatternStatus", script, coatPatternStatus);
     vm->RegisterFunction("AssignPreset", script, assignPreset);
     vm->RegisterFunction("GetAssigned", script, assigned);
     vm->RegisterFunction("GetStatus", script, getStatus);
@@ -1574,7 +1653,7 @@ void message(SKSE::MessagingInterface::Message* event) {
         enabled = false; ++epoch;
         {
             std::lock_guard lock(mutex);
-            requests.clear(); // Pool keeps pins until main-task collection.
+            requestChannels.clear(); // Pool keeps pins until main-task collection.
             physicsBindings.clear(); physicsRegistrationRequests.clear();
             physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
             obodySourcePopulationEnabled = false;
@@ -1590,6 +1669,22 @@ void message(SKSE::MessagingInterface::Message* event) {
             try { morphProfiles.loadFile(dataDirectory() / claw::morphProfilesRelativePath); }
             catch (const std::exception& error) { SKSE::log::error("CLAW morph family catalog: {}", error.what()); }
             if (!morphProfiles.valid()) SKSE::log::warn("CLAW morph family catalog: {}", morphProfiles.error());
+            const auto dataRoot = dataDirectory();
+            const auto coatPath = dataRoot / claw::appearance::coatLibraryRelativePath;
+            std::error_code coatError;
+            const auto coatBytes = std::filesystem::file_size(coatPath, coatError);
+            claw::appearance::runtime.setLibrary({}, dataRoot);
+            if (!coatError) try {
+                if (coatBytes == 0 || coatBytes > 1024 * 1024) throw std::runtime_error("coat XML exceeds bounded size");
+                std::ifstream input(coatPath, std::ios::binary);
+                std::string xml(static_cast<std::size_t>(coatBytes), '\0');
+                if (!input.read(xml.data(), static_cast<std::streamsize>(xml.size())) || input.peek() != std::char_traits<char>::eof())
+                    throw std::runtime_error("coat XML read/size mismatch");
+                auto library = claw::appearance::CoatLibrary::parse(xml);
+                const auto count = library.names().size();
+                claw::appearance::runtime.setLibrary(std::move(library), dataRoot);
+                SKSE::log::info("CLAW optional coat library contains {} patterns", count);
+            } catch (const std::exception& error) { SKSE::log::warn("CLAW optional coat library unavailable; existing tint retained: {}", error.what()); }
         }
         if (auto* source = RE::ScriptEventSourceHolder::GetSingleton()) {
             source->AddEventSink<RE::TESObjectLoadedEvent>(&events);
@@ -1608,7 +1703,7 @@ void message(SKSE::MessagingInterface::Message* event) {
         enabled = false; ++epoch;
         {
             std::lock_guard lock(mutex);
-            states.clear(); requests.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = newNamespace(); nextIdentity = 1;
+            states.clear(); requestChannels.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = newNamespace(); nextIdentity = 1;
             physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
             obodySourcePopulationEnabled = false;
         }
