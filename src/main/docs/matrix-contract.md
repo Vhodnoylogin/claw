@@ -81,7 +81,7 @@ attributes are additive, for example:
 <Rule source="" target="CLAWTorsoChestSize" gain="1" cap="1" function="constant" value="0.4" />
 ```
 
-## Explicit actor weight and the five default matrices
+## Explicit actor weight and the six default matrices
 
 `$actor.weight` is the sole built-in actor input. It is represented as an ordinary
 source column in the matrix. The game adapter reads the current NPC base weight
@@ -100,8 +100,8 @@ actors, and stored in the same source snapshot as the other declared inputs.
 Scalar-only matrices neither request OBody generation nor depend on human TRI
 availability. Mixed matrices still let OBody supply their ordinary morph inputs.
 
-The canonical file contains HIMBO male, CBBE female, 3BA female, Vanilla male and
-Vanilla female matrices. Every matrix explicitly includes weight. Installation
+The canonical file contains HIMBO male, CBBE female, 3BA female, BHUNP female,
+Vanilla male and Vanilla female matrices. Every matrix explicitly includes weight. Installation
 selects exactly one male and one female matrix independently; no random matrix
 distribution or runtime mesh-name guess is involved. Existing saved assignments
 remain authoritative until explicitly rebound to a selected default.
@@ -196,7 +196,7 @@ Each canonical matrix retains five face-to-muzzle edges and centered `height-1`
 growth terms, and adds bounded face-to-ear and body-to-tail/claw analogies.
 The v4 arm projection separates soft size from local Biceps/Triceps and reduces
 generic shoulder bulk using measured target-region responses. Profiles use 137
-HIMBO, 116 CBBE/3BA, and 41 Vanilla structural slots. Current IDs are unchanged;
+HIMBO, 116 CBBE/3BA, 169 BHUNP and 41 Vanilla structural slots. Existing IDs are unchanged;
 the calibration marker identifies the new revision. Tail posture and paw controls
 have no default invented source. Direction, attachment
 quality and race-specific geometry still need game acceptance. See

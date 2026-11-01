@@ -24,7 +24,7 @@ Human body shape, weight and inherited traits carried into werewolf form.
   across transformation, model refresh and save/load.
 - Made male/female body choices independent and freely selectable in FOMOD.
   Installed plugin markers recommend a default without blocking other choices.
-- Fixed the Vortex FOMOD XML encoding failure, also delivered separately for 0.7.0.
+- Fixed the Vortex FOMOD XML encoding failure, also delivered in 0.7.1.
 
 ## Description additions
 
@@ -46,6 +46,19 @@ colour history for an originally-beast actor.
 
 Different automatically distributed coat patterns are planned for 0.8.5. Physics,
 fitted contact and a first-person VR body remain separate development work.
+
+### Updating an existing save
+
+Existing characters keep the conversion matrix already stored in the save.
+Installing 0.8.0 does not automatically replace those assignments. Start a new
+game to use all new defaults from the beginning. Reinstalling a body-family
+option alone does not reset a saved actor's matrix.
+
+There is no verified ordinary-console reset command in this release. Do not
+recommend recycleactor, disable/enable or resetai as a matrix reset. The developer
+Papyrus API ConfigureMorphFamily can explicitly rebind an actor, but is not a
+stock console command. An optional console-triggered reapply helper remains
+outside the runtime package until its game test is complete.
 
 ## Requirements update
 

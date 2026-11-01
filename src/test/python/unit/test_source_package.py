@@ -209,7 +209,10 @@ class SourcePackageTests(unittest.TestCase):
         result = package.build(**self.arguments())
         files = package.read_zip(Path(result['archive']).read_bytes())
         config = ET.fromstring(files['fomod/ModuleConfig.xml'])
-        groups = config.find("installSteps/installStep[@name='Select your actual male and female bodies']/optionalFileGroups")
+        steps = config.findall('installSteps/installStep')
+        self.assertEqual([step.get('name') for step in steps][1:3], ['Male body', 'Female body'])
+        groups = [step.find('optionalFileGroups/group') for step in steps[1:3]]
+        self.assertTrue(all(len(step.findall('optionalFileGroups/group')) == 1 for step in steps[1:3]))
         markers = ('HIMBO.esp', 'CBBE.esp', '3BBB.esp', 'BHUNP3BBB.esp')
         for bits in itertools.product((False, True), repeat=len(markers)):
             active = {marker for marker, present in zip(markers, bits) if present}

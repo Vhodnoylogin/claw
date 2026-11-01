@@ -274,12 +274,12 @@ def installer(template, entries):
     steps[0].set("name", "Required bodies and human morph linkage")
     option = steps[0].find("optionalFileGroups/group/plugins/plugin")
     option.set("name", "Required human morph linkage")
-    option.find("description").text = "Carries human body morphs and declared NPC weight inputs into werewolf form. Requires matching SKSE, RaceMenu and Address Library. Select the actual human bodies in the next step."
+    option.find("description").text = "Carries human body morphs and declared NPC weight inputs into werewolf form. Requires matching SKSE, RaceMenu and Address Library. Select the actual male and female bodies on the following pages."
     descriptor = option.find("typeDescriptor")
     descriptor.clear()
     ET.SubElement(descriptor, "type", name="Required")
     family_step = steps[1]
-    family_step.set("name", "Select your actual male and female bodies")
+    family_step.set("name", "Male body")
     visible = family_step.find("visible")
     if visible is not None:
         family_step.remove(visible)
@@ -325,6 +325,11 @@ def installer(template, entries):
             else:
                 no_active_markers_pattern(patterns, ("HIMBO.esp",) if sex == "male" else
                                           ("BHUNP3BBB.esp", "3BBB.esp", "CBBE.esp"))
+    female_group = groups[1]
+    groups.remove(female_group)
+    female_step = ET.Element("installStep", name="Female body")
+    ET.SubElement(female_step, "optionalFileGroups", order="Explicit").append(female_group)
+    steps.insert(list(steps).index(family_step)+1, female_step)
     old = config.find("conditionalFileInstalls")
     if old is not None: config.remove(old)
     patterns = ET.SubElement(ET.SubElement(config, "conditionalFileInstalls"), "patterns")

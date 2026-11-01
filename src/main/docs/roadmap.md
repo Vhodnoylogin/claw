@@ -11,7 +11,7 @@ the verified game11 mechanisms, remaining installation/appearance policy work,
 and the order of practical acceptance before physics and VR. Its passed
 mechanical coverage is separate from the abnormal process exit after checks.
 
-The current release sequence is the 0.7.0 FOMOD compatibility update, then 0.8.0
+The current release sequence is the 0.7.1 installer-only update, then 0.8.0
 for completed mechanisms/body-family choices, followed by demonstrated coat
 variation as 0.8.5. The owner clarified UNP/BHUNP as a female family: 0.8's new
 matrix targets BHUNP 3.34 Advanced Ver4 with Build Morphs, not classic UNP or a
@@ -21,7 +21,7 @@ male UNP body. Installer markers recommend a choice but never block alternatives
    shared game/Morphbench evaluator and independent comparison plugin;
    human-to-wolf body/head/face links, including ears, tail and claws;
    individual skin/fur appearance links; source preservation, transformation,
-   model refresh and save/load. Include HIMBO, CBBE, 3BA and both Vanilla sexes.
+   model refresh and save/load. Include HIMBO, CBBE, 3BA, BHUNP and both Vanilla sexes.
    Every matrix explicitly supports `$actor.weight`; Vanilla body deformation
    uses weight rather than invented body morphs. Validate exact installation
    choices and actual game behavior. General testing-tool development is outside
@@ -48,15 +48,13 @@ The owner proposed UNP-family support on 1 November and supplied the UNP Renewal
 (Nexus1699) and BHUNP (Nexus31126) archives for local inspection. After inspection,
 the owner explicitly excluded classic UNP Renewal1699 from support. Do not add
 a classic UNP matrix or installer option. Keep its archive findings as reference.
-Only BHUNP31126 remains planned compatibility work; it is not an implemented or
-tested body-family declaration.
-BHUNP advertises BodySlide/RaceMenu morph support; UNP Renewal primarily supplies
-ready meshes/textures and directs shape editing to Legacy UUNP or BHUNP.
-Inspect the actual chosen archive's OSP/OSD/TRI morph names and effective ranges
-before authoring a separate female matrix and installer choice. Do not substitute
-CBBE coefficients merely because some slider names look similar. The UNP texture
-layout alone does not establish support for UUNP/BHUNP morphs.
-No replacement body or physics dependencies are installed as part of this research.
+BHUNP31126 now has a separate 3.34 Advanced Ver4 matrix, authored from the actual
+OSP/OSD and checked against the officially generated NeverNude TRI. All 47 mapped
+ordinary source keys have matching deformation directions. Its installer choice
+is implemented; installed-game acceptance is the remaining release gate.
+UNP Renewal primarily supplies ready meshes/textures and remains excluded as a
+matrix family. A compatible UNP skin remains a separate human-body dependency;
+neither human meshes nor their textures are part of CLAW's working archive.
 
 ### Mechanical scope after the combined queue-two/three scene
 
