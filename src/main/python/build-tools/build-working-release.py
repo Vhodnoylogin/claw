@@ -339,7 +339,8 @@ def build(candidate_path, out):
         ET.SubElement(condition, "fileDependency", file="3BBB.esp", state="Active")
         ET.SubElement(pattern, "type", name="Optional" if index == 0 else "Recommended")
     ET.indent(config)
-    entries["fomod/ModuleConfig.xml"] = ET.tostring(config, encoding="utf-8", xml_declaration=True)
+    # Vortex's UTF-16 conversion does not strip single-quoted encodings.
+    entries["fomod/ModuleConfig.xml"] = ET.tostring(config, encoding="utf-8", xml_declaration=False)
     info = ET.fromstring(entries["fomod/info.xml"])
     info.find("Version").text = VERSION
     info.find("Description").text = (
@@ -347,7 +348,7 @@ def build(candidate_path, out):
         "Human linkage is mandatory; Vanilla support is deferred. One CommonLib DLL; "
         "SE 1.7.104.0 mechanisms tested. Other declared runtimes retain offline coverage. "
         "All six comparison presets have owner-confirmed visible differences.")
-    entries["fomod/info.xml"] = ET.tostring(info, encoding="utf-8", xml_declaration=True)
+    entries["fomod/info.xml"] = ET.tostring(info, encoding="utf-8", xml_declaration=False)
     for language in ("", ".ru"):
         entries["README"+language+".md"] = inputs.read(RELEASE/("README"+language+".md"))
     for doc in ("universal-runtime", "matrix-contract", "expressive-body", "verification-20261031", "rebuild"):

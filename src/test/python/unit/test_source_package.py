@@ -3,6 +3,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import unittest
@@ -153,6 +154,29 @@ class SourcePackageTests(unittest.TestCase):
             package.profiles(original, "Unknown")
         with self.assertRaisesRegex(ValueError, "supported male and female body"):
             package.profiles(original, 'CBBE', 'Unknown')
+
+    def test_packaged_fomod_survives_vortex_string_stream_encoding(self):
+        # Nexus-Mods/fomod-installer XmlScriptType.StringStream at
+        # af3c8355b2e22f1c7c4272c8eb3cb928ccb5f8c1 removes only a
+        # double-quoted encoding before writing UTF-16 big-endian with a BOM.
+        # Reading valid UTF-8 directly missed the published installer failure.
+        def vortex_stream(data):
+            text = re.sub(r'^([^>]*)encoding="[^"]+"', r'\1', data.decode('utf-8'))
+            return b'\xfe\xff' + text.encode('utf-16-be')
+
+        legacy = ET.tostring(ET.Element('config'), encoding='utf-8', xml_declaration=True)
+        self.assertEqual(ET.fromstring(legacy).tag, 'config')
+        with self.assertRaises(ET.ParseError):
+            ET.fromstring(vortex_stream(legacy))
+
+        result = package.build(**self.arguments())
+        files = package.read_zip(Path(result['archive']).read_bytes())
+        for name in ('fomod/ModuleConfig.xml', 'fomod/info.xml'):
+            with self.subTest(member=name):
+                direct = ET.fromstring(files[name])
+                processed = ET.fromstring(vortex_stream(files[name]))
+                self.assertEqual(ET.tostring(direct), ET.tostring(processed))
+        self.assertEqual([row['runtimeFiles'] for row in result['selections']], [10, 12]*6)
 
     def test_absent_optional_host_has_no_broken_host_choice(self):
         result = package.build(**self.arguments(host=False))
