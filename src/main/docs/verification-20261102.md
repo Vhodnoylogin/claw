@@ -184,4 +184,14 @@ matched. Independent post-recovery review SHA-256:
 `793efde216d2b7f86acd556d95c21665c04ee83adcaa00370d02f1a814206457`.
 The exact recovery barrier was cleared only after that review. Recovery evidence
 is under `Builds/claw-backlog-20261102/probe18-recovery-owner-20261102/`.
-Package-02 has not been installed, game-tested or published.
+Package-02 was subsequently installed through the exact development Bridge2.3.6
+native backend in a disposable profile. All 367 selected payloads, stored source
+provenance and the actual refreshed native Downloads Installed row passed;
+the two shared NIF sources each reached both weight destinations. Disable/enable
+and effective DLL source roundtrip passed. This local archive had no Nexus IDs,
+so it does not qualify the separate positive-ID accounting check. Removal needed
+an ordinary close of a native Error dialog (`invalid mod index: 117`); this is
+not an unassisted-removal pass. The original 0.8.0 installation and owner profiles
+are settled. Inactive test-profile/archive cleanup is explicitly deferred while
+the owner uses MO2. Evidence is under `Builds/claw-bridge236-integration-20261102/`.
+Package-02 has not been game-tested or published.
