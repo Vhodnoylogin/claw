@@ -81,6 +81,12 @@ authored presets over the actual BHUNP Ver4 keys and a six-actor lifecycle case.
 It keeps the historical HIMBO/3BA kit unchanged and carries no live bindings,
 generated bodies or game-acceptance claim.
 
+The [classic UNP contract](unp/README.md) uses two existing female bases and
+their measured different weights, without human BodySlide presets or OBody
+assignment. It requires proof that original Renewal 4.6 body resources win and
+checks the complete native output through refresh/save/load/return/retransform.
+It is a portable technical scenario, not an executable or accepted game run.
+
 For public screenshots, use the official CBBE/HIMBO NeverNude BodySlide projects
 with Build Morphs enabled and a separate generated `BodySlide Output - NeverNude`
 mod. The generated human output must win; The New Gentleman is disabled in the
