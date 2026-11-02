@@ -19,6 +19,19 @@ class ProviderAuditTests(unittest.TestCase):
         (root / "CBPCMasterConfig.txt").write_text("[ConfigMap]\n" + rows, encoding="utf-8")
         return build.audit_provider(root)
 
+    def test_cbpc_master_is_required_by_default_but_not_for_fsmp_only_snapshot(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "hdtSMP64.dll").write_bytes(b"synthetic provider presence")
+            default = build.audit_provider(root)
+            self.assertEqual([{"error": "Provider snapshot contains no master config"}], default["uncertainties"])
+            with self.assertRaisesRegex(ValueError, "no master config"):
+                build.require_provider_clear(default)
+            fsmp_only = build.audit_provider(root, require_cbpc_master=False)
+            build.require_provider_clear(fsmp_only, breast=True)
+            self.assertEqual(default["files"], fsmp_only["files"])
+            self.assertFalse(fsmp_only["runtimeQualified"])
+
     def test_all_duplicate_conditions_are_preserved_without_guessing_winner(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

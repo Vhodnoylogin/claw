@@ -7,6 +7,17 @@ remain disabled. The immediate reproducible gap is resource agreement: the
 retained 128-slot ear/tail/female-P1 model was built for earlier anatomical-split
 bodies, while the frozen 30 October core contains different body and TRI bytes.
 
+The current motion slice is separate from that retained contact-model work.
+Released v4 bodies have 30 male / 31 female morphs; their fresh pipeline already
+includes current-TRI P1 skinning and nominal motion bounds. Build the existing
+[CBPC and FSMP motion adapters](../python/physics/motion-adapters.md) against the
+exact selected v4 endpoints and qualify each provider independently, including
+human-to-beast NPC rebinding and disabled/neutral controls. Their motion-only
+packages neither activate the finite collider host nor qualify the older
+19-morph contact model for these bodies. Full FSMP builder/readback and late
+input-mutation tests provide offline failure coverage only. Actual provider
+motion, loaded-resource ownership and lifecycle acceptance remain pending.
+
 `src/main/python/physics/preflight.py` now checks that gap without running or installing anything.
 It requires a current-vector independent-weight model, validates its identity,
 and compares seven explicitly bound files to the model's declared source pins.

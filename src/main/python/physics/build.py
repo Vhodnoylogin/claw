@@ -437,11 +437,13 @@ def provider_inputs(directory):
     return paths
 
 
-def audit_provider(directory):
+def audit_provider(directory, *, require_cbpc_master=True):
     """Inventory supplied winning bytes, preserving all declarations and conditions.
 
     We deliberately do not choose between duplicate rows, evaluate conditions,
     infer SMP selection, or infer loaded native ownership from a text search.
+    Only the FSMP motion builder may omit the CBPC master requirement; all
+    supplied CBPC/SMP bytes are still inspected for conflicts and uncertainty.
     """
     inputs = provider_inputs(directory)
     report = {"schemaVersion":1, "snapshot":str(directory.resolve()),
@@ -492,7 +494,8 @@ def audit_provider(directory):
                 if alias in all_aliases:
                     report["privateAliasDefinitions"].append({"path":record["path"], "line":line_number,
                                                               "alias":alias, "parameter":token})
-    if not masters: report["uncertainties"].append({"error":"Provider snapshot contains no master config"})
+    if require_cbpc_master and not masters:
+        report["uncertainties"].append({"error":"Provider snapshot contains no master config"})
     report["earTailConflicts"] = provider_conflicts(report, NODES, ALIASES)
     report["breastConflicts"] = provider_conflicts(report, BREAST_NODES + BREAST_ANCESTORS, BREAST_ALIASES)
     report["ordinaryBreastMappings"] = [row for row in report["mappings"] if row["node"] in ORDINARY_BREAST_NODES]

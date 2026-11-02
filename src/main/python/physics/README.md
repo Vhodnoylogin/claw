@@ -58,9 +58,10 @@ blocks rediscovery until a fresh explicit qualification. This reuses Distributio
 actor registry and adds no independent world search.
 
 Human morph family defaults are a separate explicit resource declaration in
-`SKSE/Plugins/CLAW/MorphLinks.xml`. The shipped catalog has no defaults. An optional
-`Defaults` declaration can name the installed male/female resource profiles; it
-does not infer a family from sex or a preset name. Only fresh automatic state
+`SKSE/Plugins/CLAW/MorphLinks.xml`. The canonical source catalog lists the resource
+profiles; the installer adds `Defaults` for the selected male and female families
+to the installed file. This declares the chosen resources rather than inferring
+a family from sex or a preset name. Only fresh automatic state
 adopts such a profile, after a complete current SKEE source capture. Restored,
 existing empty, suppressed, quarantined and manual states retain their policy.
 

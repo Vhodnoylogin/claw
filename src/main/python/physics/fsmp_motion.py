@@ -109,7 +109,7 @@ def build_adapter(out, provider_snapshot, resources, pynifly, *, breast=False, a
     inputs = common.source.SourceInputs(breast=breast)
     if pins["skeleton"]["sha256"] != inputs.json("capsules.json")["provenance"]["xp32Sha256"]:
         raise ValueError("FSMP adapter skeleton differs from existing reviewed XP32")
-    audit = common.source.audit_provider(provider_snapshot)
+    audit = common.source.audit_provider(provider_snapshot, require_cbpc_master=False)
     common.source.require_provider_clear(audit, breast=breast)
     dependencies = []
     if api is None:

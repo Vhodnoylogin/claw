@@ -69,6 +69,11 @@ body. Its matching TRI and a separately installed runtime-matched provider are
 required. Generation can succeed while FSMP is absent; the report records that
 dependency and never qualifies behavior by file presence.
 
+An FSMP-only baseline does not require CBPC or `CBPCMasterConfig.txt`. The FSMP
+builder omits only that CBPC prerequisite: all present CBPC/SMP configurations,
+private aliases, driver/ancestor references, malformed XML and inventory changes
+remain checked. CBPC motion and collider builds retain the master requirement.
+
 Binding and XML names follow the inspected provider's
 [mesh selection](https://github.com/DaymareOn/hdtSMP64/blob/e52ad960048c14e637d14fcbd65314ca017fc3b8/src/hdtDefaultBBP.cpp)
 and [constraint parser](https://github.com/DaymareOn/hdtSMP64/blob/e52ad960048c14e637d14fcbd65314ca017fc3b8/src/hdtSkyrimSystem.cpp).
@@ -82,6 +87,18 @@ Build success means an inspectable offline adapter, with `gameValidated`,
 node traces and visible ears/tail/P1 motion, neutral/disabled controls, both sexes,
 weight and morph extremes, transformations, reload and human return. Bounds for
 the chosen motion envelope are a separate geometry prerequisite.
+
+The next motion trial uses the exact released v4 body endpoints and matching
+TRIs. The fresh v4 body pipeline already applies the current-TRI P1 rig and
+nominal motion bounds; another skeleton or morph-family-specific physics DLL is
+not required. Qualify CBPC and FSMP independently, with only one werewolf motion
+adapter enabled in each trial. Include born beasts and NPCs first admitted while
+human, then transformed, so a successful initial beast bind cannot conceal a
+race/root rebinding failure. Compare local driver motion with controlled movement
+and a disabled/neutral control; inherited world motion alone is insufficient.
+The existing offline FSMP tests exercise full package construction, written-hook
+readback and changed-input rejection using synthetic NIF/API fixtures. They do
+not run PyNifly, a solver or the game, and do not change the runtime status above.
 
 ## Current-TRI P1 rig and nominal bounds
 
