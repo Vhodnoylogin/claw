@@ -96,12 +96,10 @@ The ready-to-paste version changelog is
 `nexus/0.8.0/changelog-0.8.0.txt`. Keep unfinished physics, automatic matrix
 migration and future coat-pattern distribution out of that changelog.
 
-For Nexus 0.8, use page-wide mod requirements with a conditional note for each
-body choice. The current file-to-file requirements editor expresses mandatory
-AND requirements without optional notes; retaining compulsory HIMBO/CBBE there
-would contradict the Vanilla options. Preserve the recorded runtime versions
-and roles when replacing that list. Do not make all four replacement bodies
-mandatory or attach the developer plugin's tool requirements to the game file.
+For Nexus 0.8, preserve the existing file-to-file requirements method and its
+seven original groups. Add BHUNP 3.34 only as an OR alternative in the female
+CBBE group (group 6). Keep the original CBBE row, the other six groups and their
+recorded file/version constraints unchanged.
 
 ## Technical guide placement
 
