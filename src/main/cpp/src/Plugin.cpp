@@ -799,7 +799,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         invalidatePhysics(actor->GetFormID());
         if (!readback(actor, expected)) { logError(*state, "SKEE own morph readback differs from requested values"); return; }
     }
-    (void)claw::appearance::runtime.applyWolf(actor, appearanceOverrides);
+    (void)claw::appearance::runtime.applyWolf(actor, appearanceOverrides, saveNamespace, state->identity);
     state->sex = desiredSex; state->cache = std::move(expected); state->lastRoot = root; state->lastWeight = weight;
     state->dirty = false; state->status = Status::applied; state->error.clear();
 }
@@ -1074,9 +1074,10 @@ void load(SKSE::SerializationInterface* interface) {
     if (!sessionFound) { states.clear(); claw::appearance::runtime.reset(); saveNamespace = newNamespace(); nextIdentity = 1; }
     // Colour records cannot outlive the Distribution identity that owns them.
     // A rejected/quarantined actor record must not become a fresh colour lease.
-    claw::appearance::runtime.retainIf([](RE::FormID id) {
+    claw::appearance::runtime.retainIf([](RE::FormID id, std::uint64_t identity, std::uint64_t seed) {
         const auto state = states.find(id);
-        return state != states.end() && !state->second.quarantined;
+        return state != states.end() && !state->second.quarantined &&
+            (!identity || (identity == state->second.identity && seed == claw::appearance::coatSeed(saveNamespace, identity)));
     });
     for (const auto& [id, state] : states) { (void)id; nextIdentity = std::max(nextIdentity, state.identity + 1); }
 }
@@ -1685,6 +1686,26 @@ void message(SKSE::MessagingInterface::Message* event) {
                 claw::appearance::runtime.setLibrary(std::move(library), dataRoot);
                 SKSE::log::info("CLAW optional coat library contains {} patterns", count);
             } catch (const std::exception& error) { SKSE::log::warn("CLAW optional coat library unavailable; existing tint retained: {}", error.what()); }
+            const auto policyPath = dataRoot / claw::appearance::coatPolicyRelativePath;
+            std::error_code policyError;
+            const auto policyBytes = std::filesystem::file_size(policyPath, policyError);
+            if (!policyError) try {
+                if (policyBytes == 0 || policyBytes > 65536) throw std::runtime_error("coat policy exceeds bounded size");
+                std::ifstream input(policyPath, std::ios::binary);
+                std::string xml(static_cast<std::size_t>(policyBytes), '\0');
+                if (!input.read(xml.data(), static_cast<std::streamsize>(xml.size())) || input.peek() != std::char_traits<char>::eof())
+                    throw std::runtime_error("coat policy read/size mismatch");
+                claw::appearance::runtime.setPolicy(xml);
+                SKSE::log::info("CLAW coat policy loaded");
+            } catch (const std::exception& error) {
+                claw::appearance::runtime.unavailablePolicy(std::string("coat policy unavailable: ") + error.what());
+                SKSE::log::warn("CLAW coat policy unavailable; automatic pattern selection disabled: {}", error.what());
+            } else if (policyError && policyError != std::errc::no_such_file_or_directory) {
+                // Only an absent optional file selects legacy behavior. A
+                // present but unreadable/invalid path cannot widen auto pools.
+                claw::appearance::runtime.unavailablePolicy("coat policy unreadable: " + policyError.message());
+                SKSE::log::warn("CLAW coat policy unreadable; automatic pattern selection disabled: {}", policyError.message());
+            }
         }
         if (auto* source = RE::ScriptEventSourceHolder::GetSingleton()) {
             source->AddEventSink<RE::TESObjectLoadedEvent>(&events);

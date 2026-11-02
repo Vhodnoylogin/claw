@@ -1,6 +1,6 @@
 #pragma once
 #include "claw/ColourMath.h"
-#include "claw/CoatLibrary.h"
+#include "claw/CoatPolicy.h"
 #include <RE/Skyrim.h>
 #include <SKSE/SKSE.h>
 #include <IPluginInterface.h>
@@ -28,6 +28,8 @@ public:
     void restore(RE::Actor* actor);
     void captureHuman(RE::Actor* actor);
     void setLibrary(CoatLibrary library, std::filesystem::path dataRoot);
+    void setPolicy(std::string_view xml);
+    void unavailablePolicy(std::string reason);
     [[nodiscard]] std::vector<std::string> patterns() const { return library_.names(); }
     [[nodiscard]] bool knowsPattern(std::string_view id) const { return library_.find(id) != nullptr; }
     bool setPattern(RE::Actor* actor, std::string id);
@@ -35,7 +37,8 @@ public:
     [[nodiscard]] std::string pattern(RE::FormID id) const;
     [[nodiscard]] std::string appliedPattern(RE::FormID id) const;
     [[nodiscard]] std::string patternStatus(RE::FormID id) const;
-    bool applyWolf(RE::Actor* actor, IOverrideInterface* provider);
+    bool applyWolf(RE::Actor* actor, IOverrideInterface* provider,
+        std::uint64_t saveNamespace, std::uint64_t identity);
     void save(SKSE::SerializationInterface* serial) const;
     bool loadRecord(SKSE::SerializationInterface* serial, std::uint32_t type, std::uint32_t version, std::uint32_t length);
     [[nodiscard]] std::string_view status(RE::FormID id) const;
@@ -66,6 +69,8 @@ private:
         std::vector<Surface> surfaces;
         std::string status;
         std::string explicitPattern, appliedPattern, attemptedPattern;
+        AutomaticCoatState automatic;
+        TintMode attemptedMode{TintMode::linked};
     };
     template<class F> static void visit(RE::NiAVObject* object, F&& f);
     static void unbind(Entry& entry);
@@ -74,16 +79,18 @@ private:
     static bool protectPrivateTint(RE::BSShaderProperty* copy, const RE::BSShaderProperty* original);
     static bool healthyPrivateTint(const Surface& surface);
     static std::string texturePath(RE::BSTextureSet* set, RE::BSTextureSet::Texture slot);
-    std::string resolvedPattern(const Entry& entry) const;
+    CoatDecision decision(const Entry& entry) const;
     bool preparePattern(RE::BSShaderProperty* property, const CoatTexture& texture, const CoatDDSInfo& expected, std::string& reason) const;
     struct PatternAssets { bool valid{}; std::map<std::string, CoatDDSInfo, std::less<>> dimensions; };
     const PatternAssets& validatePattern(const std::string& key, const CoatPattern& pattern);
     Entry* entryFor(RE::Actor* actor);
     inline static constexpr std::uint32_t record = 0x524C4343; // CCLR
     inline static constexpr std::uint32_t patternRecord = 0x54504343; // CCPT
+    inline static constexpr std::uint32_t automaticRecord = 0x53414343; // CCAS, additive v1
     std::map<RE::FormID, Entry> entries_;
-    std::set<RE::FormID> colourRecords_, patternRecords_, rejectedRecords_;
+    std::set<RE::FormID> colourRecords_, patternRecords_, automaticRecords_, rejectedRecords_;
     CoatLibrary library_;
+    CoatPolicy policy_;
     std::filesystem::path dataRoot_;
     std::map<std::string, PatternAssets, std::less<>> validatedPatterns_;
 };
@@ -107,7 +114,7 @@ inline void Runtime::unbind(Entry& entry) {
 }
 inline void Runtime::reset() {
     for (auto& [id, entry] : entries_) { (void)id; unbind(entry); }
-    entries_.clear(); colourRecords_.clear(); patternRecords_.clear(); rejectedRecords_.clear();
+    entries_.clear(); colourRecords_.clear(); patternRecords_.clear(); automaticRecords_.clear(); rejectedRecords_.clear();
 }
 inline void Runtime::forget(RE::FormID id) {
     if (auto found = entries_.find(id); found != entries_.end()) { unbind(found->second); entries_.erase(found); }
@@ -122,12 +129,21 @@ inline std::string_view Runtime::status(RE::FormID id) const {
 }
 inline void Runtime::setLibrary(CoatLibrary library, std::filesystem::path dataRoot) {
     for (auto& [id, entry] : entries_) { (void)id; unbind(entry); }
-    library_ = std::move(library); dataRoot_ = std::move(dataRoot); validatedPatterns_.clear();
+    library_ = std::move(library); dataRoot_ = std::move(dataRoot); validatedPatterns_.clear(); policy_ = {};
+}
+inline void Runtime::setPolicy(std::string_view xml) {
+    auto policy = CoatPolicy::parse(xml, library_);
+    for (auto& [id, entry] : entries_) { (void)id; unbind(entry); }
+    policy_ = std::move(policy);
+}
+inline void Runtime::unavailablePolicy(std::string reason) {
+    for (auto& [id, entry] : entries_) { (void)id; unbind(entry); }
+    policy_ = CoatPolicy::unavailable(std::move(reason));
 }
 inline Runtime::Entry* Runtime::entryFor(RE::Actor* actor) {
     if (!actor || !actor->GetActorBase()) return nullptr;
     auto* base = actor->GetActorBase();
-    if (!actor->formID || !base->formID) return nullptr;
+    if (!actor->formID || !base->formID || rejectedRecords_.contains(actor->formID)) return nullptr;
     if (base->GetSex() != RE::SEX::kMale && base->GetSex() != RE::SEX::kFemale) return nullptr;
     if (!entries_.contains(actor->formID) && entries_.size() >= 8192) return nullptr;
     auto& entry = entries_[actor->formID];
@@ -149,11 +165,14 @@ inline void Runtime::clearPattern(RE::Actor* actor) {
     if (!actor) return;
     if (auto found = entries_.find(actor->formID); found != entries_.end()) {
         unbind(found->second); found->second.explicitPattern.clear();
-        if (!found->second.colours.hasSkin && !found->second.colours.hasHair) entries_.erase(found);
+        // Clear only the manual layer. Keep both automatic caches, seed and
+        // genuine source availability, including for a source-less born wolf.
     }
 }
-inline std::string Runtime::resolvedPattern(const Entry& entry) const {
-    return !entry.explicitPattern.empty() ? entry.explicitPattern : entry.colours.hasHair ? library_.nearest(entry.colours.hair) : std::string{};
+inline CoatDecision Runtime::decision(const Entry& entry) const {
+    return policy_.select(library_, entry.explicitPattern,
+        entry.colours.hasHair ? std::optional{entry.colours.hair} : std::nullopt,
+        entry.automatic.seed, entry.automatic);
 }
 inline std::string Runtime::pattern(RE::FormID id) const {
     const auto found = entries_.find(id); return found == entries_.end() ? std::string{} : found->second.explicitPattern;
@@ -165,7 +184,12 @@ inline std::string Runtime::patternStatus(RE::FormID id) const {
     const auto found = entries_.find(id);
     if (found == entries_.end()) return "human appearance unavailable";
     const auto& entry = found->second;
-    return (!entry.explicitPattern.empty() ? "explicit: " : !resolvedPattern(entry).empty() ? "automatic: " : "tint only: ") + entry.status;
+    const auto selected = decision(entry);
+    const std::string origin = selected.origin == CoatOrigin::manual ? "explicit" :
+        selected.origin == CoatOrigin::hairPool ? "automatic hair pool " + selected.pool :
+        selected.origin == CoatOrigin::legacyHair ? "automatic legacy hair" :
+        selected.origin == CoatOrigin::fallback ? "automatic fallback pool " + selected.pool : "no automatic pattern";
+    return origin + (policy_.tintMode() == TintMode::original ? " [original]: " : " [linked]: ") + entry.status;
 }
 inline std::string Runtime::texturePath(RE::BSTextureSet* set, RE::BSTextureSet::Texture slot) {
     const auto* value = set ? set->GetTexturePath(slot) : nullptr; return value ? value : "";
@@ -231,8 +255,8 @@ inline bool Runtime::preparePattern(RE::BSShaderProperty* property, const CoatTe
 }
 template<class Keep> void Runtime::retainIf(Keep&& keep) {
     for (auto it = entries_.begin(); it != entries_.end();) {
-        if (keep(it->first)) ++it;
-        else { unbind(it->second); it = entries_.erase(it); }
+        if (keep(it->first, it->second.automatic.identity, it->second.automatic.seed)) ++it;
+        else { unbind(it->second); rejectedRecords_.insert(it->first); it = entries_.erase(it); }
     }
 }
 inline void Runtime::captureHuman(RE::Actor* actor) {
@@ -342,11 +366,19 @@ inline bool Runtime::healthyPrivateTint(const Surface& surface) {
     }
     return matchesPackedTint(actual, surface.expectedTint);
 }
-inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider) {
+inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
+    std::uint64_t saveNamespace, std::uint64_t identity) {
     if (!actor || !actor->GetActorBase() || !provider) return false;
+    if (!saveNamespace || !identity) return false;
     auto found = entries_.find(actor->formID);
-    if (found == entries_.end()) return false; // Born beasts have no fabricated human colours.
-    auto& entry = found->second;
+    auto* owned = found == entries_.end() ? entryFor(actor) : &found->second;
+    if (!owned) return false;
+    auto& entry = *owned;
+    const auto seed = coatSeed(saveNamespace, identity);
+    if (entry.automatic.identity && (entry.automatic.identity != identity || entry.automatic.seed != seed)) {
+        unbind(entry); entry.status = "saved automatic coat identity mismatch"; return false;
+    }
+    entry.automatic.identity = identity; entry.automatic.seed = seed;
     auto* base = actor->GetActorBase();
     if (entry.base != base->formID || entry.sex != static_cast<std::uint32_t>(base->GetSex()) ||
         (!entry.loaded && entry.handle.get().get() != actor) || !valid(entry.colours)) {
@@ -355,8 +387,14 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider) {
     if (entry.loaded) { entry.handle = actor->GetHandle(); entry.loaded = false; }
     auto* root = actor->Get3D(false);
     if (!root) { unbind(entry); entry.status = "unloaded"; return false; }
-    const auto requestedPattern = resolvedPattern(entry);
-    if (root == entry.root.get() && entry.attemptedPattern == requestedPattern && !entry.surfaces.empty()) {
+    const auto selectedChoice = decision(entry);
+    if (selectedChoice.origin == CoatOrigin::hairPool && !selectedChoice.pattern.empty())
+        entry.automatic.hair = {selectedChoice.pool, selectedChoice.pattern};
+    if (selectedChoice.origin == CoatOrigin::fallback && !selectedChoice.pattern.empty())
+        entry.automatic.fallback = {selectedChoice.pool, selectedChoice.pattern};
+    const auto requestedPattern = entry.explicitPattern.empty() ? selectedChoice.pattern : entry.explicitPattern;
+    const auto mode = policy_.tintMode();
+    if (root == entry.root.get() && entry.attemptedPattern == requestedPattern && entry.attemptedMode == mode && !entry.surfaces.empty()) {
         const bool stillInScene = std::all_of(entry.surfaces.begin(), entry.surfaces.end(), [root](const auto& surface) {
             return root->GetObjectByName(surface.geometry->name) == surface.geometry.get();
         });
@@ -371,10 +409,10 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider) {
         }
     }
     if (root == entry.root.get() && entry.yielded) return false;
-    if (root == entry.root.get() && entry.attemptedPattern == requestedPattern && entry.surfaces.empty()) return false;
+    if (root == entry.root.get() && entry.attemptedPattern == requestedPattern && entry.attemptedMode == mode && entry.surfaces.empty()) return false;
     unbind(entry);
     std::vector<Surface> prepared;
-    const auto* selected = library_.find(requestedPattern);
+    const auto* selected = library_.find(selectedChoice.pattern);
     std::string patternFailure = !requestedPattern.empty() && !selected ? "library or pattern unavailable" : "";
     const PatternAssets* assets{};
     if (selected) {
@@ -388,7 +426,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider) {
     for (const auto& surfaceSpec : coatSurfaces) {
         const auto name = surfaceSpec.name;
         const bool skin = name == "body" || name == "head";
-        const bool hasColour = skin ? entry.colours.hasSkin : entry.colours.hasHair;
+        const bool hasColour = mode == TintMode::linked && (skin ? entry.colours.hasSkin : entry.colours.hasHair);
         if (!hasColour && !selected) continue;
         RE::BSGeometry* geometry{}; unsigned count{};
         // NiAVObject uses the engine's case-insensitive interned BSFixedString.
@@ -460,9 +498,10 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider) {
     }
     if (!retryWithoutPattern) break;
     }
-    entry.attemptedPattern = requestedPattern;
+    entry.attemptedPattern = requestedPattern; entry.attemptedMode = mode;
     if (prepared.empty()) {
-        entry.root.reset(root); entry.status = patternFailure.empty() ? "no human colour sources" : "coat unavailable: " + patternFailure; return false;
+        entry.root.reset(root); entry.status = patternFailure.empty() ?
+            "original material retained; " + selectedChoice.reason : "coat unavailable: " + patternFailure; return false;
     }
     // All surfaces were validated and cloned before any live binding changes.
     entry.surfaces = std::move(prepared); entry.root.reset(root);
@@ -482,14 +521,15 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider) {
     }
     entry.appliedPattern = selected ? requestedPattern : "";
     entry.status = selected ? "applied private coat " + requestedPattern + " with " +
-        (entry.colours.hasSkin || entry.colours.hasHair ? "skin/fur tint" : "neutral tint") : "applied private skin/fur tint";
+        (mode == TintMode::linked && (entry.colours.hasSkin || entry.colours.hasHair) ? "skin/fur tint" : "neutral original colours") : "applied private skin/fur tint";
     if (!patternFailure.empty()) entry.status += "; coat unavailable: " + patternFailure;
     SKSE::log::info("CLAW appearance {:08X}: {} ({} surfaces; hair source {})", actor->formID, entry.status,
         entry.surfaces.size(), entry.colours.renderedHair ? "rendered" : "record");
     return true;
 }
-// Separate colour and explicit-pattern records. Automatic selections are
-// recomputed from the retained real source; no material/texture pointers persist.
+// CCLR/CCPT v1 bytes remain unchanged. Additive CCAS stores the stable saved
+// reference seed and actual automatic choices, never renderer pointers or RGB
+// invented for actors without an observed human source.
 inline void Runtime::save(SKSE::SerializationInterface* serial) const {
     for (const auto& [id, entry] : entries_) {
         if (valid(entry.colours) && (entry.colours.hasSkin || entry.colours.hasHair)) {
@@ -504,18 +544,23 @@ inline void Runtime::save(SKSE::SerializationInterface* serial) const {
             if (!serial->WriteRecord(patternRecord, 1, data.data(), static_cast<std::uint32_t>(data.size())))
                 SKSE::log::error("CLAW actor {:08X}: CCPT coat selection serialization failed", id);
         }
+        if (entry.automatic.identity && entry.automatic.seed) {
+            const auto data = writeAutomaticCoat({id, entry.base, entry.sex, entry.automatic});
+            if (!serial->WriteRecord(automaticRecord, 1, data.data(), static_cast<std::uint32_t>(data.size())))
+                SKSE::log::error("CLAW actor {:08X}: CCAS automatic coat serialization failed", id);
+        }
     }
 }
 inline bool Runtime::loadRecord(SKSE::SerializationInterface* serial, std::uint32_t type, std::uint32_t version, std::uint32_t length) {
-    if (type != record && type != patternRecord) return false;
-    std::array<std::uint32_t, 6> data{}; std::string choice;
+    if (type != record && type != patternRecord && type != automaticRecord) return false;
+    std::array<std::uint32_t, 6> data{}; std::string choice; AutomaticCoatState automatic;
     if (version != 1) { SKSE::log::warn("CLAW appearance: unsupported record version"); return true; }
     if (type == record) {
         if (length != sizeof(data) || serial->ReadRecordData(data.data(), sizeof(data)) != sizeof(data)) {
             SKSE::log::warn("CLAW appearance: invalid CCLR record"); return true;
         }
         if (data[3] > 7 || data[4] > 0xFFFFFF || data[5] > 0xFFFFFF) return true;
-    } else {
+    } else if (type == patternRecord) {
         if (length <= 16 || length > 145) { SKSE::log::warn("CLAW appearance: invalid CCPT record length"); return true; }
         std::vector<char> bytes(length);
         if (serial->ReadRecordData(bytes.data(), length) != length) { SKSE::log::warn("CLAW appearance: truncated CCPT record"); return true; }
@@ -525,11 +570,21 @@ inline bool Runtime::loadRecord(SKSE::SerializationInterface* serial, std::uint3
         } catch (const std::exception& error) {
             SKSE::log::warn("CLAW appearance: invalid CCPT record: {}", error.what()); return true;
         }
+    } else {
+        if (length < 44 || length > 430) { SKSE::log::warn("CLAW appearance: invalid CCAS record length"); return true; }
+        std::vector<char> bytes(length);
+        if (serial->ReadRecordData(bytes.data(), length) != length) { SKSE::log::warn("CLAW appearance: truncated CCAS record"); return true; }
+        try {
+            const auto selection = readAutomaticCoat(bytes);
+            data[0] = selection.actor; data[1] = selection.base; data[2] = selection.sex; automatic = selection.automatic;
+        } catch (const std::exception& error) {
+            SKSE::log::warn("CLAW appearance: invalid CCAS record: {}", error.what()); return true;
+        }
     }
     RE::FormID actor{}, base{};
     if (!serial->ResolveFormID(data[0], actor) || !serial->ResolveFormID(data[1], base) || !actor || !base || data[2] > 1 ||
         rejectedRecords_.contains(actor)) return true;
-    auto& seen = type == record ? colourRecords_ : patternRecords_;
+    auto& seen = type == record ? colourRecords_ : type == patternRecord ? patternRecords_ : automaticRecords_;
     if (seen.size() >= 8192 && !seen.contains(actor)) return true;
     auto existing = entries_.find(actor);
     if (!seen.insert(actor).second || (existing != entries_.end() &&
@@ -543,7 +598,8 @@ inline bool Runtime::loadRecord(SKSE::SerializationInterface* serial, std::uint3
     if (type == record) {
         entry.colours = {unpack(data[4]), unpack(data[5]), bool(data[3] & 1), bool(data[3] & 2), bool(data[3] & 4)};
         if (!valid(entry.colours)) { entries_.erase(actor); rejectedRecords_.insert(actor); }
-    } else entry.explicitPattern = std::move(choice);
+    } else if (type == patternRecord) entry.explicitPattern = std::move(choice);
+    else entry.automatic = std::move(automatic);
     return true;
 }
 }

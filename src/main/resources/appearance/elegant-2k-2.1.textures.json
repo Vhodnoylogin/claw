@@ -1,0 +1,2143 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "modId": 93336,
+    "fileId": 791439,
+    "version": "2.1.0.0",
+    "archiveBytes": 248252479,
+    "archiveSha256": "622c7be3d10d4158e84e41ce0eb41941469879800e9a5effbe186aaddb305fcc"
+  },
+  "files": [
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyAmber/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/amber/body.dds",
+      "bytes": 4194452,
+      "crc32": "e7404131"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyAmber/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/amber/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "8be50384"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyAmber/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/amber/furback.dds",
+      "bytes": 1048724,
+      "crc32": "8be50384"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyAmber/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/amber/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "fbd1abc9"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyAmber/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/amber/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "fbd1abc9"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyAmber/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/amber/furface.dds",
+      "bytes": 1048724,
+      "crc32": "8be50384"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyAmber/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/amber/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "8be50384"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyAmber/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/amber/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "fbd1abc9"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyAmber/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/amber/head.dds",
+      "bytes": 4194452,
+      "crc32": "33b36549"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ashen/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ashen/body.dds",
+      "bytes": 5592580,
+      "crc32": "b7d2a7ed"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ashen/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ashen/furarms.dds",
+      "bytes": 1398276,
+      "crc32": "616cdf78"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ashen/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ashen/furback.dds",
+      "bytes": 1398276,
+      "crc32": "9fa23be2"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ashen/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ashen/furbelly.dds",
+      "bytes": 1398276,
+      "crc32": "fc18b9b5"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ashen/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ashen/furchest.dds",
+      "bytes": 1398276,
+      "crc32": "fc18b9b5"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ashen/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ashen/furface.dds",
+      "bytes": 1398276,
+      "crc32": "9fa23be2"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ashen/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ashen/furshoulders.dds",
+      "bytes": 1398276,
+      "crc32": "9fa23be2"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ashen/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ashen/furtail.dds",
+      "bytes": 1398276,
+      "crc32": "616cdf78"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ashen/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ashen/head.dds",
+      "bytes": 5592580,
+      "crc32": "2d2f59ef"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBean/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/bean/body.dds",
+      "bytes": 4194452,
+      "crc32": "99434e23"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBean/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/bean/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "84f18020"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBean/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/bean/furback.dds",
+      "bytes": 1048724,
+      "crc32": "84f18020"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBean/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/bean/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "84f18020"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBean/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/bean/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "84f18020"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBean/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/bean/furface.dds",
+      "bytes": 1048724,
+      "crc32": "84f18020"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBean/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/bean/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "84f18020"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBean/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/bean/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "84f18020"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBean/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/bean/head.dds",
+      "bytes": 4194452,
+      "crc32": "df335ff9"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BlackALT/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black-alt/body.dds",
+      "bytes": 4194452,
+      "crc32": "3dc17b2b"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BlackALT/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black-alt/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "eac5d309"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BlackALT/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black-alt/furback.dds",
+      "bytes": 1048724,
+      "crc32": "eac5d309"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BlackALT/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black-alt/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "eac5d309"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BlackALT/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black-alt/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "eac5d309"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BlackALT/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black-alt/furface.dds",
+      "bytes": 1048724,
+      "crc32": "eac5d309"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BlackALT/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black-alt/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "eac5d309"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BlackALT/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black-alt/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "eac5d309"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BlackALT/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black-alt/head.dds",
+      "bytes": 4194452,
+      "crc32": "b682b04c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Black/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black/body.dds",
+      "bytes": 4194452,
+      "crc32": "3dc17b2b"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Black/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "fea25387"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Black/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black/furback.dds",
+      "bytes": 1048724,
+      "crc32": "fea25387"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Black/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "fea25387"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Black/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "fea25387"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Black/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black/furface.dds",
+      "bytes": 1048724,
+      "crc32": "fea25387"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Black/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "fea25387"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Black/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "fea25387"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Black/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/black/head.dds",
+      "bytes": 4194452,
+      "crc32": "b682b04c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownALT/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-alt/body.dds",
+      "bytes": 4194452,
+      "crc32": "20406dc6"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownALT/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-alt/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "296f010f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownALT/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-alt/furback.dds",
+      "bytes": 1048724,
+      "crc32": "296f010f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownALT/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-alt/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "296f010f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownALT/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-alt/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "296f010f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownALT/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-alt/furface.dds",
+      "bytes": 1048724,
+      "crc32": "296f010f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownALT/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-alt/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "296f010f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownALT/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-alt/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "296f010f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownALT/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-alt/head.dds",
+      "bytes": 4194452,
+      "crc32": "bf157ac3"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownBLEND/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-blend/body.dds",
+      "bytes": 4194452,
+      "crc32": "20406dc6"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownBLEND/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-blend/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "296f010f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownBLEND/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-blend/furback.dds",
+      "bytes": 1048724,
+      "crc32": "296f010f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownBLEND/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-blend/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "f155bc62"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownBLEND/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-blend/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "f155bc62"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownBLEND/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-blend/furface.dds",
+      "bytes": 1048724,
+      "crc32": "296f010f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownBLEND/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-blend/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "296f010f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownBLEND/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-blend/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "f155bc62"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/BrownBLEND/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown-blend/head.dds",
+      "bytes": 4194452,
+      "crc32": "bf157ac3"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Brown/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown/body.dds",
+      "bytes": 4194452,
+      "crc32": "20406dc6"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Brown/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "f155bc62"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Brown/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown/furback.dds",
+      "bytes": 1048724,
+      "crc32": "f155bc62"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Brown/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "f155bc62"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Brown/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "f155bc62"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Brown/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown/furface.dds",
+      "bytes": 1048724,
+      "crc32": "f155bc62"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Brown/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "f155bc62"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Brown/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "f155bc62"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Brown/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/brown/head.dds",
+      "bytes": 4194452,
+      "crc32": "bf157ac3"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Coal/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/coal/body.dds",
+      "bytes": 4194452,
+      "crc32": "4ea04c43"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Coal/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/coal/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "cdb247c3"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Coal/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/coal/furback.dds",
+      "bytes": 1048724,
+      "crc32": "cdb247c3"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Coal/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/coal/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "cdb247c3"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Coal/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/coal/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "cdb247c3"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Coal/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/coal/furface.dds",
+      "bytes": 1048724,
+      "crc32": "ab27bebc"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Coal/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/coal/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "cdb247c3"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Coal/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/coal/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "cdb247c3"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Coal/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/coal/head.dds",
+      "bytes": 4194452,
+      "crc32": "1886dcce"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Dust/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/dust/body.dds",
+      "bytes": 4194452,
+      "crc32": "97721022"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Dust/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/dust/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "51ecc163"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Dust/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/dust/furback.dds",
+      "bytes": 1048724,
+      "crc32": "51ecc163"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Dust/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/dust/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "51ecc163"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Dust/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/dust/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "51ecc163"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Dust/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/dust/furface.dds",
+      "bytes": 1048724,
+      "crc32": "51ecc163"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Dust/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/dust/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "51ecc163"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Dust/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/dust/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "51ecc163"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Dust/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/dust/head.dds",
+      "bytes": 4194452,
+      "crc32": "a1c3c1fa"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Aqua/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/aqua/eyes.dds",
+      "bytes": 1048724,
+      "crc32": "1363bf85"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Aurora/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/aurora/eyes.dds",
+      "bytes": 1048704,
+      "crc32": "00e9fd06"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Black/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/black/eyes.dds",
+      "bytes": 1398276,
+      "crc32": "8c7d1a77"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Blackreach/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/blackreach/eyes.dds",
+      "bytes": 1048704,
+      "crc32": "b8ee4716"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Blind/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/blind/eyes.dds",
+      "bytes": 1048704,
+      "crc32": "31bf4747"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Blue/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/blue/eyes.dds",
+      "bytes": 1048724,
+      "crc32": "62199d2b"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Bluegrass/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/bluegrass/eyes.dds",
+      "bytes": 1048704,
+      "crc32": "8a13347a"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Brown/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/brown/eyes.dds",
+      "bytes": 1048724,
+      "crc32": "2080100f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Ember/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/ember/eyes.dds",
+      "bytes": 1048704,
+      "crc32": "cc0dd794"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Emerald/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/emerald/eyes.dds",
+      "bytes": 1048704,
+      "crc32": "1e712e2c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Fern/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/fern/eyes.dds",
+      "bytes": 1048724,
+      "crc32": "2611671c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Flower/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/flower/eyes.dds",
+      "bytes": 1048724,
+      "crc32": "f3ff95f2"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Garnet/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/garnet/eyes.dds",
+      "bytes": 1048704,
+      "crc32": "a33eccf2"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Gold/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/gold/eyes.dds",
+      "bytes": 1048704,
+      "crc32": "e19c28ec"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Green/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/green/eyes.dds",
+      "bytes": 1048724,
+      "crc32": "0baa5aad"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Ice/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/ice/eyes.dds",
+      "bytes": 1048724,
+      "crc32": "8f2c4c97"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Lake/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/lake/eyes.dds",
+      "bytes": 1048704,
+      "crc32": "a1c78e46"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Orange/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/orange/eyes.dds",
+      "bytes": 1048724,
+      "crc32": "ae5b96eb"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Purple/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/purple/eyes.dds",
+      "bytes": 1048724,
+      "crc32": "403b69f7"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Red/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/red/eyes.dds",
+      "bytes": 1048724,
+      "crc32": "f0c27caa"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Ruby/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/ruby/eyes.dds",
+      "bytes": 1048704,
+      "crc32": "00ced565"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Sapphire/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/sapphire/eyes.dds",
+      "bytes": 1048704,
+      "crc32": "476a2e45"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Silver/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/silver/eyes.dds",
+      "bytes": 1048724,
+      "crc32": "63770e71"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Soulgem/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/soulgem/eyes.dds",
+      "bytes": 1048704,
+      "crc32": "979ad826"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Swamp/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/swamp/eyes.dds",
+      "bytes": 1048724,
+      "crc32": "0378cb37"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Violet/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/violet/eyes.dds",
+      "bytes": 1048704,
+      "crc32": "d1cd76ff"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/White/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/white/eyes.dds",
+      "bytes": 1048724,
+      "crc32": "5c3403ff"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Eyes/Yellow/Data/Textures/Actors/Character/Werewolf/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/eyes/yellow/eyes.dds",
+      "bytes": 1048724,
+      "crc32": "95621720"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ginger/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ginger/body.dds",
+      "bytes": 4194452,
+      "crc32": "a466b770"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ginger/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ginger/furarms.dds",
+      "bytes": 1048704,
+      "crc32": "4846e431"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ginger/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ginger/furback.dds",
+      "bytes": 1048704,
+      "crc32": "4846e431"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ginger/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ginger/furbelly.dds",
+      "bytes": 1048704,
+      "crc32": "4846e431"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ginger/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ginger/furchest.dds",
+      "bytes": 1048704,
+      "crc32": "4846e431"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ginger/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ginger/furface.dds",
+      "bytes": 1048704,
+      "crc32": "4846e431"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ginger/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ginger/furshoulders.dds",
+      "bytes": 1048704,
+      "crc32": "4846e431"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ginger/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ginger/furtail.dds",
+      "bytes": 1048704,
+      "crc32": "4846e431"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Ginger/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/ginger/head.dds",
+      "bytes": 4194452,
+      "crc32": "87d322ac"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Gold/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/gold/body.dds",
+      "bytes": 4194452,
+      "crc32": "9ded45e0"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Gold/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/gold/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "8c06acb8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Gold/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/gold/furback.dds",
+      "bytes": 1048724,
+      "crc32": "8c06acb8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Gold/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/gold/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "8c06acb8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Gold/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/gold/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "8c06acb8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Gold/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/gold/furface.dds",
+      "bytes": 1048724,
+      "crc32": "8c06acb8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Gold/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/gold/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "8c06acb8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Gold/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/gold/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "8c06acb8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Gold/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/gold/head.dds",
+      "bytes": 4194452,
+      "crc32": "4d3db38d"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Grey/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/grey/body.dds",
+      "bytes": 4194452,
+      "crc32": "7e8eab24"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Grey/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/grey/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "e7462eb1"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Grey/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/grey/furback.dds",
+      "bytes": 1048724,
+      "crc32": "e7462eb1"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Grey/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/grey/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "e7462eb1"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Grey/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/grey/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "e7462eb1"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Grey/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/grey/furface.dds",
+      "bytes": 1048724,
+      "crc32": "e7462eb1"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Grey/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/grey/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "e7462eb1"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Grey/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/grey/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "e7462eb1"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Grey/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/grey/head.dds",
+      "bytes": 4194452,
+      "crc32": "da1ee72a"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Himalayan/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/himalayan/body.dds",
+      "bytes": 4194452,
+      "crc32": "723c568a"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Himalayan/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/himalayan/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "040f70f4"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Himalayan/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/himalayan/furback.dds",
+      "bytes": 1048724,
+      "crc32": "bb4de745"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Himalayan/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/himalayan/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "040f70f4"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Himalayan/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/himalayan/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "040f70f4"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Himalayan/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/himalayan/furface.dds",
+      "bytes": 1048724,
+      "crc32": "bb4de745"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Himalayan/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/himalayan/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "bb4de745"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Himalayan/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/himalayan/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "040f70f4"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Himalayan/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/himalayan/head.dds",
+      "bytes": 4194452,
+      "crc32": "5a368e10"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/HyenaSpotted/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/hyena-spotted/body.dds",
+      "bytes": 4194452,
+      "crc32": "601c6b67"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/HyenaSpotted/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/hyena-spotted/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "f5e9639c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/HyenaSpotted/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/hyena-spotted/furback.dds",
+      "bytes": 1048724,
+      "crc32": "f5e9639c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/HyenaSpotted/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/hyena-spotted/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "f5e9639c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/HyenaSpotted/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/hyena-spotted/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "f5e9639c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/HyenaSpotted/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/hyena-spotted/furface.dds",
+      "bytes": 1048724,
+      "crc32": "f5e9639c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/HyenaSpotted/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/hyena-spotted/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "f5e9639c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/HyenaSpotted/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/hyena-spotted/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "f5e9639c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/HyenaSpotted/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/hyena-spotted/head.dds",
+      "bytes": 4194452,
+      "crc32": "347f7535"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Khajiit/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/khajiit/body.dds",
+      "bytes": 4194452,
+      "crc32": "dd1fb874"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Khajiit/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/khajiit/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "59a8e74d"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Khajiit/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/khajiit/furback.dds",
+      "bytes": 1048724,
+      "crc32": "672f0063"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Khajiit/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/khajiit/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "cce9da44"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Khajiit/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/khajiit/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "be8e108c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Khajiit/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/khajiit/furface.dds",
+      "bytes": 1048724,
+      "crc32": "be8e108c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Khajiit/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/khajiit/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "cce9da44"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Khajiit/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/khajiit/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "6999b3fa"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Khajiit/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/khajiit/head.dds",
+      "bytes": 4194452,
+      "crc32": "9cb8f2d5"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Maned/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/maned/body.dds",
+      "bytes": 4194452,
+      "crc32": "628e8398"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Maned/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/maned/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "80e8f383"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Maned/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/maned/furback.dds",
+      "bytes": 1048724,
+      "crc32": "7c219b9a"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Maned/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/maned/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "80e8f383"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Maned/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/maned/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "80e8f383"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Maned/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/maned/furface.dds",
+      "bytes": 1048724,
+      "crc32": "7c219b9a"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Maned/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/maned/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "7c219b9a"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Maned/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/maned/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "80e8f383"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Maned/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/maned/head.dds",
+      "bytes": 4194452,
+      "crc32": "1d046821"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Shepherd/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/shepherd/body.dds",
+      "bytes": 4194452,
+      "crc32": "3da14222"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Shepherd/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/shepherd/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "23441c7e"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Shepherd/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/shepherd/furback.dds",
+      "bytes": 1048724,
+      "crc32": "eac5d309"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Shepherd/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/shepherd/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "23441c7e"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Shepherd/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/shepherd/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "23441c7e"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Shepherd/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/shepherd/furface.dds",
+      "bytes": 1048724,
+      "crc32": "eac5d309"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Shepherd/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/shepherd/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "eac5d309"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Shepherd/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/shepherd/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "ef228174"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Shepherd/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/shepherd/head.dds",
+      "bytes": 4194452,
+      "crc32": "70bdeba2"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/SilverALT/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver-alt/body.dds",
+      "bytes": 4194452,
+      "crc32": "a2c5c83e"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/SilverALT/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver-alt/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "1f198cfc"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/SilverALT/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver-alt/furback.dds",
+      "bytes": 1048724,
+      "crc32": "1f198cfc"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/SilverALT/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver-alt/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "1f198cfc"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/SilverALT/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver-alt/furchest.dds",
+      "bytes": 1048704,
+      "crc32": "0df143b0"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/SilverALT/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver-alt/furface.dds",
+      "bytes": 1048704,
+      "crc32": "0df143b0"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/SilverALT/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver-alt/furshoulders.dds",
+      "bytes": 1048704,
+      "crc32": "0df143b0"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/SilverALT/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver-alt/furtail.dds",
+      "bytes": 1048704,
+      "crc32": "0df143b0"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/SilverALT/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver-alt/head.dds",
+      "bytes": 4194452,
+      "crc32": "c9c84cb4"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Silver/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver/body.dds",
+      "bytes": 4194452,
+      "crc32": "a9d41de0"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Silver/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver/furarms.dds",
+      "bytes": 1048704,
+      "crc32": "42abfb50"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Silver/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver/furback.dds",
+      "bytes": 1048704,
+      "crc32": "42abfb50"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Silver/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver/furbelly.dds",
+      "bytes": 1048704,
+      "crc32": "42abfb50"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Silver/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver/furchest.dds",
+      "bytes": 1048704,
+      "crc32": "0df143b0"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Silver/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver/furface.dds",
+      "bytes": 1048704,
+      "crc32": "0df143b0"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Silver/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver/furshoulders.dds",
+      "bytes": 1048704,
+      "crc32": "0df143b0"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Silver/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver/furtail.dds",
+      "bytes": 1048704,
+      "crc32": "0df143b0"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Silver/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/silver/head.dds",
+      "bytes": 4194452,
+      "crc32": "6a8acd21"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patches/Lobo/Data/Textures/werewolf follower tex/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/source-patches/lobo/body.dds",
+      "bytes": 4194452,
+      "crc32": "9e583ab9"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patches/Lobo/Data/Textures/werewolf follower tex/Elegant/eyes.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/source-patches/lobo/eyes.dds",
+      "bytes": 1048724,
+      "crc32": "f0c27caa"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patches/Lobo/Data/Textures/werewolf follower tex/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/source-patches/lobo/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "7262863d"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patches/Lobo/Data/Textures/werewolf follower tex/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/source-patches/lobo/furback.dds",
+      "bytes": 1048724,
+      "crc32": "0f4fd3b8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patches/Lobo/Data/Textures/werewolf follower tex/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/source-patches/lobo/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "7262863d"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patches/Lobo/Data/Textures/werewolf follower tex/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/source-patches/lobo/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "01dc7c85"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patches/Lobo/Data/Textures/werewolf follower tex/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/source-patches/lobo/furface.dds",
+      "bytes": 1048724,
+      "crc32": "0f4fd3b8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patches/Lobo/Data/Textures/werewolf follower tex/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/source-patches/lobo/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "0f4fd3b8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patches/Lobo/Data/Textures/werewolf follower tex/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/source-patches/lobo/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "79824fb5"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patches/Lobo/Data/Textures/werewolf follower tex/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/source-patches/lobo/head.dds",
+      "bytes": 4194452,
+      "crc32": "fe05a68d"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Spirit/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/spirit/body.dds",
+      "bytes": 4194452,
+      "crc32": "fa831584"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Spirit/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/spirit/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "08d4eaba"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Spirit/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/spirit/furback.dds",
+      "bytes": 1048724,
+      "crc32": "08d4eaba"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Spirit/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/spirit/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "08d4eaba"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Spirit/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/spirit/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "08d4eaba"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Spirit/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/spirit/furface.dds",
+      "bytes": 1048724,
+      "crc32": "08d4eaba"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Spirit/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/spirit/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "08d4eaba"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Spirit/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/spirit/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "08d4eaba"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Spirit/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/spirit/head.dds",
+      "bytes": 4194452,
+      "crc32": "57219b1e"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Swamp/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/swamp/body.dds",
+      "bytes": 4194452,
+      "crc32": "2102c94c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Swamp/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/swamp/furarms.dds",
+      "bytes": 1048704,
+      "crc32": "3b30006a"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Swamp/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/swamp/furback.dds",
+      "bytes": 1048724,
+      "crc32": "0717ba3e"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Swamp/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/swamp/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "6df452f3"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Swamp/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/swamp/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "6df452f3"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Swamp/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/swamp/furface.dds",
+      "bytes": 1048724,
+      "crc32": "0717ba3e"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Swamp/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/swamp/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "0717ba3e"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Swamp/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/swamp/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "6df452f3"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Swamp/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/swamp/head.dds",
+      "bytes": 4194452,
+      "crc32": "b91dba9d"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberDark/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-dark/body.dds",
+      "bytes": 4194452,
+      "crc32": "a34ebc51"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberDark/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-dark/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "d97d4138"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberDark/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-dark/furback.dds",
+      "bytes": 1048724,
+      "crc32": "d1066867"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberDark/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-dark/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "d97d4138"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberDark/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-dark/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "d97d4138"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberDark/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-dark/furface.dds",
+      "bytes": 1048724,
+      "crc32": "d1066867"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberDark/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-dark/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "d1066867"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberDark/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-dark/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "96b6438a"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberDark/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-dark/head.dds",
+      "bytes": 4194452,
+      "crc32": "6deba13d"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberPebble/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-pebble/body.dds",
+      "bytes": 4194452,
+      "crc32": "e54186f0"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberPebble/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-pebble/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "8afda802"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberPebble/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-pebble/furback.dds",
+      "bytes": 1048724,
+      "crc32": "d8d2e4d8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberPebble/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-pebble/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "8afda802"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberPebble/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-pebble/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "837fc1dd"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberPebble/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-pebble/furface.dds",
+      "bytes": 1048724,
+      "crc32": "d8d2e4d8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberPebble/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-pebble/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "d8d2e4d8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberPebble/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-pebble/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "944224bd"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberPebble/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-pebble/head.dds",
+      "bytes": 4194452,
+      "crc32": "ee0d402c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberRock/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-rock/body.dds",
+      "bytes": 4194452,
+      "crc32": "9e583ab9"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberRock/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-rock/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "7262863d"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberRock/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-rock/furback.dds",
+      "bytes": 1048724,
+      "crc32": "0f4fd3b8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberRock/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-rock/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "7262863d"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberRock/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-rock/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "01dc7c85"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberRock/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-rock/furface.dds",
+      "bytes": 1048724,
+      "crc32": "0f4fd3b8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberRock/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-rock/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "0f4fd3b8"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberRock/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-rock/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "79824fb5"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberRock/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-rock/head.dds",
+      "bytes": 4194452,
+      "crc32": "c95f4819"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberSand/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-sand/body.dds",
+      "bytes": 4194452,
+      "crc32": "316fcb15"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberSand/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-sand/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "478dcf3f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberSand/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-sand/furback.dds",
+      "bytes": 4194432,
+      "crc32": "57bc6533"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberSand/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-sand/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "478dcf3f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberSand/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-sand/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "6ffd1317"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberSand/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-sand/furface.dds",
+      "bytes": 4194432,
+      "crc32": "57bc6533"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberSand/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-sand/furshoulders.dds",
+      "bytes": 4194432,
+      "crc32": "57bc6533"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberSand/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-sand/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "3686278d"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/TimberSand/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber-sand/head.dds",
+      "bytes": 4194452,
+      "crc32": "a06305e0"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Timber/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber/body.dds",
+      "bytes": 4194452,
+      "crc32": "0f761ad2"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Timber/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "8afda802"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Timber/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber/furback.dds",
+      "bytes": 1048724,
+      "crc32": "58ddb91a"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Timber/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "8afda802"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Timber/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "8afda802"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Timber/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber/furface.dds",
+      "bytes": 1048724,
+      "crc32": "58ddb91a"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Timber/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "58ddb91a"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Timber/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "51ecc163"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Timber/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/timber/head.dds",
+      "bytes": 4194452,
+      "crc32": "9e498b1c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyTundra/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/tundra/body.dds",
+      "bytes": 4194452,
+      "crc32": "6f283322"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyTundra/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/tundra/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "d0221afc"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyTundra/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/tundra/furback.dds",
+      "bytes": 1048724,
+      "crc32": "d0221afc"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyTundra/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/tundra/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "b4215407"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyTundra/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/tundra/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "b4215407"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyTundra/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/tundra/furface.dds",
+      "bytes": 1048724,
+      "crc32": "b4215407"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyTundra/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/tundra/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "d0221afc"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyTundra/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/tundra/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "d0221afc"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyTundra/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/tundra/head.dds",
+      "bytes": 4194452,
+      "crc32": "d3977cfe"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Umber/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/umber/body.dds",
+      "bytes": 4194452,
+      "crc32": "63c35107"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Umber/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/umber/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "f4515c47"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Umber/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/umber/furback.dds",
+      "bytes": 1048724,
+      "crc32": "f4515c47"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Umber/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/umber/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "f4515c47"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Umber/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/umber/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "f4515c47"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Umber/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/umber/furface.dds",
+      "bytes": 1048724,
+      "crc32": "f4515c47"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Umber/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/umber/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "f4515c47"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Umber/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/umber/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "f4515c47"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/Umber/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/umber/head.dds",
+      "bytes": 4194452,
+      "crc32": "a0b751c7"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBlack/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-black/body.dds",
+      "bytes": 4194452,
+      "crc32": "7f60b454"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBlack/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-black/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "5a5f6418"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBlack/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-black/furback.dds",
+      "bytes": 1048724,
+      "crc32": "5a5f6418"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBlack/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-black/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "5a5f6418"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBlack/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-black/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "5a5f6418"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBlack/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-black/furface.dds",
+      "bytes": 1048724,
+      "crc32": "5a5f6418"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBlack/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-black/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "5a5f6418"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBlack/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-black/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "eac5d309"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBlack/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-black/head.dds",
+      "bytes": 4194452,
+      "crc32": "7b6d8e7f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBrown/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-brown/body.dds",
+      "bytes": 4194452,
+      "crc32": "bf873079"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBrown/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-brown/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "3e1d31ee"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBrown/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-brown/furback.dds",
+      "bytes": 1048724,
+      "crc32": "81e80e2e"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBrown/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-brown/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "81e80e2e"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBrown/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-brown/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "81e80e2e"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBrown/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-brown/furface.dds",
+      "bytes": 1048724,
+      "crc32": "81e80e2e"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBrown/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-brown/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "3e1d31ee"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBrown/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-brown/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "3e1d31ee"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyBrown/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-brown/head.dds",
+      "bytes": 4194452,
+      "crc32": "68621272"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyGrey/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-grey/body.dds",
+      "bytes": 4194452,
+      "crc32": "c094adf0"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyGrey/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-grey/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "e7462eb1"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyGrey/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-grey/furback.dds",
+      "bytes": 1048724,
+      "crc32": "e7462eb1"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyGrey/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-grey/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "122f4971"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyGrey/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-grey/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "063d151f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyGrey/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-grey/furface.dds",
+      "bytes": 1048724,
+      "crc32": "063d151f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyGrey/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-grey/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "e7462eb1"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyGrey/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-grey/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "063d151f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyGrey/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-grey/head.dds",
+      "bytes": 4194452,
+      "crc32": "6c65b8ed"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyWhite/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-white/body.dds",
+      "bytes": 4194452,
+      "crc32": "b57caafc"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyWhite/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-white/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "aa5c1e11"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyWhite/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-white/furback.dds",
+      "bytes": 1048724,
+      "crc32": "aa5c1e11"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyWhite/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-white/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "635f1fdd"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyWhite/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-white/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "aa5c1e11"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyWhite/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-white/furface.dds",
+      "bytes": 1048724,
+      "crc32": "3b09a14b"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyWhite/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-white/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "aa5c1e11"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyWhite/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-white/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "aa5c1e11"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/ValleyWhite/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/valley-white/head.dds",
+      "bytes": 4194452,
+      "crc32": "c80f19c0"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/White/Data/Textures/Actors/Character/Werewolf/Elegant/body.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/white/body.dds",
+      "bytes": 4194452,
+      "crc32": "933ec96c"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/White/Data/Textures/Actors/Character/Werewolf/Elegant/furarms.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/white/furarms.dds",
+      "bytes": 1048724,
+      "crc32": "3b09a14b"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/White/Data/Textures/Actors/Character/Werewolf/Elegant/furback.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/white/furback.dds",
+      "bytes": 1048724,
+      "crc32": "3b09a14b"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/White/Data/Textures/Actors/Character/Werewolf/Elegant/furbelly.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/white/furbelly.dds",
+      "bytes": 1048724,
+      "crc32": "3b09a14b"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/White/Data/Textures/Actors/Character/Werewolf/Elegant/furchest.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/white/furchest.dds",
+      "bytes": 1048724,
+      "crc32": "3b09a14b"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/White/Data/Textures/Actors/Character/Werewolf/Elegant/furface.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/white/furface.dds",
+      "bytes": 1048724,
+      "crc32": "3b09a14b"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/White/Data/Textures/Actors/Character/Werewolf/Elegant/furshoulders.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/white/furshoulders.dds",
+      "bytes": 1048724,
+      "crc32": "3b09a14b"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/White/Data/Textures/Actors/Character/Werewolf/Elegant/furtail.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/white/furtail.dds",
+      "bytes": 1048724,
+      "crc32": "3b09a14b"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Patterns/White/Data/Textures/Actors/Character/Werewolf/Elegant/head.dds",
+      "gamePath": "textures/actors/character/werewolf/claw/elegant-2k-2.1/white/head.dds",
+      "bytes": 4194452,
+      "crc32": "12e56e8d"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Data/Textures/Actors/Character/Werewolf/Elegant/body_n.dds",
+      "gamePath": "textures/actors/character/werewolf/elegant/body_n.dds",
+      "bytes": 4194452,
+      "crc32": "372c1725"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Data/Textures/Actors/Character/Werewolf/Elegant/claws.dds",
+      "gamePath": "textures/actors/character/werewolf/elegant/claws.dds",
+      "bytes": 349700,
+      "crc32": "1fe2f290"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Data/Textures/Actors/Character/Werewolf/Elegant/claws_n.dds",
+      "gamePath": "textures/actors/character/werewolf/elegant/claws_n.dds",
+      "bytes": 349700,
+      "crc32": "390a023b"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Data/Textures/Actors/Character/Werewolf/Elegant/eyes_g.dds",
+      "gamePath": "textures/actors/character/werewolf/elegant/eyes_g.dds",
+      "bytes": 1398276,
+      "crc32": "58afe4cc"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Data/Textures/Actors/Character/Werewolf/Elegant/eyes_m.dds",
+      "gamePath": "textures/actors/character/werewolf/elegant/eyes_m.dds",
+      "bytes": 22000,
+      "crc32": "6e798a1f"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Data/Textures/Actors/Character/Werewolf/Elegant/eyes_n.dds",
+      "gamePath": "textures/actors/character/werewolf/elegant/eyes_n.dds",
+      "bytes": 1398276,
+      "crc32": "bdc783ab"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Data/Textures/Actors/Character/Werewolf/Elegant/fur_n.dds",
+      "gamePath": "textures/actors/character/werewolf/elegant/fur_n.dds",
+      "bytes": 1398276,
+      "crc32": "a5175bfb"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Data/Textures/Actors/Character/Werewolf/Elegant/head_n.dds",
+      "gamePath": "textures/actors/character/werewolf/elegant/head_n.dds",
+      "bytes": 4194452,
+      "crc32": "b1dd0e99"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Data/Textures/Actors/Character/Werewolf/Elegant/Teeth.dds",
+      "gamePath": "textures/actors/character/werewolf/elegant/teeth.dds",
+      "bytes": 1398276,
+      "crc32": "5953d1ec"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Data/Textures/Actors/Character/Werewolf/Elegant/Teeth_n.dds",
+      "gamePath": "textures/actors/character/werewolf/elegant/teeth_n.dds",
+      "bytes": 1398276,
+      "crc32": "22e629bf"
+    },
+    {
+      "archivePath": "Elegant Werewolf Replacer 2K 2026/Data/Textures/Actors/Character/Werewolf/Elegant/Teeth_s.dds",
+      "gamePath": "textures/actors/character/werewolf/elegant/teeth_s.dds",
+      "bytes": 1398276,
+      "crc32": "6a002350"
+    }
+  ],
+  "paletteMetricsSha256": "f04925be88e48188bd7e0cd531df348f1068ef9486a58a976abeb9bc6f941a4a"
+}

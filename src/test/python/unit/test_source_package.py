@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -96,6 +97,64 @@ class SourcePackageTests(unittest.TestCase):
         if host:
             values.update(obody_esp=self.host, obody_pex=self.host_pex)
         return values
+
+    def coat_fixture(self):
+        """Packaging boundary only; the real DDS/catalog verifier has its own tests."""
+        sys.path.insert(0, str(ROOT/'src/main/python/build-tools'))
+        import coat_bundle
+        folder = self.root / 'target/coat-fixture'
+        payloads = {f'textures/claw/pattern-{index}.dds': b'DDS fixture '+str(index).encode()
+                    for index in range(355)}
+        payloads.update({'SKSE/Plugins/CLAW/CoatPolicy.xml': b'<CoatPolicy/>',
+                         'SKSE/Plugins/CLAW/CoatLibrary.xml': b'<CoatLibrary/>'})
+        for name, data in payloads.items(): self.write('target/coat-fixture/'+name, data)
+        receipt = {'payloads': {name: {'bytes': len(data), 'sha256': package.sha(data)}
+                                for name, data in payloads.items()}}
+        self.write('target/coat-fixture/bundle-receipt.json', package.encoded(receipt))
+        self.write('target/coat-fixture/palette-metrics.json', b'{}')
+        for name in package.COAT_SOURCES: self.write(name, (ROOT/name).read_bytes())
+        subprocess.run(['git', '-C', str(self.root), 'add', '--all'], check=True)
+        return folder, receipt, payloads, coat_bundle
+
+    def test_coats_ship_in_every_body_selection_without_source_or_provenance_files(self):
+        folder, receipt, payloads, module = self.coat_fixture()
+        with patch.object(module, 'verify', return_value=receipt):
+            result = package.build(**self.arguments(), coat_bundle=folder, version='0.8.5')
+        files = package.read_zip(Path(result['archive']).read_bytes())
+        self.assertEqual([367, 369]*8, [row['runtimeFiles'] for row in result['selections']])
+        self.assertEqual(payloads, {name.removeprefix('00 Base/'): data for name, data in files.items()
+                                  if name.removeprefix('00 Base/') in payloads})
+        for row in result['selections']:
+            self.assertTrue(set(payloads) <= {item['path'] for item in row['files']})
+        self.assertTrue(package.COAT_SOURCES <= set(result['sourceSelection']['selected']))
+        self.assertFalse(any(name.endswith(('bundle-receipt.json', 'palette-metrics.json', '.py')) for name in files))
+        config = ET.fromstring(files['fomod/ModuleConfig.xml'])
+        required = config.find('requiredInstallFiles')
+        required.remove(next(row for row in required if row.get('destination') in payloads))
+        files['fomod/ModuleConfig.xml'] = ET.tostring(config)
+        with self.assertRaisesRegex(ValueError, 'seven explicit'):
+            package.selection_audit(files)
+
+    def test_coat_payload_changed_between_verification_and_capture_is_rejected(self):
+        folder, receipt, _, module = self.coat_fixture()
+        def verified_then_changed(_folder):
+            path = folder/'textures/claw/pattern-0.dds'
+            original = path.read_bytes()
+            path.write_bytes(original[:-1]+b'X')  # Same size: a size-only check would miss this.
+            return receipt
+        args = self.arguments()
+        with patch.object(module, 'verify', side_effect=verified_then_changed):
+            with self.assertRaisesRegex(ValueError, 'Coat payload changed after verification'):
+                package.build(**args, coat_bundle=folder)
+        self.assertFalse(args['out'].exists())
+
+    def test_coat_source_closure_requires_tracked_preparation_and_policy_inputs(self):
+        folder, receipt, _, module = self.coat_fixture()
+        subprocess.run(['git', '-C', str(self.root), 'rm', '--cached', '-q',
+                        'src/main/resources/appearance/CoatPolicy.xml'], check=True)
+        with patch.object(module, 'verify', return_value=receipt):
+            with self.assertRaisesRegex(ValueError, 'must be tracked'):
+                package.build(**self.arguments(), coat_bundle=folder)
 
     def test_full_package_has_literal_minimal_sixteen_selections_and_no_development_payload(self):
         result = package.build(**self.arguments())
