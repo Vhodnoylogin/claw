@@ -95,7 +95,7 @@ def resolve_selection(config, archive_paths, game_version="1.7.104.0", racemenu=
     """
     active = ({"RaceMenu.esp"} if racemenu else set()) | ({"OBody.esp"} if obody else set()) | set(additional_active)
     independent_families = config.find("conditionalFileInstalls") is not None
-    if family not in ((None, "CBBE", "3BA", "BHUNP", "Vanilla") if independent_families else (None, "CBBE", "3BA")):
+    if family not in ((None, "CBBE", "3BA", "BHUNP", "UNP", "Vanilla") if independent_families else (None, "CBBE", "3BA")):
         raise ValueError("Unknown human resource family")
     if male_family is not None and (not independent_families or male_family not in {"HIMBO", "Vanilla"}):
         raise ValueError("Unknown or unsupported male resource family")

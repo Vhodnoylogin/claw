@@ -95,6 +95,28 @@ int main(int argc, char** argv) {
                 }
             }
         }
+        {
+            const auto* unp = catalog.find("CLAW.UNP.4.6.Weight1", claw::Sex::female);
+            const auto* vanilla = catalog.find("CLAW.VanillaFemale.Weight1", claw::Sex::female);
+            require(unp && vanilla && unp->sourceFamily == "UNP" && unp->sourceVersion == "4.6" &&
+                    !catalog.find(unp->id, claw::Sex::male) && !unp->link.hasProviderSources(),
+                    "classic UNP lost its female weight-only resource binding");
+            const auto low = evaluate(*unp, {}, 0.F), middle = evaluate(*unp, {}, 50.F), high = evaluate(*unp, {}, 100.F);
+            require(low.at("CLAWArmLean") > middle.at("CLAWArmLean") && high.at("CLAWArmGirth") > middle.at("CLAWArmGirth") &&
+                    low.at("CLAWTorsoBellyRound") < high.at("CLAWTorsoBellyRound"),
+                    "classic UNP did not inherit the effective actor weight");
+            for (const auto weight : {0.F, 25.F, 50.F, 75.F, 100.F}) {
+                const claw::Morphs traits{{"$human.height", 1.1F}, {"$human.face.jawWidth", .3F}};
+                require(evaluate(*unp, traits, weight) == evaluate(*vanilla, traits, weight),
+                        "classic UNP changed the declared Vanilla weight/generic-trait rules");
+                require(evaluate(*unp, {{"Arms", 1.F}, {"UNP Low", 1.F}, {"Breasts", 1.F}}, weight) == evaluate(*unp, {}, weight),
+                        "classic UNP invented BodySlide inputs from a different UNP-branded body");
+            }
+            const auto traits = evaluate(*unp, {{"$human.height", 1.1F}, {"$human.face.jawWidth", .3F}});
+            require(traits.at("CLAWHeadEarSize") > middle.at("CLAWHeadEarSize") &&
+                    traits.at("CLAWTailLength") > middle.at("CLAWTailLength") && traits.at("CLAWArmClawLong") > 0,
+                    "classic UNP lost available generic head/appendage inputs");
+        }
         for (const auto sex : {claw::Sex::male, claw::Sex::female}) for (const auto& name : catalog.names(sex)) {
             const auto* profile = catalog.find(name, sex);
             for (const float value : {-1.F, 0.F, 1.F}) {

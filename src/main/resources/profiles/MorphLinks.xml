@@ -631,4 +631,47 @@
     <Rule source="ForearmSize" target="CLAWArmClawLong" gain="0.08" cap="1" function="positive" />
     <Rule source="MuscleLegs" target="CLAWLegClawLong" gain="0.04" cap="1" function="positive" />
   </Profile>
+  <Profile id="CLAW.UNP.4.6.Weight1" family="UNP" version="4.6" sex="female" calibration="vanilla-female-weight-contract1">
+    <Rule source="" target="CLAWArmLean" gain="1" cap="0.5" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWArmLean" gain="-2" cap="0.5" />
+    <Rule source="" target="CLAWLegThighLean" gain="1" cap="0.5" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWLegThighLean" gain="-2" cap="0.5" />
+    <Rule source="" target="CLAWLegCalfLean" gain="1" cap="0.375" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWLegCalfLean" gain="-2" cap="0.375" />
+    <Rule source="" target="CLAWTorsoLean" gain="1" cap="0.375" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoLean" gain="-2" cap="0.375" />
+    <Rule source="" target="CLAWArmGirth" gain="-1" cap="0.5" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWArmGirth" gain="2" cap="0.5" />
+    <Rule source="" target="CLAWLegThighGirth" gain="-1" cap="0.5" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWLegThighGirth" gain="2" cap="0.5" />
+    <Rule source="" target="CLAWLegCalfGirth" gain="-1" cap="0.375" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWLegCalfGirth" gain="2" cap="0.375" />
+    <Rule source="" target="CLAWTorsoGirth" gain="-1" cap="0.25" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoGirth" gain="2" cap="0.25" />
+    <Rule source="" target="CLAWTorsoShoulderGirth" gain="-1" cap="0.25" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoShoulderGirth" gain="2" cap="0.25" />
+    <Rule source="" target="CLAWTorsoBellyRound" gain="-1" cap="0.375" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTorsoBellyRound" gain="2" cap="0.375" />
+    <Rule source="$human.face.noseLength" target="CLAWHeadMuzzleLong" gain="0.35" cap="1" function="positive" />
+    <Rule source="$human.face.jawForward" target="CLAWHeadMuzzleLong" gain="0.2" cap="1" function="negative" />
+    <Rule source="$human.face.chinForward" target="CLAWHeadMuzzleLong" gain="0.1" cap="1" function="negative" />
+    <Rule source="$human.face.jawWidth" target="CLAWHeadMuzzleWide" gain="0.3" cap="1" function="positive" />
+    <Rule source="$human.face.chinWidth" target="CLAWHeadMuzzleWide" gain="0.15" cap="1" function="positive" />
+    <Rule source="$human.height" target="CLAWHeadSize" gain="1.5" cap="1" />
+    <Rule source="" target="CLAWHeadSize" gain="-1.5" cap="1" function="constant" value="1" />
+    <Rule source="$human.height" target="CLAWHeadEarSize" gain="1.5" cap="1" />
+    <Rule source="" target="CLAWHeadEarSize" gain="-1.5" cap="1" function="constant" value="1" />
+    <Rule source="$human.height" target="CLAWTailLength" gain="2" cap="1" />
+    <Rule source="" target="CLAWTailLength" gain="-2" cap="1" function="constant" value="1" />
+    <Rule source="$human.height" target="CLAWArmClawLong" gain="1.25" cap="1" />
+    <Rule source="" target="CLAWArmClawLong" gain="-1.25" cap="1" function="constant" value="1" />
+    <Rule source="$human.height" target="CLAWLegClawLong" gain="1.25" cap="1" />
+    <Rule source="" target="CLAWLegClawLong" gain="-1.25" cap="1" function="constant" value="1" />
+    <Rule source="$actor.weight" target="CLAWTailFluff" gain="0.2" cap="1" />
+    <Rule source="" target="CLAWTailFluff" gain="-0.1" cap="1" function="constant" value="1" />
+    <Rule source="$human.face.chinWidth" target="CLAWHeadEarSize" gain="0.12" cap="1" function="positive" />
+    <Rule source="$human.face.jawWidth" target="CLAWHeadEarSize" gain="0.1" cap="1" function="positive" />
+    <Rule source="$human.face.chinWidth" target="CLAWHeadEarTilt" gain="0.06" cap="1" function="positive" />
+    <Rule source="$human.face.jawWidth" target="CLAWHeadEarTilt" gain="0.08" cap="1" function="positive" />
+  </Profile>
 </MorphLinkProfiles>

@@ -225,7 +225,7 @@ def companion(inputs, directory, native_sha, native_sources, commonlib_commit):
 
 
 MALE_FAMILIES = ("HIMBO", "Vanilla")
-FEMALE_FAMILIES = ("CBBE", "3BA", "BHUNP", "Vanilla")
+FEMALE_FAMILIES = ("CBBE", "3BA", "BHUNP", "UNP", "Vanilla")
 
 
 def profiles(data, family, male_family="HIMBO"):
@@ -236,13 +236,13 @@ def profiles(data, family, male_family="HIMBO"):
     tree = ET.fromstring(data)
     rows = tree.findall("Profile")
     inventory = {(row.get("sex"), row.get("family")) for row in rows}
-    if (tree.tag != "MorphLinkProfiles" or len(rows) != 6 or inventory !=
+    if (tree.tag != "MorphLinkProfiles" or len(rows) != 7 or inventory !=
             {("male", "HIMBO"), ("female", "CBBE"), ("female", "3BA"),
-             ("female", "BHUNP"),
+             ("female", "BHUNP"), ("female", "UNP"),
              ("male", "Vanilla"), ("female", "Vanilla")}):
-        raise ValueError("Expected the canonical six sex-specific body-family matrices")
-    if any(not row.get('id') for row in rows) or len({row.get('id') for row in rows}) != 6:
-        raise ValueError("Canonical matrices require six distinct explicit profile identifiers")
+        raise ValueError("Expected the canonical seven sex-specific body-family matrices")
+    if any(not row.get('id') for row in rows) or len({row.get('id') for row in rows}) != 7:
+        raise ValueError("Canonical matrices require seven distinct explicit profile identifiers")
     for old in tree.findall("Defaults"):
         tree.remove(old)
     selected = {("male", male_family), ("female", family)}
@@ -315,9 +315,16 @@ def installer(template, entries):
             ET.SubElement(choice, "description").text = (
                 "Body shape follows this sex's actual NPC weight; available head and stature traits are still inherited. No replacement human body mod is required."
                 if family == "Vanilla" else
+                "Classic UNP Female Body Renewal 4.6: body shape follows actual NPC weight; available head and stature traits are still inherited. This archive supplies no runtime BodySlide morphs. Choose manually when its body meshes win; shared female-body paths and optional eyebrow plugins do not identify UNP. Human bodies and physics are not bundled."
+                if family == "UNP" else
                 "Choose the body whose meshes actually win in your mod manager. Plugin markers only recommend a choice; they cannot determine winning meshes, especially when several body mods are installed. Every family remains selectable. Human bodies and physics are not bundled."
                 + (" Requires BHUNP 3.34 Advanced Ver4 built with body morphs." if family == "BHUNP" else ""))
             ET.SubElement(ET.SubElement(choice, "conditionFlags"), "flag", name=sex+"Family").text = family
+            if family == "UNP":
+                # Renewal has no unique installed body marker. Never infer it
+                # from common femalebody paths or its optional eyebrow plugin.
+                ET.SubElement(ET.SubElement(choice, "typeDescriptor"), "type", name="Optional")
+                continue
             dependent = ET.SubElement(ET.SubElement(choice, "typeDescriptor"), "dependencyType")
             ET.SubElement(dependent, "defaultType", name="Optional")
             patterns = ET.SubElement(dependent, "patterns")
@@ -518,9 +525,10 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     entries.update(notices)
     entries["README.md"] = ("# " + NAME + "\n\n"
         "Human body morphs carried into werewolf shape.\n"
-        "Install through FOMOD: choose HIMBO or Vanilla for males and CBBE, 3BA, BHUNP or Vanilla for females.\n"
+        "Install through FOMOD: choose HIMBO or Vanilla for males and CBBE, 3BA, BHUNP, classic UNP or Vanilla for females.\n"
         "Installed plugin markers suggest a choice; every body option remains selectable. Choose the body that actually wins your mod conflicts.\n"
         "The BHUNP matrix targets BHUNP 3.34 Advanced Ver4 with generated body morphs.\n"
+        "The classic UNP matrix targets Renewal 4.6 using NPC weight and available generic traits, without BodySlide morph inputs; select it manually. Its installed-body game check is pending.\n"
         "Requires Elegant textures, XP32 and matching SKSE/RaceMenu/Address Library. Replacement human bodies are required only for their selected matrix.\n"
         "Vanilla matrices use NPC weight. OBody integration supplies morph inputs to eligible born wolves using a morph-based matrix.\n\n" +
         ("Includes all 355 original Elegant 2K 2.1 textures and 34 complete coat patterns. "
