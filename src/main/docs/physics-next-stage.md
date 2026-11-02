@@ -1,11 +1,46 @@
-# Physics next stage: bind the collider model to the chosen body resources
+# Physics next stage: compile and qualify current-body contact
 
-The existing automatic pipeline already observes effective native SKEE morphs,
-samples independent NPC weight, fits schema-3 capsules on a bounded worker and
-rejects stale snapshots before the finite Papyrus host appends. Its defaults
-remain disabled. The immediate reproducible gap is resource agreement: the
-retained 128-slot ear/tail/female-P1 model was built for earlier anatomical-split
-bodies, while the frozen 30 October core contains different body and TRI bytes.
+The existing automatic pipeline observes effective native SKEE morphs, samples
+independent NPC weight, fits schema-3 capsules on a bounded worker and rejects
+stale snapshots before the finite Papyrus host appends. Its defaults remain
+disabled. The 30 October record below retains an earlier resource mismatch;
+it is not the status of the current v4 model.
+
+On 2 November the current v4 body endpoints/TRIs and XP32 inputs were checked
+against the retained model
+`CLAW.Physics.CurrentVector.a24397e77b1c9af1fde18e3f984b253e13db71415b70c61d3a4df4b4a3491b73`.
+Its 22 regional morph dependencies cover every field affecting selected support;
+nine other global TRI targets have no records on that support. The 128 slots
+have 96 active male and 128 active female capsules. Generated native header,
+host data and explicit offline preflight agree with the measured inputs.
+Thirty-six independently evaluated sex/vector cases reproduced the retained
+support metrics exactly. This validates retained inputs and calculations;
+no numeric optimization or provider/game acceptance is implied.
+
+The matching universal native DLL has now been compiled offline, SHA-256
+`4f85b88b8ec8ab5e0be230978f9579e514537cfc34cd3210b2a5a9a4a4613e54`.
+Its compiled model header matches the validated generated header. A fresh native
+run passed 198 fixtures and 25,344 slot outputs with maximum coordinate/radius
+error `1.28786e-13`; the test assertions were enabled. PE inspection confirms
+the expected SE/AE/VR metadata and no unconditional SKEE/OpenVR imports. These
+checks do not load the DLL into a game or qualify an engine boundary.
+
+A separate finite host ESP and six PEX were compiled for the same model. Binary
+VMAD and a Spriggit round-trip preserve 16 actor aliases, a separate player relay,
+stopped/default-disabled integration and unqualified provider gates. The host
+contains no motion configurations. Its original build was interrupted during
+Spriggit's translator restore; the explicit continuation uses the same installed
+managed tool and a pinned existing translator cache. Both attempts and all input
+hashes remain outside Git under
+`Builds/claw-backlog-20261102/physics-host-current-v4-01*`.
+
+The next mechanical gate is actual provider ownership, effective resources and
+lifecycle checks. Contact and motion node inventories are intentionally different: this
+contact model omits TailBone04, while the separate motion adapter drives nine
+ear/tail nodes plus the two female P1 nodes. Do not substitute the source
+builder's legacy nine-node motion configuration for that 11-node P1 adapter.
+The measured contact fit still has undercoverage; close fitting, animated
+surface quality and VR hand contact remain unaccepted.
 
 The current motion slice is separate from that retained contact-model work.
 Released v4 bodies have 30 male / 31 female morphs; their fresh pipeline already
@@ -83,12 +118,12 @@ The frozen-core comparison reads the retained repository release resources,
 not the live installation. The provider snapshot is retained historical evidence,
 not a newly observed process configuration.
 
-Next, choose the actual body/weight/TRI candidate after shape work. Reconstruct
-support from those exact files with the existing XP32 skeleton. A changed
-physical surface needs a new fit and measurements; use `rebase-contact-inputs.py`
-only when its full oriented triangle/base/weight/TRI comparison proves the
-physical support unchanged. Generate matching native and host artifacts and
-rerun preflight before preparing any game trial.
+For any later body revision, reconstruct support from the exact body/weight/TRI
+files and XP32 skeleton. A changed physical surface needs a new fit and
+measurements; use `rebase-contact-inputs.py` only when its full oriented
+triangle/base/weight/TRI comparison proves the physical support unchanged.
+Generate matching native and host artifacts and rerun preflight before a game
+trial. The current mechanics work does not wait for aesthetic calibration.
 
 Game acceptance still needs actual armor/race/VFS bindings; loaded provider/API,
 single-writer and reserved-index qualification; compiled DLL/PEX provenance;

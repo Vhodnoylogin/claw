@@ -131,3 +131,57 @@ VR body. SE execution does not establish AE or VR engine acceptance. The earlier
 HIMBO/3BA and born-werewolf evidence remains separately dated in the repository;
 it does not replace these new body-family checks. Generated saves, logs, DLLs,
 archives and human body assets are not committed to this source repository.
+
+## Development 0.8.5: coats and classic UNP
+
+This is a separate development candidate, not an extension of the released
+0.8.0 acceptance above. Commit `394fa8d55cbb47258df264fa644baee5e98259f0`
+adds classic UNP Renewal 4.6 as a manual female installer choice. Its 41 ordered
+rules exactly reuse female Vanilla weight and available head/stature inputs;
+the original UNP archive has no runtime BodySlide TRI. No new UNP geometric
+calibration or installed-body game acceptance is claimed. The independent
+source review passed nine profile tests, 23 package tests and the native Anatomy
+test against the seven-profile catalog.
+
+Candidate package-02 is 364,839,987 bytes, SHA-256
+`98ceb29297125f958962adb7af64d843b7c72098182f382f59bd282d8f16739c`.
+It contains 34 complete Elegant coat patterns and all 355 original DDS files.
+The independent literal-archive review passed all 20 sex/family/OBody selections;
+all old selected runtime maps, the DLL, body resources and original DDS bytes
+remain identical to package-01. The archive contains runtime/install files and
+required notices, with no source ZIP, nested archives, developer dependencies
+or PDB. Its source link resolves to the committed source above. Review SHA-256:
+`502ce76b2a59df8159bb4e7eb491568e9417c8b0b0f401b25a8c6cdcd5dbe5d4`.
+
+The coat DLL is SHA-256
+`7b02a572b9d1c95c87bb2e9ffae5d8192d05eb0f7146ec2eaa1f82b6f54299bd`.
+Operator probe `20261102-185045-b35e55` exercised that DLL with package-01,
+HIMBO/3BA and original texture colours. Two human controls and four born wolves
+passed manual assignment, invalid-ID rejection, neighbour isolation, automatic
+selection restoration, model refresh and six-reference save/load. Both human
+controls returned and transformed again with their source values preserved.
+There were 495 post-load keyed morph comparisons and 113 preserved source
+records. The separate retained co-save inspection confirmed per-reference
+identities, the stable seed selection and source-less fallback for the four
+born wolves; it did not infer human hair where no human source was captured.
+
+The complete-pattern sweep stopped at 23 patterns checked on both sexes and
+one additional male witness: 47 of 68 sex/pattern witnesses. The owner confirmed
+exiting through the game menu. Eleven full pattern checks remain incomplete;
+the raw executor report remains an unexpected exit without its own quit request.
+This was operator evidence, not formal schema-2 platform acceptance. Independent
+per-surface shader RGB/path readback and real hair-source arrival/removal were
+unavailable. No rendered-colour or aesthetic acceptance follows from these data.
+Core proof SHA-256:
+`422f89b7aabbc2dd8a06c176ee4e601fe584bdcef91d0f3c4319261d17140f03`.
+
+Raw evidence remains outside Git under `Builds/claw-coat-085-probe-18/` and
+`Builds/claw-backlog-20261102/unp-package02-review/`. Subsequent owner-authorized
+recovery restored the exact 0.8.0 installation and all five custody directories
+(1,428 files), preserving all 44 current profile files, current INI/host, 59
+download sidecars and the owner's physical screenshot. The 2,075 baseline pins
+matched. Independent post-recovery review SHA-256:
+`793efde216d2b7f86acd556d95c21665c04ee83adcaa00370d02f1a814206457`.
+The exact recovery barrier was cleared only after that review. Recovery evidence
+is under `Builds/claw-backlog-20261102/probe18-recovery-owner-20261102/`.
+Package-02 has not been installed, game-tested or published.
