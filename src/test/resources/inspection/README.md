@@ -76,6 +76,11 @@ Install every dependency as a separate mod under its own name, following
 Morphbench in separate source profiles. The fixture's family is HIMBO/3BA; this
 does not turn an offline CBBE matrix check into a CBBE game run.
 
+The supplemental [BHUNP technical fixture](bhunp/README.md) contains three
+authored presets over the actual BHUNP Ver4 keys and a six-actor lifecycle case.
+It keeps the historical HIMBO/3BA kit unchanged and carries no live bindings,
+generated bodies or game-acceptance claim.
+
 For public screenshots, use the official CBBE/HIMBO NeverNude BodySlide projects
 with Build Morphs enabled and a separate generated `BodySlide Output - NeverNude`
 mod. The generated human output must win; The New Gentleman is disabled in the

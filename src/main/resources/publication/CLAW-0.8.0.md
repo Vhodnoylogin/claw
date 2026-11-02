@@ -3,6 +3,16 @@
 Prepared release content. Publication and installed-game acceptance are recorded
 separately; this file alone does not establish either.
 
+Technical mechanism checks are complete for Vanilla and BHUNP/HIMBO. The Vanilla
+run ended normally; the BHUNP/HIMBO run passed its mechanical phases and real
+source proof but failed during teardown. Keep that distinction in the public
+notes; do not describe both runs as clean passes. Acceptance of the independent
+Morphbench plugin is deferred and does not block the game-mod release. Keep a
+short source/legacy plugin notice; do not advertise development as released.
+
+Exact runtime identities, coverage, restoration and the abnormal-end limit are
+recorded in [the 2 November verification record](../../docs/verification-20261102.md).
+
 ## Short description
 
 Human presets and inherited traits give each werewolf a shape of its own.
@@ -68,6 +78,30 @@ for their matching matrices, not unconditional requirements for Vanilla users.
 OBody and its own dependencies apply to its optional distribution/integration.
 The developer-only Morphbench plugin has separate file-specific tool requirements.
 Do not make Morphbench a gameplay dependency.
+
+Add the following conditional Nexus requirement, rather than a requirement for
+every user:
+
+- **BHUNP (Nexus 31126):** required only when selecting the female BHUNP matrix.
+  Use BHUNP 3.34 Advanced Ver4 and build its body with BodySlide's Build Morphs.
+  Install BHUNP's own required dependencies and a compatible UNP skin separately.
+  This does not add classic UNP Renewal as a supported CLAW matrix family.
+
+Keep HIMBO, CBBE and 3BA requirements conditional on their corresponding installer
+choices too. The optional CLAW OBody host is for actors first encountered as
+beasts; existing human-to-wolf links do not require that host. OBody itself may
+still be used to distribute human presets without installing the beast host.
+
+The ready-to-paste version changelog is
+`nexus/0.8.0/changelog-0.8.0.txt`. Keep unfinished physics, automatic matrix
+migration and future coat-pattern distribution out of that changelog.
+
+For Nexus 0.8, use page-wide mod requirements with a conditional note for each
+body choice. The current file-to-file requirements editor expresses mandatory
+AND requirements without optional notes; retaining compulsory HIMBO/CBBE there
+would contradict the Vanilla options. Preserve the recorded runtime versions
+and roles when replacing that list. Do not make all four replacement bodies
+mandatory or attach the developer plugin's tool requirements to the game file.
 
 ## Technical guide placement
 

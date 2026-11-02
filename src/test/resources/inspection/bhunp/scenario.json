@@ -1,0 +1,168 @@
+{
+  "kind": "portable technical HIMBO/BHUNP lifecycle fixture; not a live session",
+  "cell": {
+    "editorId": "QASmoke",
+    "localFormId": "032AE7",
+    "plugin": "Skyrim.esm"
+  },
+  "anchor": {
+    "localFormId": "02A1B9",
+    "plugin": "Dragonborn.esm",
+    "position": [
+      -2633.919189453125,
+      1521.9630126953125,
+      6976.0
+    ]
+  },
+  "beforeAnyFixtureCreation": {
+    "globalAIEnabled": false,
+    "globalCollisionEnabled": false,
+    "verification": "Capture actual global states before first spawn. TAI/TCL are toggles: do not blindly replay them."
+  },
+  "automaticSpawn": false,
+  "freshReferencesRequired": true,
+  "humanTwins": false,
+  "maximumCreatedActors": 6,
+  "maximumCreations": 6,
+  "completeOBodyBaseMappings": 12,
+  "maximumFixtures": 12,
+  "ownedSaveParticipants": 6,
+  "selectedFamilies": {
+    "male": "CLAW.HIMBO.5.8.Geometry1",
+    "female": "CLAW.BHUNP.3.34.AdvancedV4"
+  },
+  "actors": [
+    {
+      "tag": "MThinWolf",
+      "initialNpcBase": {
+        "localFormId": "013475",
+        "plugin": "Skyrim.esm"
+      },
+      "sex": "male",
+      "humanPreset": "CLAW Human Contrast - Male Slim",
+      "initialForm": "human",
+      "position": [
+        -2697.94482421875,
+        1836.0,
+        6976.4501953125
+      ],
+      "headingDegrees": 90,
+      "baseline": "same actor before transformation"
+    },
+    {
+      "tag": "MMuscularWolf",
+      "initialNpcBase": {
+        "localFormId": "01347D",
+        "plugin": "Skyrim.esm"
+      },
+      "sex": "male",
+      "humanPreset": "CLAW Human Contrast - Male Muscular",
+      "initialForm": "human",
+      "position": [
+        -2697.94482421875,
+        1536.0,
+        6976.4501953125
+      ],
+      "headingDegrees": 90,
+      "baseline": "same actor before transformation"
+    },
+    {
+      "tag": "MHeavyWolf",
+      "initialNpcBase": {
+        "localFormId": "0A2C90",
+        "plugin": "Skyrim.esm"
+      },
+      "sex": "male",
+      "humanPreset": "CLAW Human Contrast - Male Heavy",
+      "initialForm": "human",
+      "position": [
+        -2697.94482421875,
+        1236.0,
+        6976.4501953125
+      ],
+      "headingDegrees": 90,
+      "baseline": "same actor before transformation"
+    },
+    {
+      "tag": "FThinWolf",
+      "initialNpcBase": {
+        "localFormId": "0A2C8E",
+        "plugin": "Skyrim.esm"
+      },
+      "sex": "female",
+      "humanPreset": "CLAW BHUNP Technical - Female Slim",
+      "initialForm": "human",
+      "position": [
+        -2377.94482421875,
+        1836.0,
+        6976.4501953125
+      ],
+      "headingDegrees": 270,
+      "baseline": "same actor before transformation"
+    },
+    {
+      "tag": "FMuscularWolf",
+      "initialNpcBase": {
+        "localFormId": "0A2C8F",
+        "plugin": "Skyrim.esm"
+      },
+      "sex": "female",
+      "humanPreset": "CLAW BHUNP Technical - Female Muscular",
+      "initialForm": "human",
+      "position": [
+        -2377.94482421875,
+        1536.0,
+        6976.4501953125
+      ],
+      "headingDegrees": 270,
+      "baseline": "same actor before transformation"
+    },
+    {
+      "tag": "FHeavyWolf",
+      "initialNpcBase": {
+        "localFormId": "0A2C91",
+        "plugin": "Skyrim.esm"
+      },
+      "sex": "female",
+      "humanPreset": "CLAW BHUNP Technical - Female Heavy",
+      "initialForm": "human",
+      "position": [
+        -2377.94482421875,
+        1236.0,
+        6976.4501953125
+      ],
+      "headingDegrees": 270,
+      "baseline": "same actor before transformation"
+    }
+  ],
+  "phases": [
+    "Observe actual six human source/key/weight and typed-trait baselines",
+    "Transform FHeavyWolf and observe successful completion with advancing frames",
+    "Transform remaining five only after the first completed",
+    "Compare all183 actual own targets against the shared native evaluator and each same-actor human baseline",
+    "Refresh and repeat actual source/target comparison",
+    "Owned six-reference save/load with current reference and VM witnesses; compare again",
+    "Return all six to their retained actual human race and verify source/key preservation",
+    "Normal game-menu exit, native restoration and independent custody/profile restoration"
+  ],
+  "femaleSourceContract": "47 actual ordinary BHUNP V4 TRI keys, plus explicitly available typed traits and actor weight",
+  "fixtureCopies": [
+    {
+      "source": "CLAW-BHUNP-Technical.xml",
+      "destination": "CalienteTools/BodySlide/SliderPresets/CLAW BHUNP Technical.xml"
+    },
+    {
+      "source": "OBody_presetDistributionConfig.json",
+      "destination": "SKSE/Plugins/OBody_presetDistributionConfig.json"
+    }
+  ],
+  "legacySnapshotRows": "Legacy zero-gain rows only enumerate and preserve sources; they do not validate modern matrix math. Acceptance uses all30male/31female native-evaluator outputs.",
+  "noClaims": [
+    "Artistic quality",
+    "Physics or collision behavior",
+    "First-person VR body",
+    "Independent shader RGB readback",
+    "Other BHUNP generations or classic UNP matrices"
+  ],
+  "bindings": "Resolve plugin/local forms and all created references fresh through the qualified test adapter. Keep runtime IDs, endpoints, tokens, orders and actual captures outside Git."
+}
