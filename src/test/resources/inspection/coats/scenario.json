@@ -1,0 +1,46 @@
+{
+  "kind": "portable six-actor discrete coat fixture and check contract; not an executable order",
+  "cell": {"editorId": "QASmoke", "plugin": "Skyrim.esm", "localFormId": "032AE7"},
+  "anchor": {"plugin": "Dragonborn.esm", "localFormId": "02A1B9", "position": [-2633.919189453125, 1521.9630126953125, 6976.0]},
+  "automaticSpawn": false,
+  "freshReferencesRequired": true,
+  "maximumCreatedActors": 6,
+  "ownedSaveParticipants": 6,
+  "selectedFamilies": {"male": "CLAW.HIMBO.5.8.Geometry1", "female": "CLAW.3BA.2.48.Geometry1"},
+  "originallyBeastOBodyHost": false,
+  "beforeAnyFixtureCreation": {"globalAIEnabled": false, "globalCollisionEnabled": false, "explicitLocomotionHold": true, "verifyActualStateBeforeToggling": true},
+  "actors": [
+    {"tag": "MControlWolf", "sex": "male", "initialForm": "human", "base": {"plugin": "Skyrim.esm", "localFormId": "0A2C90"}, "humanPreset": "CLAW Human Contrast - Male Heavy", "position": [-2697.94482421875, 1236.0, 6976.4501953125], "headingDegrees": 90},
+    {"tag": "MBorn1Wolf", "sex": "male", "initialForm": "werewolf", "base": {"plugin": "test_CLAW - Wild Preset Fixture.esp", "localFormId": "000802"}, "position": [-2697.94482421875, 1836.0, 6976.4501953125], "headingDegrees": 90},
+    {"tag": "MBorn2Wolf", "sex": "male", "initialForm": "werewolf", "base": {"plugin": "test_CLAW - Wild Preset Fixture.esp", "localFormId": "000802"}, "position": [-2697.94482421875, 1536.0, 6976.4501953125], "headingDegrees": 90},
+    {"tag": "FControlWolf", "sex": "female", "initialForm": "human", "base": {"plugin": "Skyrim.esm", "localFormId": "0A2C91"}, "humanPreset": "CLAW Human Contrast - Female Heavy", "position": [-2377.94482421875, 1236.0, 6976.4501953125], "headingDegrees": 270},
+    {"tag": "FBorn1Wolf", "sex": "female", "initialForm": "werewolf", "base": {"plugin": "test_CLAW - Wild Preset Fixture.esp", "localFormId": "000805"}, "position": [-2377.94482421875, 1836.0, 6976.4501953125], "headingDegrees": 270},
+    {"tag": "FBorn2Wolf", "sex": "female", "initialForm": "werewolf", "base": {"plugin": "test_CLAW - Wild Preset Fixture.esp", "localFormId": "000805"}, "position": [-2377.94482421875, 1536.0, 6976.4501953125], "headingDegrees": 270}
+  ],
+  "coatContract": {
+    "catalogueSize": 34,
+    "primaryTintMode": "original",
+    "hairPoolCount": 6,
+    "hairPoolOverlapAllowed": false,
+    "fallbackPool": "natural",
+    "fallbackMembers": 32,
+    "automaticExcluded": ["elegant-2k-2.1/hyena-spotted", "elegant-2k-2.1/khajiit"],
+    "manualPatterns": ["elegant-2k-2.1/black", "elegant-2k-2.1/timber"],
+    "invalidPattern": "elegant-2k-2.1/__claw_085_invalid__",
+    "priority": ["manual", "real hair measured pool", "saved source-less fallback"],
+    "seedBasis": "actual saved CWLS namespace plus CWLA per-reference identity; coatSeed version1",
+    "choiceBasis": "retain eligible saved pool/pattern; otherwise maximum coatScore over eligible IDs",
+    "differentSeedsMayChooseSamePattern": true,
+    "mutationAdmissionIsNotApplication": true
+  },
+  "phases": [
+    {"name": "source-baseline", "required": ["six exact same-run identities", "both human actual keyed source vectors and weights", "actual human source colour availability", "four initially-beast actors without invented human hair", "before-mutation morph/material observations"]},
+    {"name": "automatic-selection", "required": ["34 manual catalogue IDs", "two human transforms with advancing frames", "eligible measured hair pool for each observed human source", "saved-reference natural fallback on four born wolves", "two stable requested/applied/origin/status samples"]},
+    {"name": "manual-isolation", "required": ["one explicit Black male and Timber female", "manual origin and completed private application", "same-base neighbours retain their IDs and morph values", "invalid ID rejected before queue without any changed actor", "clear resumes the previous eligible automatic choice", "retain manual and automatic cases together before save"]},
+    {"name": "refresh-persistence", "required": ["refresh all six once", "stable pattern/origin and unchanged source/key maps", "one disposable six-reference ESS/SKSE save pair", "one same-process owned load and six-reference remap", "same saved namespace/identities/seeds/pools/manual IDs", "independent saved-byte selection verification"]},
+    {"name": "human-return-retransform", "required": ["return only the two controls to their witnessed human races", "no applied wolf coat on humans", "human source/key preservation and own-key absence", "transform both controls again", "same eligible saved automatic/manual selection after refresh"]},
+    {"name": "rendered-evidence-and-finish", "required": ["new Steam images with adjacent identity/pattern/time witnesses", "actual material-path readback if supported, otherwise unavailable", "guarded menu finish and actual process outcome", "native and external restoration to pre-probe080", "separate mechanical/rendered/shutdown findings"]}
+  ],
+  "requiresSeparateRealSourceTransitionContract": ["hair-source arrival", "hair-source removal", "hair group migration"],
+  "noClaims": ["all34 patterns visually reviewed", "arbitrary recolouring", "independent shader RGB from cached status", "new AE or VR acceptance", "physics or VR body", "formal schema2 platform qualification"]
+}
