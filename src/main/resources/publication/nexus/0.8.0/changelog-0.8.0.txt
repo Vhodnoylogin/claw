@@ -1,0 +1,8 @@
+Added human-driven head, muzzle, ear, tail and claw proportions using available face, stature and body inputs.
+Added explicit actor weight to every conversion matrix and separate male/female Vanilla options.
+Added a BHUNP 3.34 Advanced Ver4 female matrix for bodies built with morphs.
+Expanded sparse coefficient/function matrices to support arbitrary morph names and omit negligible coefficients consistently.
+Added individual human-derived skin/fur tint with state preservation through transformation, model refresh and save/load.
+Added separate male and female installer pages with freely available body choices and marker-based recommendations.
+Retained the Vortex-compatible installer encoding fix from 0.7.1.
+Existing saved actors keep their stored matrices; start a new game to adopt all new defaults.

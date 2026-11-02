@@ -1,7 +1,7 @@
 # CLAW — Customizable Lycanthrope Appearance and Weight
 
 Human body morphs shape male and female werewolves through editable coefficient
-and function matrices. The 0.8 source supports HIMBO, CBBE, CBBE+3BA, BHUNP and
+and function matrices. CLAW 0.8 supports HIMBO, CBBE, CBBE+3BA, BHUNP and
 separate male/female Vanilla matrices. Available human face and stature inputs
 also influence the head, ears, tail and claws; skin and hair colours tint existing
 werewolf materials. Optional OBody integration supplies human preset inputs to
@@ -11,9 +11,9 @@ Every matrix explicitly reads `$actor.weight`, independently of the already
 effective RaceMenu morph values. The installer selects one male and one female
 family. Native and the matching development Morphbench plugin use the same
 compiled evaluator. Installed-game evidence is recorded separately from source
-features in the [verification record](src/main/docs/verification-20261101.md).
+features in the [verification record](src/main/docs/verification-20261102.md).
 
-[Download CLAW 0.7.1](https://github.com/Vhodnoylogin/claw/releases/tag/claw/0.7.1)
+[Download CLAW 0.8.0](https://github.com/Vhodnoylogin/claw/releases/tag/claw/0.8.0)
 · [Nexus](https://www.nexusmods.com/skyrimspecialedition/mods/194798)
 · [Русский](README.ru.md)
 
@@ -40,14 +40,11 @@ meshes are source inputs with recorded provenance; generated NIF/TRI, ESP, PEX,
 DLL and ZIP files belong in `target/` and GitHub Release assets. Older release
 commits and tags retain their historical layout; history has not been rewritten.
 
-The optional [CLAW Morphbench comparison plugin](https://www.nexusmods.com/skyrimspecialedition/mods/194798?tab=files&file_id=830298) is a
-Miscellaneous download on the main CLAW Nexus page. It opens human and werewolf
-previews side by side, edits conversion matrices and exports authoring data.
-Install its ZIP through Morphbench's plugin manager, then select matching human
-and CLAW resources and apply a human preset. Skyrim does not need to be running.
-The published 0.3 plugin targets the 0.7 matrix format; use the matching plugin
-revision for the expanded 0.8 matrices. Its [independent source repository](https://github.com/Vhodnoylogin/claw-morphbench-plugin)
-consumes a pinned revision of this repository's shared evaluator.
+The optional [CLAW Morphbench comparison plugin](https://github.com/Vhodnoylogin/claw-morphbench-plugin)
+is maintained in its independent source repository and is not a gameplay
+requirement. The earlier 0.3 release targets CLAW 0.7 matrices; an updated tool
+release for the expanded 0.8 matrices is not yet available. The game mod and
+matching development plugin compile the same evaluator.
 
 ## Build and checks
 
@@ -78,7 +75,10 @@ The working mod is one FOMOD archive. The 0.8 installer has separate male and
 female pages: HIMBO or Vanilla for males; CBBE, CBBE+3BA, BHUNP 3.34 Advanced Ver4
 or Vanilla for females. Choices stay available; active plugin markers only suggest
 a default. When multiple body mods are installed, choose the actual winning body
-resources and build morphs for that body. Vanilla body deformation uses weight.
+resources and build morphs for that body. The BHUNP choice requires BHUNP 3.34
+Advanced Ver4, Build Morphs output and a compatible UNP skin, with that body's own
+dependencies installed separately. Replacement bodies are required only for their
+selected matrices; Vanilla body deformation uses weight.
 Install Elegant Werewolf Replacer for its textures, a compatible XP32 skeleton,
 runtime-matched SKSE, RaceMenu/SKEE, Address Library and Microsoft Visual C++ x64
 runtime. OBody and its own requirements apply when automatic preset distribution
@@ -87,15 +87,18 @@ mods; no human bodies, textures or skeleton are bundled. Existing saved actors
 keep their stored conversion matrices after an update; a new game adopts the new
 defaults. Reinstalling a family choice alone does not reset existing actors.
 
-One CommonLib DLL targets SE, AE and VR. Actual 0.7 game acceptance covers Skyrim
-SE 1.7.104 / SKSE 2.3.1 with HIMBO/3BA and official RaceMenu: both sexes,
-transformation/return, human-value preservation, save/load and born werewolves.
-Other runtime boundaries and CBBE have offline coverage. A fresh build or source
-layout change does not establish new game acceptance.
+One CommonLib DLL targets SE, AE and VR. The 0.8 technical game checks on Skyrim
+SE 1.7.104 / SKSE 2.3.1 cover both Vanilla sexes through transformation, model
+refresh, save/load and human return. The separate BHUNP/HIMBO run also passed
+all mechanical phases and its real 47-key BHUNP source proof, then ended
+abnormally during teardown; its overall result remains failed. The verification
+record preserves this limit and earlier HIMBO/3BA and born-werewolf evidence.
+CBBE and other runtime boundaries have offline coverage; SE checks do not
+establish AE or VR game acceptance.
 
 Physics, fitted colliders and a first-person VR body remain development work.
 See the [roadmap](src/main/docs/roadmap.md),
-[release record](src/main/resources/publication/CLAW-0.7.0.0.md),
+[release record](src/main/resources/publication/CLAW-0.8.0.md),
 [matrix contract](src/main/docs/matrix-contract.md) and
 [reusable inspection configuration](src/test/resources/inspection/README.md).
 

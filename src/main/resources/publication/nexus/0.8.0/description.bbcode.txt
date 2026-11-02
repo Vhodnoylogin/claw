@@ -18,35 +18,19 @@ With [url=https://www.nexusmods.com/skyrimspecialedition/mods/77016]OBody NG[/ur
 [size=4][color=#D0B17A][b]Installation[/b][/color][/size]
 CLAW's bodies are based on [url=https://www.nexusmods.com/skyrimspecialedition/mods/93336]Elegant Werewolf Replacer[/url]. Keep Elegant installed for its textures and use [url=https://www.nexusmods.com/skyrimspecialedition/mods/1988]XP32 Maximum Skeleton Special Extended[/url] for the skeleton. CLAW supplies the adjustable werewolf meshes and morphs.
 
-Choose the actual male and female bodies on separate installer pages. Male options: [url=https://www.nexusmods.com/skyrimspecialedition/mods/46311]HIMBO[/url] or Vanilla. Female options: [url=https://www.nexusmods.com/skyrimspecialedition/mods/198]CBBE[/url], CBBE + [url=https://www.nexusmods.com/skyrimspecialedition/mods/30174]3BA[/url], [url=https://www.nexusmods.com/skyrimspecialedition/mods/31126]BHUNP 3.34 Advanced Ver4[/url], or Vanilla. Replacement bodies need working BodySlide morphs; Vanilla uses actor weight. All choices remain available. If several body mods are installed, choose the body whose files actually win your conflicts.
+Choose the actual male and female bodies on separate installer pages. Male options: [url=https://www.nexusmods.com/skyrimspecialedition/mods/46311]HIMBO[/url] or Vanilla. Female options: [url=https://www.nexusmods.com/skyrimspecialedition/mods/198]CBBE[/url], CBBE + [url=https://www.nexusmods.com/skyrimspecialedition/mods/30174]3BA[/url], [url=https://www.nexusmods.com/skyrimspecialedition/mods/31126]BHUNP 3.34 Advanced Ver4[/url], or Vanilla. Replacement bodies need working BodySlide morphs; Vanilla uses actor weight. The BHUNP option also needs its own dependencies and a compatible UNP skin, installed separately. All choices remain available. If several body mods are installed, choose the body whose files actually win your conflicts.
 
-The morph mechanism needs [url=https://www.nexusmods.com/skyrimspecialedition/mods/19080]RaceMenu[/url], SKSE and the appropriate Address Library for your game runtime. For automatic preset variety, install [url=https://www.nexusmods.com/skyrimspecialedition/mods/77016]OBody NG[/url] with its dependencies and human BodySlide presets, then enable CLAW's OBody integration in the installer. Follow OBody's body-building instructions so the human bodies have working morphs. The CLAW download contains neither human bodies nor preset packs.
+The morph mechanism needs [url=https://www.nexusmods.com/skyrimspecialedition/mods/19080]RaceMenu[/url], SKSE and the appropriate Address Library for your game runtime. For automatic human preset variety, install [url=https://www.nexusmods.com/skyrimspecialedition/mods/77016]OBody NG[/url] with its dependencies and human BodySlide presets. Enable CLAW's optional OBody integration in the installer only if you also want preset inputs for actors first encountered as beasts; human-to-wolf links do not require that extra host. Follow OBody's body-building instructions so the human bodies have working morphs. The CLAW download contains neither human bodies nor preset packs.
 
 [b]Updating a save:[/b] existing characters retain their stored conversion matrices. Start a new game to apply all new defaults from the beginning; reinstalling a body option alone does not reset saved characters.
 
 [center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]
-[size=4][color=#D0B17A][b]Morphbench plugin for developers[/b][/color][/size]
-Preview and tune the human-to-werewolf conversion outside Skyrim. The optional plugin shows a human and a wolf side by side, links their rotation, and lets you compare morph values and vertex displacement while editing the conversion matrix.
-
-Download [b]CLAW - Morphbench Plugin[/b] from this page's [url=https://www.nexusmods.com/skyrimspecialedition/mods/194798?tab=files]Miscellaneous files[/url]. Use [url=https://www.nexusmods.com/skyrimspecialedition/mods/194795]Morphbench[/url] with its matching Launcher and your human and CLAW NIF/TRI resources.
-[list=1]
-[*]Install the ZIP through Morphbench's plugin manager and enable it.[/*]
-[*]Open the CLAW comparison tab, select the human body family and matching human/wolf models, then click [b]Open comparison pair[/b].[/*]
-[*]Import a human BodySlide preset or adjust the human sliders, then click [b]Apply to both previews[/b].[/*]
-[*]Edit the coefficient/function matrix and export your changes when ready.[/*]
-[/list]
-This developer tool is optional for playing CLAW. It changes the previews and exports authoring data; Skyrim does not need to be running. Use a plugin version matching your CLAW matrices; the earlier 0.3 plugin targets CLAW 0.7.
-
-[center][img width=1000]https://staticdelivery.nexusmods.com/mods/1704/images/194798/194798-1793527093-869173617.jpg[/img][/center]
+[size=4][color=#D0B17A][b]Developer tools[/b][/color][/size]
+The separate [url=https://github.com/Vhodnoylogin/claw-morphbench-plugin]Morphbench comparison plugin[/url] is optional and is not required to play CLAW. Its earlier 0.3 release targets CLAW 0.7 matrices; an updated tool release for the expanded 0.8 matrices is not yet available. The [url=https://github.com/Vhodnoylogin/claw/blob/main/src/main/docs/matrix-contract.md]matrix contract[/url] documents the conversion data for modders.
 
 [center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]
-[size=4][color=#D0B17A][b]Future plans[/b][/color][/size]
-[list]
-[*]More natural belly, muscle and female breast shapes, with further seam and skin/fur refinements.[/*]
-[*]More coat patterns, selected from human colouring or a stable seed for an originally wild werewolf.[/*]
-[*]Ear, tail and breast motion, fitted collisions that follow morphs, and a first-person VR body.[/*]
-[*]Adult anatomy and its physics in a separate later add-on.[/*]
-[/list]
+[size=4][color=#D0B17A][b]Current limits[/b][/color][/size]
+Extreme shapes, self-intersections and final artistic calibration remain areas for refinement. Automatic coat-pattern distribution, physics, fitted collisions and a first-person VR body are outside this release. The [url=https://github.com/Vhodnoylogin/claw/blob/main/src/main/docs/roadmap.md]roadmap[/url] tracks further work.
 [center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]
 [size=4][color=#D0B17A][b]Technical guide for modders[/b][/color][/size]
 Conversion presets, resource paths, compatibility and current limits.
@@ -69,7 +53,7 @@ The normal link reads actual human body morph values. It preserves the human sou
 [b]Compatibility and checks[/b]
 Install the current [url=https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170]Microsoft Visual C++ v14 Redistributable (x64)[/url] for the native DLL. The [url=https://aka.ms/vc14/vc_redist.x64.exe]official x64 installer[/url] supplies this runtime; its DLLs are not bundled with CLAW.
 
-The archive contains one CommonLib-based DLL for the declared SE, AE and VR runtime boundaries. Actual game checks for this version were performed in Skyrim SE 1.7.104.0 / SKSE 2.3.1, using official RaceMenu, OBody NG and HIMBO/3BA. The [url=https://github.com/Vhodnoylogin/claw/blob/main/src/main/docs/verification-20261101.md]verification record[/url] identifies exact tested builds and lifecycle coverage. Offline checks and tests on one runtime are not equivalent to running every runtime or body family. Use the matching SKSE, Address Library and RaceMenu/SKEE resources for your runtime. See the [url=https://github.com/Vhodnoylogin/claw/blob/main/src/main/docs/universal-runtime.md]runtime contract[/url].
+The archive contains one CommonLib-based DLL for the declared SE, AE and VR runtime boundaries. Technical 0.8 game checks on Skyrim SE 1.7.104.0 / SKSE 2.3.1 with official RaceMenu and OBody NG cover transformation, refresh, six-reference save/load and human return for Vanilla and BHUNP/HIMBO. Vanilla completed with a normal exit. BHUNP/HIMBO passed every mechanical phase and its real 47-key source proof, then ended abnormally during teardown with 0xC0000005; its overall run remains failed, and the cause is not established. The [url=https://github.com/Vhodnoylogin/claw/blob/main/src/main/docs/verification-20261102.md]verification record[/url] preserves that limit and distinguishes these checks from earlier HIMBO/3BA and born-werewolf evidence. Offline checks and tests on one runtime are not equivalent to running every runtime or body family. Use the matching SKSE, Address Library and RaceMenu/SKEE resources for your runtime. See the [url=https://github.com/Vhodnoylogin/claw/blob/main/src/main/docs/universal-runtime.md]runtime contract[/url].
 
 For the unverified VR route, use SKSEVR, RaceMenu VR and [url=https://www.nexusmods.com/skyrimspecialedition/mods/58101]VR Address Library for SKSEVR[/url]. The retained base ESP is light-flagged, so its VR loading also needs [url=https://www.nexusmods.com/skyrimspecialedition/mods/106712]Skyrim VR ESL Support[/url] and that mod's requirements. This dependency guidance does not establish VR game acceptance.
 
