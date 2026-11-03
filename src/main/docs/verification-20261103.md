@@ -122,6 +122,11 @@ admits only successful load completion, keeps failed or malformed completion
 disabled, and preserves new-game activation. Local primary SKSE sources for
 SE 2.3.1, AE 2.2.6 and VR 2.0.12 encode the boolean in the pointer value as 0/1
 with data length 1; the payload is not dereferenced. The pure message-contract
-test and universal translation-unit compilation passed. This is a source-level
-correction, without a reproduced failed-load game case or a newly linked DLL.
-The installed immutable package-04 remains unchanged.
+test and universal translation-unit compilation passed. A fresh minimal universal
+DLL was then linked from `d59fc4add97d90ec49816d4aaf76816072f3f964`: 1,071,104
+bytes, SHA-256
+`abd517d7392f6a2b7364d6c2c7c1b13cf112a6e79525b17c3e5705b3a27c5034`.
+Matrix, loaded-VR-graph and world-start CTests passed. The build retained the same
+runtime compatibility declaration, excluded the fitted physics model and had no
+unresolved consumed-input pins. This remains a source/offline correction without
+a reproduced failed-load game case. The installed immutable package-04 is unchanged.
