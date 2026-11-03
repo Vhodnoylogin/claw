@@ -6,6 +6,14 @@ human presets, invented UNP sliders, new NPC plugin or duplicate test framework.
 The shared inspection kit supplies the room, two existing female NPC bases and
 the accepted placement/AI/collision conventions.
 
+Immediately prepare each newly created owned actor before taking its baseline:
+set an explicit locomotion hold, disable its AI and collisions, then read back
+the actual actor AI state, reference collision flag and character-controller
+collision filter. Reverify after every race/model/load transition. An unavailable
+controller observation or a reference-only change stops measurement. Use direct
+desired-state setters with guarded identity and completion; no blind console
+toggle. Global engine switches need not be changed before actors exist.
+
 The names Thin and Heavy identify existing test roles, not proof of actual NPC
 weight. Read both weights before transformation and require a measured
 difference. An unavailable query or equal weights blocks this fixture's weight

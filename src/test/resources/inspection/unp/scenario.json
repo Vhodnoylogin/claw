@@ -10,7 +10,17 @@
   "originallyBeastOBodyHost": false,
   "obodyAssignmentRequired": false,
   "emptyOrdinaryMorphMapIsValid": true,
-  "beforeAnyFixtureCreation": {"globalAIEnabled": false, "globalCollisionEnabled": false, "explicitLocomotionHold": true, "verifyActualStateBeforeToggling": true},
+  "actorPreparation": {
+    "when": "Immediately after each owned creation, before its human baseline or any measurement; reverify after every race/model/load transition.",
+    "scope": "Each of the two owned actors; global engine switches are not required.",
+    "aiEnabled": false,
+    "referenceCollisionsEnabled": false,
+    "characterControllerCollisionsEnabled": false,
+    "explicitLocomotionHold": true,
+    "actualStateReadbackRequired": true,
+    "explicitDesiredStateSettersOnly": true,
+    "onUnavailableOrIncompleteFreeze": "Stop before baseline/measurement; a reference flag alone does not prove controller collision is disabled. Do not guess or repeat an uncertain mutation."
+  },
   "humanResources": {
     "family": "UNP Female Body Renewal 4.6",
     "originalArchiveSha256": "a46b8ed7291c1e2878c4217e0730724ebf2152928ca7658ce03e5fe0a6286c35",

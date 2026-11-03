@@ -60,6 +60,15 @@ scenario. A focused SE adapter update was delegated to the testing-tool chat;
 the exact original UNP fixture is retained. Offline selection preparation
 verified 367 CLAW files and 59 original UNP files without changing MO2.
 
+The initial draft also imposed global AI/collision-off before either actor
+existed. That was our unnecessary constraint, not the owner's actor-freeze
+requirement. The fixture now requires immediate per-owned-actor preparation
+and actual AI/reference/controller readback before measurement, with rechecks
+after transitions. The earlier blocked draft is retained as superseded evidence;
+this correction grants no unqualified operation or game acceptance. The existing
+native per-actor visual-freeze protocol still needs adapter integration and
+actual engine/controller completion checks.
+
 The remaining coat witnesses, current CBPC provider/container lifecycle and VR
 model dispatch still need actual game evidence. Physics activation remains
 disabled until provider/resource/cleanup ownership is established. The
