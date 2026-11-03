@@ -19,6 +19,7 @@ session.jsonl
 *.pex
 *.esp
 *.esm
+!/src/test/resources/inspection/lighting/source/Cells/1/9/QASmoke - 032AE7_Skyrim.esm/
 *.esl
 *.zip
 *.7z

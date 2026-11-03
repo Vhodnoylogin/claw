@@ -1,0 +1,80 @@
+FormKey: 032AE7:Skyrim.esm
+IsCompressed: True
+MajorRecordFlagsRaw: 262144
+VersionControl: 79128
+EditorID: QASmoke
+Version2: 10
+SkyrimMajorRecordFlags:
+- Compressed
+Name:
+  TargetLanguage: English
+  Values:
+  - Language: Chinese
+    String: Editor Smoke Test Cell
+  - Language: English
+    String: Editor Smoke Test Cell
+  - Language: French
+    String: Editor Smoke Test Cell
+  - Language: German
+    String: Editor Smoke Test Cell
+  - Language: Italian
+    String: Editor Smoke Test Cell
+  - Language: Japanese
+    String: エディタースモークのテスト用区画
+  - Language: Polish
+    String: Testowa komórka dymu w edytorze
+  - Language: Russian
+    String: Editor Smoke Test Cell
+  - Language: Spanish
+    String: Editor Smoke Test Cell
+Flags:
+- IsInteriorCell
+- HasWater
+Lighting:
+  AmbientColor: '#00202621'
+  DirectionalColor: '#00000000'
+  FogNearColor: '#00172116'
+  FogFar: 4500
+  DirectionalFade: 1
+  FogPower: 0.6
+  AmbientColors:
+    DirectionalXPlus: '#00232622'
+    DirectionalXMinus: '#001C261F'
+    DirectionalYPlus: '#00202721'
+    DirectionalYMinus: '#00202421'
+    DirectionalZPlus: '#000F120E'
+    DirectionalZMinus: '#00303933'
+    Specular: '#00172116'
+    Scale: 1
+  FogFarColor: '#00172116'
+  FogMax: 1
+  Inherits:
+  - AmbientColor
+  - DirectionalColor
+  - FogColor
+  - FogNear
+  - FogFar
+  - ClipDistance
+WaterHeight: -2.1474836E+09
+ImageSpace: 013B32:Skyrim.esm
+Temporary:
+- MutagenObjectType: PlacedObject
+  FormKey: 000801:test_CLAWInspectionLighting.esp
+  EditorID: test_CLAWInspectionFill1
+  Base: 000800:test_CLAWInspectionLighting.esp
+  Placement:
+    Position: -2537.9448, 1200, 7106.45
+- MutagenObjectType: PlacedObject
+  FormKey: 000802:test_CLAWInspectionLighting.esp
+  EditorID: test_CLAWInspectionFill2
+  Base: 000800:test_CLAWInspectionLighting.esp
+  Placement:
+    Position: -2537.9448, 1550, 7106.45
+- MutagenObjectType: PlacedObject
+  FormKey: 000803:test_CLAWInspectionLighting.esp
+  EditorID: test_CLAWInspectionFill3
+  Base: 000800:test_CLAWInspectionLighting.esp
+  Placement:
+    Position: -2537.9448, 1900, 7106.45
+MajorFlags:
+- 0x40000
