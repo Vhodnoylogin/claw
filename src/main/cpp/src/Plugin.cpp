@@ -614,6 +614,15 @@ void observePhysics(RE::Actor* actor) {
     std::vector<float> values;
     const float normalizedWeight = rawWeight / 100.0F;
     for (const auto& name : binding.names) values.push_back(morphs->GetBodyMorphs(skeeReference(actor), name.c_str()));
+    if (!claw::validPhysicsValues(values)) {
+        // Reject before triggering an engine update on known-invalid provider
+        // data. Expire the old snapshot and reuse fitted-domain cleanup.
+        binding.ready = false; binding.observation.invalidate(); binding.delivered = false;
+        binding.condition = "domain";
+        physicsPopulationBlocked.insert_or_assign(actor->GetFormID(), binding.runtime);
+        physicsEvent(actor, "domain");
+        return;
+    }
     // Apply the provider's current effective coefficients on this main task.
     // The pinned SKEE implementation joins morph workers and executes partition
     // updates before returning on its main thread. Sample again on a later pass.

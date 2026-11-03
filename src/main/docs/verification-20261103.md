@@ -130,3 +130,31 @@ Matrix, loaded-VR-graph and world-start CTests passed. The build retained the sa
 runtime compatibility declaration, excluded the fitted physics model and had no
 unresolved consumed-input pins. This remains a source/offline correction without
 a reproduced failed-load game case. The installed immutable package-04 is unchanged.
+
+## Subsequent tool-only game attempt
+
+One physical SE start loaded the prepared core04/UNP composition and reached
+the QASmoke anchor. The first actor-creation action then failed on the testing
+tool's native-binding deadline limit. Only startup and world readiness passed;
+there is no completed actor-creation witness or matrix snapshot. This does not
+establish classic-UNP, freeze, transformation or 31-target parity acceptance.
+
+The executor archived and removed its temporary profile, finished collection and
+restored all 128 captured files without a reported restoration error. The owner
+reported closing the game; the raw observer retained exit code 0 without an
+owned quit request or forced stop. Keep that owner report separate from the raw
+termination classification. Neither record establishes a CLAW crash or successful
+scripted menu exit. The two tooling gaps were returned to the testing-tool owner;
+the owner subsequently prohibited further game starts, so work continues offline.
+
+## Offline physics input boundary
+
+A separate three-file correction validates the effective provider vector before
+the physics adapter triggers `ApplyBodyMorphs`. Empty, NaN and infinite values
+invalidate its snapshot and request existing scoped domain cleanup. Finite signed
+values and values above one are not clamped. The focused physics-observer test
+and universal translation-unit compilation with the fitted model passed. No new
+physics DLL was linked, installed or run for this change; actual provider removal
+and motion remain unqualified. The separate cached-qualification renewal findings
+are recorded in the [physics plan](physics-next-stage.md), without a claim that
+this narrow guard fixes the whole lifecycle protocol.

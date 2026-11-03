@@ -6,6 +6,14 @@
 #include <vector>
 
 namespace claw {
+// Effective provider coefficients may be signed or exceed one. Only an empty
+// or nonfinite vector is invalid here; fitted-model bounds are a separate gate.
+inline bool validPhysicsValues(const std::vector<float>& values) {
+    if (values.empty()) return false;
+    for (const auto value : values) if (!std::isfinite(value)) return false;
+    return true;
+}
+
 // Provider values are sampled on separate main-task passes. A SKEE queued
 // model update and our NiNode notification both invalidate the candidate; no
 // Papyrus per-key summation or own-key cache is a substitute for GetBodyMorphs.
@@ -19,9 +27,7 @@ struct PhysicsObservation {
 
     void invalidate() { candidate.clear(); stablePasses = 0; dirty = true; }
     bool observe(std::uintptr_t currentRoot, std::vector<float> values, float normalizedWeight = 0) {
-        if (!currentRoot || values.empty() || !std::isfinite(normalizedWeight) || normalizedWeight < 0 || normalizedWeight > 1) { invalidate(); return false; }
-        for (const auto value : values)
-            if (!std::isfinite(value)) { invalidate(); return false; }
+        if (!currentRoot || !validPhysicsValues(values) || !std::isfinite(normalizedWeight) || normalizedWeight < 0 || normalizedWeight > 1) { invalidate(); return false; }
         if (root != currentRoot || candidate != values || weight != normalizedWeight) {
             if (root != currentRoot) dirty = true;
             root = currentRoot; weight = normalizedWeight; candidate = std::move(values); stablePasses = 1;

@@ -49,6 +49,23 @@ load relay revokes the old session; it does not silently requalify the new one.
 Existing native population discovery already includes the player and loaded
 known werewolves, so a second actor scanner is unnecessary.
 
+The 3 November source now rejects empty or nonfinite effective-morph vectors
+before this physics adapter calls `ApplyBodyMorphs`. It expires the current
+snapshot and uses the existing domain-cleanup signal. Signed, zero and finite
+values above one remain unchanged; fitted-model limits are a separate check.
+Focused observer tests and universal compilation with the fitted model passed.
+This protects this adapter's sampled update, without a global or atomic guarantee
+against other writers. It adds no provider activation or cleanup acknowledgment.
+
+Before automatic activation, separate fresh external qualification from ordinary
+lifecycle renewal. Source review found that a delayed ready/stale-snapshot receipt
+can reuse the host's cached assertions through `RegisterAutomatic`, replacing a
+native binding after a missed/busy rejection callback. Current lifecycle condition
+updates can also overwrite some stored rejection classes. These are conditional
+source counterexamples, without a reproduced game failure. A per-binding flag
+alone does not establish fresh external qualification; review the host and native
+authority contract together. This redesign is separate from the input guard.
+
 Before adding automatic activation, qualify the actual CBPC build, its handling
 of an NPC changing race/model, reserved capsule indices and matching body/model
 resources. Reuse those observations in a session coordinator with persisted
