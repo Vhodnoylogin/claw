@@ -97,10 +97,14 @@ CBBE and other runtime boundaries have offline coverage; SE checks do not
 establish AE or VR game acceptance.
 
 Physics, fitted colliders and a first-person VR body remain development work.
+The [loaded VR graph lifecycle](src/main/docs/vr-loaded-graphs.md) now has an
+offline-tested implementation; first-person model dispatch remains unqualified.
 The development branch additionally includes a classic UNP Renewal 4.6 weight
 matrix, complete Elegant coat packaging and a compiled current-body physics
 candidate. Their [verification record](src/main/docs/verification-20261102.md#development-085-coats-and-classic-unp)
 separates source/packaging checks from incomplete game and provider checks.
+The [3 November development record](src/main/docs/verification-20261103.md)
+records the newer universal build, actual-family getter and test-source repair.
 See the [roadmap](src/main/docs/roadmap.md),
 [release record](src/main/resources/publication/CLAW-0.8.0.md),
 [matrix contract](src/main/docs/matrix-contract.md) and
