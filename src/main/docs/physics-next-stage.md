@@ -57,14 +57,22 @@ Focused observer tests and universal compilation with the fitted model passed.
 This protects this adapter's sampled update, without a global or atomic guarantee
 against other writers. It adds no provider activation or cleanup acknowledgment.
 
-Before automatic activation, separate fresh external qualification from ordinary
-lifecycle renewal. Source review found that a delayed ready/stale-snapshot receipt
-can reuse the host's cached assertions through `RegisterAutomatic`, replacing a
-native binding after a missed/busy rejection callback. Current lifecycle condition
-updates can also overwrite some stored rejection classes. These are conditional
-source counterexamples, without a reproduced game failure. A per-binding flag
-alone does not establish fresh external qualification; review the host and native
-authority contract together. This redesign is separate from the input guard.
+The subsequent offline authority correction separates fresh external qualification
+from ordinary lifecycle renewal. Previously, a delayed ready/stale-snapshot receipt
+could reuse cached Host assertions and replace a binding after a missed rejection
+callback; lifecycle condition updates could also overwrite some rejection classes.
+Transient per-runtime authority now preserves rejection across those paths and
+unregister. Identity/provider cleanup revocation is separate from attach permission.
+Queued registration binds a fixed process/issued-world/session token and revision;
+an intervening rejection, context change or suspension invalidates it. Only explicit
+Host enable selects a fresh grant, after the exact old accepted ledger is empty.
+Population initial admission cannot revive consumed history. Released actors need
+fresh explicit qualification until a verified rebind adapter exists. Two pure CTests,
+27 actual-source contract checks, both universal translation-unit variants and six
+matching Papyrus compilations passed. These remain offline checks, without a
+reproduced game failure or provider acceptance. The final snapshot check and
+third-party append remain non-atomic. See the
+[3 November verification](verification-20261103.md#offline-physics-registration-authority).
 
 Before adding automatic activation, qualify the actual CBPC build, its handling
 of an NPC changing race/model, reserved capsule indices and matching body/model

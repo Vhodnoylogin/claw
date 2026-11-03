@@ -53,9 +53,35 @@ call `EnableAutomaticPopulation(evidence, True, True, True)` once per session af
 qualifying the actual resources for the matching population. Distribution then
 offers at most 16 known loaded current beasts per scan; the host uses only empty
 aliases and never evicts a remembered actor or pending cleanup. Human return or
-unload releases a population alias only after reported cleanup. A changed model
-blocks rediscovery until a fresh explicit qualification. This reuses Distribution's
+unload releases a population alias only after reported cleanup. Released or rejected
+runtime history is excluded from later population offers: a returning released
+actor needs `EnableAutomaticActor` with fresh external qualification. Global
+population opt-in does not qualify its changed provider/root. Automatic reentry
+awaits a verified provider/resource rebind adapter. This reuses Distribution's
 actor registry and adds no independent world search.
+
+Registration authority is transient and separate from the observer snapshot.
+`RegisterActor` renews a retained nonrejected grant; only explicit Host enable uses
+`RegisterQualifiedActor`. Population callbacks use `RegisterInitialActor`, which
+can consume virgin runtime authority once. Domain, weight, model, identity,
+provider and token exhaustion remain rejected across human/unload transitions,
+unregister and dropped/busy event delivery. Identity/provider rejection independently
+revokes old-ledger cleanup authority. A fresh grant requires the Host's exact old
+accepted ledger empty, through reported cleanup or the existing separately verified
+reset acknowledgment; it never certifies retirement by clearing rejection bits.
+
+`BeginSession` captures a native process/world/session token at its first native
+boundary, before Host lookup/start. Explicit begin and compare-and-revoke suspension
+rotate native authorization; the getter is read-only. Saved Host tokens and queued
+registration tickets cannot adopt a later session. Admission withdraws old snapshots
+immediately; commit rechecks the fixed token, runtime owner, latest request and
+rejection revision after main-task context validation. Actual loaded roots are pinned
+only for at most sixteen active/pending/cleanup contexts; unregister retains cheap
+history after those roots retire. The first context of a new explicit grant has no
+previous native graph witness, so external qualification remains caller responsibility.
+These guards do not make the last Papyrus snapshot check and a third-party CBPC
+append atomic across VM/load. Provider lifecycle and actual game behavior remain
+unqualified; no automatic provider activation or resource qualification is added.
 
 Human morph family defaults are a separate explicit resource declaration in
 `SKSE/Plugins/CLAW/MorphLinks.xml`. The canonical source catalog lists the resource

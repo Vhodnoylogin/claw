@@ -6,6 +6,7 @@
 #include "claw/MorphRuleSerialization.h"
 #include "claw/MorphOwnership.h"
 #include "claw/PhysicsObserver.h"
+#include "claw/PhysicsAuthority.h"
 #include "claw/MorphProfiles.h"
 #include "claw/SourceBootstrapPolicy.h"
 #include "claw/RuntimeSupport.h"
@@ -93,6 +94,7 @@ struct State {
     std::uint64_t runtimeSerial{}; // Fresh after load; never serialized.
     claw::RequestBinding latestRequest; // Non-owning, process-local terminal request witness.
     claw::RequestBinding latestCoatRequest; // Coat admission/error cannot replace the body policy's request.
+    claw::PhysicsAuthority physicsAuthority; // Transient tombstone; survives observer unregister/replacement.
     bool quarantined{};
     // Optional source bootstrap lease: deliberately transient, never restored.
     bool adoptedDefault{}, firstSeenBeast{}, observedHuman{}, sourceRevoked{};
@@ -137,6 +139,7 @@ struct PhysicsBinding {
     RE::ActorHandle actor;
     RE::Actor* pointer{};
     std::uint64_t runtime{}, world{}, registration{};
+    std::uint64_t authorityRevision{};
     std::int32_t generation{};
     std::vector<std::string> names;
     std::string model, evidence, condition;
@@ -203,6 +206,13 @@ std::map<RE::FormID, std::uint64_t> physicsPopulationBlocked;
 std::map<RE::Actor*, std::uint64_t> physicsRegistrationRequests;
 std::uint64_t nextPhysicsRegistration{1};
 std::uint32_t nextPhysicsSnapshot{1};
+struct PhysicsRootLease {
+    claw::PhysicsOwner owner;
+    RE::Actor* actor{};
+    RE::NiPointer<RE::NiAVObject> root;
+};
+// At most sixteen active/pending/cleanup contexts. No engine releases at DLL teardown.
+auto& physicsRoots = *new std::map<RE::FormID, PhysicsRootLease>();
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
 struct PhysicsFitWork {
     RE::FormID id{}; // Numeric routing token; no engine object crosses to worker.
@@ -244,6 +254,20 @@ Pin pinActor(RE::Actor* actor) {
 // pending/native owners until their final main-safe collection.
 void collectPins() {
     claw::collectUnshared(pins);
+    for (auto it = physicsRoots.begin(); it != physicsRoots.end();) {
+        const auto binding = physicsBindings.find(it->first);
+        const auto state = states.find(it->first);
+        const bool sameState = state != states.end() && !state->second.quarantined &&
+            state->second.runtimeSerial == it->second.owner.runtime && state->second.runtimePointer == it->second.actor;
+        const bool physical = it->second.owner.world == epoch && sameState &&
+            ((binding != physicsBindings.end() && binding->second.pointer == it->second.actor) ||
+             physicsRegistrationRequests.contains(it->second.actor));
+        if (physical) { ++it; continue; }
+        if (state != states.end() && state->second.physicsAuthority.matches(it->second.owner)) {
+            state->second.physicsAuthority.suspend(); state->second.physicsAuthority.forgetStamp();
+        }
+        it = physicsRoots.erase(it); // Main-task-only retirement; cheap rejection history remains in State.
+    }
 }
 void queuePinCollection() {
     if (tasks) tasks->AddTask([] { std::lock_guard lock(mutex); collectPins(); });
@@ -260,6 +284,7 @@ void quarantine(State& state, std::string error) {
     revokeSourceBootstrap(state);
     state.quarantined = true; state.runtimeSerial = 0; state.runtimePointer = nullptr;
     state.runtimeHandle.reset(); state.cache.clear();
+    state.physicsAuthority.reject(claw::PhysicsRejection::identity);
     state.vrBody = {}; state.vrGraphs = {};
     logError(state, std::move(error));
 }
@@ -327,6 +352,17 @@ std::uint64_t newNamespace() {
     return value ? value : 1;
 }
 
+const std::array<std::uint64_t, 2> physicsProcessNonce{newNamespace(), newNamespace()};
+std::uint64_t physicsSessionRevision{1}, physicsSessionWorld{};
+bool physicsSessionAuthorized{};
+std::string physicsSessionToken() {
+    if (!enabled || !physicsSessionRevision || !physicsSessionWorld || physicsSessionWorld != epoch) return {};
+    return "CLAW.Physics.2/" + std::to_string(physicsProcessNonce[0]) + "/" +
+        std::to_string(physicsProcessNonce[1]) + "/" + std::to_string(physicsSessionWorld) + "/" + std::to_string(physicsSessionRevision);
+}
+bool physicsSessionMatches(std::string_view expected) { return !expected.empty() && expected == physicsSessionToken(); }
+claw::PhysicsOwner physicsOwner(const State& state) { return {epoch.load(), state.runtimeSerial}; }
+
 ::TESObjectREFR* skeeReference(RE::Actor* actor);
 void captureSources(RE::Actor* actor, claw::MorphLink& link, claw::Sex boundSex, claw::HumanTraits& humanTraits);
 State* stateFor(RE::Actor* actor, bool create, bool adoptDefaults = true) {
@@ -361,6 +397,7 @@ State* stateFor(RE::Actor* actor, bool create, bool adoptDefaults = true) {
             return &state;
         }
         state.runtimeHandle = runtime; state.runtimePointer = actor; state.runtimeSerial = nextRuntimeSerial++;
+        state.physicsAuthority = claw::PhysicsAuthority{{epoch.load(), state.runtimeSerial}};
         return &state;
     }
     if (!create || !handle || states.size() >= maxActors || nextIdentity == std::numeric_limits<std::uint64_t>::max() ||
@@ -393,6 +430,7 @@ State* stateFor(RE::Actor* actor, bool create, bool adoptDefaults = true) {
     state.identity = nextIdentity++;
     state.vmHandle = handle;
     state.runtimeHandle = runtime; state.runtimePointer = actor; state.runtimeSerial = nextRuntimeSerial++;
+    state.physicsAuthority = claw::PhysicsAuthority{{epoch.load(), state.runtimeSerial}};
     return &states.emplace(id, std::move(state)).first->second;
 }
 
@@ -481,8 +519,50 @@ void offerSourceBootstrap(RE::Actor* actor) {
     sourceBootstrapEvent(actor, state, false);
 }
 
+claw::PhysicsRejection physicsRejection(std::string_view condition) {
+    if (condition == "identity") return claw::PhysicsRejection::identity;
+    if (condition == "provider") return claw::PhysicsRejection::provider;
+    if (condition == "model") return claw::PhysicsRejection::model;
+    if (condition == "weight") return claw::PhysicsRejection::weight;
+    if (condition == "domain") return claw::PhysicsRejection::domain;
+    if (condition == "token-limit") return claw::PhysicsRejection::tokenLimit;
+    return claw::PhysicsRejection::none;
+}
+
+void rejectPhysics(RE::Actor* actor, PhysicsBinding& binding, claw::PhysicsRejection reason) {
+    const auto state = states.find(actor->GetFormID());
+    if (state != states.end() && boundTo(state->second, binding.pointer) && state->second.runtimeSerial == binding.runtime) {
+        state->second.physicsAuthority.reject(reason);
+        binding.condition = state->second.physicsAuthority.condition();
+    } else binding.condition = "identity";
+    binding.ready = false; binding.delivered = false; binding.observation.invalidate();
+    physicsPopulationBlocked.insert_or_assign(actor->GetFormID(), binding.runtime);
+    physicsEvent(actor, binding.condition);
+}
+
+// Called only on existing main-task paths, and only for one of the sixteen
+// physical registrations/pending requests/cleanup contexts. Virgin State is cheap.
+bool observePhysicsContext(RE::Actor* actor, State& state) {
+    if (!state.physicsAuthority.engaged()) return true;
+    const auto binding = physicsBindings.find(actor->GetFormID());
+    if (binding == physicsBindings.end() && !physicsRegistrationRequests.contains(actor)) return true;
+    const auto* base = actor->GetActorBase();
+    const auto sex = base ? static_cast<int>(base->GetSex()) : -1;
+    const bool loaded = actor->Is3DLoaded();
+    RE::NiPointer<RE::NiAVObject> current{loaded ? actor->Get3D(false) : nullptr};
+    if (!physicsRoots.contains(actor->GetFormID()) && physicsRoots.size() >= 16) return false;
+    const claw::PhysicsBodyStamp stamp{reinterpret_cast<std::uintptr_t>(actor->GetRace()),
+        reinterpret_cast<std::uintptr_t>(current.get()), sex, beastRace && actor->GetRace() == beastRace, loaded};
+    state.physicsAuthority.observe(stamp); // Old root remains retained during comparison.
+    auto& lease = physicsRoots[actor->GetFormID()];
+    lease.owner = physicsOwner(state); lease.actor = actor; lease.root = std::move(current);
+    return true;
+}
+
 void publishPhysics(RE::Actor* actor, PhysicsBinding& binding) {
-    if (nextPhysicsSnapshot >= 0x01000000U) { binding.condition = "token-limit"; binding.ready = false; return; }
+    const auto state = states.find(actor->GetFormID());
+    if (state == states.end() || !state->second.physicsAuthority.publishable(physicsOwner(state->second), binding.authorityRevision)) return;
+    if (nextPhysicsSnapshot >= 0x01000000U) { rejectPhysics(actor, binding, claw::PhysicsRejection::tokenLimit); return; }
     binding.snapshot = nextPhysicsSnapshot++; binding.ready = true; binding.delivered = false;
     physicsEvent(actor, "snapshot", binding.snapshot);
 }
@@ -518,14 +598,23 @@ void startPhysicsWorker() {
                 const auto state = states.find(job.id);
                 if (!actor || actor != binding.pointer || !currentOwner(actor) || state == states.end() ||
                     state->second.quarantined || !boundTo(state->second, actor) || state->second.runtimeSerial != binding.runtime ||
+                    !state->second.physicsAuthority.publishable(physicsOwner(state->second), binding.authorityRevision)) return;
+                if (!observePhysicsContext(actor, state->second)) { rejectPhysics(actor, binding, claw::PhysicsRejection::identity); return; }
+                if (!state->second.physicsAuthority.publishable(physicsOwner(state->second), binding.authorityRevision) ||
                     !actor->Is3DLoaded() || reinterpret_cast<std::uintptr_t>(actor->Get3D()) != job.root || actor->GetRace() != beastRace) return;
+                if (!morphs) { rejectPhysics(actor, binding, claw::PhysicsRejection::provider); return; }
                 const auto* base = actor->GetActorBase();
                 const float rawWeight = base ? base->weight : std::numeric_limits<float>::quiet_NaN();
-                if (!base || !std::isfinite(rawWeight) || rawWeight < 0 || rawWeight > 100 ||
-                    rawWeight / 100.0F != job.weight) return;
+                if (!base) { rejectPhysics(actor, binding, claw::PhysicsRejection::identity); return; }
+                if (!std::isfinite(rawWeight) || rawWeight < 0 || rawWeight > 100) {
+                    rejectPhysics(actor, binding, claw::PhysicsRejection::weight); return;
+                }
+                if (rawWeight / 100.0F != job.weight) return;
                 const auto actualSex = base->GetSex();
                 if ((actualSex != RE::SEX::kMale && actualSex != RE::SEX::kFemale) ||
-                    (actualSex == RE::SEX::kFemale) != binding.female) return;
+                    (actualSex == RE::SEX::kFemale) != binding.female) {
+                    rejectPhysics(actor, binding, claw::PhysicsRejection::identity); return;
+                }
                 // A writer can change a foreign key while the pure fit runs.
                 // Re-read the exact provider aggregate before publishing it.
                 for (std::size_t index = 0; index < binding.names.size(); ++index)
@@ -534,9 +623,8 @@ void startPhysicsWorker() {
                     }
                 binding.needsFit = false;
                 if (!error.empty()) {
-                    binding.ready = false; binding.condition = "domain";
-                    physicsPopulationBlocked.insert_or_assign(job.id, binding.runtime);
-                    SKSE::log::warn("CLAW physics fit: {}", error); physicsEvent(actor, "domain"); return;
+                    SKSE::log::warn("CLAW physics fit: {}", error);
+                    rejectPhysics(actor, binding, claw::PhysicsRejection::domain); return;
                 }
                 binding.capsules = std::move(capsules); publishPhysics(actor, binding);
             });
@@ -568,18 +656,17 @@ void observePhysics(RE::Actor* actor) {
     const auto* observedBase = actor->GetActorBase();
     const float rawWeight = observedBase ? observedBase->weight : std::numeric_limits<float>::quiet_NaN();
     if (binding.pointer != actor) {
-        binding.ready = false; binding.observation.invalidate();
-        if (binding.condition != "identity" && witness && witness.get() == binding.pointer)
-            physicsEvent(witness.get(), "identity");
-        binding.condition = "identity";
+        if (state != states.end() && state->second.runtimeSerial == binding.runtime &&
+            state->second.physicsAuthority.matches({binding.world, binding.runtime}))
+            state->second.physicsAuthority.reject(claw::PhysicsRejection::identity);
+        binding.ready = false; binding.observation.invalidate(); binding.condition = "identity";
+        if (witness && witness.get() == binding.pointer) physicsEvent(witness.get(), "identity");
         return;
     }
     auto condition = [&]() -> std::string {
         if (!enabled || binding.world != epoch || !currentOwner(actor) || !witness || witness.get() != actor ||
             binding.pointer != actor || state == states.end() || state->second.quarantined ||
             !boundTo(state->second, actor) || state->second.runtimeSerial != binding.runtime) return "identity";
-        if (!beastRace || actor->GetRace() != beastRace) return "human";
-        if (!actor->Is3DLoaded() || !actor->Get3D()) return "unloaded";
         if (!morphs) return "provider";
         const auto* base = observedBase;
         if (!base) return "identity";
@@ -588,12 +675,25 @@ void observePhysics(RE::Actor* actor) {
         if ((sex != RE::SEX::kMale && sex != RE::SEX::kFemale) || (sex == RE::SEX::kFemale) != binding.female) return "identity";
         return {};
     }();
+    if (!condition.empty()) { rejectPhysics(actor, binding, physicsRejection(condition)); return; }
+    if (!observePhysicsContext(actor, state->second)) {
+        rejectPhysics(actor, binding, claw::PhysicsRejection::identity); return;
+    }
+    auto& authority = state->second.physicsAuthority;
+    if (authority.rejected()) {
+        binding.ready = false; binding.observation.invalidate(); binding.observation.root = 0;
+        const std::string terminal{authority.condition()};
+        if (binding.condition != terminal) binding.delivered = false;
+        binding.condition = terminal;
+        physicsPopulationBlocked.insert_or_assign(actor->GetFormID(), binding.runtime);
+        if (!binding.delivered) physicsEvent(actor, binding.condition);
+        return;
+    }
+    if (!authority.renewable(physicsOwner(state->second))) { binding.ready = false; return; }
+    if (!beastRace || actor->GetRace() != beastRace) condition = "human";
+    else if (!actor->Is3DLoaded() || !actor->Get3D()) condition = "unloaded";
     const auto root = reinterpret_cast<std::uintptr_t>(actor->Get3D());
-    if (condition.empty() && binding.observation.root && binding.observation.root != root) condition = "model";
-    if (condition == "model") physicsPopulationBlocked.insert_or_assign(actor->GetFormID(), binding.runtime);
     if (!condition.empty()) {
-        if (condition == "weight" || condition == "identity" || condition == "provider")
-            physicsPopulationBlocked.insert_or_assign(actor->GetFormID(), binding.runtime);
         binding.ready = false; binding.observation.invalidate();
         binding.observation.root = 0;
         if (binding.condition != condition) binding.delivered = false;
@@ -601,11 +701,7 @@ void observePhysics(RE::Actor* actor) {
         if (!binding.delivered) physicsEvent(actor, condition);
         return;
     }
-    if (!binding.condition.empty()) {
-        if (binding.condition == "domain" || binding.condition == "weight" || binding.condition == "provider" ||
-            binding.condition == "identity" || binding.condition == "token-limit") {
-            physicsEvent(actor, binding.condition); return; // Requires fresh explicit qualification.
-        }
+    if (!binding.condition.empty() || binding.authorityRevision != authority.revision()) {
         if (binding.condition != "waiting") binding.delivered = false;
         binding.condition = "waiting";
         if (!binding.delivered) physicsEvent(actor, "ready");
@@ -617,10 +713,7 @@ void observePhysics(RE::Actor* actor) {
     if (!claw::validPhysicsValues(values)) {
         // Reject before triggering an engine update on known-invalid provider
         // data. Expire the old snapshot and reuse fitted-domain cleanup.
-        binding.ready = false; binding.observation.invalidate(); binding.delivered = false;
-        binding.condition = "domain";
-        physicsPopulationBlocked.insert_or_assign(actor->GetFormID(), binding.runtime);
-        physicsEvent(actor, "domain");
+        rejectPhysics(actor, binding, claw::PhysicsRejection::domain);
         return;
     }
     // Apply the provider's current effective coefficients on this main task.
@@ -631,6 +724,7 @@ void observePhysics(RE::Actor* actor) {
         physicsEvent(actor, "refit", binding.snapshot); // Old capsules are no longer current geometry.
         morphs->ApplyBodyMorphs(skeeReference(actor), false);
         if (!currentOwner(actor) || actor->GetRace() != beastRace || reinterpret_cast<std::uintptr_t>(actor->Get3D()) != root) {
+            if (currentOwner(actor)) observePhysicsContext(actor, state->second);
             invalidatePhysics(actor->GetFormID()); return;
         }
     }
@@ -738,6 +832,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         morphProfiles.defaultFor(actorSex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male);
     State* state = stateFor(actor, beast || defaultDeclared);
     if (!state || state->quarantined || !boundTo(*state, actor)) return;
+    if (!observePhysicsContext(actor, *state)) state->physicsAuthority.reject(claw::PhysicsRejection::identity);
     if (actorSex != RE::SEX::kMale && actorSex != RE::SEX::kFemale) { logError(*state, "actor has no readable NPC sex"); return; }
     const auto graphTransition = state->vrBody.observe(vrBodyInput(actor, *state, beast));
     if (graphTransition.changed) {
@@ -872,6 +967,7 @@ void scan() {
         for (const auto& [id, state] : states) {
             if (emitted >= 16) break;
             if (!state.runtimeSerial || state.quarantined || physicsBindings.contains(id)) continue;
+            if (state.physicsAuthority.engaged()) continue; // Released/rejected history needs explicit fresh qualification.
             const auto blocked = physicsPopulationBlocked.find(id);
             if (blocked != physicsPopulationBlocked.end() && blocked->second == state.runtimeSerial) continue;
             const auto witness = std::as_const(state.runtimeHandle).get();
@@ -999,7 +1095,7 @@ void revert(SKSE::SerializationInterface*) {
         std::lock_guard lock(mutex);
         claw::appearance::runtime.reset();
         states.clear(); requestChannels.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = 0; nextIdentity = 1;
-        physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
+        physicsSessionAuthorized = false; physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
         obodySourcePopulationEnabled = false;
     }
     queuePinCollection(); // Never release the last intrusive pin on a VM callback.
@@ -1010,7 +1106,7 @@ void load(SKSE::SerializationInterface* interface) {
     std::lock_guard lock(mutex);
     claw::appearance::runtime.reset();
     states.clear(); requestChannels.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = 0; nextIdentity = 1;
-    physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
+    physicsSessionAuthorized = false; physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
     obodySourcePopulationEnabled = false;
     std::uint32_t type{}, version{}, length{};
     bool sessionFound = false;
@@ -1444,66 +1540,164 @@ bool claimSourceBootstrap(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t
     return true;
 }
 
-bool physicsRegister(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation,
-    std::vector<RE::BSFixedString> names, RE::BSFixedString model, RE::BSFixedString evidence) {
-    if (!actor || generation < 0 || !tasks || !enabled || !model.c_str()[0] || !evidence.c_str()[0] ||
+// Admission is a cached VM boundary; all actor/graph/provider reads stay on the
+// existing main task. The fixed caller token is never adopted from current state.
+bool registerPhysics(RE::Actor* actor, std::int32_t generation,
+    std::vector<RE::BSFixedString> names, RE::BSFixedString model, RE::BSFixedString evidence,
+    RE::BSFixedString expectedSession, claw::PhysicsAdmission admission) {
+    if (!actor || generation < 0 || !tasks || !model.c_str()[0] || !evidence.c_str()[0] ||
         std::strlen(model.c_str()) > 160 || std::strlen(evidence.c_str()) > 1024) return false;
     std::vector<std::string> ordered;
     for (const auto& name : names) ordered.emplace_back(name.c_str());
     if (!claw::validPhysicsNames(ordered)) return false;
     std::lock_guard lock(mutex);
+    if (!physicsSessionAuthorized || !physicsSessionMatches(expectedSession.c_str()) ||
+        (admission == claw::PhysicsAdmission::initialPopulation && !physicsPopulationEnabled)) return false;
+    const auto cached = states.find(actor->formID);
+    if (cached == states.end() || cached->second.quarantined || !boundTo(cached->second, actor)) return false;
+    auto& state = cached->second;
+    const auto old = physicsBindings.find(actor->formID);
+    if (old != physicsBindings.end() && (old->second.pointer != actor || old->second.runtime != state.runtimeSerial)) return false;
+    if (admission == claw::PhysicsAdmission::renewal &&
+        (old == physicsBindings.end() || !old->second.active || old->second.names != ordered || old->second.model != model.c_str() ||
+            generation < old->second.generation)) return false;
+    // Bound the union, including queued registrations, before retaining actors/roots.
+    std::vector<RE::Actor*> contexts;
+    for (const auto& [id, binding] : physicsBindings) contexts.push_back(binding.pointer);
+    for (const auto& [pointer, request] : physicsRegistrationRequests)
+        if (std::find(contexts.begin(), contexts.end(), pointer) == contexts.end()) contexts.push_back(pointer);
+    if (std::find(contexts.begin(), contexts.end(), actor) == contexts.end() && contexts.size() >= 16) return false;
     auto pin = pinActor(actor);
     if (!pin || nextPhysicsRegistration == std::numeric_limits<std::uint64_t>::max()) return false;
     const auto request = nextPhysicsRegistration++;
+    const auto owner = physicsOwner(state);
+    const auto ticket = state.physicsAuthority.admit(admission, owner, request);
+    if (!ticket) return false;
     physicsRegistrationRequests.insert_or_assign(actor, request);
-    const auto token = epoch.load();
+    if (old != physicsBindings.end()) {
+        old->second.ready = false; old->second.observation.invalidate(); // Pending grant cannot publish/append old snapshot.
+    }
     tasks->AddTask([pin = std::move(pin), generation, ordered = std::move(ordered),
-        model = std::string(model.c_str()), evidence = std::string(evidence.c_str()), token, request] {
+        model = std::string(model.c_str()), evidence = std::string(evidence.c_str()),
+        expectedSession = std::string(expectedSession.c_str()), ticket = *ticket] {
         std::lock_guard lock(mutex);
         auto* target = pin->actor.get();
         const auto pending = physicsRegistrationRequests.find(target);
-        if (pending == physicsRegistrationRequests.end() || pending->second != request) return;
-        physicsRegistrationRequests.erase(pending);
-        if (!enabled || token != epoch || !currentOwner(target) || !target->GetActorBase()) return;
-        auto* state = stateFor(target, true);
-        if (!state || state->quarantined || !boundTo(*state, target)) return;
-        if (!physicsBindings.contains(target->GetFormID()) && physicsBindings.size() >= 16) return;
+        if (pending == physicsRegistrationRequests.end() || pending->second != ticket.request) return;
+        const auto cached = states.find(target->formID);
+        auto finish = [&] {
+            physicsRegistrationRequests.erase(target);
+            if (cached != states.end()) cached->second.physicsAuthority.cancel(ticket);
+            collectPins();
+        };
+        if (!physicsSessionAuthorized || !physicsSessionMatches(expectedSession) || ticket.owner.world != epoch || !currentOwner(target) ||
+            cached == states.end() || cached->second.quarantined || !boundTo(cached->second, target) ||
+            cached->second.runtimeSerial != ticket.owner.runtime || !target->GetActorBase() ||
+            (ticket.admission == claw::PhysicsAdmission::initialPopulation && !physicsPopulationEnabled)) { finish(); return; }
+        auto& state = cached->second;
+        collectPins(); // Retire previously released contexts only on this main task.
+        if (!observePhysicsContext(target, state)) { state.physicsAuthority.reject(claw::PhysicsRejection::identity); finish(); return; }
         const auto sex = target->GetActorBase()->GetSex();
-        if (sex != RE::SEX::kMale && sex != RE::SEX::kFemale) return;
+        if (sex != RE::SEX::kMale && sex != RE::SEX::kFemale) { state.physicsAuthority.reject(claw::PhysicsRejection::identity); finish(); return; }
+        if (!morphs) { state.physicsAuthority.reject(claw::PhysicsRejection::provider); finish(); return; }
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
         const auto& compiled = claw::physics::CompiledModel(sex == RE::SEX::kFemale);
         if (compiled.identity != model || compiled.morphs != ordered) {
-            SKSE::log::warn("CLAW physics host/model identity or ordered morph names differ from compiled fit"); return;
+            SKSE::log::warn("CLAW physics host/model identity or ordered morph names differ from compiled fit");
+            state.physicsAuthority.reject(claw::PhysicsRejection::model); finish(); return;
         }
 #endif
-        PhysicsBinding binding;
-        binding.actor = target->GetHandle(); binding.pointer = target;
-        binding.runtime = state->runtimeSerial; binding.world = token; binding.registration = request; binding.generation = generation;
-        binding.names = ordered; binding.model = model; binding.evidence = evidence;
-        binding.female = sex == RE::SEX::kFemale;
-        physicsBindings.insert_or_assign(target->GetFormID(), std::move(binding));
+        if (!state.physicsAuthority.commit(ticket, physicsOwner(state), pending->second)) { finish(); return; }
+        physicsRegistrationRequests.erase(target);
+        auto previous = physicsBindings.find(target->GetFormID());
+        if (ticket.admission == claw::PhysicsAdmission::renewal && previous != physicsBindings.end()) {
+            auto& binding = previous->second;
+            binding.registration = ticket.request; binding.generation = generation;
+            binding.authorityRevision = state.physicsAuthority.revision();
+            binding.ready = false; binding.delivered = false;
+#if defined(CLAW_PHYSICS_MODEL_HEADER)
+            binding.fitPending = false;
+#endif
+            binding.condition.clear(); binding.observation.invalidate(); binding.observation.root = 0;
+        } else {
+            PhysicsBinding binding;
+            binding.actor = target->GetHandle(); binding.pointer = target;
+            binding.runtime = state.runtimeSerial; binding.world = ticket.owner.world;
+            binding.registration = ticket.request; binding.generation = generation;
+            binding.authorityRevision = state.physicsAuthority.revision();
+            binding.names = ordered; binding.model = model; binding.evidence = evidence;
+            binding.female = sex == RE::SEX::kFemale;
+            physicsBindings.insert_or_assign(target->GetFormID(), std::move(binding));
+        }
         observePhysics(target);
     });
     return true;
 }
 
-bool physicsSetPopulation(RE::StaticFunctionTag*, bool optIn) {
+bool physicsRegister(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation,
+    std::vector<RE::BSFixedString> names, RE::BSFixedString model, RE::BSFixedString evidence, RE::BSFixedString expectedSession) {
+    return registerPhysics(actor, generation, std::move(names), model, evidence, expectedSession, claw::PhysicsAdmission::renewal);
+}
+bool physicsRegisterQualified(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation,
+    std::vector<RE::BSFixedString> names, RE::BSFixedString model, RE::BSFixedString evidence, RE::BSFixedString expectedSession) {
+    return registerPhysics(actor, generation, std::move(names), model, evidence, expectedSession, claw::PhysicsAdmission::qualified);
+}
+bool physicsRegisterInitial(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation,
+    std::vector<RE::BSFixedString> names, RE::BSFixedString model, RE::BSFixedString evidence, RE::BSFixedString expectedSession) {
+    return registerPhysics(actor, generation, std::move(names), model, evidence, expectedSession, claw::PhysicsAdmission::initialPopulation);
+}
+// Explicit session change revokes all registration authorizations atomically.
+// It does not assert provider reset or revive cleanup authority for any old ledger.
+std::string rotatePhysicsSession(bool authorize) {
+    if (!enabled || !physicsSessionRevision) return {};
+    physicsSessionAuthorized = authorize;
+    if (authorize) physicsSessionWorld = epoch.load(); // Issued world is immutable until another explicit begin.
+    physicsSessionRevision = physicsSessionRevision == std::numeric_limits<std::uint64_t>::max() ? 0 : physicsSessionRevision + 1;
+    physicsPopulationEnabled = false;
+    for (const auto& [pointer, request] : physicsRegistrationRequests) {
+        const auto state = states.find(pointer->formID);
+        if (state != states.end() && boundTo(state->second, pointer)) state->second.physicsAuthority.suspend();
+    }
+    physicsRegistrationRequests.clear();
+    for (auto& [id, binding] : physicsBindings) {
+        const auto state = states.find(id);
+        if (state != states.end() && state->second.runtimeSerial == binding.runtime && boundTo(state->second, binding.pointer))
+            state->second.physicsAuthority.suspend();
+        binding.active = false; binding.ready = false; binding.observation.invalidate();
+    }
+    queuePinCollection();
+    return physicsSessionToken();
+}
+RE::BSFixedString physicsBeginSession(RE::StaticFunctionTag*) {
+    std::lock_guard lock(mutex); return RE::BSFixedString(rotatePhysicsSession(true));
+}
+RE::BSFixedString physicsEndSession(RE::StaticFunctionTag*, RE::BSFixedString expectedSession) {
     std::lock_guard lock(mutex);
-    if (optIn && !enabled) return false;
+    return RE::BSFixedString(physicsSessionMatches(expectedSession.c_str()) ? rotatePhysicsSession(false) : std::string{});
+}
+RE::BSFixedString physicsSession(RE::StaticFunctionTag*) {
+    std::lock_guard lock(mutex); return RE::BSFixedString(physicsSessionToken());
+}
+bool physicsSetPopulation(RE::StaticFunctionTag*, bool optIn, RE::BSFixedString expectedSession) {
+    std::lock_guard lock(mutex);
+    if (!physicsSessionMatches(expectedSession.c_str()) || (optIn && !physicsSessionAuthorized)) return false;
     physicsPopulationEnabled = optIn;
-    if (optIn) physicsPopulationBlocked.clear(); // Fresh explicit current-session qualification.
-    return true;
+    return true; // Never clears per-runtime tombstones.
 }
 
-void physicsUnregister(RE::StaticFunctionTag*, RE::Actor* actor, bool retainForCleanup) {
+void physicsUnregister(RE::StaticFunctionTag*, RE::Actor* actor, bool retainForCleanup, RE::BSFixedString expectedSession) {
     if (!actor) return;
     std::lock_guard lock(mutex);
+    if (!physicsSessionMatches(expectedSession.c_str())) return;
     physicsRegistrationRequests.erase(actor);
+    const auto state = states.find(actor->formID);
+    if (state != states.end() && boundTo(state->second, actor)) state->second.physicsAuthority.suspend();
     const auto found = physicsBindings.find(actor->formID);
     if (found != physicsBindings.end() && found->second.pointer == actor) {
         if (retainForCleanup) { found->second.active = false; found->second.ready = false; }
         else physicsBindings.erase(found);
     }
+    queuePinCollection(); // Sticky cheap authority survives; root release stays on main task.
 }
 
 bool physicsActorCurrent(RE::StaticFunctionTag*, RE::Actor* actor) {
@@ -1512,8 +1706,8 @@ bool physicsActorCurrent(RE::StaticFunctionTag*, RE::Actor* actor) {
     const auto found = physicsBindings.find(actor->formID);
     const auto state = states.find(actor->formID);
     return found != physicsBindings.end() && found->second.pointer == actor && found->second.world == epoch &&
-        found->second.condition != "identity" && found->second.condition != "provider" && state != states.end() &&
-        !state->second.quarantined && boundTo(state->second, actor) && state->second.runtimeSerial == found->second.runtime;
+        state != states.end() && !state->second.quarantined && boundTo(state->second, actor) &&
+        state->second.runtimeSerial == found->second.runtime && state->second.physicsAuthority.cleanupAllowed(physicsOwner(state->second));
 }
 
 const PhysicsBinding* physicsSnapshot(RE::Actor* actor, std::int32_t generation, std::int32_t snapshot) {
@@ -1524,7 +1718,25 @@ const PhysicsBinding* physicsSnapshot(RE::Actor* actor, std::int32_t generation,
     const auto state = states.find(actor->formID);
     return binding.pointer == actor && binding.world == epoch && binding.ready && binding.generation == generation &&
         binding.snapshot == static_cast<std::uint32_t>(snapshot) && state != states.end() && !state->second.quarantined &&
-        boundTo(state->second, actor) && state->second.runtimeSerial == binding.runtime ? &binding : nullptr;
+        boundTo(state->second, actor) && state->second.runtimeSerial == binding.runtime &&
+        state->second.physicsAuthority.publishable(physicsOwner(state->second), binding.authorityRevision) ? &binding : nullptr;
+}
+
+bool physicsConditionCurrent(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString condition, RE::BSFixedString expectedSession) {
+    if (!actor) return false;
+    std::lock_guard lock(mutex);
+    const auto found = physicsBindings.find(actor->formID);
+    const auto state = states.find(actor->formID);
+    if (!physicsSessionMatches(expectedSession.c_str()) || found == physicsBindings.end() || state == states.end() ||
+        !found->second.active || found->second.pointer != actor || found->second.world != epoch ||
+        state->second.quarantined || !boundTo(state->second, actor) || state->second.runtimeSerial != found->second.runtime) return false;
+    const auto& authority = state->second.physicsAuthority;
+    if (authority.pending()) return false;
+    const std::string_view kind{condition.c_str()};
+    if (kind == "renew") return found->second.condition == "waiting" && authority.renewable(physicsOwner(state->second));
+    if (kind == "ready") return found->second.condition == "waiting" && authority.renewable(physicsOwner(state->second));
+    return found->second.condition == kind && (authority.rejected() ||
+        ((kind == "human" || kind == "unloaded") && authority.renewable(physicsOwner(state->second))));
 }
 
 bool physicsSnapshotCurrent(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation, std::int32_t snapshot) {
@@ -1534,7 +1746,9 @@ bool physicsRefitPending(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t 
     if (!actor || !enabled || previousSnapshot < 0) return false;
     std::lock_guard lock(mutex);
     const auto found = physicsBindings.find(actor->formID);
-    return found != physicsBindings.end() && found->second.pointer == actor && found->second.world == epoch &&
+    const auto state = states.find(actor->formID);
+    return state != states.end() && state->second.physicsAuthority.publishable(physicsOwner(state->second), found == physicsBindings.end() ? 0 : found->second.authorityRevision) &&
+        found != physicsBindings.end() && found->second.pointer == actor && found->second.world == epoch &&
         found->second.active && !found->second.ready && found->second.generation == generation &&
         found->second.snapshot == static_cast<std::uint32_t>(previousSnapshot) && found->second.condition.empty();
 }
@@ -1613,6 +1827,12 @@ bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("RequestSourceBootstrap", script, requestSourceBootstrap);
     vm->RegisterFunction("ClaimSourceBootstrap", script, claimSourceBootstrap);
     vm->RegisterFunction("RegisterActor", "CLAWPhysicsNative", physicsRegister);
+    vm->RegisterFunction("RegisterQualifiedActor", "CLAWPhysicsNative", physicsRegisterQualified);
+    vm->RegisterFunction("RegisterInitialActor", "CLAWPhysicsNative", physicsRegisterInitial);
+    vm->RegisterFunction("GetSessionToken", "CLAWPhysicsNative", physicsSession);
+    vm->RegisterFunction("BeginSessionToken", "CLAWPhysicsNative", physicsBeginSession);
+    vm->RegisterFunction("EndSession", "CLAWPhysicsNative", physicsEndSession);
+    vm->RegisterFunction("ConditionCurrent", "CLAWPhysicsNative", physicsConditionCurrent);
     vm->RegisterFunction("SetPopulationEnabled", "CLAWPhysicsNative", physicsSetPopulation);
     vm->RegisterFunction("UnregisterActor", "CLAWPhysicsNative", physicsUnregister);
     vm->RegisterFunction("ActorCurrent", "CLAWPhysicsNative", physicsActorCurrent);
@@ -1694,7 +1914,7 @@ void message(SKSE::MessagingInterface::Message* event) {
             std::lock_guard lock(mutex);
             requestChannels.clear(); // Pool keeps pins until main-task collection.
             physicsBindings.clear(); physicsRegistrationRequests.clear();
-            physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
+            physicsSessionAuthorized = false; physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
             obodySourcePopulationEnabled = false;
         }
         break;
@@ -1763,7 +1983,7 @@ void message(SKSE::MessagingInterface::Message* event) {
         {
             std::lock_guard lock(mutex);
             states.clear(); requestChannels.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = newNamespace(); nextIdentity = 1;
-            physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
+            physicsSessionAuthorized = false; physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
             obodySourcePopulationEnabled = false;
         }
         [[fallthrough]];

@@ -14,6 +14,7 @@ String _lastResetEvidence = ""
 Int _sessionGeneration = 0
 Int _enabledGeneration = -1
 String _activationEvidence = ""
+String _runtimeSession = ""
 Bool[] _automatic
 String[] _automaticEvidence
 Bool[] _automaticProvider
@@ -30,17 +31,25 @@ Int Function GetSessionGeneration()
 EndFunction
 
 Bool Function IntegrationEnabled()
-  Return IntegrationOptIn && _enabledGeneration == _sessionGeneration && _activationEvidence != ""
+  Return IntegrationOptIn && _enabledGeneration == _sessionGeneration && _activationEvidence != "" && RuntimeCurrent(_runtimeSession)
 EndFunction
 
-Bool Function EnableIntegration(Int expectedSessionGeneration, String evidence)
-  If _busy || evidence == "" || expectedSessionGeneration != _sessionGeneration || !IsRunning() || !Initialize()
+Bool Function RuntimeCurrent(String expectedRuntime)
+  Return expectedRuntime != "" && expectedRuntime == CLAWPhysicsNative.GetSessionToken()
+EndFunction
+
+Bool Function EnableIntegration(Int expectedSessionGeneration, String evidence, String expectedRuntime = "")
+  If !RuntimeCurrent(expectedRuntime) || _busy || evidence == "" || expectedSessionGeneration != _sessionGeneration || !IsRunning() || !Initialize()
     Return False
   EndIf
+  If !RuntimeCurrent(expectedRuntime) || expectedSessionGeneration != _sessionGeneration
+    Return False
+  EndIf
+  _runtimeSession = expectedRuntime
   _activationEvidence = evidence
   _enabledGeneration = expectedSessionGeneration
   IntegrationOptIn = True
-  Return expectedSessionGeneration == _sessionGeneration
+  Return expectedSessionGeneration == _sessionGeneration && RuntimeCurrent(expectedRuntime)
 EndFunction
 
 String Function GetLastError()
@@ -107,7 +116,10 @@ Function EnsureAutomaticArrays()
   _populationSlots = new Bool[16]
 EndFunction
 
-Int Function EnableAutomaticPopulation(String evidence, Bool provider, Bool exclusiveIndices, Bool fittedDomain)
+Int Function EnableAutomaticPopulation(String evidence, Bool provider, Bool exclusiveIndices, Bool fittedDomain, String expectedRuntime = "")
+  If !RuntimeCurrent(expectedRuntime) || expectedRuntime != _runtimeSession
+    Return Fail(-6, "Explicit current runtime session is required")
+  EndIf
   If _busy
     Return -8
   EndIf
@@ -123,7 +135,7 @@ Int Function EnableAutomaticPopulation(String evidence, Bool provider, Bool excl
   _populationEvidence = evidence
   _populationModel = CLAWPhysicsData.ModelIdentity()
   RegisterForModEvent("CLAWPhysics_Candidate", "OnPhysicsCandidate")
-  _populationEnabled = CLAWPhysicsNative.SetPopulationEnabled(True)
+  _populationEnabled = CLAWPhysicsNative.SetPopulationEnabled(True, expectedRuntime)
   If !_populationEnabled
     Return Fail(-5, "Native population registry is unavailable")
   EndIf
@@ -132,7 +144,7 @@ EndFunction
 
 Function DisableAutomaticPopulation()
   _populationEnabled = False
-  CLAWPhysicsNative.SetPopulationEnabled(False)
+  CLAWPhysicsNative.SetPopulationEnabled(False, _runtimeSession)
   If !Initialize()
     Return
   EndIf
@@ -147,12 +159,13 @@ Function DisableAutomaticPopulation()
 EndFunction
 
 Function OnPhysicsCandidate(String eventName, String kind, Float unused, Form sender)
+  String expectedRuntime = _runtimeSession
   If _busy || !_populationEnabled || !IntegrationEnabled() || !Initialize()
     Return
   EndIf
   If _populationModel != CLAWPhysicsData.ModelIdentity()
     _populationEnabled = False
-    CLAWPhysicsNative.SetPopulationEnabled(False)
+    CLAWPhysicsNative.SetPopulationEnabled(False, _runtimeSession)
     Fail(-5, "Population capsule model changed; fresh explicit qualification required")
     Return
   EndIf
@@ -167,7 +180,7 @@ Function OnPhysicsCandidate(String eventName, String kind, Float unused, Form se
       _busy = True
       Int assigned = AssignInternal(index, target)
       If assigned == 0
-        Int activated = EnableAutomaticInternal(index, target, _populationEvidence, True, True, True)
+        Int activated = EnableAutomaticInternal(index, target, _populationEvidence, True, True, True, expectedRuntime, True)
         If activated == 0
           _populationSlots[index] = True
         Else
@@ -185,18 +198,18 @@ EndFunction
 ; The caller explicitly qualifies this actor/session and the matching fitted
 ; model. This is a real opt-in path; every bool and evidence is then bound to
 ; this alias's actor. It never chooses an actor or guesses provider ownership.
-Int Function EnableAutomatic(Int index, Actor target, String evidence, Bool provider, Bool exclusiveIndices, Bool fittedDomain)
+Int Function EnableAutomatic(Int index, Actor target, String evidence, Bool provider, Bool exclusiveIndices, Bool fittedDomain, String expectedRuntime = "")
   If _busy
     Return -8
   EndIf
   _busy = True
-  Int outcome = EnableAutomaticInternal(index, target, evidence, provider, exclusiveIndices, fittedDomain)
+  Int outcome = EnableAutomaticInternal(index, target, evidence, provider, exclusiveIndices, fittedDomain, expectedRuntime, False)
   _busy = False
   Return outcome
 EndFunction
 
-Int Function EnableAutomaticInternal(Int index, Actor target, String evidence, Bool provider, Bool exclusiveIndices, Bool fittedDomain)
-  If !IntegrationEnabled()
+Int Function EnableAutomaticInternal(Int index, Actor target, String evidence, Bool provider, Bool exclusiveIndices, Bool fittedDomain, String expectedRuntime, Bool initialPopulation)
+  If !RuntimeCurrent(expectedRuntime) || expectedRuntime != _runtimeSession || !IntegrationEnabled()
     Return Fail(-6, "Current-session integration opt-in is required")
   EndIf
   CLAWPhysicsActor helper = SlotAt(index)
@@ -209,6 +222,17 @@ Int Function EnableAutomaticInternal(Int index, Actor target, String evidence, B
   If CLAWPhysicsData.NativeFitRequired() && CLAWPhysicsNative.GetModelIdentity() != CLAWPhysicsData.ModelIdentity()
     Return Fail(-5, "Distribution DLL and Papyrus capsule model identities differ")
   EndIf
+  ; A new grant never retires indices from an old provider. Cleanup uses the
+  ; old authority; unsafe/unreported ledgers need the separate reset acknowledgment.
+  If helper.GetAcceptedLedgerCount() > 0
+    helper.Cleanup()
+  EndIf
+  If helper.GetAcceptedLedgerCount() > 0
+    Return Fail(-5, "Retire the exact previous capsule ledger before a new grant")
+  EndIf
+  If !RuntimeCurrent(expectedRuntime) || expectedRuntime != _runtimeSession
+    Return Fail(-6, "Runtime session changed while enabling observer")
+  EndIf
   If !helper.QualifyForActor(target, helper.GetModelGeneration(), evidence, provider, exclusiveIndices, fittedDomain)
     Return Fail(-5, "Actor qualification changed while enabling its observer")
   EndIf
@@ -219,14 +243,17 @@ Int Function EnableAutomaticInternal(Int index, Actor target, String evidence, B
   _automaticFit[index] = fittedDomain
   _automaticLifecycle[index] = ""
   RegisterForModEvent("CLAWPhysics_Observation", "OnPhysicsObservation")
-  If !RegisterAutomatic(index, target)
+  If !RegisterAutomatic(index, target, expectedRuntime, True, initialPopulation)
     _automatic[index] = False
     Return Fail(-5, "Native observer registration was refused")
   EndIf
   Return 0
 EndFunction
 
-Bool Function RegisterAutomatic(Int index, Actor target)
+Bool Function RegisterAutomatic(Int index, Actor target, String expectedRuntime, Bool qualified = False, Bool initialPopulation = False)
+  If !RuntimeCurrent(expectedRuntime) || expectedRuntime != _runtimeSession
+    Return False
+  EndIf
   String[] names = new String[32]
   Int count = CLAWPhysicsData.MorphCount()
   If count < 1 || count > 32
@@ -239,10 +266,20 @@ Bool Function RegisterAutomatic(Int index, Actor target)
     names[morph] = CLAWPhysicsData.MorphName(morph)
     morph += 1
   EndWhile
-  Return CLAWPhysicsNative.RegisterActor(target, _slots[index].GetModelGeneration(), names, CLAWPhysicsData.ModelIdentity(), _automaticEvidence[index])
+  If initialPopulation
+    Return CLAWPhysicsNative.RegisterInitialActor(target, _slots[index].GetModelGeneration(), names, CLAWPhysicsData.ModelIdentity(), _automaticEvidence[index], expectedRuntime)
+  ElseIf qualified
+    Return CLAWPhysicsNative.RegisterQualifiedActor(target, _slots[index].GetModelGeneration(), names, CLAWPhysicsData.ModelIdentity(), _automaticEvidence[index], expectedRuntime)
+  EndIf
+  Return CLAWPhysicsNative.RegisterActor(target, _slots[index].GetModelGeneration(), names, CLAWPhysicsData.ModelIdentity(), _automaticEvidence[index], expectedRuntime)
 EndFunction
 
 Bool Function DisableAutomatic(Int index)
+  String expectedRuntime = _runtimeSession
+  Return DisableAutomaticForRuntime(index, expectedRuntime)
+EndFunction
+
+Bool Function DisableAutomaticForRuntime(Int index, String expectedRuntime)
   CLAWPhysicsActor helper = SlotAt(index)
   If helper == None
     Return False
@@ -254,7 +291,7 @@ Bool Function DisableAutomatic(Int index)
     target = helper.GetQualifiedActor()
   EndIf
   If nativeOwner && target != None
-    CLAWPhysicsNative.UnregisterActor(target, helper.GetAcceptedLedgerCount() > 0)
+    CLAWPhysicsNative.UnregisterActor(target, helper.GetAcceptedLedgerCount() > 0, expectedRuntime)
   EndIf
   Return nativeOwner
 EndFunction
@@ -262,6 +299,7 @@ EndFunction
 ; SKSE dispatches the registered callback by function name. PEX has the same
 ; callable representation for a void function and an event handler.
 Function OnPhysicsObservation(String eventName, String kind, Float tokenValue, Form sender)
+  String expectedRuntime = _runtimeSession
   ; Native repeats unacknowledged observations at its bounded two-second scan.
   If _busy || !IntegrationEnabled() || !Initialize()
     Return
@@ -274,7 +312,7 @@ Function OnPhysicsObservation(String eventName, String kind, Float tokenValue, F
   While index < _slotCount
     If _automatic[index] && _slots[index].GetActorReference() == target
       _busy = True
-      ProcessAutomatic(index, target, kind, tokenValue as Int)
+      ProcessAutomatic(index, target, kind, tokenValue as Int, expectedRuntime)
       _busy = False
       Return
     EndIf
@@ -282,7 +320,14 @@ Function OnPhysicsObservation(String eventName, String kind, Float tokenValue, F
   EndWhile
 EndFunction
 
-Function ProcessAutomatic(Int index, Actor target, String kind, Int token)
+Function ProcessAutomatic(Int index, Actor target, String kind, Int token, String expectedRuntime)
+  If !RuntimeCurrent(expectedRuntime) || expectedRuntime != _runtimeSession
+    Return
+  EndIf
+  ; Event names are wakeups. Native cached authority decides whether they remain current.
+  If kind != "snapshot" && kind != "refit" && !CLAWPhysicsNative.ConditionCurrent(target, kind, expectedRuntime)
+    Return
+  EndIf
   CLAWPhysicsActor helper = _slots[index]
   If ActorInOtherSlot(index, target)
     DisableAutomatic(index)
@@ -294,9 +339,9 @@ Function ProcessAutomatic(Int index, Actor target, String kind, Int token)
     If !CLAWPhysicsNative.SnapshotCurrent(target, generation, token)
       ; A Papyrus lifecycle event may precede the native receipt. Renew only
       ; after actual scoped cleanup; no provider-reset inference is made.
-      If helper.Cleanup() != 8 && helper.GetAcceptedLedgerCount() == 0
+      If CLAWPhysicsNative.ConditionCurrent(target, "renew", expectedRuntime) && helper.Cleanup() != 8 && helper.GetAcceptedLedgerCount() == 0
         If helper.QualifyForActor(target, generation, _automaticEvidence[index], _automaticProvider[index], _automaticIndices[index], _automaticFit[index])
-          RegisterAutomatic(index, target)
+          RegisterAutomatic(index, target, expectedRuntime)
         EndIf
       EndIf
       Return
@@ -321,7 +366,7 @@ Function ProcessAutomatic(Int index, Actor target, String kind, Int token)
     EndIf
     If helper.QualifyForActor(target, generation, _automaticEvidence[index], _automaticProvider[index], _automaticIndices[index], _automaticFit[index])
       _automaticLifecycle[index] = ""
-      RegisterAutomatic(index, target)
+      RegisterAutomatic(index, target, expectedRuntime)
     EndIf
   ElseIf kind == "human" || kind == "unloaded" || kind == "model"
     ; Preserve provider/index cleanup authority; model/fit acceptance expires.
@@ -339,6 +384,8 @@ Function ProcessAutomatic(Int index, Actor target, String kind, Int token)
       If _populationSlots[index]
         ReleaseInternal(index)
       EndIf
+      ; Released history cannot consume population initial admission again.
+      ; A returning actor needs fresh explicit qualification of its actual resources.
     EndIf
   Else
     If kind == "identity" || kind == "provider"
@@ -593,23 +640,35 @@ Bool Function AcknowledgeReset(Int index, Actor previousActor, String resetEvide
   Return accepted
 EndFunction
 
-Function NotifySessionChanged()
+Bool Function NotifySessionChanged(String expectedRuntime = "")
+  ; Capture before any yield. Explicit Begin already rotated native authorization;
+  ; load/provider/suspend notifications revoke the old exact session instead.
+  String previousRuntime = _runtimeSession
+  String retirementRuntime = expectedRuntime
+  If expectedRuntime != ""
+    If !RuntimeCurrent(expectedRuntime)
+      Return False
+    EndIf
+  Else
+    retirementRuntime = CLAWPhysicsNative.EndSession(previousRuntime)
+  EndIf
   ; Call on load/new session/provider replacement BEFORE qualifying or pulsing.
   ; Deliberately allowed while busy: in-flight helper sees generation invalidation.
   ; Retains all accepted ledgers. No assumption that native containers survived.
   IntegrationOptIn = False
   If _populationEnabled
-    CLAWPhysicsNative.SetPopulationEnabled(False)
+    CLAWPhysicsNative.SetPopulationEnabled(False, _runtimeSession)
   EndIf
   _populationEnabled = False
   _sessionGeneration += 1
   If !Initialize()
-    Return
+    Return False
   EndIf
   Int slot = 0
   While slot < _slotCount
-    DisableAutomatic(slot)
+    DisableAutomaticForRuntime(slot, retirementRuntime)
     Revoke(_slots[slot])
     slot += 1
   EndWhile
+  Return expectedRuntime == "" || RuntimeCurrent(expectedRuntime)
 EndFunction

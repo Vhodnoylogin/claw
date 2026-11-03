@@ -9,6 +9,11 @@ Bool Function BeginSession(Bool optIn, String evidence) Global
   If !optIn || evidence == ""
     Return False
   EndIf
+  ; Capture before GetHost/Start or any other potentially yielding native call.
+  String expectedRuntime = CLAWPhysicsNative.BeginSessionToken()
+  If expectedRuntime == ""
+    Return False
+  EndIf
   CLAWPhysicsHost host = GetHost()
   If host == None
     Return False
@@ -22,8 +27,10 @@ Bool Function BeginSession(Bool optIn, String evidence) Global
     EndIf
   EndIf
   ; Starting/enabling only the host never qualifies a provider or attaches an actor.
-  host.NotifySessionChanged()
-  Return host.EnableIntegration(host.GetSessionGeneration(), evidence)
+  If !host.NotifySessionChanged(expectedRuntime)
+    Return False
+  EndIf
+  Return host.EnableIntegration(host.GetSessionGeneration(), evidence, expectedRuntime)
 EndFunction
 
 Int Function RegisterActor(Int slot, Actor target) Global
@@ -59,11 +66,12 @@ Int Function PulseActor(Int slot, Actor expectedActor) Global
 EndFunction
 
 Int Function EnableAutomaticActor(Int slot, Actor expectedActor, String evidence, Bool provider, Bool exclusiveIndices, Bool fittedDomain) Global
+  String expectedRuntime = CLAWPhysicsNative.GetSessionToken()
   CLAWPhysicsHost host = GetHost()
   If host == None
     Return -1
   EndIf
-  Return host.EnableAutomatic(slot, expectedActor, evidence, provider, exclusiveIndices, fittedDomain)
+  Return host.EnableAutomatic(slot, expectedActor, evidence, provider, exclusiveIndices, fittedDomain, expectedRuntime)
 EndFunction
 
 Function DisableAutomaticActor(Int slot) Global
@@ -74,11 +82,12 @@ Function DisableAutomaticActor(Int slot) Global
 EndFunction
 
 Int Function EnableAutomaticPopulation(String evidence, Bool provider, Bool exclusiveIndices, Bool fittedDomain) Global
+  String expectedRuntime = CLAWPhysicsNative.GetSessionToken()
   CLAWPhysicsHost host = GetHost()
   If host == None
     Return -1
   EndIf
-  Return host.EnableAutomaticPopulation(evidence, provider, exclusiveIndices, fittedDomain)
+  Return host.EnableAutomaticPopulation(evidence, provider, exclusiveIndices, fittedDomain, expectedRuntime)
 EndFunction
 
 Function DisableAutomaticPopulation() Global

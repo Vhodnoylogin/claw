@@ -158,3 +158,40 @@ physics DLL was linked, installed or run for this change; actual provider remova
 and motion remain unqualified. The separate cached-qualification renewal findings
 are recorded in the [physics plan](physics-next-stage.md), without a claim that
 this narrow guard fixes the whole lifecycle protocol.
+
+## Offline physics registration authority
+
+The subsequent correction adds a pure, encapsulated `PhysicsAuthority` policy to
+the native actor state and applies it in the actual native/Papyrus adapters.
+Rejection survives a missed callback, human/unload transition and unregister.
+Identity/provider failures revoke cleanup independently of domain/model/weight
+rejections. Ordinary renewal cannot clear these restrictions. Explicit Host enable
+can request fresh qualification only after the exact old accepted ledger is empty;
+population callbacks have a separate first-use admission and cannot revive released
+or rejected actors. Released population actors require fresh explicit per-actor
+qualification; automatic provider rebinding remains unfinished.
+
+Registration tickets capture the runtime owner, request and authority revision.
+Admission immediately withdraws older snapshots. Main-task commit validates current
+context and the same process/issued-world/session token. Explicit begin captures
+that token before Host lookup; suspension rotates it without silently adopting a
+later world. Strong graph references are limited to the existing sixteen physical
+contexts; released history retains no graph. The matrix evaluator, coefficients,
+weight writes and external physics providers are unchanged.
+
+Checks passed on the frozen ten-file change: two CTests covering the authority
+policy and finite observer, 27 actual-source contract checks, universal SE/AE/VR
+compilation of `Plugin.cpp` both with and without the pinned fitted model, and six
+matching Papyrus compilations. Native signatures agree and retained ESP VMAD Auto
+properties are unchanged. An independent critic reviewed the actual adapters.
+Root applied the exact source pins and reran the 27 source contracts in the CLAW
+checkout. Evidence stays outside Git under
+`Builds/claw-backlog-20261103/physics-authority-01/`.
+
+No DLL was linked, package installed or game launched for this correction. External
+provider/resource assertions remain the caller's responsibility; an evidence string
+is not qualification. First-context admission establishes task-current context,
+without proving admission-time resource stability. The final snapshot check and
+third-party CBPC append remain non-atomic and still need recorded-ledger rollback
+or pending cleanup. Provider/container lifecycle, motion and contact remain
+unqualified. Physics remains disabled by default.
