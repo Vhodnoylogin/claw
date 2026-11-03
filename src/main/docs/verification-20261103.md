@@ -188,10 +188,21 @@ Root applied the exact source pins and reran the 27 source contracts in the CLAW
 checkout. Evidence stays outside Git under
 `Builds/claw-backlog-20261103/physics-authority-01/`.
 
-No DLL was linked, package installed or game launched for this correction. External
-provider/resource assertions remain the caller's responsibility; an evidence string
-is not qualification. First-context admission establishes task-current context,
-without proving admission-time resource stability. The final snapshot check and
-third-party CBPC append remain non-atomic and still need recorded-ledger rollback
-or pending cleanup. Provider/container lifecycle, motion and contact remain
-unqualified. Physics remains disabled by default.
+After that frozen review, both complete universal DLL variants were linked from
+the accepted `25a47c9` implementation. The minimal variant is 1,098,752 bytes,
+SHA-256 `fee245d969c841c9731b40d03c23e4af6c7aa72a94fa55107b9179fe9467e10b`.
+The fitted-model variant is 3,930,624 bytes,
+SHA-256 `80f2712718674b7780d5f23d15005b8cbd4298f4b5d51f4188e0e259463052a6`.
+Its schema-3 model identity agrees with the final six Papyrus artifacts; the
+minimal variant intentionally lacks that model and is not a matching host build.
+All 5,535 captured inputs remained unchanged and all 4,262 consumed-read files
+have frozen-input coverage. Exports, imports and universal runtime metadata were
+read back. Detailed evidence is in `physics-authority-01/linked-artifacts/`.
+
+No package was installed or game launched for this correction. External provider/
+resource assertions remain the caller's responsibility; an evidence string is not
+qualification. First-context admission establishes task-current context, without
+proving admission-time resource stability. The final snapshot check and third-party
+CBPC append remain non-atomic and still need recorded-ledger rollback or pending
+cleanup. Provider/container lifecycle, motion and contact remain unqualified.
+Physics remains disabled by default.
