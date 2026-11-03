@@ -42,6 +42,33 @@ builder's legacy nine-node motion configuration for that 11-node P1 adapter.
 The measured contact fit still has undercoverage; close fitting, animated
 surface quality and VR hand contact remain unaccepted.
 
+Automatic runtime activation is also unfinished. `CLAWPhysicsControl` exposes
+explicit session, actor and population activation, but no gameplay coordinator
+currently calls it. The stopped host is not enabled by installation. The player
+load relay revokes the old session; it does not silently requalify the new one.
+Existing native population discovery already includes the player and loaded
+known werewolves, so a second actor scanner is unnecessary.
+
+Before adding automatic activation, qualify the actual CBPC build, its handling
+of an NPC changing race/model, reserved capsule indices and matching body/model
+resources. Reuse those observations in a session coordinator with persisted
+user opt-in and fresh runtime validation. Do not turn evidence/provider/index
+booleans into unconditional `True`, acknowledge uncertain cleanup, or invoke a
+global configuration reload to mask missing NPC container rebinding. The
+separate motion-only adapter has zero contact response and cannot substitute
+for a qualified contact configuration. FSMP motion is a separate provider path;
+it does not implement CBPC's actor capsule API.
+
+The inspected CBPC reference source `fabd56ce8f8ac10cde17325f0bd61ecc8cbcda20`
+binds an NPC's configured nodes once and subsequently updates cached objects;
+resolving an old node name on a new root does not rerun race-dependent binding.
+Its public detach path also requires the named node to be loaded. Therefore a
+false detach cannot acknowledge cleanup after human return or unload. These are
+reference-source findings, not proven equivalence to the installed 1.7.3 DLL.
+The needed runtime evidence is the actor's provider binding/container generation
+across race changes, root replacement and unload, rather than just an available
+node or an attach boolean.
+
 The current motion slice is separate from that retained contact-model work.
 Released v4 bodies have 30 male / 31 female morphs; their fresh pipeline already
 includes current-TRI P1 skinning and nominal motion bounds. Build the existing

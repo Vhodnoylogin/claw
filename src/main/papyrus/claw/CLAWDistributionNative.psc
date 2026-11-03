@@ -26,6 +26,11 @@ String[] Function GetPresetNames(Bool female) Global Native
 ; True means queued; inspect GetStatus/GetLastError for the application outcome.
 Bool Function AssignPreset(Actor target, String presetName) Global Native
 String Function GetAssigned(Actor target) Global Native
+; Actual cached morph-link family, not the requested installer/default selection.
+; Empty before binding, with a disabled link or unavailable/quarantined actor.
+; A queued change may still report the prior binding: check GetStatus separately.
+; This read never creates state, adopts a default or touches SKEE/the engine.
+String Function GetMorphFamily(Actor target) Global Native
 ; 0 unknown, 1 pending, 2 coefficients read back/update requested, 3 unloaded,
 ; 4 error, 5 human (own key cleared), 6 explicitly cleared, 7 SKEE unavailable.
 Int Function GetStatus(Actor target) Global Native

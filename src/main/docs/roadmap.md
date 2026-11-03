@@ -1,6 +1,6 @@
 # CLAW — future plans
 
-Owner-defined priorities, revised 1 November 2026. No release dates are promised.
+Owner-defined priorities, revised 3 November 2026. No release dates are promised.
 
 ## Active owner queue (latest instruction)
 
@@ -21,7 +21,9 @@ male UNP body. Installer markers recommend a choice but never block alternatives
    shared game/Morphbench evaluator and independent comparison plugin;
    human-to-wolf body/head/face links, including ears, tail and claws;
    individual skin/fur appearance links; source preservation, transformation,
-   model refresh and save/load. Include HIMBO, CBBE, 3BA, BHUNP and both Vanilla sexes.
+   model refresh and save/load. Include HIMBO, CBBE, 3BA, BHUNP, classic UNP
+   Renewal and both Vanilla sexes. The Morphbench chat owns the complete
+   independent comparison plugin; CLAW owns the shared evaluator and matrices.
    Every matrix explicitly supports `$actor.weight`; Vanilla body deformation
    uses weight rather than invented body morphs. Validate exact installation
    choices and actual game behavior. General testing-tool development is outside
@@ -44,16 +46,18 @@ all numbered queue/release lists retained below as historical planning.
 
 ### Additional body-family compatibility investigation
 
-The owner proposed UNP-family support on 1 November and supplied the UNP Renewal
-(Nexus1699) and BHUNP (Nexus31126) archives for local inspection. After inspection,
-the owner explicitly excluded classic UNP Renewal1699 from support. Do not add
-a classic UNP matrix or installer option. Keep its archive findings as reference.
+The owner supplied UNP Renewal (Nexus1699) and BHUNP (Nexus31126) for inspection.
+The initial exclusion of classic UNP was superseded by the later explicit
+instruction to support it. Development package-02 includes the manual UNP
+Renewal 4.6 female choice and its weight/head/stature matrix. Its original body
+has no runtime BodySlide TRI; ordinary body morph keys are not invented.
 BHUNP31126 now has a separate 3.34 Advanced Ver4 matrix, authored from the actual
 OSP/OSD and checked against the officially generated NeverNude TRI. All 47 mapped
 ordinary source keys have matching deformation directions. Its installer choice
 is implemented; installed-game acceptance is the remaining release gate.
-UNP Renewal primarily supplies ready meshes/textures and remains excluded as a
-matrix family. A compatible UNP skin remains a separate human-body dependency;
+Classic UNP uses the same ordered weight/head/stature rules as female Vanilla;
+its original installed body and full game lifecycle still need acceptance.
+A compatible UNP skin remains a separate human-body dependency;
 neither human meshes nor their textures are part of CLAW's working archive.
 
 ### Mechanical scope after the combined queue-two/three scene

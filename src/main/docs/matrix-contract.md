@@ -144,6 +144,14 @@ validated profile. Existing ConfigureMorphLink Papyrus arrays continue to create
 linear rules; new function profiles use ConfigureMorphFamily. No runtime or
 rendered-body qualification follows from offline arithmetic parity.
 
+`CLAWDistributionNative.GetMorphFamily(Actor)` exposes the actor's actual cached
+bound link profile. An installer choice, requested `ConfigureMorphFamily` value,
+or evaluator input is not a substitute for this observation. The getter does
+not create state or adopt defaults; absent/disabled/quarantined links return an
+empty string. While a change is queued, the previous actual binding may remain
+visible, so inspect `GetStatus` and completion separately. `GetAssigned` retains
+its standalone-preset meaning and returns empty for linked actors.
+
 Runtime cleanup snapshots every name under the exact `CLAW.Distribution` key,
 then clears those names after enumeration. Removed/custom names cannot survive
 because a new catalog no longer lists them, and other providers' keys are not

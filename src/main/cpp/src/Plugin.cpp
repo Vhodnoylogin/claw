@@ -9,6 +9,7 @@
 #include "claw/MorphProfiles.h"
 #include "claw/SourceBootstrapPolicy.h"
 #include "claw/RuntimeSupport.h"
+#include "claw/VRBodyState.h"
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
 #include "claw/PhysicsFit.h"
 #include CLAW_PHYSICS_MODEL_HEADER
@@ -80,6 +81,8 @@ struct State {
     Status status{Status::pending};
     std::string error;
     std::uintptr_t lastRoot{};
+    claw::VRBodyState vrBody; // Transient loaded-player graph stamp, never serialized.
+    std::array<RE::NiPointer<RE::NiAVObject>, 2> vrGraphs; // Retain identities until their next observation.
     RE::VMHandle vmHandle{};
     float lastWeight{-1};
     float humanWeight{-1}, beastWeight{-1}; // Last observed normalized NPC property, never an input override.
@@ -236,7 +239,7 @@ Pin pinActor(RE::Actor* actor) {
     return pin;
 }
 
-// Called only in SKSE tasks. State owns no intrusive pin. The pool protects
+// Called only in SKSE tasks. State owns no intrusive Actor pin. The pool protects
 // pending/native owners until their final main-safe collection.
 void collectPins() {
     claw::collectUnshared(pins);
@@ -256,6 +259,7 @@ void quarantine(State& state, std::string error) {
     revokeSourceBootstrap(state);
     state.quarantined = true; state.runtimeSerial = 0; state.runtimePointer = nullptr;
     state.runtimeHandle.reset(); state.cache.clear();
+    state.vrBody = {}; state.vrGraphs = {};
     logError(state, std::move(error));
 }
 void checkRuntimeInstances() {
@@ -692,6 +696,15 @@ bool readback(RE::Actor* actor, const claw::Morphs& expected) {
     catch (const std::exception&) { return false; }
 }
 
+claw::VRBodyInput vrBodyInput(RE::Actor* actor, const State& state, bool beast) {
+    if (!REL::Module::IsVR() || actor != RE::PlayerCharacter::GetSingleton()) return {};
+    const bool loaded = actor->Is3DLoaded();
+    return {enabled.load(), true, beast, static_cast<int>(actor->GetActorBase()->GetSex()),
+        state.runtimeSerial, epoch.load(), reinterpret_cast<std::uintptr_t>(actor->GetRace()),
+        loaded ? reinterpret_cast<std::uintptr_t>(actor->Get3D(false)) : 0,
+        loaded ? reinterpret_cast<std::uintptr_t>(actor->Get3D(true)) : 0};
+}
+
 bool clearOwn(RE::Actor* actor) {
     claw::appearance::runtime.restore(actor);
     // Snapshot first, then mutate only this exact key. Removed/custom names do
@@ -716,6 +729,14 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     State* state = stateFor(actor, beast || defaultDeclared);
     if (!state || state->quarantined || !boundTo(*state, actor)) return;
     if (actorSex != RE::SEX::kMale && actorSex != RE::SEX::kFemale) { logError(*state, "actor has no readable NPC sex"); return; }
+    const auto graphTransition = state->vrBody.observe(vrBodyInput(actor, *state, beast));
+    if (graphTransition.changed) {
+        const auto roots = state->vrBody.roots();
+        for (std::size_t i = 0; i < state->vrGraphs.size(); ++i)
+            state->vrGraphs[i].reset(i < roots.count ? reinterpret_cast<RE::NiAVObject*>(roots.identities[i]) : nullptr);
+    }
+    if (graphTransition.reapply) state->dirty = true;
+    const auto vrLease = state->vrBody.lease();
     const auto desiredSex = actorSex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
     const bool bindingMismatch = !state->link.bindingError(state->sex, desiredSex).empty();
     if (bindingMismatch) revokeSourceBootstrap(*state);
@@ -790,7 +811,8 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         state->status = Status::pending;
         if (!clearOwn(actor)) { logError(*state, "own-key preparation readback failed"); return; }
         // Recheck race/model immediately before writes; all operations stay on this main-thread task.
-        if (!currentOwner(actor) || actor->GetRace() != beastRace || !actor->Is3DLoaded() || !actor->Get3D()) {
+        if (!currentOwner(actor) || actor->GetRace() != beastRace || !actor->Is3DLoaded() || !actor->Get3D() ||
+            (vrLease && !state->vrBody.current(*vrLease, vrBodyInput(actor, *state, true)))) {
             state->dirty = true; state->status = Status::pending; return;
         }
         for (const auto& [name, value] : expected) if (value != 0)
@@ -1284,6 +1306,11 @@ RE::BSFixedString assigned(RE::StaticFunctionTag*, RE::Actor* actor) {
     const auto* state = cachedState(actor);
     return state && !state->quarantined && !state->link.enabled() ? RE::BSFixedString(state->preset) : RE::BSFixedString{};
 }
+RE::BSFixedString morphFamily(RE::StaticFunctionTag*, RE::Actor* actor) {
+    std::lock_guard lock(mutex);
+    const auto* state = cachedState(actor);
+    return state && !state->quarantined && state->link.enabled() ? RE::BSFixedString(state->link.profile) : RE::BSFixedString{};
+}
 std::int32_t getStatus(RE::StaticFunctionTag*, RE::Actor* actor) {
     std::lock_guard lock(mutex);
     if (enabled) if (const auto* request = actorRequest(actor))
@@ -1559,6 +1586,7 @@ bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("GetCoatPatternStatus", script, coatPatternStatus);
     vm->RegisterFunction("AssignPreset", script, assignPreset);
     vm->RegisterFunction("GetAssigned", script, assigned);
+    vm->RegisterFunction("GetMorphFamily", script, morphFamily);
     vm->RegisterFunction("GetStatus", script, getStatus);
     vm->RegisterFunction("GetLastError", script, lastError);
     vm->RegisterFunction("GetOwnMorph", script, ownMorph);
