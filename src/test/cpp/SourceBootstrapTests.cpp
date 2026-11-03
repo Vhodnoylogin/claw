@@ -14,6 +14,39 @@ int main() {
     auto pending = [&] { const auto* row = requests.find(id, owner, epoch); return row && row->error.empty(); };
     claw::SourceBootstrapPolicy state{true,true,false,false,false,false,false,false,false};
     assert(state.allows());
+    // All human-source adapters use this gate. A known creature, an unresolved
+    // current race or a missing beast-race lookup cannot invent human history.
+    constexpr unsigned wolfRace = 0xCDD84, nordRace = 0x13746, merRace = 0x13743,
+        vampireRace = 0x8883A, creatureRace = 0x131F7;
+    assert(!claw::humanSourceEligible(wolfRace, wolfRace, true));
+    assert(!claw::humanSourceEligible(wolfRace, creatureRace, false));
+    assert(!claw::humanSourceEligible(wolfRace, 0, true));
+    assert(!claw::humanSourceEligible(0, nordRace, true));
+    assert(claw::humanSourceEligible(wolfRace, nordRace, true));
+    assert(claw::humanSourceEligible(wolfRace, merRace, true));
+    assert(claw::humanSourceEligible(wolfRace, vampireRace, true));
+    float humanWeight = -1, beastWeight = -1;
+    const auto observeWeight = [&](unsigned currentRace, bool npc, float weight) {
+        if (currentRace == wolfRace) beastWeight = weight;
+        else if (claw::humanSourceEligible(wolfRace, currentRace, npc)) {
+            humanWeight = weight; state.observedHuman = true; state.revoked = true;
+        }
+        state.humanWeightKnown = humanWeight >= 0;
+    };
+    // Keep independent runtime/root/provider witnesses valid here: this checks
+    // only whether source-form observations establish the human-history gate.
+    observeWeight(wolfRace, false, .2F);
+    observeWeight(creatureRace, false, .9F);
+    observeWeight(0, false, .8F);
+    observeWeight(wolfRace, false, .4F);
+    assert(humanWeight == -1 && beastWeight == .4F && !state.observedHuman && !state.revoked && state.allows());
+    observeWeight(nordRace, true, .6F);
+    assert(humanWeight == .6F && state.observedHuman && state.revoked && !state.allows());
+    observeWeight(creatureRace, false, .9F);
+    observeWeight(0, false, .8F);
+    observeWeight(wolfRace, false, .7F);
+    assert(humanWeight == .6F && beastWeight == .7F && state.observedHuman && !state.allows());
+    state = {true,true,false,false,false,false,false,false,false};
     // Native callback accepts manual intent before the first State exists.
     const auto manual = requests.begin(id,epoch,owner,pin); assert(manual);
     // An already-queued scan adopts a default before that manual task executes.

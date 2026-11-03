@@ -790,7 +790,7 @@ void captureSources(RE::Actor* actor, claw::MorphLink& link, claw::Sex boundSex,
     // wolf's base NPC, or recapture FaceData after the transformation.
     auto stagedTraits = humanTraits;
     if (stagedTraits.observed() && (stagedTraits.npc != base->GetFormID() || stagedTraits.sex != boundSex)) stagedTraits = {};
-    if (race != beastRace && race->HasKeywordString("ActorTypeNPC")) {
+    if (claw::humanSourceEligible(beastRace->GetFormID(), race->GetFormID(), race->HasKeywordString("ActorTypeNPC"))) {
         using M = RE::TESNPC::FaceData::Morphs;
         static_assert(M::kNose_LongShort == 0 && M::kJaw_NarrowWide == 3 && M::kJaw_ForwardBack == 4 &&
             M::kChin_NarrowWide == 14 && M::kChin_UnderbiteOverbite == 16);
@@ -857,6 +857,8 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         beastRace = data->LookupForm<RE::TESRace>(0xCDD84, "Skyrim.esm");
     const auto* currentRace = actor->GetRace();
     const bool beast = beastRace && currentRace == beastRace; // current race, never NPC base race
+    const bool human = claw::humanSourceEligible(beastRace ? beastRace->GetFormID() : 0,
+        currentRace ? currentRace->GetFormID() : 0, currentRace && currentRace->HasKeywordString("ActorTypeNPC"));
     const auto actorSex = actor->GetActorBase()->GetSex();
     const bool defaultDeclared = (actorSex == RE::SEX::kMale || actorSex == RE::SEX::kFemale) &&
         morphProfiles.defaultFor(actorSex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male);
@@ -892,9 +894,9 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     const float rawNPCWeight = weightBase ? weightBase->weight : std::numeric_limits<float>::quiet_NaN();
     const float observedWeight = std::isfinite(rawNPCWeight) && rawNPCWeight >= 0 && rawNPCWeight <= 100 ? rawNPCWeight / 100.0F : -1.0F;
     if (beast) state->beastWeight = observedWeight;
-    else { state->humanWeight = observedWeight; state->observedHuman = true; revokeSourceBootstrap(*state); }
+    else if (human) { state->humanWeight = observedWeight; state->observedHuman = true; revokeSourceBootstrap(*state); }
     if (!actor->Is3DLoaded() || !actor->Get3D()) { claw::appearance::runtime.restore(actor); state->status = Status::unloaded; state->dirty = true; return; }
-    if (beastRace && !beast && !bindingMismatch && currentRace && currentRace->HasKeywordString("ActorTypeNPC")) claw::appearance::runtime.captureHuman(actor);
+    if (human && !bindingMismatch) claw::appearance::runtime.captureHuman(actor);
     if (!beast || state->suppressed || bindingMismatch) claw::appearance::runtime.restore(actor);
     if (!morphs) { logError(*state, "SKEE BodyMorph API is unavailable", Status::providerUnavailable); return; }
     // Human coefficients already include the provider's weight interpolation.

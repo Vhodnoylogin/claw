@@ -45,7 +45,12 @@ available and do not stop the existing body/weight conversion.
 
 Source capture requires a current non-werewolf race carrying `ActorTypeNPC`;
 other creature forms retain the preceding human snapshot and cannot overwrite
-it with creature records. Within this eligible form, human refresh atomically
+it with creature records. The shared eligibility gate also requires successful
+current-race and werewolf-race resolution and applies to human weight/history
+and colour capture. Creature forms and unresolved races leave the last human
+weight and observed-human flag intact; they cannot create a human observation
+for a born wolf. Independent bootstrap runtime/root/provider guards still apply.
+Within this eligible form, human refresh atomically
 replaces the snapshot, including removals and changed
 race/face/sex. Wolf refresh reads the retained snapshot and never reads the wolf
 face as human. A new born wolf has no human snapshot; OBody body bootstrap cannot

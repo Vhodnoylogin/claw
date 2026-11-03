@@ -1,5 +1,27 @@
 # Development verification, 3 November 2026
 
+## Human-source history correction
+
+The later mechanics continuation corrects a false human observation: refreshing
+an actor in another creature form or with an unresolved current race previously
+overwrote the last human weight and revoked born-werewolf source eligibility.
+Human history/weight, face/stature and colour now share the same resolved
+non-werewolf `ActorTypeNPC` gate. Vampire and mer NPC races remain eligible.
+Independent bootstrap root, provider, sex and binding guards are unchanged.
+
+The universal SE/AE/VR minimal DLL linked at 1,105,920 bytes, SHA-256
+`e247e32f7a68a0281ffac011064c75a55264ac2b0b870e28b577cec44791b1a6`.
+Nine native tests and the source Python suites passed (396 unit, 134 physics,
+82 VR; 27 declared skips). All 48 own native input pins remained stable.
+The native regression tests the shared predicate and pure history policy;
+its small observation harness does not execute the actual engine adapter.
+Independent review found no blocking regression in the four-file fix.
+
+Evidence is retained under `Builds/claw-mechanics-20261103-r3/`. The owner has
+now authorized game tests coordinated with Skyrim-Foundation. Foundation's
+installation reservation is respected; this build has not yet been installed
+or game-tested and supplies no additional coat/UNP/VR acceptance.
+
 These are development-source, archive and offline checks. Released `main` and
 the public 0.8.0 archive remain unchanged. No game was started for these changes.
 
