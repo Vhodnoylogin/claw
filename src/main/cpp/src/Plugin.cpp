@@ -10,6 +10,7 @@
 #include "claw/SourceBootstrapPolicy.h"
 #include "claw/RuntimeSupport.h"
 #include "claw/VRBodyState.h"
+#include "claw/WorldStartPolicy.h"
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
 #include "claw/PhysicsFit.h"
 #include CLAW_PHYSICS_MODEL_HEADER
@@ -1758,6 +1759,14 @@ void message(SKSE::MessagingInterface::Message* event) {
         }
         [[fallthrough]];
     case Type::kPostLoadGame:
+        if (!claw::mayActivateWorld(event->type == Type::kNewGame ? claw::WorldStart::newGame : claw::WorldStart::postLoadGame,
+            event->dataLen, reinterpret_cast<std::uintptr_t>(event->data))) {
+            // Retain state for safe later recovery, but admit no work or Loaded
+            // notification after a failed/malformed load-completion message.
+            enabled = false; ++epoch;
+            SKSE::log::warn("CLAW world activation refused: saved game did not load successfully");
+            break;
+        }
         {
             std::lock_guard lock(mutex);
             enabled = true; ++epoch;

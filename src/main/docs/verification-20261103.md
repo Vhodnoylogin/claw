@@ -100,3 +100,28 @@ Raw build, compile, archive and source-review evidence stays outside Git under
 `Builds/claw-backlog-20261103/`; the offline UNP preparation is under
 `Builds/claw-unp-20261103/`. No live installation, game root, profile or user
 session was changed in this slice.
+
+## Subsequent installation and load-completion correction
+
+The default minimal core package-04 was subsequently installed through native
+MO2 Bridge 2.3.6 in the CLAW source profile. An independent review rehashed all
+367 selected payloads against the primary ZIP and confirmed the original UNP
+body, hands and feet as VFS winners, with HIMBO/UNP matrix defaults and OBody
+disabled. The original released CLAW mod was preserved. The owned manager was
+closed normally; this establishes installation, not game acceptance.
+
+Two pre-start composition findings are with the testing-tool owner: the
+canonical qualification guard rejects the required `processRestart:false`
+same-process save/load field, and the frozen executor rejects SE when disabled
+Root mods or RootBuilder data are merely present. Foreign RootBuilder files
+were preserved; no game was started to bypass these checks.
+
+A separate source review found that failed `kPostLoadGame` messages previously
+enabled scanning and emitted the loaded event. The next-candidate correction
+admits only successful load completion, keeps failed or malformed completion
+disabled, and preserves new-game activation. Local primary SKSE sources for
+SE 2.3.1, AE 2.2.6 and VR 2.0.12 encode the boolean in the pointer value as 0/1
+with data length 1; the payload is not dereferenced. The pure message-contract
+test and universal translation-unit compilation passed. This is a source-level
+correction, without a reproduced failed-load game case or a newly linked DLL.
+The installed immutable package-04 remains unchanged.

@@ -70,7 +70,7 @@ foreach ($clawName in $FetchSources.Keys) {
 & $CMakeExe @clawConfigure
 if ($LASTEXITCODE) { throw 'CMake configuration failed.' }
 $clawTargets = @('CLAWDistribution','claw-preset-tool')
-if ($BuildTests) { $clawTargets += 'claw-preset-tests','claw-matrix-tests','claw-human-traits-tests','claw-anatomy-v4-tests','claw-colour-tests','claw-coat-library-tests','claw-coat-policy-tests','claw-request-channels-tests','claw-runtime-tests','claw-physics-observer-tests','claw-physics-fit-tests','claw-source-bootstrap-tests','claw-vr-body-state-tests' }
+if ($BuildTests) { $clawTargets += 'claw-preset-tests','claw-matrix-tests','claw-human-traits-tests','claw-anatomy-v4-tests','claw-colour-tests','claw-coat-library-tests','claw-coat-policy-tests','claw-request-channels-tests','claw-runtime-tests','claw-physics-observer-tests','claw-physics-fit-tests','claw-source-bootstrap-tests','claw-vr-body-state-tests','claw-world-start-tests' }
 & $CMakeExe --build $clawOutput --config Release --target @clawTargets --parallel $Parallel
 if ($LASTEXITCODE) { throw 'Native compilation failed.' }
 Write-Output "Compiled into $clawOutput. This command never runs tests or installs files."
