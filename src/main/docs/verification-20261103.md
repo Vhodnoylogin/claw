@@ -3,6 +3,27 @@
 These are development-source, archive and offline checks. Released `main` and
 the public 0.8.0 archive remain unchanged. No game was started for these changes.
 
+## Current minimal core candidate
+
+Package-04 is the default working-mod candidate, 366,285,481 bytes, SHA-256
+`95f34d7c73b43cafd8acb452215197468f86b512650af7db8ace7a8150ab7c8b`.
+Its default universal DLL is 1,070,592 bytes, SHA-256
+`2e29feb07aeebfb054cee6d5fa051a0d9e6de49222ce7c4ccf5f9af4949a33c9`.
+It includes the family getter and loaded-graph lifecycle, with no optional
+fitted physics-model data. Fresh matrix and VR-policy CTests passed. The
+separate fitted-physics DLL/package-03 below remains an integration candidate;
+it is not the default core download.
+
+The same API PEX is retained. Primary archive review independently confirmed
+exactly three changed members against package-02: DLL, PEX and README source URL.
+Other 393 members, all 355 DDS files, matrices and installer maps are unchanged.
+No physics host, source bundle, nested archive or PDB is included. Independent
+review SHA-256:
+`8291690107304b261fca70fd83b778ac1435158976625e2385cadabbd10e0bbc`.
+The consumed native source matches commit
+`53dae0b311f7d6524dc728f9815a63f0745bdc00`; native inputs are unchanged from
+`77e7770`. This core candidate is not installed, published or game-accepted.
+
 ## Loaded graphs and actual family observation
 
 Source `77e77700b73c54a614d8baf08d7c4366e754b8ba` adds the
