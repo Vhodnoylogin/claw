@@ -1,19 +1,29 @@
 #pragma once
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <initializer_list>
+#include <memory>
 #include <optional>
 #include <string_view>
+#include <utility>
 
 namespace claw {
 struct PhysicsOwner {
     std::uint64_t world{}, runtime{};
     bool operator==(const PhysicsOwner&) const = default;
 };
+// CBPC consumes the third-person graph. Keep current/buffered slot identities
+// ordered: moving the same clone between slots changes the loaded resource context.
+inline constexpr std::size_t physicsBipedSlotCount = 42;
+inline constexpr std::size_t physicsBipedPartCount = 2 * physicsBipedSlotCount;
+using PhysicsBodyParts = std::array<std::uintptr_t, physicsBipedPartCount>;
 struct PhysicsBodyStamp {
     std::uintptr_t race{}, root{};
     int sex{-1};
     bool beast{}, loaded{};
+    PhysicsBodyParts partClones{}; // Current slots first, then buffered slots.
     bool operator==(const PhysicsBodyStamp&) const = default;
 };
 enum class PhysicsAdmission { renewal, qualified, initialPopulation };
@@ -25,7 +35,7 @@ struct PhysicsAuthorityTicket {
 };
 
 // Transient per-runtime authority, independent of replaceable observer bindings.
-// It owns no engine objects. The adapter pins each remembered loaded root and
+// It owns no engine objects. The adapter pins each remembered loaded root/part and
 // releases that context only after observation/pending/cleanup ownership ends.
 class PhysicsAuthority {
 public:
@@ -36,19 +46,23 @@ public:
     bool engaged() const { return !virgin_; }
     bool pending() const { return pending_ != 0; }
     std::uint64_t revision() const { return revision_; }
-    const std::optional<PhysicsBodyStamp>& stamp() const { return stamp_; }
+    const PhysicsBodyStamp* stamp() const { return stamp_.get(); }
     bool rejected() const { return rejection_ != 0; }
 
     void observe(PhysicsBodyStamp current) {
-        if (!stamp_) { stamp_ = current; return; } // Initial current commit has no previous grant to impersonate.
+        // The adapter admits at most sixteen physical contexts. Virgin actors
+        // and retired tombstones retain no per-slot allocation.
+        // A first context establishes the caller-qualified baseline.
+        if (!stamp_) { stamp_ = std::make_unique<PhysicsBodyStamp>(std::move(current)); return; }
         if (*stamp_ == current) return;
         if (!virgin_) {
             if (stamp_->sex != current.sex) rejection_ |= unsigned(PhysicsRejection::identity);
             if (stamp_->beast && current.beast && stamp_->loaded && current.loaded &&
-                stamp_->root && current.root && stamp_->root != current.root)
+                stamp_->root && current.root &&
+                (stamp_->root != current.root || stamp_->partClones != current.partClones))
                 rejection_ |= unsigned(PhysicsRejection::model);
         }
-        stamp_ = current;
+        *stamp_ = std::move(current);
         pending_ = 0;
         if (rejected()) qualified_ = false;
         advance(); // Even an observed A -> B -> A cannot revive an admitted ticket.
@@ -118,7 +132,7 @@ private:
         else ++revision_;
     }
     PhysicsOwner owner_;
-    std::optional<PhysicsBodyStamp> stamp_;
+    std::unique_ptr<PhysicsBodyStamp> stamp_;
     std::uint64_t revision_{1}, pending_{};
     unsigned rejection_{};
     bool virgin_{true}, qualified_{}, suspended_{}, exhausted_{};

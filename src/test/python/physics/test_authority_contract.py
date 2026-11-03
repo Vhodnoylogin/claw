@@ -75,4 +75,26 @@ class PhysicsAuthorityContracts(unittest.TestCase):
         self.assertIn("publishable", snapshot)
         self.assertIn("physicsRoots.size() >= 16", PLUGIN)
 
+    def test_third_person_parts_are_pinned_before_comparison_and_retired_on_main_task(self):
+        context = PLUGIN.split("bool observePhysicsContext(", 1)[1].split("void publishPhysics(", 1)[0]
+        retain = "currentParts[slot].reset(biped->objects[slot].partClone.get())"
+        retain_buffered = "currentParts[claw::physicsBipedSlotCount + slot].reset(biped->bufferedObjects[slot].partClone.get())"
+        compare = "state.physicsAuthority.observe(stamp)"
+        turnover = "lease.parts = std::move(currentParts)"
+        self.assertIn("actor->GetBiped(false)", context)
+        self.assertNotIn("GetBiped(true)", context)
+        self.assertIn("static_assert(claw::physicsBipedSlotCount == RE::BIPED_OBJECTS::kTotal)", context)
+        self.assertLess(context.index("physicsRoots.size() >= 16"), context.index(retain))
+        for pin in (retain, retain_buffered):
+            self.assertLess(context.index(pin), context.index(compare))
+        self.assertLess(context.index(compare), context.index(turnover))
+        self.assertIn("stamp.partClones[i] = reinterpret_cast<std::uintptr_t>(currentParts[i].get())", context)
+        lease = PLUGIN.split("struct PhysicsRootLease {", 1)[1].split("// At most sixteen", 1)[0]
+        self.assertIn("std::array<RE::NiPointer<RE::NiAVObject>, claw::physicsBipedPartCount> parts", lease)
+        self.assertIn("*new std::map<RE::FormID, PhysicsRootLease>()", PLUGIN)
+        collector = PLUGIN.split("void collectPins() {", 1)[1].split("void queuePinCollection()", 1)[0]
+        self.assertLess(collector.index("physicsAuthority.forgetStamp()"), collector.index("physicsRoots.erase(it)"))
+        self.assertEqual(PLUGIN.count("physicsRoots.erase("), 1)
+        self.assertNotIn("physicsRoots.clear(", PLUGIN)
+
 if __name__ == "__main__": unittest.main()

@@ -4,17 +4,23 @@
 #include <cassert>
 #include <iostream>
 #include <limits>
+#include <type_traits>
+#include <utility>
 
 using namespace claw;
 namespace {
 constexpr PhysicsOwner owner{10, 20};
-constexpr PhysicsBodyStamp beastA{30, 100, 0, true, true};
-constexpr PhysicsBodyStamp beastB{30, 200, 0, true, true};
-PhysicsAuthority granted() {
+constexpr PhysicsBodyStamp beastA = [] {
+    PhysicsBodyStamp stamp{30, 100, 0, true, true};
+    for (std::size_t slot = 0; slot < stamp.partClones.size(); ++slot) stamp.partClones[slot] = 1000 + slot;
+    return stamp;
+}();
+constexpr PhysicsBodyStamp beastB = [] { auto stamp = beastA; stamp.root = 200; return stamp; }();
+PhysicsAuthority granted(PhysicsBodyStamp stamp = beastA) {
     PhysicsAuthority a{owner};
     auto ticket = a.admit(PhysicsAdmission::qualified, owner, 1);
     assert(ticket);
-    a.observe(beastA); // First actual context is captured on the main task.
+    a.observe(stamp); // First actual context is captured on the main task.
     assert(a.commit(*ticket, owner, 1));
     return a;
 }
@@ -97,6 +103,74 @@ void populationInitialIsNotAHiddenFreshQualification() {
     auto explicitGrant = a.admit(PhysicsAdmission::qualified, owner, 4);
     a.observe(beastB); assert(explicitGrant && a.commit(*explicitGrant, owner, 4));
 }
+void sameRootPartChangesRejectThePreviousResourceGrant() {
+    static_assert(physicsBipedSlotCount == 42 && physicsBipedPartCount == 84);
+    for (std::size_t slot = 0; slot < physicsBipedPartCount; ++slot) {
+        for (unsigned mutation = 0; mutation < 5; ++mutation) {
+            auto initial = beastA, changed = beastA;
+            if (mutation == 0) changed.partClones[slot] += 10000; // Replacement.
+            if (mutation == 1) changed.partClones[slot] = 0; // Removal.
+            if (mutation == 2) initial.partClones[slot] = 0; // Delayed arrival.
+            if (mutation == 3) { // Same clones moved within one ordered table.
+                const auto other = (slot / physicsBipedSlotCount) * physicsBipedSlotCount +
+                    (slot + 1) % physicsBipedSlotCount;
+                std::swap(changed.partClones[slot], changed.partClones[other]);
+            }
+            if (mutation == 4) { // Same clones moved between current/buffered tables.
+                const auto other = (slot + physicsBipedSlotCount) % physicsBipedPartCount;
+                std::swap(changed.partClones[slot], changed.partClones[other]);
+            }
+            assert(initial.root == changed.root && initial != changed);
+            auto a = granted(initial);
+            auto unchangedActor = granted();
+            const auto published = a.revision();
+            const auto untouchedRevision = unchangedActor.revision();
+            auto queued = a.admit(PhysicsAdmission::renewal, owner, 2);
+            assert(queued);
+            a.observe(changed);
+            assert(a.condition() == "model" && !a.publishable(owner, published));
+            assert(!a.commit(*queued, owner, 2));
+            assert(!a.admit(PhysicsAdmission::renewal, owner, 3));
+            assert(!a.admit(PhysicsAdmission::initialPopulation, owner, 3));
+            assert(a.cleanupAllowed(owner)); // Existing own-capsule cleanup remains possible, never acknowledged here.
+            a.observe(initial); // Restoring old pointers cannot silently renew rejected qualification.
+            assert(a.condition() == "model" && !a.renewable(owner) && a.cleanupAllowed(owner));
+            assert(unchangedActor.publishable(owner, untouchedRevision));
+        }
+    }
+}
+void partsChangingDuringFreshAdmissionInvalidateItsTicket() {
+    auto a = granted();
+    auto queued = a.admit(PhysicsAdmission::qualified, owner, 2);
+    auto changed = beastA; changed.partClones.back() += 10000;
+    a.observe(changed);
+    assert(queued && !a.commit(*queued, owner, 2) && a.condition() == "model");
+    const auto rejectedRevision = a.revision();
+    a.observe(changed);
+    assert(a.revision() == rejectedRevision && !a.renewable(owner));
+    // A caller must establish fresh external resource/provider qualification.
+    // This policy cannot retire any outstanding Papyrus cleanup ledger.
+    auto fresh = a.admit(PhysicsAdmission::qualified, owner, 3);
+    assert(fresh && a.commit(*fresh, owner, 3) && a.renewable(owner));
+    assert(a.stamp()->partClones == changed.partClones);
+}
+void retiredAuthorityKeepsOnlyCheapRejectionHistory() {
+    static_assert(!std::is_copy_constructible_v<PhysicsAuthority> && std::is_nothrow_move_constructible_v<PhysicsAuthority>);
+    PhysicsAuthority virgin{owner};
+    assert(!virgin.stamp());
+    auto active = granted();
+    const auto* stamp = active.stamp();
+    assert(stamp);
+    active.observe(beastA);
+    assert(active.stamp() == stamp); // A stable sample does not allocate another stamp.
+    auto moved = std::move(active); // State insertion/assignment transfers the existing pure stamp allocation.
+    assert(!active.stamp() && moved.stamp() == stamp);
+    moved.reject(PhysicsRejection::model);
+    moved.suspend(); moved.forgetStamp();
+    assert(!moved.stamp() && moved.condition() == "model" && moved.cleanupAllowed(owner));
+    assert(!moved.admit(PhysicsAdmission::renewal, owner, 2));
+    assert(!moved.admit(PhysicsAdmission::initialPopulation, owner, 2));
+}
 void finiteObservationPathIsUnchanged() {
     auto a = granted(); PhysicsObservation observation;
     const std::vector<float> values{-2, -0.0F, 0, 2, std::numeric_limits<float>::max()};
@@ -104,11 +178,21 @@ void finiteObservationPathIsUnchanged() {
     assert(!observation.observe(100, values, 0.5F));
     assert(observation.observe(100, values, 0.5F));
     assert(observation.published == values && observation.publishedWeight == 0.5F);
+    const auto revision = a.revision();
+    a.observe(beastA); // In-place morph deformation preserves actual part identities.
+    assert(a.revision() == revision && a.publishable(owner, revision));
+    assert(!observation.observe(100, std::vector<float>{.2F, .3F}, .7F));
+    assert(observation.observe(100, std::vector<float>{.2F, .3F}, .7F));
+    a.observe(beastA);
+    assert(a.revision() == revision && a.publishable(owner, revision));
 }
 }
 int main() {
     rejectionSurvivesDroppedReceiptsAndLifecycle(); cleanupRevocationIsIndependentOfFirstTerminalReason();
     pendingAndStaleAdmissionsCannotRestoreAuthority(); observedContextChangesInvalidateTicketsAndOldSnapshots();
     populationInitialIsNotAHiddenFreshQualification(); finiteObservationPathIsUnchanged();
+    sameRootPartChangesRejectThePreviousResourceGrant(); partsChangingDuringFreshAdmissionInvalidateItsTicket();
+    retiredAuthorityKeepsOnlyCheapRejectionHistory();
     std::cout << "Physics authority policy passed\n";
+    std::cout << "Pure authority bytes=" << sizeof(PhysicsAuthority) << "; active body stamp bytes=" << sizeof(PhysicsBodyStamp) << '\n';
 }

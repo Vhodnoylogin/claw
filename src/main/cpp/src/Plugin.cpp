@@ -218,6 +218,7 @@ struct PhysicsRootLease {
     claw::PhysicsOwner owner;
     RE::Actor* actor{};
     RE::NiPointer<RE::NiAVObject> root;
+    std::array<RE::NiPointer<RE::NiAVObject>, claw::physicsBipedPartCount> parts;
 };
 // At most sixteen active/pending/cleanup contexts. No engine releases at DLL teardown.
 auto& physicsRoots = *new std::map<RE::FormID, PhysicsRootLease>();
@@ -280,7 +281,7 @@ void collectPins() {
         if (state != states.end() && state->second.physicsAuthority.matches(it->second.owner)) {
             state->second.physicsAuthority.suspend(); state->second.physicsAuthority.forgetStamp();
         }
-        it = physicsRoots.erase(it); // Main-task-only retirement; cheap rejection history remains in State.
+        it = physicsRoots.erase(it); // Main-task-only root/part retirement; cheap rejection history remains in State.
     }
 }
 void queuePinCollection() {
@@ -561,16 +562,30 @@ bool observePhysicsContext(RE::Actor* actor, State& state) {
     if (!state.physicsAuthority.engaged()) return true;
     const auto binding = physicsBindings.find(actor->GetFormID());
     if (binding == physicsBindings.end() && !physicsRegistrationRequests.contains(actor)) return true;
+    if (!physicsRoots.contains(actor->GetFormID()) && physicsRoots.size() >= 16) return false;
     const auto* base = actor->GetActorBase();
     const auto sex = base ? static_cast<int>(base->GetSex()) : -1;
     const bool loaded = actor->Is3DLoaded();
     RE::NiPointer<RE::NiAVObject> current{loaded ? actor->Get3D(false) : nullptr};
-    if (!physicsRoots.contains(actor->GetFormID()) && physicsRoots.size() >= 16) return false;
-    const claw::PhysicsBodyStamp stamp{reinterpret_cast<std::uintptr_t>(actor->GetRace()),
+    std::array<RE::NiPointer<RE::NiAVObject>, claw::physicsBipedPartCount> currentParts{};
+    claw::PhysicsBodyStamp stamp{reinterpret_cast<std::uintptr_t>(actor->GetRace()),
         reinterpret_cast<std::uintptr_t>(current.get()), sex, beastRace && actor->GetRace() == beastRace, loaded};
-    state.physicsAuthority.observe(stamp); // Old root remains retained during comparison.
+    static_assert(claw::physicsBipedSlotCount == RE::BIPED_OBJECTS::kTotal);
+    if (current) {
+        // The current CBPC adapter uses only the third-person graph. Pin newly
+        // observed parts before comparing while the lease still holds old ones.
+        const auto biped = actor->GetBiped(false);
+        if (biped) for (std::size_t slot = 0; slot < claw::physicsBipedSlotCount; ++slot) {
+            currentParts[slot].reset(biped->objects[slot].partClone.get());
+            currentParts[claw::physicsBipedSlotCount + slot].reset(biped->bufferedObjects[slot].partClone.get());
+        }
+        for (std::size_t i = 0; i < currentParts.size(); ++i)
+            stamp.partClones[i] = reinterpret_cast<std::uintptr_t>(currentParts[i].get());
+    }
+    state.physicsAuthority.observe(stamp); // Old root and every part remain retained through comparison.
     auto& lease = physicsRoots[actor->GetFormID()];
-    lease.owner = physicsOwner(state); lease.actor = actor; lease.root = std::move(current);
+    lease.owner = physicsOwner(state); lease.actor = actor;
+    lease.root = std::move(current); lease.parts = std::move(currentParts); // Main-task-only turnover.
     return true;
 }
 

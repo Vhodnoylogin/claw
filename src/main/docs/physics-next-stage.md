@@ -74,6 +74,39 @@ reproduced game failure or provider acceptance. The final snapshot check and
 third-party append remain non-atomic. See the
 [3 November verification](verification-20261103.md#offline-physics-registration-authority).
 
+### Same-root loaded-part invalidation
+
+The native physics context includes 84 ordered
+third-person biped clone identities: 42 current slots followed by 42 buffered
+slots. While an actor remains a loaded beast with a real skeleton root, clone
+arrival, removal, replacement or slot movement rejects the retained resource
+qualification as `model`, including when the skeleton root stays unchanged.
+An observed change cancels queued registration tickets and makes old snapshots
+unpublishable. Returning to earlier clone identities does not remove rejection;
+fresh explicit qualification remains necessary. Ordinary in-place morph updates
+leave these clone identities unchanged and retain the existing fit/refit path.
+
+The existing maximum of sixteen active/pending/cleanup contexts retains each
+root and its current/buffered clones. The pure body stamp is allocated lazily
+only for these contexts and discarded at retirement; virgin actors and retained
+rejection tombstones have no 84-slot array allocation. New clones are pinned
+before comparison, and the old lease remains alive until comparison finishes, preventing recycled
+addresses from matching a retired object. Replacement and final retirement run
+only in existing main-task observation/collection paths. No engine references
+enter the numeric worker or saved records. Only the third-person graph is
+observed because that is the graph used by this CBPC adapter.
+
+This is sampled resource-context invalidation, not proof of a provider rebind,
+resource hashes, collider removal or successful attachment. Existing cleanup
+authority and accepted ledgers remain intact; a `model` observation cannot
+acknowledge cleanup or use cached population assertions as fresh qualification.
+Human/unload renewal rules and the final non-atomic Papyrus/CBPC boundary remain
+unchanged. Actual engine retention, callbacks and provider behavior still need
+game qualification. Focused native policy tests cover every ordered slot,
+unchanged in-place morph updates, stale tickets and retained rejection/cleanup
+authority. Actual-source contracts check clone retention and retirement ordering;
+they do not execute engine reference counting or Papyrus/provider calls.
+
 Before adding automatic activation, qualify the actual CBPC build, its handling
 of an NPC changing race/model, reserved capsule indices and matching body/model
 resources. Reuse those observations in a session coordinator with persisted

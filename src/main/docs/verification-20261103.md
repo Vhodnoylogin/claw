@@ -1,5 +1,37 @@
 # Development verification, 3 November 2026
 
+## Same-root physics resource correction
+
+The next bounded change observes 84 ordered third-person biped parts in each
+of the existing maximum sixteen physical contexts. Replacement, arrival,
+removal or slot movement beneath the same loaded-beast skeleton root invalidates
+the prior model qualification and queued tickets. It cannot clear an accepted
+cleanup ledger or manufacture fresh provider qualification. Stable part
+identities preserve the existing in-place morph refit path.
+
+Old and newly observed engine objects remain pinned through comparison;
+turnover and retirement use existing main tasks. The pure stamp is lazy:
+48-byte authority, 696-byte active stamp on x64. Virgin states and retired
+rejection histories allocate no slot array. Pure regressions cover 420 ordered
+slot mutations and existing lifecycle/cleanup rules; source contracts inspect
+the adapter wiring. Independent review found no blocking regression.
+
+Nine CTests and the Python suites passed (396 unit, 135 physics, 82 VR;
+27 declared skips). The minimal universal DLL is 1,107,456 bytes, SHA-256
+`3710320fc5c4086945f969150c06c1c752513c0dbf0f6cdf0325d58ea59aa82b`.
+The universal fitted-model DLL also linked: 3,939,840 bytes, SHA-256
+`a0502cd61279b1023c2c872ae49688805c942eac0847b367ccfd29bcfced1e41`.
+The retained model header is unchanged; all 48 own native input pins stayed
+stable. Evidence is under `Builds/claw-mechanics-20261103-r4/`.
+
+Restoring and rebuilding the minimal cache changed two bytes within the PE
+COFF/debug timestamps; all other bytes matched its frozen minimal artifact.
+The original overly strict byte-equality failure remains recorded, alongside
+the subsequent field-specific verification. Neither artifact was installed or
+game-tested. CBPC container/rebind, actual engine retention and VR acceptance
+remain unqualified; the default runtime archive still excludes a fitted model
+and physics host.
+
 ## Human-source history correction
 
 The later mechanics continuation corrects a false human observation: refreshing
