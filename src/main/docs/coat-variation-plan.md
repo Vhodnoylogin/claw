@@ -1,10 +1,12 @@
 # Coat variation: 0.8.5 source candidate
 
-Owner-directed implementation status, 2 November 2026. The source implements
+Owner-directed implementation status, 3 November 2026. The source implements
 discrete coat distribution and complete texture packaging. This is not a release
-announcement or a claim that the new policy passed a game test. Earlier
-per-actor tint/pattern evidence does not qualify the new pools, fallback or CCAS
-record. Physics/VR follows working mechanisms; visual polish remains later work.
+announcement or complete game acceptance. The retained six-reference probe has
+diagnostic lifecycle and independent co-save evidence for stable choices in one
+hair pool and the natural fallback. Independent material ownership and broader
+source/pool transitions still need proof. Physics/VR follows working mechanisms;
+visual polish remains later work.
 
 ## Complete texture bundle
 
@@ -103,13 +105,25 @@ leases still yield to a later writer and restore only their own surviving work.
 
 ## Remaining acceptance
 
-Offline parser, selection, record-codec, bundle and installer checks do not prove
-game rendering or engine lifecycle behavior. The actual candidate still needs
-both sexes, human-to-wolf-to-human, born same-base references, manual/clear,
-source arrival/removal, model refresh, save/load/remap, excluded shapes and
-invalid/missing-policy/library controls. Verify requested versus applied choices,
-real source availability, retained choices and material ownership independently
-from body-morph success. Do not infer AE/VR acceptance from a universal build.
+Probe 18 retained six actor identities/seeds and choices in actual `CCAS` co-save
+records, alongside manual selection/clear, neighbor isolation, model refresh,
+save/load, return and retransform diagnostics. Two controls used `dark-brown`;
+four born references used `natural`. This covers saved data and reported state,
+without independently establishing the rendered hair source or material leases.
+The [verification record](verification-20261102.md#development-085-coats-and-classic-unp)
+preserves the run's termination and later restoration limits. Do not repeat these
+already observed facts as wholly missing or promote them to formal acceptance.
+
+Remaining witnesses include manual clear **after** actual load/remap, genuine
+hair arrival/removal and migration between pools, additional hair pools,
+independent per-surface material/texture ownership, excluded shapes, controlled
+unload, and invalid/missing-policy/library controls. Separate requested/applied
+choices and captured source availability from independent engine readback.
+Offline parser, record-codec, bundle and installer checks do not prove rendering;
+body-morph success and universal compilation do not establish coat, AE or VR
+acceptance. The unsuccessful 3 November tool attempt collected no actor or coat
+snapshots and adds no coverage here. Further game starts are currently paused
+by the owner; this is a verification status, not missing implementation.
 
 Keep mechanical coverage separate from process termination and restored-state
 evidence. Diagnose any new failure from actual evidence without speculative
