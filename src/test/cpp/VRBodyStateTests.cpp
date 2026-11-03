@@ -118,6 +118,60 @@ void inactiveAndIncompleteContexts() {
     input.firstRoot = 300;
     assert(!state.observe(input).reapply && !state.lease()); // No third graph to update.
 }
+void replacedPartsUnderStableRoots() {
+    // Every current/buffered slot in both views is relevant to SKEE traversal.
+    for (std::size_t slot = 0; slot < claw::vrBipedPartCount; ++slot) {
+        claw::VRBodyState state;
+        auto input = beast();
+        input.firstRoot = 300;
+        state.observe(input);
+        const auto beforeArrival = *state.lease();
+        input.partClones[slot] = 1000 + slot;
+        assert(!state.current(beforeArrival, input));
+        const auto arrival = state.observe(input);
+        assert(arrival.changed && arrival.reapply);
+        assert(state.parts()[slot] == input.partClones[slot]);
+        assert(state.roots().count == 2); // Skeleton roots never changed.
+        assert(!state.observe(input).changed && !state.observe(input).reapply);
+        const auto beforeReplacement = *state.lease();
+        input.partClones[slot] += 1000;
+        assert(!state.current(beforeReplacement, input));
+        assert(state.observe(input).reapply);
+        const auto beforeRemoval = *state.lease();
+        input.partClones[slot] = 0;
+        assert(!state.current(beforeRemoval, input));
+        assert(state.observe(input).reapply && state.parts()[slot] == 0);
+    }
+}
+
+void orderedPartsAndRelease() {
+    claw::VRBodyState state;
+    auto input = beast();
+    input.firstRoot = 300;
+    for (std::size_t slot = 0; slot < input.partClones.size(); ++slot)
+        input.partClones[slot] = 1000 + slot;
+    state.observe(input);
+    const auto old = *state.lease();
+    // Current-to-buffered movement with the same object set changes context.
+    const auto first = input.partClones[0];
+    input.partClones[0] = input.partClones[claw::vrBipedSlotCount];
+    input.partClones[claw::vrBipedSlotCount] = first;
+    assert(!state.current(old, input) && state.observe(input).reapply);
+    input.beast = false;
+    assert(state.observe(input).changed && !state.lease());
+    for (const auto part : state.parts()) assert(part == 0);
+    input.beast = true;
+    state.observe(input);
+    input.enabled = false;
+    state.observe(input);
+    for (const auto part : state.parts()) assert(part == 0);
+    input = beast();
+    input.vrPlayer = false;
+    state.observe(input);
+    input.partClones.back() = 99;
+    assert(!state.observe(input).changed && !state.lease());
+}
+
 }
 
 int main() {
@@ -126,5 +180,7 @@ int main() {
     unloadReloadAndStaleLease();
     ownershipRaceAndSexTransitions();
     inactiveAndIncompleteContexts();
+    replacedPartsUnderStableRoots();
+    orderedPartsAndRelease();
     std::cout << "VR loaded-graph lifecycle contracts passed\n";
 }

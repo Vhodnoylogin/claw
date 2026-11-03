@@ -1,6 +1,7 @@
 #pragma once
 #include "claw/ColourMath.h"
 #include "claw/CoatPolicy.h"
+#include "claw/MaterialLease.h"
 #include <RE/Skyrim.h>
 #include <SKSE/SKSE.h>
 #include <IPluginInterface.h>
@@ -56,6 +57,9 @@ private:
         RE::NiPointer<RE::NiBooleanExtraData> guard;
         RE::NiPointer<RE::BSTextureSet> textureSet;
         RE::NiPointer<RE::NiSourceTexture> diffuseTexture;
+        std::array<RE::NiPointer<RE::NiSourceTexture>, 3> otherTextures;
+        RE::BSTSmartPointer<RE::BSEffectShaderData> effectData;
+        std::optional<MaterialLeaseState> materialLease;
         std::array<std::string, RE::BSTextureSet::Texture::kTotal> texturePaths;
         bool patterned{};
     };
@@ -78,6 +82,7 @@ private:
         const RE::BSShaderProperty* original, std::uint32_t tint);
     static bool protectPrivateTint(RE::BSShaderProperty* copy, const RE::BSShaderProperty* original);
     static bool healthyPrivateTint(const Surface& surface);
+    static MaterialLeaseState materialLeaseState(const RE::BSShaderProperty& property);
     static std::string texturePath(RE::BSTextureSet* set, RE::BSTextureSet::Texture slot);
     CoatDecision decision(const Entry& entry) const;
     bool preparePattern(RE::BSShaderProperty* property, const CoatTexture& texture, const CoatDDSInfo& expected, std::string& reason) const;
@@ -346,6 +351,8 @@ inline bool Runtime::healthyPrivateTint(const Surface& surface) {
     // are witnesses, not sources to dereference after another writer replaces
     // the material or its guard. Initial immediate writes have no lease yet.
     if (surface.tinted && (material != surface.material.get() || guardData != surface.guard.get())) return false;
+    if (surface.tinted && (!surface.materialLease ||
+        !mayRestoreMaterial(*surface.materialLease, materialLeaseState(*surface.own)))) return false;
     const auto* guard = netimmerse_cast<RE::NiBooleanExtraData*>(guardData);
     if (!guard || !guard->data) return false;
     RGB actual{};
@@ -365,6 +372,30 @@ inline bool Runtime::healthyPrivateTint(const Surface& surface) {
             if (texturePath(lighting->textureSet.get(), static_cast<RE::BSTextureSet::Texture>(i)) != surface.texturePaths[i]) return false;
     }
     return matchesPackedTint(actual, surface.expectedTint);
+}
+inline MaterialLeaseState Runtime::materialLeaseState(const RE::BSShaderProperty& property) {
+    // The caller has already validated this private lighting/tint material.
+    const auto& material = *static_cast<const RE::BSLightingShaderMaterialBase*>(property.material);
+    MaterialLeaseState result;
+    for (unsigned i = 0; i != 2; ++i) {
+        result.uvOffset[i * 2] = material.texCoordOffset[i].x;
+        result.uvOffset[i * 2 + 1] = material.texCoordOffset[i].y;
+        result.uvScale[i * 2] = material.texCoordScale[i].x;
+        result.uvScale[i * 2 + 1] = material.texCoordScale[i].y;
+    }
+    result.specularColour = {material.specularColor.red, material.specularColor.green, material.specularColor.blue};
+    result.materialAlpha = material.materialAlpha; result.refractionPower = material.refractionPower;
+    result.specularPower = material.specularPower; result.specularScale = material.specularColorScale;
+    result.subSurfaceRolloff = material.subSurfaceLightRolloff; result.rimPower = material.rimLightPower;
+    result.propertyAlpha = property.alpha; result.flags = property.flags.underlying();
+    result.diffuseTarget = material.diffuseRenderTargetSourceIndex; result.clampMode = material.textureClampMode;
+    result.textures = {reinterpret_cast<std::uintptr_t>(material.diffuseTexture.get()),
+        reinterpret_cast<std::uintptr_t>(material.normalTexture.get()),
+        reinterpret_cast<std::uintptr_t>(material.rimSoftLightingTexture.get()),
+        reinterpret_cast<std::uintptr_t>(material.specularBackLightingTexture.get())};
+    result.textureSet = reinterpret_cast<std::uintptr_t>(material.textureSet.get());
+    result.effectData = reinterpret_cast<std::uintptr_t>(property.effectData.get());
+    return result;
 }
 inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     std::uint64_t saveNamespace, std::uint64_t identity) {
@@ -516,7 +547,13 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         surface.material.reset(surface.own->material);
         surface.guard.reset(netimmerse_cast<RE::NiBooleanExtraData*>(surface.own->GetExtraData("NO_TINT")));
         surface.textureSet = static_cast<RE::BSLightingShaderMaterialBase*>(surface.own->material)->textureSet;
-        surface.diffuseTexture = static_cast<RE::BSLightingShaderMaterialBase*>(surface.own->material)->diffuseTexture;
+        const auto* accepted = static_cast<RE::BSLightingShaderMaterialBase*>(surface.own->material);
+        surface.diffuseTexture = accepted->diffuseTexture;
+        surface.otherTextures = {accepted->normalTexture, accepted->rimSoftLightingTexture, accepted->specularBackLightingTexture};
+        surface.effectData = surface.own->effectData;
+        // Snapshot initialized public state, never pre-initialization scratch
+        // values. Retained references make compared pointer identities stable.
+        surface.materialLease = materialLeaseState(*surface.own);
         surface.tinted = true;
     }
     entry.appliedPattern = selected ? requestedPattern : "";

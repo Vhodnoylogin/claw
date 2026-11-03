@@ -206,3 +206,47 @@ proving admission-time resource stability. The final snapshot check and third-pa
 CBPC append remain non-atomic and still need recorded-ledger rollback or pending
 cleanup. Provider/container lifecycle, motion and contact remain unqualified.
 Physics remains disabled by default.
+
+## Offline material ownership and equipped VR clone lifecycle
+
+The next source-only slice fixes two independent lifecycle gaps. A coat lease
+now captures named initialized material/property fields after engine setup.
+Later in-place normal/rim/specular texture, UV, specular/alpha, shader-flag or
+effect-identity changes deny whole-property restoration. Compared texture and
+effect identities retain references. This conservatively yields a changed
+property; it does not identify arbitrary external writers or compare opaque
+renderer state. The pure snapshot test is not an engine rollback witness.
+
+The VR-player policy now observes all 168 ordered biped clone slots: current and
+buffered tables in both views. Arrival, replacement, removal and slot movement
+invalidate morph application even when both skeleton roots and coefficients
+stay unchanged. The adapter retains graph/clone references in one bounded
+process-lifetime slot and retires them only on SKSE main tasks. Actor states
+hold a lazily allocated pure policy, so load/revert destruction does not release
+scene references there. No new NPC scan or SE/AE graph path is introduced.
+
+The traversal matches inspected SKEE reference source `NifUtils.cpp:1004..1027`
+at `eb39bdd185f0ee5b3154b2ae1910d2465b2627ed`, file SHA-256
+`807be810a337ab68e7600d139219fdb1bdff726239c5f94734d762bf5df21d73`.
+This is a source reference, not evidence that an installed VR provider executes
+an equivalent path. Clone identity detects replacement, not in-place vertex edits.
+First-person filename dispatch, visibility, coat leases, IK and hand contact
+remain unfinished.
+
+A fresh minimal universal SE/AE/VR DLL linked successfully: 1,105,408 bytes,
+SHA-256 `7abce06fb7b25efe06cdd975fbbb053a7fba0913449ff57f5aca430e7983b1a3`.
+It is an AMD64 PE and intentionally excludes the optional fitted physics model.
+All 48 captured own C++/CMake/test inputs stayed unchanged through verification.
+These pins do not claim whole-system compiler-input attestation. Seven CTests
+passed: material lease, all 168 VR slots, coat policy, matrix, physics authority,
+physics observer and world-start policy. The 27 physics source contracts and
+42 source/package contracts also passed after the edits. Before these edits,
+the default Python suites passed 396 unit, 134 physics and 82 VR cases, with
+27 declared skips in total; that baseline does not replace post-change checks.
+An independent critic reviewed both actual adapters and their ownership limits.
+
+Frozen DLL, source pins, commands and logs remain outside Git under
+`Builds/claw-backlog-20261103/offline-mechanics-02/`. No game, live installation,
+profile modification, Computer Use session, package or public release followed.
+Actual material/fade behavior, equipment updates and VR/provider acceptance
+still need later game evidence. The owner's no-game restriction remains active.

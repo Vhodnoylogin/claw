@@ -6,6 +6,11 @@
 #include <optional>
 
 namespace claw {
+// Both current/buffered 42-slot biped tables, for each of the two loaded views.
+inline constexpr std::size_t vrBipedSlotCount = 42;
+inline constexpr std::size_t vrBipedPartCount = 2 * 2 * vrBipedSlotCount;
+using VRBodyParts = std::array<std::uintptr_t, vrBipedPartCount>;
+
 // Opaque identities collected on the main task. The adapter retains any engine
 // roots separately; this policy never dereferences, creates or owns a graph.
 struct VRBodyInput {
@@ -13,6 +18,7 @@ struct VRBodyInput {
     int sex{-1};
     std::uint64_t owner{}, lifecycle{};
     std::uintptr_t race{}, thirdRoot{}, firstRoot{};
+    VRBodyParts partClones{}; // Ordered third/first, current/buffered, slot.
     bool operator==(const VRBodyInput&) const = default;
 };
 
@@ -57,6 +63,13 @@ public:
         if (input_.firstRoot && input_.firstRoot != input_.thirdRoot)
             result.identities[result.count++] = input_.firstRoot;
         return result;
+    }
+
+    // Hold the actual clones, not just skeleton roots: equipment/model changes
+    // can replace a slot object while both graph roots remain unchanged.
+    const VRBodyParts& parts() const {
+        static constexpr VRBodyParts empty{};
+        return active() ? input_.partClones : empty;
     }
 
     std::optional<VRBodyLease> lease() const {

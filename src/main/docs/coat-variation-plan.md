@@ -105,6 +105,15 @@ leases still yield to a later writer and restore only their own surviving work.
 
 ## Remaining acceptance
 
+An offline ownership correction additionally captures readable initialized
+material state after engine setup. Later in-place changes to normal/rim/specular
+textures, UV coordinates, specular/alpha parameters, shader flags or the effect
+data identity now yield the property instead of restoring a stale whole-property
+copy over that writer. Compared object identities retain their references.
+This checks named public fields, not opaque renderer state or arbitrary writes;
+an engine change to a watched field can conservatively cause yielding. Actual
+engine material ownership and animated/fading behavior still need acceptance.
+
 Probe 18 retained six actor identities/seeds and choices in actual `CCAS` co-save
 records, alongside manual selection/clear, neighbor isolation, model refresh,
 save/load, return and retransform diagnostics. Two controls used `dark-brown`;

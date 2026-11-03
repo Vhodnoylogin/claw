@@ -83,8 +83,7 @@ struct State {
     Status status{Status::pending};
     std::string error;
     std::uintptr_t lastRoot{};
-    claw::VRBodyState vrBody; // Transient loaded-player graph stamp, never serialized.
-    std::array<RE::NiPointer<RE::NiAVObject>, 2> vrGraphs; // Retain identities until their next observation.
+    std::unique_ptr<claw::VRBodyState> vrBody; // VR player only; pure transient policy, no engine references.
     RE::VMHandle vmHandle{};
     float lastWeight{-1};
     float humanWeight{-1}, beastWeight{-1}; // Last observed normalized NPC property, never an input override.
@@ -124,6 +123,15 @@ auto& coatRequests = requestChannels.coat();
 // Deliberately process-lifetime storage: DLL/static teardown has no qualified
 // engine thread. Normal releases happen ONLY through collectPins in SKSE tasks.
 auto& pins = *new std::map<RE::Actor*, Pin>();
+// A single VR player can retain scene objects. No State destruction, VM callback
+// or static DLL teardown releases their last references; SKSE tasks own turnover.
+struct VRBodyRetention {
+    RE::FormID actor{};
+    std::uint64_t runtime{}, world{};
+    std::array<RE::NiPointer<RE::NiAVObject>, 2> graphs;
+    std::array<RE::NiPointer<RE::NiAVObject>, claw::vrBipedPartCount> parts;
+};
+auto& vrBodyRetention = *new VRBodyRetention();
 std::uint64_t nextPinSerial{1}, nextRuntimeSerial{1};
 std::recursive_mutex mutex;
 std::uint64_t saveNamespace{};
@@ -254,6 +262,12 @@ Pin pinActor(RE::Actor* actor) {
 // pending/native owners until their final main-safe collection.
 void collectPins() {
     claw::collectUnshared(pins);
+    if (vrBodyRetention.runtime) {
+        const auto state = states.find(vrBodyRetention.actor);
+        const bool owned = enabled && vrBodyRetention.world == epoch && state != states.end() &&
+            !state->second.quarantined && state->second.runtimeSerial == vrBodyRetention.runtime && state->second.vrBody;
+        if (!owned) vrBodyRetention = {}; // Main-task-only release of stale graph/clone identities.
+    }
     for (auto it = physicsRoots.begin(); it != physicsRoots.end();) {
         const auto binding = physicsBindings.find(it->first);
         const auto state = states.find(it->first);
@@ -285,7 +299,8 @@ void quarantine(State& state, std::string error) {
     state.quarantined = true; state.runtimeSerial = 0; state.runtimePointer = nullptr;
     state.runtimeHandle.reset(); state.cache.clear();
     state.physicsAuthority.reject(claw::PhysicsRejection::identity);
-    state.vrBody = {}; state.vrGraphs = {};
+    state.vrBody.reset();
+    queuePinCollection();
     logError(state, std::move(error));
 }
 void checkRuntimeInstances() {
@@ -803,10 +818,25 @@ bool readback(RE::Actor* actor, const claw::Morphs& expected) {
 claw::VRBodyInput vrBodyInput(RE::Actor* actor, const State& state, bool beast) {
     if (!REL::Module::IsVR() || actor != RE::PlayerCharacter::GetSingleton()) return {};
     const bool loaded = actor->Is3DLoaded();
-    return {enabled.load(), true, beast, static_cast<int>(actor->GetActorBase()->GetSex()),
+    claw::VRBodyInput actual{enabled.load(), true, beast, static_cast<int>(actor->GetActorBase()->GetSex()),
         state.runtimeSerial, epoch.load(), reinterpret_cast<std::uintptr_t>(actor->GetRace()),
         loaded ? reinterpret_cast<std::uintptr_t>(actor->Get3D(false)) : 0,
         loaded ? reinterpret_cast<std::uintptr_t>(actor->Get3D(true)) : 0};
+    static_assert(claw::vrBipedSlotCount == RE::BIPED_OBJECTS::kTotal);
+    if (actual.enabled && beast && loaded) {
+        // SKEE VisitBipedNodes traverses these two tables in each view; a fresh
+        // part can arrive beneath an unchanged skeleton root. Main-task only.
+        for (std::size_t view = 0; view < 2; ++view) {
+            const auto biped = actor->GetBiped(view != 0);
+            if (!biped) continue;
+            const auto offset = view * 2 * claw::vrBipedSlotCount;
+            for (std::size_t slot = 0; slot < claw::vrBipedSlotCount; ++slot) {
+                actual.partClones[offset + slot] = reinterpret_cast<std::uintptr_t>(biped->objects[slot].partClone.get());
+                actual.partClones[offset + claw::vrBipedSlotCount + slot] = reinterpret_cast<std::uintptr_t>(biped->bufferedObjects[slot].partClone.get());
+            }
+        }
+    }
+    return actual;
 }
 
 bool clearOwn(RE::Actor* actor) {
@@ -833,15 +863,28 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     State* state = stateFor(actor, beast || defaultDeclared);
     if (!state || state->quarantined || !boundTo(*state, actor)) return;
     if (!observePhysicsContext(actor, *state)) state->physicsAuthority.reject(claw::PhysicsRejection::identity);
-    if (actorSex != RE::SEX::kMale && actorSex != RE::SEX::kFemale) { logError(*state, "actor has no readable NPC sex"); return; }
-    const auto graphTransition = state->vrBody.observe(vrBodyInput(actor, *state, beast));
-    if (graphTransition.changed) {
-        const auto roots = state->vrBody.roots();
-        for (std::size_t i = 0; i < state->vrGraphs.size(); ++i)
-            state->vrGraphs[i].reset(i < roots.count ? reinterpret_cast<RE::NiAVObject*>(roots.identities[i]) : nullptr);
+    if (actorSex != RE::SEX::kMale && actorSex != RE::SEX::kFemale) {
+        if (state->vrBody) { state->vrBody.reset(); queuePinCollection(); }
+        logError(*state, "actor has no readable NPC sex"); return;
     }
-    if (graphTransition.reapply) state->dirty = true;
-    const auto vrLease = state->vrBody.lease();
+    std::optional<claw::VRBodyLease> vrLease;
+    if (REL::Module::IsVR() && actor == RE::PlayerCharacter::GetSingleton()) {
+        if (!state->vrBody) state->vrBody = std::make_unique<claw::VRBodyState>();
+        auto& policy = *state->vrBody;
+        const auto graphTransition = policy.observe(vrBodyInput(actor, *state, beast));
+        if (graphTransition.changed || vrBodyRetention.runtime != state->runtimeSerial || vrBodyRetention.world != epoch) {
+            const auto roots = policy.roots();
+            for (std::size_t i = 0; i < vrBodyRetention.graphs.size(); ++i)
+                vrBodyRetention.graphs[i].reset(i < roots.count ? reinterpret_cast<RE::NiAVObject*>(roots.identities[i]) : nullptr);
+            const auto& parts = policy.parts();
+            for (std::size_t i = 0; i < vrBodyRetention.parts.size(); ++i)
+                vrBodyRetention.parts[i].reset(reinterpret_cast<RE::NiAVObject*>(parts[i]));
+            vrBodyRetention.actor = actor->GetFormID();
+            vrBodyRetention.runtime = state->runtimeSerial; vrBodyRetention.world = epoch;
+        }
+        if (graphTransition.reapply) state->dirty = true;
+        vrLease = policy.lease();
+    } else state->vrBody.reset();
     const auto desiredSex = actorSex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
     const bool bindingMismatch = !state->link.bindingError(state->sex, desiredSex).empty();
     if (bindingMismatch) revokeSourceBootstrap(*state);
@@ -917,7 +960,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         if (!clearOwn(actor)) { logError(*state, "own-key preparation readback failed"); return; }
         // Recheck race/model immediately before writes; all operations stay on this main-thread task.
         if (!currentOwner(actor) || actor->GetRace() != beastRace || !actor->Is3DLoaded() || !actor->Get3D() ||
-            (vrLease && !state->vrBody.current(*vrLease, vrBodyInput(actor, *state, true)))) {
+            (vrLease && (!state->vrBody || !state->vrBody->current(*vrLease, vrBodyInput(actor, *state, true))))) {
             state->dirty = true; state->status = Status::pending; return;
         }
         for (const auto& [name, value] : expected) if (value != 0)
@@ -1208,6 +1251,7 @@ void load(SKSE::SerializationInterface* interface) {
             (!identity || (identity == state->second.identity && seed == claw::appearance::coatSeed(saveNamespace, identity)));
     });
     for (const auto& [id, state] : states) { (void)id; nextIdentity = std::max(nextIdentity, state.identity + 1); }
+    queuePinCollection();
 }
 
 void deleted(RE::VMHandle handle) {
@@ -1917,6 +1961,7 @@ void message(SKSE::MessagingInterface::Message* event) {
             physicsSessionAuthorized = false; physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
             obodySourcePopulationEnabled = false;
         }
+        queuePinCollection();
         break;
     case Type::kDataLoaded:
         {
@@ -1994,6 +2039,7 @@ void message(SKSE::MessagingInterface::Message* event) {
             // notification after a failed/malformed load-completion message.
             enabled = false; ++epoch;
             SKSE::log::warn("CLAW world activation refused: saved game did not load successfully");
+            queuePinCollection();
             break;
         }
         {
