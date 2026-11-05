@@ -105,6 +105,9 @@ candidate. Their [verification record](src/main/docs/verification-20261102.md#de
 separates source/packaging checks from incomplete game and provider checks.
 The [3 November development record](src/main/docs/verification-20261103.md)
 records the newer universal build, actual-family getter and test-source repair.
+The [5 November development record](src/main/docs/verification-20261105.md)
+adds the completed original-UNP lifecycle trial and the source-level physics
+retirement correction; actual coat-material and provider checks remain pending.
 See the [roadmap](src/main/docs/roadmap.md),
 [release record](src/main/resources/publication/CLAW-0.8.0.md),
 [matrix contract](src/main/docs/matrix-contract.md) and
