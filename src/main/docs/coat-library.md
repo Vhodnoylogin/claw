@@ -194,6 +194,7 @@ String GetAppliedCoatPattern(Actor target)
 String GetCoatPatternStatus(Actor target)
 Bool RequestCoatSurfaceAudit(Actor target)
 String GetCoatSurfaceAudit(Actor target)
+String[] GetCoatSurfaceAuditChunks(Actor target)
 ```
 
 Use a fully qualified ID returned by the catalog, for example
@@ -224,6 +225,14 @@ or an unload starts a new token. `ageMs` reports elapsed time since the main-tas
 sample. This is a timestamped observation, not a guarantee that an unreported
 external write cannot occur between sampling and reading. Request a fresh sample
 after every test action and retain each result outside the game for comparison.
+
+For consumers with a short-string transport, use `GetCoatSurfaceAuditChunks`.
+It reads the same cache once and returns the JSON as at most 64 ordered ASCII
+strings, each at most 1,024 bytes. Join all elements with no separator **before**
+parsing JSON; an escape sequence may cross a chunk boundary. One array contains
+one complete observation and one age value. An empty array means unavailable,
+with the same pending/invalidation/two-second freshness rules as the full-string
+getter. It neither starts a sample nor relaxes the audit's inventory limits.
 
 `surfaces` contains every geometry encountered beneath that root, including
 unnamed and duplicate-name geometries. `managed` is membership in CLAW's twelve

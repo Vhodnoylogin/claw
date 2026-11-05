@@ -4,10 +4,77 @@
 
 namespace {
 void require(bool value, const char* message) { if (!value) throw std::runtime_error(message); }
+std::string joined(const std::vector<std::string>& chunks) {
+    std::string result;
+    for (const auto& chunk : chunks) result += chunk;
+    return result;
+}
+void chunksPreserveBoundedBytes() {
+    using namespace claw::appearance;
+    require(coatAuditChunks({}).empty(), "Unavailable audit became a fabricated chunk");
+    for (const auto size : {std::size_t{1}, coatAuditChunkBytes - 1, coatAuditChunkBytes,
+             coatAuditChunkBytes + 1, coatAuditMaxPayloadBytes - 1, coatAuditMaxPayloadBytes}) {
+        const std::string payload(size, 'x');
+        const auto chunks = coatAuditChunks(payload);
+        require(chunks.size() == (size + coatAuditChunkBytes - 1) / coatAuditChunkBytes,
+            "Chunk count truncated the bounded payload");
+        require(chunks.size() <= coatAuditMaxChunks && joined(chunks) == payload, "Chunk join changed observation bytes");
+        for (const auto& chunk : chunks) require(!chunk.empty() && chunk.size() <= coatAuditChunkBytes,
+            "Transport chunk exceeded its per-String bound");
+    }
+    require(coatAuditChunks(std::string(coatAuditMaxPayloadBytes + 1, 'x')).empty(),
+        "Oversize audit was partially returned instead of rejected");
+    require(coatAuditChunks(std::string{"ascii"} + char(255)).empty() &&
+        coatAuditChunks(std::string{"a\0b", 3}).empty(), "Non-ASCII or embedded-NUL transport accepted");
+    const auto escaped = coatAuditQuote(std::string(coatAuditChunkBytes - 2, 'a') + char(255) + "\\\"");
+    const auto chunks = coatAuditChunks(escaped);
+    require(chunks.size() == 2 && chunks[0].back() == '\\' && chunks[1].starts_with("u00ff") && joined(chunks) == escaped,
+        "An escape crossing a fragment boundary was rewritten or truncated");
+}
+void maximumPublishedObservationUsesOneFreshPayload() {
+    using namespace claw::appearance;
+    CoatSurfaceObservation row;
+    row.name = "x"; row.diffusePath = ""; row.diffuseResource = "";
+    std::vector<CoatSurfaceObservation> rows(coatAuditMaxSurfaces, row);
+    // ASCII padding changes serialized size by exactly one byte. Fill all legal
+    // row fields to the maximum accepted encoded rows size, including ']'.
+    const auto initial = coatAuditRows(rows);
+    require(!initial.empty() && initial.size() < coatAuditMaxRowsBytes + 1, "Invalid max-payload fixture");
+    auto remaining = coatAuditMaxRowsBytes + 1 - initial.size();
+    const auto pad = [&remaining](std::string& field, std::size_t maximum) {
+        const auto count = std::min(remaining, maximum - field.size());
+        field.append(count, 'x'); remaining -= count;
+    };
+    for (auto& observed : rows) {
+        pad(observed.name, coatAuditMaxName);
+        pad(*observed.diffusePath, coatAuditMaxPath);
+        pad(*observed.diffuseResource, coatAuditMaxPath);
+    }
+    require(!remaining && coatAuditRows(rows).size() == coatAuditMaxRowsBytes + 1,
+        "Maximum accepted observation fixture did not reach the rows bound");
+    CoatSurfaceAuditCache cache;
+    constexpr auto largest = std::numeric_limits<std::uint64_t>::max();
+    require(cache.begin(largest) && cache.publish(largest, largest, 100, false, rows),
+        "Maximum valid observed audit was rejected");
+    const auto payload = cache.read(2100); // One time sample, even across 63 fragments.
+    const auto chunks = coatAuditChunks(payload);
+    require(payload.size() > coatAuditMaxRowsBytes && payload.size() <= coatAuditMaxPayloadBytes &&
+        chunks.size() > 1 && chunks.size() <= coatAuditMaxChunks && joined(chunks) == payload,
+        "Maximum actual cached JSON was truncated by chunk transport");
+    const auto age = payload.find("\"ageMs\":2000");
+    require(age != payload.npos && payload.find("\"ageMs\":", age + 1) == payload.npos,
+        "Fragments gained inconsistent or repeated sample ages");
+    require(coatAuditChunks(cache.read(2101)).empty() && coatAuditChunks(cache.read(99)).empty(),
+        "Stale or backward-clock audit escaped through fragments");
+    require(cache.begin(7) && coatAuditChunks(cache.read(2100)).empty(), "Pending sample exposed old fragments");
+    cache.invalidate();
+    require(coatAuditChunks(cache.read(2100)).empty(), "Invalidated audit exposed old fragments");
+}
 }
 int main() {
     using namespace claw::appearance;
     try {
+        chunksPreserveBoundedBytes(); maximumPublishedObservationUsesOneFreshPayload();
         CoatSurfaceObservation row;
         row.name = "body"; row.managed = true; row.materialType = 2; row.feature = 5;
         row.diffusePath = "textures\\actual\\body.dds";
@@ -51,7 +118,7 @@ int main() {
         require(coatAuditRows({row}).empty(), "Excessive observed texture path accepted");
         row.diffusePath = std::string(coatAuditMaxPath, char(255)); row.diffuseResource = row.diffusePath;
         require(coatAuditRows(std::vector<CoatSurfaceObservation>(coatAuditMaxSurfaces, row)).empty(), "Excessive encoded snapshot accepted");
-        std::cout << "Coat surface audit: observed fields, JSON bounds, request ownership, invalidation and freshness passed\n";
+        std::cout << "Coat surface audit: observed fields, JSON/chunk bounds, exact joins, request ownership, invalidation and freshness passed\n";
         return 0;
     } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }

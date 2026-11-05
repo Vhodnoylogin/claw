@@ -53,6 +53,14 @@ status for that transition, retaining this limit. Technical acceptance needs no
 screenshot or artistic-quality judgment; optional Steam images are supplementary.
 A setter returning true still only means admission.
 
+For the bounded native-binding channel, retrieve
+`GetCoatSurfaceAuditChunks(actor)` instead of the long-string getter. Concatenate
+the array in order with no separator, then parse JSON. Each element is at most
+1,024 ASCII bytes, so it fits the channel's 4,096-byte string limit; up to 64
+elements carry one complete sample. Escape sequences can cross a boundary. Empty
+arrays mean unavailable, not an empty successful inventory. Do not combine chunks
+from separate calls, whose samples or ages can differ.
+
 After the owned save/load and reference remap, clear one restored manual choice
 and compare it with its retained automatic baseline and a fresh surface sample.
 Keep the other actors unchanged. Clearing before the save does not cover this

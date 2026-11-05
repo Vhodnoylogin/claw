@@ -36,6 +36,7 @@
   "surfaceObservations": {
     "source": "CLAW bounded read-only actual-surface audit, separate from requested/applied pattern diagnostics",
     "requestBeforeEachSample": true,
+    "shortStringTransport": "Read the one bounded chunk array, join all ordered ASCII elements without separators, then parse the complete JSON. Empty means unavailable; never parse individual chunks or mix getter calls.",
     "maximumAgeMilliseconds": 2000,
     "schema": 1,
     "stringEncoding": "bytes-u00xx",

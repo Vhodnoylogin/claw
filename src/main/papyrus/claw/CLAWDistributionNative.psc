@@ -69,6 +69,11 @@ Bool Function RequestCoatSurfaceAudit(Actor target) Global Native
 ; again after every transition. All engine reads occur in the queued main task;
 ; this getter reads plain cached data only. See docs/coat-library.md for schema.
 String Function GetCoatSurfaceAudit(Actor target) Global Native
+; Same cached JSON as above, read once and split into at most 64 ordered ASCII
+; fragments of at most 1024 bytes. Concatenate all elements before JSON parsing;
+; an escape sequence may cross a fragment boundary. Empty array means unavailable.
+; This avoids a caller's per-String return bound without changing the full getter.
+String[] Function GetCoatSurfaceAuditChunks(Actor target) Global Native
 
 ; Explicit morph-to-morph developer profile. No preset-name pairing or OBody writes.
 ; Applied signed source values are read from SKEE; weight must not be applied twice.

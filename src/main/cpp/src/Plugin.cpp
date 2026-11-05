@@ -1459,6 +1459,19 @@ RE::BSFixedString coatSurfaceAudit(RE::StaticFunctionTag*, RE::Actor* actor) {
     return state && !state->quarantined && state->status != Status::unloaded ?
         RE::BSFixedString(claw::appearance::runtime.surfaceAudit(actor->formID)) : RE::BSFixedString{};
 }
+std::vector<RE::BSFixedString> coatSurfaceAuditChunks(RE::StaticFunctionTag*, RE::Actor* actor) {
+    std::lock_guard lock(mutex);
+    const auto* state = cachedState(actor);
+    if (!state || state->quarantined || state->status == Status::unloaded) return {};
+    // Read once: every fragment belongs to this exact cached JSON observation,
+    // including one ageMs value. No queueing or scene access occurs here.
+    const auto payload = claw::appearance::runtime.surfaceAudit(actor->formID);
+    const auto chunks = claw::appearance::coatAuditChunks(payload);
+    std::vector<RE::BSFixedString> result;
+    result.reserve(chunks.size());
+    for (const auto& chunk : chunks) result.emplace_back(chunk);
+    return result;
+}
 bool hasHumanTrait(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString source) {
     std::lock_guard lock(mutex);
     const auto* state = cachedState(actor);
@@ -1904,6 +1917,7 @@ bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("GetCoatPatternStatus", script, coatPatternStatus);
     vm->RegisterFunction("RequestCoatSurfaceAudit", script, requestCoatSurfaceAudit);
     vm->RegisterFunction("GetCoatSurfaceAudit", script, coatSurfaceAudit);
+    vm->RegisterFunction("GetCoatSurfaceAuditChunks", script, coatSurfaceAuditChunks);
     vm->RegisterFunction("AssignPreset", script, assignPreset);
     vm->RegisterFunction("GetAssigned", script, assigned);
     vm->RegisterFunction("GetMorphFamily", script, morphFamily);

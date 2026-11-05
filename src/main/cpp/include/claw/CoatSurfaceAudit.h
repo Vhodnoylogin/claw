@@ -9,6 +9,24 @@ namespace claw::appearance {
 inline constexpr std::size_t coatAuditMaxObjects = 512, coatAuditMaxSurfaces = 64;
 inline constexpr std::size_t coatAuditMaxName = 128, coatAuditMaxPath = 512;
 inline constexpr std::uint64_t coatAuditMaxAgeMs = 2000;
+inline constexpr std::size_t coatAuditMaxRowsBytes = 64000;
+// The existing rows bound plus the fixed metadata envelope fit in 64 KiB.
+// A String[] transport keeps each element below bounded native-call readers'
+// per-string limits. Chunks are ordered fragments, not independent JSON values.
+inline constexpr std::size_t coatAuditChunkBytes = 1024, coatAuditMaxChunks = 64;
+inline constexpr std::size_t coatAuditMaxPayloadBytes = coatAuditChunkBytes * coatAuditMaxChunks;
+
+inline std::vector<std::string> coatAuditChunks(std::string_view payload) {
+    if (payload.empty() || payload.size() > coatAuditMaxPayloadBytes) return {};
+    // coatAuditQuote byte-escapes non-ASCII observations. Refuse a malformed
+    // transport rather than splitting UTF-8 or silently changing its bytes.
+    for (unsigned char byte : payload) if (!byte || byte >= 128) return {};
+    std::vector<std::string> result;
+    result.reserve((payload.size() + coatAuditChunkBytes - 1) / coatAuditChunkBytes);
+    for (std::size_t offset = 0; offset < payload.size(); offset += coatAuditChunkBytes)
+        result.emplace_back(payload.substr(offset, coatAuditChunkBytes));
+    return result;
+}
 
 // Plain observations only. No renderer/scene pointer or desired texture/tint
 // enters this transport. Lease booleans are explicit comparisons with CLAW's
@@ -66,7 +84,7 @@ inline std::string coatAuditRows(const std::vector<CoatSurfaceObservation>& rows
         result += ",\"ownProperty\":" + std::string(boolean(row.ownProperty)) + ",\"ownMaterial\":" + boolean(row.ownMaterial);
         result += ",\"ownGuard\":" + std::string(boolean(row.ownGuard)) + ",\"ownTextureSet\":" + boolean(row.ownTextureSet);
         result += ",\"ownDiffuse\":" + std::string(boolean(row.ownDiffuse)) + ",\"healthyLease\":" + boolean(row.healthyLease) + '}';
-        if (result.size() > 64000) return {};
+        if (result.size() > coatAuditMaxRowsBytes) return {};
     }
     return result + ']';
 }
