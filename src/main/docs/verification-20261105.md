@@ -37,17 +37,44 @@ pattern assignment, persistence and actual-material audit APIs. Packaging checks
 cover the complete Elegant coat library and every installer selection. Saved
 automatic selections were also decoded from an owned co-save.
 
-Actual shader/material lifecycle acceptance is still pending. The subsequent
-coat attempts did not reach the coat assertions: an experimental actor entered
-the dying state, two fixture-conductor checks rejected valid runtime metadata,
-and two starts stopped during the first read-only menu query. The latter requests
-were abandoned before task start; New Game had not been selected. These failures
-are not evidence that CLAW's coat mechanism passed or failed.
+The fresh trial `20261105-231700-e041a9` completed all eight finite coat phases
+using the same native runtime: automatic selection, an independent actor control,
+two manual selections, refresh, owned save/load, reset to automatic and normal
+finish. All 109 commands have distinct submission receipts; none was replayed.
 
-The conductor now distinguishes the pinned original MO2 INI from the exact
-recorded active image and coalesces repeated paths only when their hashes agree.
-Independent checks include the actual registered plan and conflicting-hash
-counterexamples. These are tooling checks, not coat acceptance.
+Fourteen fresh material audits checked 12 managed surfaces each. The head and
+body diffuse paths and the actually bound texture resources matched the selected
+catalogue entries. Material, shader and texture-set ownership checks passed;
+Original mode retained neutral tint and finite donor alpha. The 98 excluded
+surface observations were compared only within the same world and model root.
+The first observation and the replacement roots after loading establish new
+baselines rather than claiming cross-root preservation.
+
+The two female Nord actors selected Ashen and Umber automatically. Manual Black
+and Timber assignments remained independent. The owned save/load retained both
+manual assignments, advanced the world/load generation and produced fresh model
+roots. Resetting the first actor returned its initial automatic Ashen selection
+without changing the second actor's Black override. Refresh retained the choices
+but did not replace the observed model roots.
+
+The game exited through the owned normal-menu request with code zero. All 121
+environment snapshots were restored, the copied profile and owned saves were
+archived, and the reservation was released. The immutable packet contains all
+eight raw phase bundles. A later derived summary is supplemental and is not
+represented as part of that packet.
+
+This accepts the measured two-female Original-mode lifecycle, including four
+actual coat patterns. Male actors, originally-beast actors without human colour,
+the complete live palette and AE/VR remain separate coverage. The formal
+bootstrap report still contains 15 assertions and two declared race observations;
+the 14 material audits are independently reviewed operator evidence. No pixel or
+artistic-quality conclusion follows from these checks.
+
+Earlier attempts remain recorded as unsuccessful: an experimental actor entered
+the dying state, two conductor checks rejected valid runtime metadata, and two
+starts stopped during an abandoned first read-only menu query. Their results
+were not overwritten by this successful trial. The corrected startup read path
+was used, but its abandoned-read retry branch was not exercised in this run.
 
 ## Physics observation retirement
 
