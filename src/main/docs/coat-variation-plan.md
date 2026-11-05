@@ -5,8 +5,8 @@ discrete coat distribution and complete texture packaging. This is not a release
 announcement or complete game acceptance. The retained six-reference probe has
 diagnostic lifecycle and independent co-save evidence for stable choices in one
 hair pool and the natural fallback. Independent material ownership and broader
-source/pool transitions still need proof. Physics/VR follows working mechanisms;
-visual polish remains later work.
+source/pool transitions still need proof. Physics follows working mechanisms;
+VR-body work and visual polish are currently deferred by the owner.
 
 ## Complete texture bundle
 
@@ -128,11 +128,18 @@ hair arrival/removal and migration between pools, additional hair pools,
 independent per-surface material/texture ownership, excluded shapes, controlled
 unload, and invalid/missing-policy/library controls. Separate requested/applied
 choices and captured source availability from independent engine readback.
+The bounded read-only surface audit described in [the runtime contract](coat-library.md)
+now supplies actual texture-set paths, bound diffuse resources and exposed material
+fields. Its source checks are complete; actual main-task sampling remains a game
+check. The portable coat fixture now requires fresh samples around manual changes
+and after post-load clear, with duplicate-name and generation limits explicit.
 Offline parser, record-codec, bundle and installer checks do not prove rendering;
 body-morph success and universal compilation do not establish coat, AE or VR
 acceptance. The unsuccessful 3 November tool attempt collected no actor or coat
-snapshots and adds no coverage here. Further game starts are currently paused
-by the owner; this is a verification status, not missing implementation.
+snapshots and adds no coverage here. The owner has since authorized game tests;
+the next attempt waits for Skyrim-Foundation to release its MO2 migration and a
+verified test-SE environment. This is shared-environment custody, not an owner
+ban on launches or missing coat implementation.
 
 Keep mechanical coverage separate from process termination and restored-state
 evidence. Diagnose any new failure from actual evidence without speculative

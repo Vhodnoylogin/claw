@@ -33,10 +33,30 @@ the seed. Retain real `CCLR` source flags/RGB and `CCPT` manual IDs independentl
 Returning to human removes applied coat ownership without discarding an eligible
 saved automatic choice. A later transform must recover that choice.
 
-The public native getters expose requested/applied IDs and origin/status, not an
-independent renderer texture/RGB observation. Record these separately from actual
-VFS-resolved DDS hashes and rendered screenshots. Missing independent material
-readback remains unavailable. A setter returning true only means admission.
+Requested/applied IDs and origin/status remain application diagnostics. The
+additional `RequestCoatSurfaceAudit(actor)` / `GetCoatSurfaceAudit(actor)` pair
+samples actual third-person beast material fields on a main task. Request a new
+sample around each bounded action, then retrieve it within two seconds. A true
+request result is admission; an empty, pending, invalidated or stale result is
+unavailable. Retain actor identity, request/read times, sample/model-generation
+tokens and the complete observations. Compare the texture-set diffuse path and
+bound texture resource separately with the selected pattern. Compare complete
+excluded-surface multisets within one retained root generation, including duplicate
+names. `modelGeneration` tracks the third-person root only: child/biped geometry
+can change beneath the same root, so an equal token does not certify unchanged
+inventory. Do not infer equality from the first matching name. Source strings use the
+documented byte-preserving `bytes-u00xx` encoding.
+
+This readback neither observes pixels nor certifies opaque renderer state or an
+arbitrary later writer. It does not sample the human-return renderer. Use cleanup
+status for that transition, retaining this limit. Technical acceptance needs no
+screenshot or artistic-quality judgment; optional Steam images are supplementary.
+A setter returning true still only means admission.
+
+After the owned save/load and reference remap, clear one restored manual choice
+and compare it with its retained automatic baseline and a fresh surface sample.
+Keep the other actors unchanged. Clearing before the save does not cover this
+post-load behavior.
 
 Genuine source arrival/removal needs a supported real-appearance fixture action.
 The existing actor-race action changes current race and preserves the base; it
