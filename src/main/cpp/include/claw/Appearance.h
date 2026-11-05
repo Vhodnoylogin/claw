@@ -2,6 +2,7 @@
 #include "claw/ColourMath.h"
 #include "claw/CoatPolicy.h"
 #include "claw/MaterialLease.h"
+#include "claw/CoatSurfaceAudit.h"
 #include <RE/Skyrim.h>
 #include <SKSE/SKSE.h>
 #include <IPluginInterface.h>
@@ -11,6 +12,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <chrono>
 
 // Engine graph mutations are game-thread only. Distribution owns the state
 // lock for every entry point, including read-only status and serialization.
@@ -38,6 +40,13 @@ public:
     [[nodiscard]] std::string pattern(RE::FormID id) const;
     [[nodiscard]] std::string appliedPattern(RE::FormID id) const;
     [[nodiscard]] std::string patternStatus(RE::FormID id) const;
+    // begin/read/invalidate/cancel touch plain cached state only. sample is an
+    // explicit read-only game-task boundary, independent of material apply.
+    std::uint64_t beginSurfaceAudit(RE::FormID id);
+    void invalidateSurfaceAudit(RE::FormID id);
+    void cancelSurfaceAudit(RE::FormID id, std::uint64_t token);
+    bool sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token);
+    [[nodiscard]] std::string surfaceAudit(RE::FormID id) const;
     bool applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         std::uint64_t saveNamespace, std::uint64_t identity);
     void save(SKSE::SerializationInterface* serial) const;
@@ -75,6 +84,9 @@ private:
         std::string explicitPattern, appliedPattern, attemptedPattern;
         AutomaticCoatState automatic;
         TintMode attemptedMode{TintMode::linked};
+        CoatSurfaceAuditCache audit;
+        RE::NiPointer<RE::NiAVObject> auditRoot; // Turnover/release occurs only in game tasks.
+        std::uint64_t auditGeneration{};
     };
     template<class F> static void visit(RE::NiAVObject* object, F&& f);
     static void unbind(Entry& entry);
@@ -89,6 +101,7 @@ private:
     struct PatternAssets { bool valid{}; std::map<std::string, CoatDDSInfo, std::less<>> dimensions; };
     const PatternAssets& validatePattern(const std::string& key, const CoatPattern& pattern);
     Entry* entryFor(RE::Actor* actor);
+    static std::uint64_t auditClock();
     inline static constexpr std::uint32_t record = 0x524C4343; // CCLR
     inline static constexpr std::uint32_t patternRecord = 0x54504343; // CCPT
     inline static constexpr std::uint32_t automaticRecord = 0x53414343; // CCAS, additive v1
@@ -98,6 +111,7 @@ private:
     CoatPolicy policy_;
     std::filesystem::path dataRoot_;
     std::map<std::string, PatternAssets, std::less<>> validatedPatterns_;
+    std::uint64_t nextAuditRequest_{1}, nextAuditGeneration_{1}; // Never saved or reused on reset.
 };
 // Distribution owns synchronization and explicit game-safe reset/revert.
 inline Runtime runtime;
@@ -108,6 +122,7 @@ template<class F> void Runtime::visit(RE::NiAVObject* object, F&& f) {
     if (auto* node = object->AsNode()) for (auto& child : node->GetChildren()) if (child) visit(child.get(), f);
 }
 inline void Runtime::unbind(Entry& entry) {
+    entry.audit.invalidate();
     for (auto& surface : entry.surfaces) {
         auto& current = surface.geometry->GetGeometryRuntimeData().shaderProperty;
         // A later writer can replace the property OR mutate our clone in place.
@@ -126,7 +141,11 @@ inline void Runtime::forget(RE::FormID id) {
 }
 inline void Runtime::restore(RE::Actor* actor) {
     if (!actor) return;
-    if (auto found = entries_.find(actor->formID); found != entries_.end()) unbind(found->second);
+    if (auto found = entries_.find(actor->formID); found != entries_.end()) {
+        auto& entry = found->second; unbind(entry);
+        const auto* currentRoot = actor->Is3DLoaded() ? actor->Get3D(false) : nullptr;
+        if (entry.auditRoot.get() != currentRoot) { entry.auditRoot.reset(); entry.auditGeneration = 0; }
+    }
 }
 inline std::string_view Runtime::status(RE::FormID id) const {
     const auto found = entries_.find(id);
@@ -195,6 +214,115 @@ inline std::string Runtime::patternStatus(RE::FormID id) const {
         selected.origin == CoatOrigin::legacyHair ? "automatic legacy hair" :
         selected.origin == CoatOrigin::fallback ? "automatic fallback pool " + selected.pool : "no automatic pattern";
     return origin + (policy_.tintMode() == TintMode::original ? " [original]: " : " [linked]: ") + entry.status;
+}
+inline std::uint64_t Runtime::auditClock() {
+    return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+inline std::uint64_t Runtime::beginSurfaceAudit(RE::FormID id) {
+    const auto found = entries_.find(id);
+    if (found == entries_.end() || nextAuditRequest_ == std::numeric_limits<std::uint64_t>::max()) return 0;
+    const auto token = nextAuditRequest_++;
+    return found->second.audit.begin(token) ? token : 0;
+}
+inline void Runtime::invalidateSurfaceAudit(RE::FormID id) {
+    if (auto found = entries_.find(id); found != entries_.end()) found->second.audit.invalidate();
+}
+inline void Runtime::cancelSurfaceAudit(RE::FormID id, std::uint64_t token) {
+    if (auto found = entries_.find(id); found != entries_.end()) found->second.audit.cancel(token);
+}
+inline std::string Runtime::surfaceAudit(RE::FormID id) const {
+    const auto found = entries_.find(id);
+    return found == entries_.end() ? std::string{} : found->second.audit.read(auditClock());
+}
+inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token) {
+    // Called only after Distribution validates its pinned actor/runtime/world.
+    if (!actor) return false;
+    const auto found = entries_.find(actor->formID);
+    if (found == entries_.end() || !found->second.audit.pending(token)) return false;
+    auto& entry = found->second;
+    const auto fail = [&] { entry.audit.cancel(token); return false; };
+    RE::NiPointer<RE::NiAVObject> root{actor->Is3DLoaded() ? actor->Get3D(false) : nullptr};
+    if (!root || !actor->GetActorBase() || entry.base != actor->GetActorBase()->formID ||
+        entry.sex != static_cast<std::uint32_t>(actor->GetActorBase()->GetSex())) return fail();
+    if (entry.auditRoot.get() != root.get() || !entry.auditGeneration) {
+        if (nextAuditGeneration_ == std::numeric_limits<std::uint64_t>::max()) return fail();
+        entry.auditRoot = root; entry.auditGeneration = nextAuditGeneration_++;
+    }
+    const auto text = [](const char* value, std::size_t limit) -> std::optional<std::string> {
+        if (!value) return std::nullopt;
+        std::size_t length{}; while (length <= limit && value[length]) ++length;
+        if (length > limit) return std::nullopt;
+        return std::string(value, length);
+    };
+    std::vector<CoatSurfaceObservation> rows;
+    std::vector<RE::NiAVObject*> objects{root.get()};
+    std::size_t visited{};
+    while (!objects.empty()) {
+        auto* object = objects.back(); objects.pop_back();
+        if (++visited > coatAuditMaxObjects) return fail();
+        if (auto* node = object->AsNode()) for (const auto& child : node->GetChildren()) if (child) {
+            if (objects.size() >= coatAuditMaxObjects) return fail();
+            objects.push_back(child.get());
+        }
+        auto* geometry = object->AsGeometry(); if (!geometry) continue;
+        if (rows.size() >= coatAuditMaxSurfaces) return fail();
+        CoatSurfaceObservation row;
+        const auto name = text(object->name.c_str() ? object->name.c_str() : "", coatAuditMaxName);
+        if (!name) return fail();
+        row.name = *name;
+        row.managed = std::any_of(coatSurfaces.begin(), coatSurfaces.end(), [object](const auto& spec) {
+            return object->name == RE::BSFixedString{spec.name.data()};
+        });
+        const auto lease = std::find_if(entry.surfaces.begin(), entry.surfaces.end(), [geometry](const auto& surface) {
+            return surface.geometry.get() == geometry;
+        });
+        row.tracked = lease != entry.surfaces.end();
+        auto* property = geometry->GetGeometryRuntimeData().shaderProperty.get();
+        if (property) {
+            row.propertyAlpha = property->alpha; row.shaderFlags = property->flags.underlying();
+            const auto* extra = property->GetExtraData("NO_TINT");
+            const auto* boolean = netimmerse_cast<RE::NiBooleanExtraData*>(extra);
+            row.noTint = boolean ? (boolean->data ? 2 : 1) : extra ? 3 : 0;
+            if (const auto* material = property->material) {
+                row.materialType = static_cast<std::int32_t>(material->GetType());
+                row.feature = static_cast<std::int32_t>(material->GetFeature());
+                if (material->GetType() == RE::BSShaderMaterial::Type::kLighting) {
+                    const auto* lighting = static_cast<const RE::BSLightingShaderMaterialBase*>(material);
+                    row.materialAlpha = lighting->materialAlpha;
+                    if (lighting->textureSet) {
+                        const auto* path = lighting->textureSet->GetTexturePath(RE::BSTextureSet::Texture::kDiffuse);
+                        if (path) { row.diffusePath = text(path, coatAuditMaxPath); if (!row.diffusePath) return fail(); }
+                    }
+                    if (lighting->diffuseTexture) {
+                        row.diffuseResource = text(lighting->diffuseTexture->name.c_str() ? lighting->diffuseTexture->name.c_str() : "", coatAuditMaxPath);
+                        if (!row.diffuseResource) return fail();
+                    }
+                    if (material->GetFeature() == RE::BSShaderMaterial::Feature::kFaceGenRGBTint) {
+                        const auto& rgb = static_cast<const RE::BSLightingShaderMaterialFacegenTint*>(material)->tintColor;
+                        row.tint = RGB{rgb.red, rgb.green, rgb.blue};
+                    } else if (material->GetFeature() == RE::BSShaderMaterial::Feature::kHairTint) {
+                        const auto& rgb = static_cast<const RE::BSLightingShaderMaterialHairTint*>(material)->tintColor;
+                        row.tint = RGB{rgb.red, rgb.green, rgb.blue};
+                    }
+                }
+            }
+            if (row.tracked) {
+                row.ownProperty = property == lease->own.get();
+                row.ownMaterial = lease->material && property->material == lease->material.get();
+                row.ownGuard = lease->guard && extra == lease->guard.get();
+                if (property->material && property->material->GetType() == RE::BSShaderMaterial::Type::kLighting) {
+                    const auto* material = static_cast<const RE::BSLightingShaderMaterialBase*>(property->material);
+                    row.ownTextureSet = lease->textureSet && material->textureSet.get() == lease->textureSet.get();
+                    row.ownDiffuse = lease->diffuseTexture && material->diffuseTexture.get() == lease->diffuseTexture.get();
+                }
+                row.healthyLease = row.ownProperty && healthyPrivateTint(*lease);
+            }
+        }
+        rows.push_back(std::move(row));
+    }
+    // No apply/refresh/SKEE call occurs during this observation.
+    return entry.audit.publish(token, entry.auditGeneration, auditClock(), entry.root.get() == root.get(), rows);
 }
 inline std::string Runtime::texturePath(RE::BSTextureSet* set, RE::BSTextureSet::Texture slot) {
     const auto* value = set ? set->GetTexturePath(slot) : nullptr; return value ? value : "";
@@ -417,6 +545,9 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     }
     if (entry.loaded) { entry.handle = actor->GetHandle(); entry.loaded = false; }
     auto* root = actor->Get3D(false);
+    if (entry.auditRoot && entry.auditRoot.get() != root) {
+        entry.audit.invalidate(); entry.auditRoot.reset(); entry.auditGeneration = 0;
+    }
     if (!root) { unbind(entry); entry.status = "unloaded"; return false; }
     const auto selectedChoice = decision(entry);
     if (selectedChoice.origin == CoatOrigin::hairPool && !selectedChoice.pattern.empty())

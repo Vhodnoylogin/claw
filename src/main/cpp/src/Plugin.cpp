@@ -1055,6 +1055,7 @@ void queueScan() {
 
 void queueActor(RE::FormID id, bool force = false) {
     if (!id || !tasks) return;
+    { std::lock_guard lock(mutex); claw::appearance::runtime.invalidateSurfaceAudit(id); }
     const auto token = epoch.load();
     tasks->AddTask([id, force, token] {
         if (!enabled || token != epoch) return;
@@ -1325,6 +1326,7 @@ bool actorRequest(RE::Actor* actor, Operation operation, std::string presetName 
         if (!owner) return false;
         ticket = requests.begin(id, epoch.load(), owner->serial, owner);
         if (!ticket) return false;
+        claw::appearance::runtime.invalidateSurfaceAudit(id);
         if (auto found = states.find(id); found != states.end() && boundTo(found->second, actor)) {
             if (operation != Operation::refresh) {
                 revokeSourceBootstrap(found->second); found->second.adoptedDefault = false;
@@ -1387,6 +1389,7 @@ bool coatRequest(RE::Actor* actor, std::optional<std::string> choice) {
         if (!enabled || (choice && !claw::appearance::runtime.knowsPattern(*choice))) return false;
         owner = pinActor(actor); if (!owner) return false;
         ticket = coatRequests.begin(id, epoch.load(), owner->serial, owner); if (!ticket) return false;
+        claw::appearance::runtime.invalidateSurfaceAudit(id);
         if (auto found = states.find(id); found != states.end() && boundTo(found->second, actor))
             found->second.latestCoatRequest = {*ticket, found->second.runtimeSerial};
         // No body status, body ticket, policy or bootstrap lease is changed.
@@ -1425,6 +1428,36 @@ const State* cachedState(RE::Actor* actor) {
     if (!enabled || !actor) return nullptr;
     const auto found = states.find(actor->formID);
     return found != states.end() && boundTo(found->second, actor) ? &found->second : nullptr;
+}
+bool requestCoatSurfaceAudit(RE::StaticFunctionTag*, RE::Actor* actor) {
+    if (!actor || !tasks || !enabled) return false;
+    std::lock_guard lock(mutex);
+    const auto* state = cachedState(actor);
+    if (!state || state->quarantined || state->status == Status::unloaded) return false;
+    auto owner = pinActor(actor); if (!owner) return false;
+    const auto id = actor->formID;
+    const auto token = claw::appearance::runtime.beginSurfaceAudit(id); if (!token) return false;
+    const auto world = epoch.load(), runtime = state->runtimeSerial;
+    tasks->AddTask([id, token, world, runtime, owner = std::move(owner)] {
+        std::lock_guard lock(mutex);
+        const auto cancel = [&] { claw::appearance::runtime.cancelSurfaceAudit(id, token); };
+        auto* target = owner->actor.get();
+        const auto found = states.find(id);
+        if (!enabled || world != epoch || found == states.end() || found->second.quarantined ||
+            found->second.runtimeSerial != runtime || !boundTo(found->second, target) ||
+            !claw::mayRunActorRequest(target, RE::TESForm::LookupByID<RE::Actor>(id), target && target->formID == id, !target || target->IsDeleted()) ||
+            !beastRace || target->GetRace() != beastRace || !target->Is3DLoaded() || !target->Get3D(false)) { cancel(); return; }
+        (void)claw::appearance::runtime.sampleSurfaceAudit(target, token);
+    });
+    return true;
+}
+RE::BSFixedString coatSurfaceAudit(RE::StaticFunctionTag*, RE::Actor* actor) {
+    std::lock_guard lock(mutex);
+    const auto* state = cachedState(actor);
+    // This getter reads only plain cached data and a monotonic clock. It never
+    // resolves a handle/root/material on the calling VM thread.
+    return state && !state->quarantined && state->status != Status::unloaded ?
+        RE::BSFixedString(claw::appearance::runtime.surfaceAudit(actor->formID)) : RE::BSFixedString{};
 }
 bool hasHumanTrait(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString source) {
     std::lock_guard lock(mutex);
@@ -1869,6 +1902,8 @@ bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("GetCoatPattern", script, coatPattern);
     vm->RegisterFunction("GetAppliedCoatPattern", script, appliedCoatPattern);
     vm->RegisterFunction("GetCoatPatternStatus", script, coatPatternStatus);
+    vm->RegisterFunction("RequestCoatSurfaceAudit", script, requestCoatSurfaceAudit);
+    vm->RegisterFunction("GetCoatSurfaceAudit", script, coatSurfaceAudit);
     vm->RegisterFunction("AssignPreset", script, assignPreset);
     vm->RegisterFunction("GetAssigned", script, assigned);
     vm->RegisterFunction("GetMorphFamily", script, morphFamily);

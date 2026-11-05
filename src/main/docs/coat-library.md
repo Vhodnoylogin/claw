@@ -192,6 +192,8 @@ Bool ClearCoatPattern(Actor target)
 String GetCoatPattern(Actor target)
 String GetAppliedCoatPattern(Actor target)
 String GetCoatPatternStatus(Actor target)
+Bool RequestCoatSurfaceAudit(Actor target)
+String GetCoatSurfaceAudit(Actor target)
 ```
 
 Use a fully qualified ID returned by the catalog, for example
@@ -201,6 +203,66 @@ getter returns the requested override, while `GetAppliedCoatPattern` returns the
 last successfully bound pattern ID, or empty. Status explains pending, unavailable,
 fallback or yielded application. These reads are cached diagnostics from CLAW,
 not independent renderer measurements.
+
+### Explicit current-surface observations
+
+`RequestCoatSurfaceAudit(actor)` requests a separate read-only main-task sample
+of an already bound actor's loaded werewolf model. It never refreshes or applies
+materials. `true` means queued; an already pending request or unavailable bound
+appearance entry returns `false`. Poll `GetCoatSurfaceAudit(actor)` promptly after
+admission. It returns empty while pending, invalidated, unavailable or more than
+2,000 milliseconds old. A new request immediately hides the previous sample.
+An accepted body/coat request, a model/race/load notification, material unbind,
+unload, deletion or world reset invalidates the sample. The VM getter reads only
+plain retained data and a monotonic clock; scene/material access stays in the
+queued task with the actor, Distribution runtime and world checked again.
+
+The result is JSON schema 1. Its `sample` and `modelGeneration` are process-local
+decimal-string tokens, not saved reference IDs or pointer addresses. The model
+token refers to a retained, observed third-person root; a different observed root
+or an unload starts a new token. `ageMs` reports elapsed time since the main-task
+sample. This is a timestamped observation, not a guarantee that an unreported
+external write cannot occur between sampling and reading. Request a fresh sample
+after every test action and retain each result outside the game for comparison.
+
+`surfaces` contains every geometry encountered beneath that root, including
+unnamed and duplicate-name geometries. `managed` is membership in CLAW's twelve
+explicit material names, with the engine's name comparison; all other rows are
+excluded by that application rule. The sampler fails closed rather than
+publishing a partial inventory when it exceeds 512 scene objects, 64 geometries,
+128 name bytes, 512 bytes per texture string or its 64-KiB JSON budget.
+
+Each row reports these observations independently of catalog selection:
+
+- `name`, actual material `materialType` and `feature` numeric engine enums.
+- `diffusePath` from the current lighting material's texture set and
+  `diffuseResource` from its currently bound diffuse texture's resource name.
+  They are separate fields and can disagree; neither comes from the desired
+  catalog path. Missing or unsupported fields are JSON `null`.
+- The current `tint` RGB for FaceGenRGBTint/HairTint features, without palette
+  rounding, clamping or substitution; other features report `null`. Nonfinite
+  channels report `null`. `materialAlpha`, `propertyAlpha` and decimal-string
+  `shaderFlags` are likewise sampled actual fields.
+- `noTint`: -1 unavailable, 0 absent, 1 false boolean, 2 true boolean, 3 other
+  extra-data type. `tracked` identifies a surviving CLAW surface lease.
+  `ownProperty`, `ownMaterial`, `ownGuard`, `ownTextureSet` and `ownDiffuse`
+  compare current identities with retained lease witnesses. `healthyLease`
+  additionally checks the existing full lease/tint contract. These are
+  comparisons, not claims to discover arbitrary external owners.
+
+`leaseRootCurrent` compares the sampled root with CLAW's applied lease root.
+Strings preserve source bytes: ordinary ASCII uses normal JSON escaping;
+non-ASCII bytes use `\u00xx` escapes (`stringEncoding="bytes-u00xx"`). This avoids
+inventing a Unicode decoding for engine paths. Compare names/paths as source
+bytes when non-ASCII is present.
+
+For excluded-shape checks, compare the observed name/path/resource/feature/tint/
+alpha/flag fields in complete samples around a bounded action, accounting for
+model-token changes and duplicate names. This instrumentation does not itself
+declare an excluded shape unchanged. It does not inspect pixels, opaque renderer
+state, every texture slot, first-person VR graphs or unknown animation state.
+Source/native tests establish transport, bounds and freshness; actual sampler
+execution, lease readback and rendered output still require game evidence.
 
 An explicit choice overrides automatic selection. Clearing it returns to the
 configured hair or fallback policy, preserving its automatic caches. A source-less

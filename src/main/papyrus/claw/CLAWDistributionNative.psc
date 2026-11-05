@@ -59,6 +59,17 @@ String Function GetCoatPattern(Actor target) Global Native
 String Function GetAppliedCoatPattern(Actor target) Global Native
 String Function GetCoatPatternStatus(Actor target) Global Native
 
+; Explicit read-only main-task sample of the currently loaded beast model.
+; True means queued; it does not refresh/apply materials. A new request clears
+; the previous sample. False means admission unavailable or already pending.
+Bool Function RequestCoatSurfaceAudit(Actor target) Global Native
+; Bounded JSON of actual sampled geometry/material/path/tint and lease comparisons.
+; Empty while pending, missing, invalidated, unloaded or older than 2000ms.
+; ageMs is sample age, not a continuously current renderer guarantee. Request
+; again after every transition. All engine reads occur in the queued main task;
+; this getter reads plain cached data only. See docs/coat-library.md for schema.
+String Function GetCoatSurfaceAudit(Actor target) Global Native
+
 ; Explicit morph-to-morph developer profile. No preset-name pairing or OBody writes.
 ; Applied signed source values are read from SKEE; weight must not be applied twice.
 ; Equal-size arrays, 1..128 rows. sum(source*gain), clamp 0..1, multiply target cap.
