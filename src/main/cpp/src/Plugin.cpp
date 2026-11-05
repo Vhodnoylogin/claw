@@ -811,7 +811,9 @@ void captureSources(RE::Actor* actor, claw::MorphLink& link, claw::Sex boundSex,
             M::kChin_NarrowWide == 14 && M::kChin_UnderbiteOverbite == 16);
         const auto* faceNPC = base->GetRootFaceNPC();
         const auto* face = faceNPC ? faceNPC->faceData : nullptr;
-        const auto height = base->height * race->data.height[static_cast<std::size_t>(currentSex)];
+        const auto height = claw::humanReferenceHeight(base->height,
+            race->data.height[static_cast<std::size_t>(currentSex)],
+            static_cast<float>(actor->GetReferenceRuntimeData().refScale));
         stagedTraits.observe(race->GetFormID(), base->GetFormID(), faceNPC ? faceNPC->GetFormID() : 0,
             currentSex, height, [face](std::uint32_t slot) -> std::optional<float> {
                 return face ? std::optional<float>{face->morphs[slot]} : std::nullopt;

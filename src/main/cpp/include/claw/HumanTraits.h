@@ -2,9 +2,18 @@
 #include "claw/MorphLink.h"
 #include <array>
 #include <bit>
+#include <cmath>
 #include <optional>
 
 namespace claw {
+// Raw NPC NAM6, current-race sex height and reference scale percent. Do not pass
+// GetBaseHeight/GetHeight here: they already include some or all of these terms.
+inline std::optional<float> humanReferenceHeight(float npcHeight, float raceSexHeight, float referenceScalePercent) {
+    if (!std::isfinite(npcHeight) || npcHeight <= 0 || !std::isfinite(raceSexHeight) || raceSexHeight <= 0 ||
+        !std::isfinite(referenceScalePercent) || referenceScalePercent <= 0) return std::nullopt;
+    const auto height = (npcHeight * raceSexHeight) * (referenceScalePercent / 100.F);
+    return std::isfinite(height) && height > 0 ? std::optional<float>{height} : std::nullopt;
+}
 // Raw vanilla FaceGen slots, not SKEE body/custom-face controls. These indices
 // are checked against the pinned CommonLib enums by the game adapter.
 inline constexpr std::array<std::pair<std::string_view, std::uint32_t>, 5> humanFaceChannels{{

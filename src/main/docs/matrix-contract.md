@@ -189,11 +189,16 @@ targets. Source-value validation accepts signed finite face values excluding
 the engine's default sentinel and positive finite height ratios.
 
 The runtime adapter reads raw vanilla FaceData from the root face NPC and NPC
-NAM6 times current-race sex height only while the current non-werewolf race has
+NAM6 times current-race sex height times the reference's raw `refScale/100`, each
+exactly once, only while the current non-werewolf race has
 `ActorTypeNPC`. Other creature forms preserve the preceding human snapshot. It preserves
 availability and race/NPC/root-face-NPC/sex provenance separately in co-save v7.
 While a wolf it reuses that snapshot; SKEE body inputs and weight continue their
-ordinary refresh. Missing face inputs use arithmetic neutral 0, missing height
+ordinary refresh. Existing saved stature values remain unchanged until the next
+eligible human capture; reference scale is not applied again on load or while a
+wolf. Nonpositive/nonfinite raw terms or results make stature unavailable. Node
+scale overrides and bounds-derived rendered height are not captured. Missing face
+inputs use arithmetic neutral 0, missing height
 uses 1, and a diagnostic identifies the unavailable sources. Missing is never
 recorded as an available neutral value. A born wolf has no invented head history.
 No scalar is written to human SKEE controls. Offline consumers must supply these
