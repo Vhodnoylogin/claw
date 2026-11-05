@@ -54,6 +54,31 @@ Bool Function HasNativeOwner()
   Return _nativeOwner
 EndFunction
 
+Bool Function ClearRetiredNativeObservation(Actor previousActor)
+  ; The Host calls after its scoped unregister request under the same runtime
+  ; token. This clears superseded local observation state, not provider indices
+  ; or an independently confirmed native/root retirement.
+  If _busy
+    Return False
+  EndIf
+  _busy = True
+  Actor previousOwner = _qualifiedActor
+  If previousOwner == None
+    previousOwner = GetActorReference()
+  EndIf
+  If previousActor == None || previousOwner != previousActor || GetAcceptedLedgerCount() > 0
+    _busy = False
+    Return False
+  EndIf
+  ; Idempotent: cleanup may already have cleared _nativeOwner at ledger zero.
+  _nativeOwner = False
+  _nativeSnapshot = False
+  _nativeToken = 0
+  _nativeWeight = -1.0
+  _busy = False
+  Return True
+EndFunction
+
 Int Function GetModelGeneration()
   Return _modelGeneration
 EndFunction

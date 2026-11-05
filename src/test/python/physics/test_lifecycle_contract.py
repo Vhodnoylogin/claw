@@ -195,6 +195,159 @@ class LifecycleSourceContracts(unittest.TestCase):
             self.assertIn(call, body(control, function))
         self.assertNotRegex(control, r"Find.*Actor|RegisterFor.*Update|Stop\(|Reset\(|AttachCollider")
 
+    def test_every_native_retirement_passes_the_required_session_explicitly(self):
+        # The Papyrus API's empty default cannot retire any native binding: the
+        # C++ boundary rejects it before erasing even an inactive/empty binding.
+        native = source("CLAWPhysicsNative.psc")
+        self.assertIn('String expectedSession = ""', native)
+        plugin = (ROOT.parents[2] / "cpp/src/Plugin.cpp").read_text()
+        unregister = plugin.split("void physicsUnregister(", 1)[1].split("bool physicsActorCurrent", 1)[0]
+        self.assertLess(unregister.index("!physicsSessionMatches(expectedSession.c_str())"),
+                        unregister.index("physicsBindings.erase(found)"))
+        calls = re.findall(r"CLAWPhysicsNative\.UnregisterActor\(([^\n]+)\)", self.host)
+        self.assertEqual(len(calls), 2)
+        for call in calls:
+            self.assertEqual(len(call.split(",")), 3, call)
+            self.assertEqual(call.split(",")[-1].strip(), "expectedRuntime")
+
+    def test_alias_retirement_keeps_captured_owner_until_empty_ledger_and_same_session(self):
+        remember = body(self.host, "RememberNativeRetirement")
+        self.assertLess(remember.index("If _retirementPending[index]"),
+                        remember.index("Actor previousNativeActor = helper.GetQualifiedActor()"))
+        for field in ("_retirementActors[index] = previousNativeActor",
+                      "_retirementRuntime[index] = expectedRuntime",
+                      "_retirementPending[index] = True"):
+            self.assertIn(field, remember)
+        withdraw = body(self.host, "DisableAutomaticForRuntime")
+        capture = withdraw.index("RememberNativeRetirement(index, helper, expectedRuntime)")
+        self.assertLess(capture, withdraw.index("_automatic[index] = False"))
+        self.assertIn("Bool nativeOwner = _retirementPending[index]", withdraw)
+        self.assertIn("Actor target = _retirementActors[index]", withdraw)
+        self.assertIn("expectedRuntime = _retirementRuntime[index]", withdraw)
+
+        retirement = body(self.host, "CompleteNativeRetirement")
+        call = retirement.index("UnregisterActor(previousNativeActor, False, expectedRuntime)")
+        self.assertIn("Actor previousNativeActor = _retirementActors[index]", retirement[:call])
+        self.assertIn("String expectedRuntime = _retirementRuntime[index]", retirement[:call])
+        self.assertIn("helper.GetAcceptedLedgerCount() > 0", retirement[:call])
+        for fragment in (retirement[:call], retirement[call:]):
+            self.assertIn("!RuntimeCurrent(expectedRuntime)", fragment)
+            self.assertIn("Return False", fragment)
+        self.assertLess(call, retirement.index("_retirementPending[index] = False"))
+
+        for name in ("AssignInternal", "ReleaseInternal"):
+            with self.subTest(function=name):
+                code = body(self.host, name)
+                withdraw = code.index("DisableAutomaticForRuntime(index, expectedRuntime)")
+                cleanup = code.index("helper.Cleanup()")
+                complete = code.index("If !CompleteNativeRetirement(index, helper)")
+                clear = code.index("helper.Clear()")
+                self.assertLess(code.index("String expectedRuntime = _runtimeSession"), withdraw)
+                self.assertIn("expectedRuntime = _retirementRuntime[index]", code[:withdraw])
+                self.assertLess(withdraw, cleanup)
+                self.assertLess(code.index("cleanup == 8 || helper.GetAcceptedLedgerCount() > 0"), complete)
+                self.assertLess(complete, code.index("Revoke(helper)"))
+                self.assertLess(complete, clear)
+                self.assertRegex(code[complete:clear], r"If !CompleteNativeRetirement\(index, helper\)\s+Return Fail\(-6,")
+                self.assertNotRegex(code, r"GetSessionToken\(|BeginSessionToken\(|AcknowledgeProviderReset\(")
+
+    def test_cleanup_cleared_owner_cannot_bypass_pending_retirement_on_retry_or_regrant(self):
+        # Cleanup clears _nativeOwner after the last accepted capsule is removed.
+        # The Host must therefore retain its OWN exact actor/session across calls.
+        cleanup = body(self.actor, "CleanupInternal")
+        self.assertIn("_nativeOwner = False", cleanup)
+        remember = body(self.host, "RememberNativeRetirement")
+        gate = re.search(r"If _retirementPending\[index\] \|\| .*?\s+Return\s+EndIf", remember)
+        self.assertIsNotNone(gate)
+        self.assertLess(gate.end(), remember.index("_retirementActors[index] ="))
+        # Only the guarded successful request path may clear persistent context.
+        self.assertEqual(self.host.count("_retirementPending[index] = False"), 1)
+        complete = body(self.host, "CompleteNativeRetirement")
+        self.assertNotIn("HasNativeOwner", complete)
+        self.assertNotIn("_automatic[index]", complete)
+        self.assertNotIn("_runtimeSession", complete)
+        register = body(self.host, "RegisterAutomatic")
+        self.assertIn("If _retirementPending[index] ||", register)
+        enable = body(self.host, "EnableAutomaticInternal")
+        self.assertLess(enable.index("CompleteNativeRetirement(index, helper)"),
+                        enable.index("helper.QualifyForActor("))
+        for name, mutation in (("QualifyInternal", "helper.QualifyForActor("),
+                               ("PulseInternal", "helper.Synchronize()"),
+                               ("PulseMorphsInternal", "helper.SynchronizeMorphs(")):
+            code = body(self.host, name)
+            self.assertLess(code.index("If _retirementPending[index]"), code.index(mutation))
+        self.assertIn("_retirementPending[slot] ||", body(self.host, "HasRememberedCapsules"))
+        self.assertIn("_retirementActors[slot] == target", body(self.host, "ActorInOtherSlot"))
+        # Session notifications and automatic-array migrations do not erase or
+        # replace a pending token, even when a fresh integration session begins.
+        for name in ("NotifySessionChanged", "EnableIntegration", "EnsureAutomaticArrays"):
+            self.assertNotRegex(body(self.host, name), r"_retirement(?:Pending|Actors|Runtime).*=")
+
+    def test_empty_suspend_retires_with_explicit_end_token_without_trapping_old_integration(self):
+        notification = body(self.host, "NotifySessionChanged")
+        self.assertIn("retirementRuntime = CLAWPhysicsNative.EndSession(previousRuntime)", notification)
+        self.assertIn("DisableAutomaticForRuntime(slot, retirementRuntime)", notification)
+        withdrawal = body(self.host, "DisableAutomaticForRuntime")
+        self.assertRegex(withdrawal, r"If helper.GetAcceptedLedgerCount\(\) > 0\s+CLAWPhysicsNative.UnregisterActor\(target, True, expectedRuntime\)\s+Else\s+CompleteNativeRetirement\(index, helper\)\s+EndIf")
+        completion = body(self.host, "CompleteNativeRetirement")
+        # The stored EndSession return token may be current while the Host still
+        # caches the former integration token. That normal empty path must work.
+        self.assertNotIn("_runtimeSession", completion)
+        self.assertEqual(completion.count("!RuntimeCurrent(expectedRuntime)"), 3)
+        self.assertIn("String expectedRuntime = _retirementRuntime[index]", completion)
+        # An already-pending A token is never replaced with new EndSession B.
+        remember = body(self.host, "RememberNativeRetirement")
+        self.assertLess(remember.index("If _retirementPending[index]"),
+                        remember.index("_retirementRuntime[index] = expectedRuntime"))
+
+    def test_completed_empty_withdrawal_clears_superseded_helper_owner_before_pending_context(self):
+        completion = body(self.host, "CompleteNativeRetirement")
+        request = completion.index("UnregisterActor(previousNativeActor, False, expectedRuntime)")
+        local_clear = completion.index("If !helper.ClearRetiredNativeObservation(previousNativeActor)")
+        forget = completion.index("_retirementPending[index] = False")
+        self.assertLess(request, local_clear)
+        self.assertLess(local_clear, forget)
+        for fragment in (completion[request:local_clear], completion[local_clear:forget]):
+            self.assertIn("If !RuntimeCurrent(expectedRuntime)", fragment)
+            self.assertIn("Return False", fragment)
+        self.assertRegex(completion[local_clear:forget], r"If !helper.ClearRetiredNativeObservation\(previousNativeActor\)\s+Return False\s+EndIf")
+        # Compose the actual source branches: empty Suspend completes this call;
+        # Remember's ONLY owner sources on a following Release/Suspend are the
+        # now-false Host automatic flag and the cleared helper native owner.
+        withdraw = body(self.host, "DisableAutomaticForRuntime")
+        self.assertLess(withdraw.index("_automatic[index] = False"),
+                        withdraw.index("CompleteNativeRetirement(index, helper)"))
+        remember = body(self.host, "RememberNativeRetirement")
+        self.assertRegex(remember, r"If _retirementPending\[index\] \|\| \(!_automatic\[index\] && !helper.HasNativeOwner\(\)\)\s+Return")
+        clear = body(self.actor, "ClearRetiredNativeObservation")
+        self.assertLess(clear.index("_nativeOwner = False"), clear.index("Return True"))
+        self.assertIn("Return _nativeOwner", body(self.actor, "HasNativeOwner"))
+        self.assertNotRegex(body(self.actor, "MarkModelGenerationChanged") + body(self.host, "Revoke"),
+                            r"_nativeOwner\s*=\s*True")
+
+    def test_local_observation_retirement_is_idempotent_serialized_and_not_provider_acknowledgment(self):
+        clear = body(self.actor, "ClearRetiredNativeObservation")
+        self.assertRegex(clear, r"If _busy\s+Return False\s+EndIf\s+_busy = True")
+        self.assertIn("Actor previousOwner = _qualifiedActor", clear)
+        self.assertRegex(clear, r"If previousOwner == None\s+previousOwner = GetActorReference\(\)\s+EndIf")
+        self.assertRegex(clear, r"If previousActor == None \|\| previousOwner != previousActor \|\| GetAcceptedLedgerCount\(\) > 0\s+_busy = False\s+Return False\s+EndIf")
+        guard = clear[:clear.index("_nativeOwner = False")]
+        self.assertNotIn("If !_nativeOwner", guard)
+        self.assertNotIn("If _nativeOwner", guard)
+        self.assertNotIn("_tracked", clear)
+        for assignment in ("_nativeOwner = False", "_nativeSnapshot = False", "_nativeToken = 0", "_nativeWeight = -1.0"):
+            self.assertIn(assignment, clear)
+        self.assertRegex(clear, r"_busy = False\s+Return True\s*$")
+        self.assertNotRegex(clear, r"(?:ProviderQualified|ExclusiveIndexRange|StaticPoseAccepted|_qualifiedActor|_qualifiedGeneration|_modelGeneration|_accepted|_tracked)\s*=")
+        self.assertNotRegex(clear, r"CLAWPhysicsNative\.|CBPCPluginScript\.|AcknowledgeProviderReset|SetStatus\(")
+
+    def test_retirement_array_migration_never_rebuilds_partially_saved_context(self):
+        arrays = body(self.host, "EnsureRetirementArrays")
+        self.assertRegex(arrays, r"If _retirementPending == None && _retirementActors == None && _retirementRuntime == None")
+        self.assertEqual(arrays.count("new "), 3)
+        self.assertIn("_retirementPending.Length == 16", arrays)
+        self.assertLess(body(self.host, "Initialize").index("EnsureRetirementArrays()"),
+                        body(self.host, "Initialize").index("If _slots != None"))
 
 if __name__ == "__main__":
     unittest.main()

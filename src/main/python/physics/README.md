@@ -83,6 +83,31 @@ These guards do not make the last Papyrus snapshot check and a third-party CBPC
 append atomic across VM/load. Provider lifecycle and actual game behavior remain
 unqualified; no automatic provider activation or resource qualification is added.
 
+Observer withdrawal remembers its former native actor and session in persistent
+per-slot state before clearing automatic publication. Alias release, reassignment
+and a new explicit automatic grant request retirement with that same token only
+after the accepted capsule ledger is empty. The earlier one-argument retirement
+used the native API's empty token default and was always refused, potentially
+retaining an inactive root/context. Cleanup can clear the helper's native-owner
+flag; it cannot clear this separate pending retirement. Later release/assignment
+attempts still check the old context, and manual qualification/attachment and
+implicit registration remain blocked while it is pending. A new integration
+session does not replace that context. If the original token is no longer current,
+the alias and context stay retained for review rather than silently adopting a new
+grant. Empty-ledger withdrawal requests retirement immediately: normal suspension
+uses the explicit token returned by `EndSession`, even while the Host still caches
+its former integration token. Thus ordinary empty suspend/restart does not leave
+a pending context. After that request, the helper serially clears its superseded
+native observation owner, snapshot, token and cached weight for the exact former
+actor and an empty ledger. This local operation is idempotent if cleanup already
+cleared ownership; it leaves provider qualification, generation and capsule records
+unchanged. Pending state remains if the helper is busy, the actor/ledger differs,
+or the runtime token changes. Repeated suspension or release cannot reconstruct an
+old retirement merely from a stale helper flag. This correction adds no recovery
+API for a genuinely unresolved old context. The native request returns no
+acknowledgment; session guards and local bookkeeping are not provider or
+root-retirement readback. This source correction still needs runtime coverage.
+
 Human morph family defaults are a separate explicit resource declaration in
 `SKSE/Plugins/CLAW/MorphLinks.xml`. The canonical source catalog lists the resource
 profiles; the installer adds `Defaults` for the selected male and female families

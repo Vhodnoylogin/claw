@@ -25,6 +25,9 @@ Bool[] _populationSlots
 Bool _populationEnabled = False
 String _populationEvidence = ""
 String _populationModel = ""
+Bool[] _retirementPending
+Actor[] _retirementActors
+String[] _retirementRuntime
 
 Int Function GetSessionGeneration()
   Return _sessionGeneration
@@ -66,6 +69,10 @@ Int Function Fail(Int code, String reason)
 EndFunction
 
 Bool Function Initialize()
+  If !EnsureRetirementArrays()
+    Fail(-6, "Native retirement context is incomplete; aliases retained")
+    Return False
+  EndIf
   If _slots != None
     EnsureAutomaticArrays()
     Return True
@@ -100,6 +107,16 @@ Bool Function Initialize()
   _slots = prepared
   EnsureAutomaticArrays()
   Return True
+EndFunction
+
+Bool Function EnsureRetirementArrays()
+  If _retirementPending == None && _retirementActors == None && _retirementRuntime == None
+    _retirementPending = new Bool[16]
+    _retirementActors = new Actor[16]
+    _retirementRuntime = new String[16]
+  EndIf
+  ; Never rebuild an incomplete saved context and silently forget an old owner.
+  Return _retirementPending != None && _retirementPending.Length == 16 && _retirementActors != None && _retirementActors.Length == 16 && _retirementRuntime != None && _retirementRuntime.Length == 16
 EndFunction
 
 Function EnsureAutomaticArrays()
@@ -230,6 +247,9 @@ Int Function EnableAutomaticInternal(Int index, Actor target, String evidence, B
   If helper.GetAcceptedLedgerCount() > 0
     Return Fail(-5, "Retire the exact previous capsule ledger before a new grant")
   EndIf
+  If !CompleteNativeRetirement(index, helper)
+    Return Fail(-3, "Complete the former observer retirement before a new grant")
+  EndIf
   If !RuntimeCurrent(expectedRuntime) || expectedRuntime != _runtimeSession
     Return Fail(-6, "Runtime session changed while enabling observer")
   EndIf
@@ -251,7 +271,7 @@ Int Function EnableAutomaticInternal(Int index, Actor target, String evidence, B
 EndFunction
 
 Bool Function RegisterAutomatic(Int index, Actor target, String expectedRuntime, Bool qualified = False, Bool initialPopulation = False)
-  If !RuntimeCurrent(expectedRuntime) || expectedRuntime != _runtimeSession
+  If _retirementPending[index] || !RuntimeCurrent(expectedRuntime) || expectedRuntime != _runtimeSession
     Return False
   EndIf
   String[] names = new String[32]
@@ -284,14 +304,20 @@ Bool Function DisableAutomaticForRuntime(Int index, String expectedRuntime)
   If helper == None
     Return False
   EndIf
-  Bool nativeOwner = _automatic[index] || helper.HasNativeOwner()
+  RememberNativeRetirement(index, helper, expectedRuntime)
+  Bool nativeOwner = _retirementPending[index]
   _automatic[index] = False
-  Actor target = helper.GetActorReference()
-  If nativeOwner && helper.GetQualifiedActor() != None
-    target = helper.GetQualifiedActor()
-  EndIf
+  Actor target = _retirementActors[index]
+  expectedRuntime = _retirementRuntime[index]
   If nativeOwner && target != None
-    CLAWPhysicsNative.UnregisterActor(target, helper.GetAcceptedLedgerCount() > 0, expectedRuntime)
+    If helper.GetAcceptedLedgerCount() > 0
+      CLAWPhysicsNative.UnregisterActor(target, True, expectedRuntime)
+    Else
+      ; EndSession can supply its explicit new retirement token while the Host
+      ; still caches the old integration token. Empty retirement needs only the
+      ; exact stored token at the native boundary, not an active integration.
+      CompleteNativeRetirement(index, helper)
+    EndIf
   EndIf
   Return nativeOwner
 EndFunction
@@ -447,7 +473,7 @@ Bool Function HasRememberedCapsules()
   EndIf
   Int slot = 0
   While slot < _slotCount
-    If _slots[slot].GetAcceptedLedgerCount() > 0
+    If _retirementPending[slot] || _slots[slot].GetAcceptedLedgerCount() > 0
       Return True
     EndIf
     slot += 1
@@ -459,13 +485,54 @@ Bool Function ActorInOtherSlot(Int index, Actor target)
   Int slot = 0
   While slot < _slotCount
     If slot != index
-      If _slots[slot].GetActorReference() == target || _slots[slot].GetTrackedActor() == target
+      If _slots[slot].GetActorReference() == target || _slots[slot].GetTrackedActor() == target || (_retirementPending[slot] && _retirementActors[slot] == target)
         Return True
       EndIf
     EndIf
     slot += 1
   EndWhile
   Return False
+EndFunction
+
+Function RememberNativeRetirement(Int index, CLAWPhysicsActor helper, String expectedRuntime)
+  If _retirementPending[index] || (!_automatic[index] && !helper.HasNativeOwner())
+    Return
+  EndIf
+  ; Persist before any cleanup can clear the helper's native-owner flag. A later
+  ; attempt must not mistake that cleared flag for completed native retirement.
+  Actor previousNativeActor = helper.GetQualifiedActor()
+  If previousNativeActor == None
+    previousNativeActor = helper.GetActorReference()
+  EndIf
+  _retirementActors[index] = previousNativeActor
+  _retirementRuntime[index] = expectedRuntime
+  _retirementPending[index] = True
+EndFunction
+
+Bool Function CompleteNativeRetirement(Int index, CLAWPhysicsActor helper)
+  If !_retirementPending[index]
+    Return True
+  EndIf
+  Actor previousNativeActor = _retirementActors[index]
+  String expectedRuntime = _retirementRuntime[index]
+  If helper.GetAcceptedLedgerCount() > 0 || previousNativeActor == None || !RuntimeCurrent(expectedRuntime)
+    Return False
+  EndIf
+  ; Void request: the session guards do not constitute provider/root readback.
+  CLAWPhysicsNative.UnregisterActor(previousNativeActor, False, expectedRuntime)
+  If !RuntimeCurrent(expectedRuntime)
+    Return False
+  EndIf
+  If !helper.ClearRetiredNativeObservation(previousNativeActor)
+    Return False
+  EndIf
+  If !RuntimeCurrent(expectedRuntime)
+    Return False
+  EndIf
+  _retirementPending[index] = False
+  _retirementActors[index] = None
+  _retirementRuntime[index] = ""
+  Return True
 EndFunction
 
 Function Revoke(CLAWPhysicsActor helper)
@@ -495,16 +562,20 @@ Int Function AssignInternal(Int index, Actor target)
   If ActorInOtherSlot(index, target)
     Return Fail(-2, "Actor already assigned or retained by another slot's cleanup ledger")
   EndIf
-  If helper.GetActorReference() == target
+  If helper.GetActorReference() == target && !_retirementPending[index]
     Return 0
   EndIf
-  Bool wasNative = DisableAutomatic(index)
+  String expectedRuntime = _runtimeSession
+  If _retirementPending[index]
+    expectedRuntime = _retirementRuntime[index]
+  EndIf
+  DisableAutomaticForRuntime(index, expectedRuntime)
   Int cleanup = helper.Cleanup()
   If cleanup == 8 || helper.GetAcceptedLedgerCount() > 0
     Return Fail(-3, "Previous actor cleanup pending; alias has not been cleared or retargeted")
   EndIf
-  If wasNative
-    CLAWPhysicsNative.UnregisterActor(helper.GetQualifiedActor())
+  If !CompleteNativeRetirement(index, helper)
+    Return Fail(-6, "Observer retirement context changed; alias and former context retained")
   EndIf
   Revoke(helper)
   helper.Clear()
@@ -533,13 +604,17 @@ Int Function ReleaseInternal(Int index)
   If helper == None
     Return Fail(-1, "Invalid slot")
   EndIf
-  Bool wasNative = DisableAutomatic(index)
+  String expectedRuntime = _runtimeSession
+  If _retirementPending[index]
+    expectedRuntime = _retirementRuntime[index]
+  EndIf
+  DisableAutomaticForRuntime(index, expectedRuntime)
   Int cleanup = helper.Cleanup()
   If cleanup == 8 || helper.GetAcceptedLedgerCount() > 0
     Return Fail(-3, "Cleanup pending; alias and ledger retained")
   EndIf
-  If wasNative
-    CLAWPhysicsNative.UnregisterActor(helper.GetQualifiedActor())
+  If !CompleteNativeRetirement(index, helper)
+    Return Fail(-6, "Observer retirement context changed; alias and former context retained")
   EndIf
   Revoke(helper)
   helper.Clear()
@@ -568,6 +643,9 @@ Int Function QualifyInternal(Int index, Actor expectedActor, Int expectedGenerat
   If helper == None || expectedActor == None || ActorInOtherSlot(index, expectedActor)
     Return Fail(-1, "Invalid slot/actor or duplicate actor ownership")
   EndIf
+  If _retirementPending[index]
+    Return Fail(-3, "Complete the former observer retirement before qualification")
+  EndIf
   If !helper.QualifyForActor(expectedActor, expectedGeneration, evidence, provider, exclusiveIndices, staticPose)
     Return Fail(-5, "Qualification rejected: stale actor/generation, empty evidence or helper busy")
   EndIf
@@ -591,6 +669,9 @@ Int Function PulseInternal(Int index, Actor expectedActor)
   CLAWPhysicsActor helper = SlotAt(index)
   If helper == None || expectedActor == None || helper.GetActorReference() != expectedActor
     Return Fail(-1, "Pulse actor no longer matches the alias")
+  EndIf
+  If _retirementPending[index]
+    Return Fail(-3, "Complete the former observer retirement before attachment")
   EndIf
   If ActorInOtherSlot(index, expectedActor)
     Return Fail(-2, "Duplicate actor ownership; pulse refused")
@@ -616,6 +697,9 @@ Int Function PulseMorphsInternal(Int index, Actor expectedActor, Float[] effecti
   CLAWPhysicsActor helper = SlotAt(index)
   If helper == None || expectedActor == None || helper.GetActorReference() != expectedActor
     Return Fail(-1, "Morph pulse actor no longer matches the alias")
+  EndIf
+  If _retirementPending[index]
+    Return Fail(-3, "Complete the former observer retirement before attachment")
   EndIf
   If ActorInOtherSlot(index, expectedActor)
     Return Fail(-2, "Duplicate actor ownership; morph pulse refused")
