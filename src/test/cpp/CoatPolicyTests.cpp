@@ -40,6 +40,69 @@ std::string replace(std::string s, std::string_view before, std::string_view aft
     const auto at = s.find(before); require(at != s.npos, "Fixture mutation failed");
     s.replace(at, before.size(), after); return s;
 }
+struct HairProbe { std::string pool, pattern; };
+void savedSourceLifecycle(const claw::appearance::CoatLibrary& catalog,
+    const claw::appearance::CoatPolicy& parsed, const std::vector<HairProbe>& probes) {
+    using namespace claw::appearance;
+    // Execute the production selector and both production codecs. The fixture
+    // supplies source availability/manual clear at this pure boundary; it does
+    // not impersonate Runtime, SKSE remapping or an engine material witness.
+    for (std::uint32_t sex : {0U, 1U}) for (std::uint64_t identity : {1ULL, 17ULL, 64ULL}) {
+        AutomaticCoatRecord record{0xFF000123, 0xFE00A802, sex, {identity, coatSeed(42, identity)}};
+        const auto born = parsed.select(catalog, {}, std::nullopt, record.automatic.seed, record.automatic);
+        require(born.origin == CoatOrigin::fallback && catalog.find(born.pattern), "Lifecycle fallback unavailable");
+        record.automatic.fallback = {born.pool, born.pattern};
+        const auto retainedFallback = record.automatic.fallback;
+        const auto unchanged = record.automatic;
+        const auto unavailable = CoatPolicy::unavailable("fixture policy unavailable");
+        const CoatLibrary missing;
+        require(unavailable.select(catalog, {}, std::nullopt, record.automatic.seed, record.automatic).pattern.empty(),
+            "Invalid policy broadened the fallback");
+        require(parsed.select(missing, {}, std::nullopt, record.automatic.seed, record.automatic).pattern.empty(),
+            "Missing library retained a nonexistent fallback");
+        require(parsed.select(catalog, "missing/pattern", std::nullopt, record.automatic.seed, record.automatic).pattern.empty(),
+            "Missing manual pattern silently became automatic");
+        require(record.automatic == unchanged, "Unavailable data changed saved selection state");
+
+        for (const auto& probe : probes) {
+            const auto* donor = catalog.find(probe.pattern);
+            require(donor && donor->fur, "Lifecycle hair probe lacks measured source");
+            const auto arrived = parsed.select(catalog, {}, donor->fur, record.automatic.seed, record.automatic);
+            require(arrived.origin == CoatOrigin::hairPool && arrived.pool == probe.pool && catalog.find(arrived.pattern),
+                "Real hair arrival or migration selected the wrong pool");
+            record.automatic.hair = {arrived.pool, arrived.pattern};
+            require(record.automatic.fallback == retainedFallback, "Hair migration erased the independent fallback cache");
+
+            const auto manual = readCoatSelection(writeCoatSelection({record.actor, record.base, sex, probe.pattern}));
+            record = readAutomaticCoat(writeAutomaticCoat(record));
+            const auto saved = record.automatic;
+            const auto forced = parsed.select(catalog, manual.pattern, std::nullopt, saved.seed, saved);
+            require(forced.origin == CoatOrigin::manual && forced.pattern == manual.pattern, "Loaded manual override lost precedence");
+            require(unavailable.select(catalog, manual.pattern, donor->fur, saved.seed, saved).pattern == manual.pattern,
+                "Invalid automatic policy blocked a loaded manual choice");
+            // Empty override represents manual clear after the two codec loads.
+            const auto cleared = parsed.select(catalog, {}, donor->fur, saved.seed, saved);
+            require(cleared.origin == CoatOrigin::hairPool && cleared.pool == arrived.pool && cleared.pattern == arrived.pattern,
+                "Manual clear after codec load lost the eligible hair choice");
+            const auto removed = parsed.select(catalog, {}, std::nullopt, saved.seed, saved);
+            require(removed.origin == CoatOrigin::fallback && removed.pool == born.pool && removed.pattern == born.pattern,
+                "Hair removal after codec load rerolled fallback");
+            require(parsed.select(missing, {}, donor->fur, saved.seed, saved).pattern.empty(),
+                "Missing library retained a nonexistent hair choice");
+            require(parsed.select(catalog, {}, donor->fur, saved.seed, saved).pattern == arrived.pattern,
+                "Library recovery rerolled eligible hair choice");
+            require(record.automatic == saved, "Manual or missing-data selection mutated automatic caches");
+
+            // FormIDs are codec metadata, not a selector input. These are two
+            // explicit persisted IDs, not a claim to execute ResolveFormID.
+            record.actor = 0xFF001234; record.base = 0xFE00B803;
+            record = readAutomaticCoat(writeAutomaticCoat(record));
+            require(record.automatic == saved &&
+                parsed.select(catalog, {}, donor->fur, record.automatic.seed, record.automatic).pattern == arrived.pattern,
+                "Reference/base FormID metadata changed saved marking or seed");
+        }
+    }
+}
 }
 int main(int argc, char** argv) {
     using namespace claw::appearance;
@@ -82,6 +145,19 @@ int main(int argc, char** argv) {
         require(noFallback.select(catalog, {}, std::nullopt, seed, saved).pattern.empty(), "Explicit empty fallback was ignored");
         const auto omittedFallback = CoatPolicy::parse(replace(policy(), " fallbackPool=\"natural\"", ""), catalog);
         require(omittedFallback.select(catalog, {}, std::nullopt, seed, saved).pattern.empty(), "Absent fallback was ignored");
+        savedSourceLifecycle(catalog, parsed, {{"dark", "test/coal"}, {"light", "test/white"}, {"dark", "test/black"}});
+        // A saved pattern can still exist in the catalog but cease to belong
+        // to the eligible pool. Both caches must obey current membership.
+        const auto reducedHair = CoatPolicy::parse(replace(policy(), "<Pattern id=\"test/coal\"/>", ""), catalog);
+        const AutomaticCoatState staleHair{17, seed, {"dark", "test/coal"}, {"natural", "test/white"}};
+        require(reducedHair.select(catalog, {}, RGB{.07F, .07F, .07F}, seed, staleHair).pattern == "test/black",
+            "Catalog presence allowed an ineligible saved hair marking");
+        const auto reducedFallback = CoatPolicy::parse(replace(policy(),
+            "<Pool id=\"natural\" use=\"fallback\"><Pattern id=\"test/black\"/>", "<Pool id=\"natural\" use=\"fallback\">"), catalog);
+        const AutomaticCoatState staleFallback{17, seed, {"dark", "test/coal"}, {"natural", "test/black"}};
+        const auto reselection = reducedFallback.select(catalog, {}, std::nullopt, seed, staleFallback);
+        require(reselection.origin == CoatOrigin::fallback && catalog.find(reselection.pattern) && reselection.pattern != "test/black",
+            "Catalog presence allowed an ineligible saved fallback marking");
         require(CoatPolicy::parse("<CoatPolicy schemaVersion=\"1\" tintMode=\"original\"><Pools/></CoatPolicy>", catalog).select(catalog, {}, RGB{1, 1, 1}, seed, saved).pattern.empty(), "Manual-only policy was not respected");
         for (const auto xml : {
             replace(policy(), "tintMode=\"original\"", "tintMode=\"unknown\""),
@@ -116,6 +192,11 @@ int main(int argc, char** argv) {
             const auto actualLibrary = CoatLibrary::parse(read(argv[1]));
             const auto actualPolicy = CoatPolicy::parse(read(argv[2]), actualLibrary);
             require(actualLibrary.names().size() == 34 && actualPolicy.tintMode() == TintMode::original, "Actual default policy/catalog differs");
+            savedSourceLifecycle(actualLibrary, actualPolicy, {
+                {"dark", "elegant-2k-2.1/coal"}, {"dark-brown", "elegant-2k-2.1/umber"},
+                {"brown", "elegant-2k-2.1/brown"}, {"red-gold", "elegant-2k-2.1/ginger"},
+                {"grey", "elegant-2k-2.1/grey"}, {"light", "elegant-2k-2.1/white"},
+                {"dark", "elegant-2k-2.1/coal"}});
             for (const auto& id : actualLibrary.names())
                 require(actualPolicy.select(actualLibrary, id, std::nullopt, seed, saved).pattern == id, "Automatic pools hid a manual catalog choice");
             for (std::uint64_t id = 1; id <= 64; ++id) {
@@ -124,7 +205,7 @@ int main(int argc, char** argv) {
                 require(chosen.origin == CoatOrigin::fallback && actualLibrary.find(chosen.pattern), "Actual declared fallback did not resolve");
                 require(chosen.pattern != "elegant-2k-2.1/hyena-spotted" && chosen.pattern != "elegant-2k-2.1/khajiit", "Stylized pattern escaped natural fallback policy");
             }
-            std::cout << "Actual library/policy:34 manual patterns; natural saved-reference fallback validated\n";
+            std::cout << "Actual library/policy:34 manual patterns; six hair pools, source transitions, codec-load clear and missing-data recovery validated\n";
         } else require(argc == 1, "Supply both actual catalog and policy paths");
         std::cout << "Coat pools, saved marking selection and additive CCAS compatibility passed\n"; return 0;
     } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
