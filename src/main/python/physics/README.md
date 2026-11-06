@@ -43,6 +43,41 @@ accompany it; this trial does not establish close fit or runtime contact.
 The exact bytes used to parse a contact recipe must also match the captured
 source snapshot; replacement between parsing and capture fails before output.
 
+`contact-whole-body-coarse.json` is a separate enclosing contact candidate.
+Its declared `supportRegions` select attachment names, counts and sex masks;
+the fitter resolves those exact names in the consumed XP32 skeleton and records
+their measured ancestry. Several skin bindings use compatibility parents whose
+bracket suffix differs from the anatomical side, so names are never guessed
+from those suffixes. The host validates this declaration and its identity,
+slot counts, sex masks and skeleton input pin instead of a second bone list.
+Legacy recipes and their numerical/header output retain their existing path.
+
+Use the recipe explicitly with `--current-vector --contact-recipe` and reviewed
+body/head/claw NIF, TRI and skeleton arguments. All triangles of the declared
+skin shapes are assigned once by normalized skin influence aggregated through
+the nearest selected ancestor. Full mixed faces retain every original rest-LBS
+weight and actual nonzero TRI displacement. Female minority P1 support keeps
+priority. The recipe requests 128 slots, with eight P1 slots inactive for males (120 active);
+missing attachments, unsupported sex layouts, dropped/duplicate faces or fewer
+actual partitions fail generation. All actually deforming dependencies enter
+the model, up to the existing 32-channel/128-slot limits. Region partition trials
+use exact sex/node identities derived from this validated declaration and still
+require actual selected support. They do not introduce a second bone whitelist;
+legacy regional recipes retain their existing allowed nodes and default behavior.
+
+Zero-pass capsules enclose their current deformed support. This intentionally
+coarse profile measures unsigned nearest-surface mismatch rather than claiming
+a close surface fit. Its experimental 128-slot r1 allocation still has a worst
+sampled mismatch of about 14.51 game units. Local oriented signs on the open
+selected skin do not establish solid inside/outside membership. Surface-fit,
+provider, runtime and contact acceptance remain false; no activation is enabled.
+Alpha fur/blend cards, eyes, mouth interior and secondary pelvic geometry are
+excluded. Identical weight endpoints remain explicit; their numeric fixtures
+still cover weights 0/.5/1, while identical surface diagnostics run only once.
+Finite extreme and captured vectors are offline evidence, not animation, pose,
+provider, gameplay, contact or VR acceptance. Host activation remains disabled
+unless its existing external qualification requirements are independently met.
+
 Explicit activation is `BeginSession(True, evidence)`, `RegisterActor(slot, actor)`
 then `EnableAutomaticActor(slot, actor, evidence, True, True, True)`. The three
 assertions qualify the actual provider/API and effective configuration, exclusive

@@ -21,6 +21,62 @@ def cylinder():
 
 
 class CapsuleFitTests(unittest.TestCase):
+    def test_declared_attachment_uses_actual_names_and_ancestry_not_bracket_guess(self):
+        root=SimpleNamespace(name='Root',parent=None)
+        alias=SimpleNamespace(name='NPC L UpperArm [RUar]',parent=root)
+        canonical=SimpleNamespace(name='NPC L UpperArm [LUar]',parent=alias)
+        twist=SimpleNamespace(name='Twist',parent=canonical)
+        skeleton=SimpleNamespace(nodes={node.name:node for node in (root,alias,canonical,twist)})
+        recipe=[{'node':alias.name,'count':2,'sexMask':'both'}]
+        measured=fit.measured_support_regions(recipe,skeleton)
+        self.assertEqual(measured,[dict(recipe[0],ancestry=[alias.name,'Root'])])
+        self.assertEqual(fit.nearest_region_bone('Twist',skeleton,(alias.name,)),alias.name)
+        with self.assertRaisesRegex(ValueError,'no selected coarse ancestor'):
+            fit.nearest_region_bone(alias.name,skeleton,(canonical.name,))
+        with self.assertRaisesRegex(ValueError,'missing from XP32'):
+            fit.measured_support_regions([dict(recipe[0],node='Missing')],skeleton)
+        root.parent=twist
+        with self.assertRaisesRegex(ValueError,'Cycle'):
+            fit.measured_support_regions(recipe,skeleton)
+
+    def test_whole_body_keeps_full_seam_faces_and_only_actual_claw_fields(self):
+        def transform():return SimpleNamespace(rotation=np.eye(3),scale=1.,translation=[0,0,0])
+        root=SimpleNamespace(name='Root',parent=None,global_transform=transform())
+        hand=SimpleNamespace(name='Hand',parent=root,global_transform=transform())
+        digit=SimpleNamespace(name='Finger',parent=hand,global_transform=transform())
+        other=SimpleNamespace(name='Other',parent=root,global_transform=transform())
+        shape=SimpleNamespace(name='claws',verts=[[0,0,0],[1,0,0],[0,1,0],[1,1,0]],tris=[[0,1,2],[1,2,3]],
+            global_to_skin=transform(),bone_weights={'Finger':[(0,.49),(1,.1),(2,.1),(3,.1)],
+                'Other':[(0,.51),(1,.9),(2,.9),(3,.9)]},get_shape_skin_to_bone=lambda _:transform())
+        skeleton=SimpleNamespace(nodes={node.name:node for node in (root,hand,digit,other)})
+        records={('claws','CLAWArmClawLong',2):SimpleNamespace(packed=[2,0,0],scale=.5),
+                 ('claws','CLAWZero',1):SimpleNamespace(packed=[0,0,0],scale=1.)}
+        # No vertex is directly bound to either selected ancestor: the old
+        # regional threshold selects nothing, although every face deforms.
+        self.assertEqual(fit.triangle_regions(shape,skeleton,records,('Hand','Root')), {})
+        rows=fit.triangle_regions(shape,skeleton,records,('Hand','Root'),whole_body=True)
+        points,fields,source=rows['Root']
+        self.assertEqual(source['sourceTriangleIndices'],[0,1])
+        self.assertEqual(source['vertices'],[0,1,2,3])
+        self.assertEqual(source['fullRegionTriangles'],shape.tris)
+        self.assertEqual(source['boundaryTrianglesExcluded'],0)
+        self.assertEqual(source['skinBoneRegionAncestry'],{'Finger':'Hand','Other':'Root'})
+        self.assertEqual(set(fields),{'CLAWArmClawLong'})
+        np.testing.assert_array_equal(fields['CLAWArmClawLong'],[[0,0,0],[0,0,0],[1,0,0],[0,0,0]])
+        with self.assertRaisesRegex(ValueError,'no selected coarse ancestor'):
+            fit.triangle_regions(shape,skeleton,records,('Hand',),whole_body=True)
+
+    def test_whole_body_preserves_positive_minority_p1_priority(self):
+        def transform(x=0):return SimpleNamespace(rotation=np.eye(3),scale=1.,translation=[x,0,0])
+        root=SimpleNamespace(name='Torso',parent=None,global_transform=transform())
+        name=fit.P1_NODES[0];p1=SimpleNamespace(name=name,parent=root,global_transform=transform(2))
+        shape=SimpleNamespace(name='body',verts=[[1,0,0],[2,0,0],[1,1,0]],tris=[[0,1,2]],global_to_skin=transform(),
+            bone_weights={name:[(0,.03),(1,.03),(2,.03)],'Torso':[(0,.97),(1,.97),(2,.97)]},get_shape_skin_to_bone=lambda _:transform())
+        skeleton=SimpleNamespace(nodes={name:p1,'Torso':root})
+        rows=fit.triangle_regions(shape,skeleton,{},('Torso',name),whole_body=True)
+        self.assertEqual(set(rows),{name})
+        self.assertEqual(rows[name][2]['sourceTriangleIndices'],[0])
+
     def test_recipe_change_between_parse_and_snapshot_cannot_attest_other_bytes(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);recipe=root/'recipe.json';nif=root/'input.nif';addon=root/'addon';out=root/'out'
@@ -57,6 +113,72 @@ class CapsuleFitTests(unittest.TestCase):
                       {'female/NPC EarR [EarR]Bone01':True}):
             with self.subTest(value=value),self.assertRaisesRegex(ValueError,'exact sex/node'):
                 fit.partition_overrides(value)
+
+    def test_declared_partition_override_uses_arbitrary_node_and_sex_mask(self):
+        node='Measured Limb [New]'
+        rows=[{'node':node,'count':2,'sexMask':'both'},
+              {'node':'Measured Chest','count':1,'sexMask':'female'}]
+        selected={'male/'+node:'strips-0','female/'+node:'compact-extreme',
+                  'female/Measured Chest':'strips-2'}
+        self.assertEqual(fit.partition_overrides(selected,rows),selected)
+        self.assertIsNot(fit.partition_overrides(selected,rows),selected)
+        for key in ('male/Measured Chest','female/Undeclared','other/'+node):
+            with self.subTest(key=key),self.assertRaisesRegex(ValueError,'exact sex/node'):
+                fit.partition_overrides({key:'compact'},rows)
+        # Explicit declarations do not widen the historical default path.
+        with self.assertRaisesRegex(ValueError,'exact sex/node'):
+            fit.partition_overrides({'male/'+node:'compact'})
+
+    def test_declared_partition_override_validates_the_support_declaration(self):
+        row={'node':'Measured Limb','count':1,'sexMask':'both'}
+        for invalid in ([row,row],[dict(row,count=True)],[dict(row,sexMask='male')]):
+            with self.subTest(invalid=invalid),self.assertRaises(ValueError):
+                fit.partition_overrides({},invalid)
+
+    def test_coarse_recipe_override_is_validated_after_profile_and_regions(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);recipe=root/'recipe.json';nif=root/'input.nif'
+            nif.write_bytes(b'fixture')
+            recipe.write_text(json.dumps({'schemaVersion':1,'weightDomain':[0.,1.],'morphDomain':[0.,1.],
+                'supportProfile':fit._settings_module.COARSE_PROFILE,
+                'supportRegions':[{'node':'Measured Limb','count':1,'sexMask':'both'}],
+                'partitionOverrides':{'male/Measured Limb':'strips-0'}}))
+            argv=['--current-vector','--contact-recipe',str(recipe),'--out',str(root/'out'),'--skeleton',str(nif)]
+            for sex in ('male','female'):
+                for suffix in ('nif','tri'):argv.extend(['--'+sex+'-'+suffix,str(nif)])
+            errors=io.StringIO()
+            with patch.dict(sys.modules,{'breast_rig':SimpleNamespace(), 'tri_patch':SimpleNamespace()}):
+                with patch.object(sys.modules['breast_rig'],'load_pynifly',create=True,
+                                  side_effect=ValueError('stopped after valid recipe')) as admit,redirect_stderr(errors):
+                    self.assertEqual(fit.main(argv),2)
+            admit.assert_called_once()
+            self.assertIn('stopped after valid recipe',errors.getvalue())
+            self.assertNotIn('exact sex/node',errors.getvalue())
+            self.assertFalse((root/'out').exists())
+
+    def test_declared_override_still_requires_actual_generated_region(self):
+        node='Measured Limb';unused='Measured Empty'
+        root=SimpleNamespace(name=node,parent=None)
+        skeleton=SimpleNamespace(nodes={node:root,unused:SimpleNamespace(name=unused,parent=root)})
+        points=np.asarray([[0.,0.,0.],[1.,0.,0.],[0.,1.,0.]])
+        faces=[[0,1,2]]
+        selected={node:(points,{}, {'vertices':[0,1,2],'fullRegionTriangles':faces,
+            'sourceTriangleIndices':[0],'restLBSMatricesSha256':'a'*64})}
+        args=SimpleNamespace(support_profile=fit._settings_module.COARSE_PROFILE,
+            support_regions=[{'node':name,'count':1,'sexMask':'both'} for name in (node,unused)],
+            current_counts=None,contact_passes=0,solid_tail=False,
+            partition_overrides={'female/'+unused:'compact-extreme'},
+            male_nif=Path('male.nif'),female_nif=Path('female.nif'),male_nif_1=None,female_nif_1=None,
+            skeleton=Path('skeleton.nif'),skin_shapes='skin',tail_axis='pca',partition_method='compact',
+            fixture_set='compact',signed_diagnostics=False,require_distinct_weight_endpoints=False)
+        mesh=SimpleNamespace(shape_dict={'skin':SimpleNamespace(tris=faces)})
+        api=SimpleNamespace(NifFile=lambda _:mesh)
+        contact=SimpleNamespace(partitions=lambda *args:([list(range(3))],[[0]]))
+        with (patch.object(fit,'triangle_regions',return_value=selected),
+              patch.dict(sys.modules,{'contact_fit':contact})):
+            with self.assertRaisesRegex(ValueError,'without actual selected support'):
+                fit.build_current(args,api,{'male':{},'female':{}},skeleton,
+                                  {args.skeleton.resolve():b'fixture'},Path('unused'))
 
     def test_minority_p1_mobility_support_is_not_lost_by_dominant_threshold(self):
         def transform(x=0):return SimpleNamespace(rotation=np.eye(3),scale=1.,translation=[x,0,0])

@@ -5,6 +5,7 @@ settings may select those pinned values, but must never override them.
 """
 from __future__ import annotations
 import math
+import re
 from pathlib import Path
 import sys
 
@@ -17,6 +18,64 @@ if compile(SOURCE_BYTES, sys._getframe().f_code.co_filename, "exec", dont_inheri
 PCA_EVALUATOR = "deform-actual-normalized-rest-LBS-support-then-PCA-refit-v1"
 CONTACT_EVALUATOR = "deform-rest-LBS-support-then-symmetric-triangle-contact-minimax-RMS-v3"
 DEFAULT_PADDING = 1e-4
+
+COARSE_PROFILE = "coarse-whole-body-v1"
+
+
+def identity_fields(model):
+    """Preserve historical identities; include any new support declaration."""
+    return (("evaluator", "morphs", "regions", "slots")
+            + (("weightDependent",) if "weightDependent" in model else ())
+            + (("supportProfile", "supportDeclaration") if "supportProfile" in model else ()))
+
+
+def support_regions(value, *, measured=False):
+    """Validate explicit attachment data, never infer a second bone whitelist."""
+    if not isinstance(value, list) or not value:
+        raise ValueError("Explicit support requires nonempty declared regions")
+    seen=set(); total=0
+    for row in value:
+        keys={"node", "count", "sexMask"} | ({"ancestry"} if measured else set())
+        if not isinstance(row, dict) or set(row) != keys:
+            raise ValueError("Invalid declared support region fields")
+        node=row["node"]
+        if not isinstance(node,str) or not re.fullmatch(r"[A-Za-z0-9_ \[\].-]{1,128}",node) or node in seen:
+            raise ValueError("Invalid or duplicate declared support node")
+        seen.add(node)
+        if type(row["count"]) is not int or not 1 <= row["count"] <= 128 or row["sexMask"] not in ("both","female"):
+            raise ValueError("Invalid declared support count/sex mask")
+        total+=row["count"]
+        if measured:
+            ancestry=row["ancestry"]
+            if (not isinstance(ancestry,list) or not ancestry or ancestry[0]!=node
+                    or not all(isinstance(name,str) and name for name in ancestry)
+                    or len(ancestry)!=len(set(ancestry))):
+                raise ValueError("Invalid measured XP32 support ancestry")
+    if total>128:raise ValueError("Declared support exceeds 128 host slots")
+    return value
+
+
+def support_declaration(model):
+    """Check a self-pinned measured declaration consumed by the generic host."""
+    if "supportProfile" not in model:return None
+    if model["supportProfile"]!=COARSE_PROFILE:raise ValueError("Unknown fitted support profile")
+    value=model.get("supportDeclaration")
+    if not isinstance(value,dict) or set(value)!={"regions","skinShapes","skeletonSha256"}:
+        raise ValueError("Missing explicit fitted support declaration")
+    regions=support_regions(value["regions"],measured=True)
+    shapes=value["skinShapes"]
+    if (not isinstance(shapes,list) or not shapes
+            or not all(isinstance(name,str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,128}",name) for name in shapes)
+            or len(shapes)!=len(set(shapes))
+            or model.get("coveredShapes")!=shapes):
+        raise ValueError("Declared skin shapes differ from fitted support")
+    digest=value["skeletonSha256"]
+    if (not isinstance(digest,str) or not re.fullmatch(r"[0-9a-f]{64}",digest)
+            or not any(row.get("sha256")==digest for row in model.get("sourceInputs",[]) if isinstance(row,dict))):
+        raise ValueError("Measured skeleton is not pinned as a source input")
+    if model.get("contactPasses",0)!=0:
+        raise ValueError("Coarse support requires its enclosing evaluator")
+    return {row["node"]:row for row in regions}
 
 
 def evaluator_settings(model):

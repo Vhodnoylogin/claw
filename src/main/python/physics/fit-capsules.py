@@ -34,7 +34,34 @@ P1_NODES = ('NPC L Breast P1','NPC R Breast P1')
 CONTACT_NODES = NODES+P1_NODES
 
 
-def triangle_regions(shape, skeleton, records, nodes=NODES):
+def nearest_region_bone(name, skeleton, nodes):
+    """Resolve an actual skin bone through the measured XP32 parent chain."""
+    if name not in skeleton.nodes:raise ValueError("Skin bone missing from XP32: "+name)
+    node=skeleton.nodes[name];seen=set()
+    while node is not None:
+        if node.name in seen:raise ValueError("Cycle in XP32 skin ancestry: "+name)
+        seen.add(node.name)
+        if node.name in nodes:return node.name
+        node=node.parent
+    raise ValueError("Skin bone has no selected coarse ancestor: "+name)
+
+
+def measured_support_regions(rows,skeleton):
+    """Bind recipe attachment names to the actually consumed skeleton."""
+    result=[]
+    for row in _settings_module.support_regions(rows):
+        name=row['node']
+        if name not in skeleton.nodes:raise ValueError('Declared support node missing from XP32: '+name)
+        node=skeleton.nodes[name];ancestry=[]
+        while node is not None:
+            if node.name in ancestry:raise ValueError('Cycle in declared XP32 ancestry: '+name)
+            ancestry.append(node.name);node=node.parent
+        if not ancestry or ancestry[0]!=name:raise ValueError('XP32 node lookup differs from actual node name: '+name)
+        result.append(dict(row,ancestry=ancestry))
+    return result
+
+
+def triangle_regions(shape, skeleton, records, nodes=NODES, *, whole_body=False):
     """Whole mixed faces, uniquely assigned by average actual skin influence.
 
     The ownership threshold only selects which faces touch the requested ear/
@@ -53,9 +80,18 @@ def triangle_regions(shape, skeleton, records, nodes=NODES):
         _matrix(skeleton.nodes[name].global_transform)@_matrix(shape.get_shape_skin_to_bone(name))@_matrix(shape.global_to_skin)
         for name in names]))
     world=np.einsum('vjk,vk->vj',transforms,np.column_stack([vertices,np.ones(len(vertices))]))[:,:3]
-    target=np.column_stack([weights[:,names.index(node)] if node in names else np.zeros(len(vertices)) for node in nodes])
-    dominant=weights.argmax(axis=1)
-    selected=np.array([names[int(i)] in nodes and weights[v,int(i)]>=.5 for v,i in enumerate(dominant)])
+    if whole_body:
+        target=np.zeros((len(vertices),len(nodes)));ancestry={}
+        for j,name in enumerate(names):
+            if not np.any(weights[:,j]>0):continue
+            owner=nearest_region_bone(name,skeleton,nodes);ancestry[name]=owner
+            target[:,nodes.index(owner)]+=normalized[:,j]
+        if not np.allclose(target.sum(axis=1),1.,rtol=0.,atol=1e-12):raise ValueError("Incomplete coarse skin ownership")
+        selected=np.ones(len(vertices),dtype=bool)
+    else:
+        target=np.column_stack([weights[:,names.index(node)] if node in names else np.zeros(len(vertices)) for node in nodes])
+        dominant=weights.argmax(axis=1)
+        selected=np.array([names[int(i)] in nodes and weights[v,int(i)]>=.5 for v,i in enumerate(dominant)])
     for node in P1_NODES:
         if node not in nodes or node not in names:continue
         side=float(skeleton.nodes[node].global_transform.translation[0])
@@ -64,6 +100,20 @@ def triangle_regions(shape, skeleton, records, nodes=NODES):
     faces=np.asarray(shape.tris,dtype=int).reshape(-1,3)
     face_ids=np.flatnonzero(selected[faces].any(axis=1)); selected_faces=faces[face_ids]
     ownership=np.argmax(target[selected_faces].mean(axis=1),axis=1)
+    if whole_body:
+        # Keep the existing measured minority-P1 support rather than losing it
+        # to its stronger torso influence. Every face still has one owner.
+        priority=[];priority_nodes=[]
+        for node in P1_NODES:
+            if node not in nodes or node not in names:continue
+            side=float(skeleton.nodes[node].global_transform.translation[0])
+            if abs(side)<1e-8:raise ValueError('P1 side node has no explicit rest X sign')
+            eligible=((weights[:,names.index(node)]>1e-6)&(world[:,0]*side>0))[selected_faces].any(axis=1)
+            priority.append(np.where(eligible,normalized[selected_faces,names.index(node)].mean(axis=1),-1.))
+            priority_nodes.append(nodes.index(node))
+        if priority:
+            values=np.column_stack(priority);present=values.max(axis=1)>=0
+            ownership[present]=np.asarray(priority_nodes)[values[present].argmax(axis=1)]
     fields={}
     for (shape_name,morph,vertex),record in records.items():
         if shape_name!=shape.name:continue
@@ -80,10 +130,11 @@ def triangle_regions(shape, skeleton, records, nodes=NODES):
         result[node]=(points,deltas,{"shape":shape.name,"vertices":ids.tolist(),
             "fullRegionTriangles":[[mapping[int(v)] for v in face] for face in local_faces],
             "sourceTriangleIndices":face_ids[ownership==owner].tolist(),
-            "mixedOwnershipTrianglesIncluded":int(np.sum(~selected[local_faces].all(axis=1))),
+            "mixedOwnershipTrianglesIncluded":int(np.sum(np.any(target.argmax(axis=1)[local_faces]!=owner,axis=1))) if whole_body else int(np.sum(~selected[local_faces].all(axis=1))),
             "boundaryTrianglesExcluded":0,"packedWeightSumMaximumError":float(abs(sums[ids]-1).max()),
             "restLBSMatricesSha256":hashlib.sha256(transforms[ids].tobytes()).hexdigest(),
-            "selectionRule":"actual positive side-matched minority P1 skin support" if node in P1_NODES else "dominant target influence >=0.5"})
+            "selectionRule":("every anatomical skin/claw triangle; nearest selected XP32 ancestor, minority P1 priority" if whole_body else "actual positive side-matched minority P1 skin support" if node in P1_NODES else "dominant target influence >=0.5")})
+        if whole_body:result[node][2]["skinBoneRegionAncestry"]=ancestry
     return result
 
 
@@ -133,6 +184,7 @@ def write_cpp_fixtures(report,path):
         'inline const std::vector<NumericFixture>& CompiledFixtures() { static const std::vector<NumericFixture> result = {']
     for fixture in report['fixtures']:
         for sex in ('male','female'):
+            if sex not in fixture['sexes']:continue
             caps='{'+','.join('{'+values(c['p1'])+','+values(c['p2'])+','+format(c['radius'],'.17g')+'}' for c in fixture['sexes'][sex]['capsules'])+'}'
             lines.append('{'+str(sex=='female').lower()+','+json.dumps(report['modelIdentity'])+','+
                 values([fixture['values'].get(name,0.) for name in report['morphs']])+','+caps+','+format(fixture.get('weight',0.),'.17g')+'},')
@@ -460,10 +512,14 @@ def solid_tail(regions,sex,skeleton,count,prescribe=False):
                 tangentRule="neighboring neutral section centroids with local signed affine TRI tangent regression; radius retains all actual residuals")
 
 
-def partition_overrides(value):
+def partition_overrides(value, declared_regions=None):
     """Explicit local trials cannot silently change another sex/node's layout."""
     methods=('compact','compact-extreme','strips-0','strips-1','strips-2')
-    allowed={sex+'/'+node for sex in ('male','female') for node in (NODES+(P1_NODES if sex=='female' else ()))}
+    if declared_regions is None:
+        allowed={sex+'/'+node for sex in ('male','female') for node in (NODES+(P1_NODES if sex=='female' else ()))}
+    else:
+        allowed={sex+'/'+row['node'] for row in _settings_module.support_regions(declared_regions)
+                 for sex in ('male','female') if row['sexMask']=='both' or sex=='female'}
     if not isinstance(value,dict) or any(key not in allowed or method not in methods for key,method in value.items()):
         raise ValueError('Partition overrides require exact sex/node keys and supported explicit methods')
     return dict(value)
@@ -471,15 +527,29 @@ def partition_overrides(value):
 
 def build_current(args,api,records_by_sex,skeleton,snapshots,out):
     import contact_fit as contact
-    counts=tuple(int(x) for x in args.current_counts.split(',')) if args.current_counts else (8,3,8,3,5,2,1,0,2)
-    if len(counts)!=len(NODES) or min(counts)<0 or sum(counts)>128:raise ValueError("Supply nine current counts, total <=128")
-    p1_counts=tuple(int(x) for x in args.female_p1_counts.split(','))
-    if len(p1_counts)!=2 or min(p1_counts)<0 or sum(counts)+sum(p1_counts)>128:raise ValueError('Female P1 counts require two nonnegative counts within total128 budget')
-    count_map=dict(zip(CONTACT_NODES,counts+p1_counts));weight_dependent=bool(args.male_nif_1 or args.female_nif_1)
+    whole_body=getattr(args,'support_profile','regional')==_settings_module.COARSE_PROFILE
+    if whole_body:
+        declaration=measured_support_regions(args.support_regions,skeleton)
+        contact_nodes=tuple(row['node'] for row in declaration)
+        count_map={row['node']:row['count'] for row in declaration}
+        masks={row['node']:row['sexMask'] for row in declaration}
+        if args.current_counts or args.contact_passes or args.solid_tail:raise ValueError('Coarse profile uses its explicit counts and enclosing current-vector fits only')
+        counts=tuple(row['count'] for row in declaration if row['sexMask']=='both')
+        p1_counts=tuple(count_map.get(node,0) for node in P1_NODES)
+    else:
+        if getattr(args,'support_regions',None):raise ValueError('Explicit support regions require the coarse profile')
+        counts=tuple(int(x) for x in args.current_counts.split(',')) if args.current_counts else (8,3,8,3,5,2,1,0,2)
+        if len(counts)!=len(NODES) or min(counts)<0 or sum(counts)>128:raise ValueError("Supply nine current counts, total <=128")
+        p1_counts=tuple(int(x) for x in args.female_p1_counts.split(','))
+        if len(p1_counts)!=2 or min(p1_counts)<0 or sum(counts)+sum(p1_counts)>128:raise ValueError('Female P1 counts require two nonnegative counts within total128 budget')
+        contact_nodes=CONTACT_NODES
+        count_map=dict(zip(contact_nodes,counts+p1_counts))
+        masks={node:'female' if node in P1_NODES else 'both' for node in contact_nodes}
+    weight_dependent=bool(args.male_nif_1 or args.female_nif_1)
     if weight_dependent and not(args.male_nif_1 and args.female_nif_1):raise ValueError('Independent weight requires both sex endpoint1 NIFs')
     if args.solid_tail and weight_dependent:raise ValueError('Experimental solid-tail regrouping is not weight-qualified')
     if args.solid_tail and args.tail_axis=='tangent' and args.contact_passes:raise ValueError('Prescribed-axis contact optimization is not a supported family')
-    overrides=partition_overrides(getattr(args,'partition_overrides',{}))
+    overrides=partition_overrides(getattr(args,'partition_overrides',{}),args.support_regions if whole_body else None)
     if overrides and args.solid_tail:raise ValueError('Region partition overrides cannot be combined with solid-tail regrouping')
     report={"schemaVersion":3,"frame":"node-local-game-units","domain":[0.,1.],
             "status":"offline-current-vector-triangle-fit","runtimeQualified":False,"gameValidated":False,
@@ -498,20 +568,35 @@ def build_current(args,api,records_by_sex,skeleton,snapshots,out):
         'independentWeightSamples':[0.,.5,1.] if weight_dependent else [0.],
         'requireDistinctWeightEndpoints':args.require_distinct_weight_endpoints}
     if overrides:report['configuration']['partitionOverrides']=overrides
+    if whole_body:
+        report.update(supportProfile=_settings_module.COARSE_PROFILE,
+            supportDeclaration={'regions':declaration,'skinShapes':args.skin_shapes.split(','),
+                'skeletonSha256':hashlib.sha256(snapshots[args.skeleton.resolve()]).hexdigest()},supportCoverage=[],
+            status='offline-coarse-whole-body-current-vector-envelope',
+            ownership='Every body/head/claw triangle assigned once by mean normalized influence of nearest selected XP32 ancestors; minority female P1 support retains priority',
+            excluded='alpha fur/blend layers, eyes, mouth interior, secondary pelvic mesh, animation/pose/actor or bone scale, engine/provider/contact')
+        report['configuration'].pop('requestedEarTailCounts')
+        report['configuration']['requestedSupportRegions']=args.support_regions
     if args.contact_passes:
         report.update(contactPasses=args.contact_passes,evaluator='deform-rest-LBS-support-then-symmetric-triangle-contact-minimax-RMS-v3',
             proofScope='Finite symmetric skin/capsule-surface minimax/RMS optimization at each actual vector. Explicit measured undercoverage and separation replace unconditional convex containment. No continuous Hausdorff, animation or game-contact proof.',
             constructionObjective={'maximumSampleDistanceWeight':1.,'rmsSampleDistanceWeight':.2,'coordinatePasses':args.contact_passes,'objectiveImprovementEpsilon':1e-7,
                 'axisComponentTieEpsilon':1e-10,'pcaVarianceRelativeTieEpsilon':1e-12,'targetSampleP95GameUnits':1.,'targetIsNotAcceptanceThreshold':True})
     for sex in ('male','female'):
-        mesh=api.NifFile(str(getattr(args,sex+'_nif'))); chunks={node:[] for node in CONTACT_NODES}
+        mesh=api.NifFile(str(getattr(args,sex+'_nif'))); chunks={node:[] for node in contact_nodes}
         mesh1=api.NifFile(str(getattr(args,sex+'_nif_1'))) if weight_dependent else None
-        chosen_nodes=NODES+tuple(n for n in P1_NODES if sex=='female' and count_map[n])
-        weight_chunks={node:[] for node in CONTACT_NODES}
+        chosen_nodes=tuple(node for node in contact_nodes if masks[node]=='both' or sex=='female') if whole_body else NODES+tuple(n for n in P1_NODES if sex=='female' and count_map[n])
+        weight_chunks={node:[] for node in contact_nodes}
         for shape in args.skin_shapes.split(','):
             if shape not in mesh.shape_dict:raise ValueError('Explicit skin shape missing: '+shape)
-            selected=triangle_regions(mesh.shape_dict[shape],skeleton,records_by_sex[sex],chosen_nodes)
-            other=triangle_regions(mesh1.shape_dict[shape],skeleton,records_by_sex[sex],chosen_nodes) if mesh1 is not None else selected
+            selected=triangle_regions(mesh.shape_dict[shape],skeleton,records_by_sex[sex],chosen_nodes,whole_body=whole_body)
+            other=triangle_regions(mesh1.shape_dict[shape],skeleton,records_by_sex[sex],chosen_nodes,whole_body=whole_body) if mesh1 is not None else selected
+            if whole_body:
+                owned=[face for row in selected.values() for face in row[2]['sourceTriangleIndices']]
+                total=len(mesh.shape_dict[shape].tris)
+                if sorted(owned)!=list(range(total)):raise ValueError('Coarse profile dropped or duplicated a source triangle')
+                report['supportCoverage'].append({'sex':sex,'shape':shape,'sourceTriangles':total,'assignedTriangles':len(owned),
+                    'droppedTriangles':0,'duplicateTriangleAssignments':0})
             if set(selected)!=set(other):raise ValueError('Weight endpoint changes triangle ownership')
             for node,row in selected.items():
                 endpoint=other[node]
@@ -556,18 +641,20 @@ def build_current(args,api,records_by_sex,skeleton,snapshots,out):
     actual=sorted({name for region in report['regions'].values() for name in region['morphs']})
     if len(actual)>32:raise ValueError("Current model has more than 32 actual dependencies")
     report['morphs']=actual
-    for node in CONTACT_NODES:
+    for node in contact_nodes:
         pair=[report['regions'].get(sex+'/'+node) for sex in ('male','female')]
         if pair[0] is None or pair[1] is None:
             if pair==[None,None]:
+                if whole_body:raise ValueError('Declared attachment has no actual assigned skin support: '+node)
                 if node in P1_NODES and count_map[node]:raise ValueError('Requested P1 has no actual body-skin region: '+node)
                 report['omittedNodes'].append({"node":node,"reason":"No touching skin face assigned by mean influence; not a silently missing source triangle"});continue
-            if not(node in P1_NODES and pair[0] is None and pair[1] is not None):raise ValueError("Unsupported sex-specific current-vector region layout")
+            if not(masks[node]=='female' and pair[0] is None and pair[1] is not None):raise ValueError("Unsupported sex-specific current-vector region layout")
         if pair[0] is not None and len(pair[0]['partitions'])!=len(pair[1]['partitions']):raise ValueError("Sex-specific partition count")
+        if whole_body and len(pair[1]['partitions'])!=count_map[node]:raise ValueError('Declared partition count has insufficient actual support: '+node)
         for i in range(len(pair[1]['partitions'])):
             report['slots'].append({"node":node,"partition":i,"sexMask":"female" if pair[0] is None else "both",**{sex:None if region is None else {"partitionIndices":region['partitions'][i],"triangleIndices":region['triangleGroups'][i]}
                 for sex,region in zip(('male','female'),pair)}})
-    canonical=json.dumps({k:report[k] for k in ('evaluator','morphs','regions','slots','weightDependent')},sort_keys=True,separators=(',',':')).encode()
+    canonical=json.dumps({k:report[k] for k in _settings_module.identity_fields(report)},sort_keys=True,separators=(',',':')).encode()
     report['modelIdentity']='CLAW.Physics.CurrentVector.'+hashlib.sha256(canonical).hexdigest()
     states=[('neutral',{}),('all-1',dict.fromkeys(actual,1.)),('mixed-035',dict.fromkeys(actual,.35)),
             ('alternating',{n:float(i%2) for i,n in enumerate(actual)})]
@@ -577,19 +664,21 @@ def build_current(args,api,records_by_sex,skeleton,snapshots,out):
         states.extend(('heldout-'+str(i),dict(zip(actual,row.tolist()))) for i,row in enumerate(rng.random((6,len(actual)))))
     report['fixtureSet']=args.fixture_set
     states.append(('return-neutral',{})); fixtures=[]
+    identical_endpoints=whole_body and all(not np.any(region.get('weightDeltas',[])) for region in report['regions'].values())
+    if whole_body:report['surfaceDiagnosticWeights']=[0.] if identical_endpoints else ([0.,.5,1.] if weight_dependent else [0.])
     weighted_states=[(label,values,weight) for weight in ([0.,.5,1.] if weight_dependent else [0.]) for label,values in states]
     for label,values,weight in weighted_states:
         entry={"name":label,"values":values,"weight":weight,"sexes":{}}
         for sex in ('male','female'):
             caps=[]; metrics={}; maxoutside=0.; world_points=[];world_faces=[];world_caps=[];world_offset=0;bundles={}
-            for node in CONTACT_NODES:
+            for node in contact_nodes:
                 region=report['regions'].get(sex+'/'+node)
                 if region is None:continue
                 selected={n:values.get(n,0.) for n in region['morphs']}; points=contact.deform(region,selected,weight)
                 bundle=contact.evaluate(region,selected,weight);bundles[node]=bundle
                 outside=float(contact.signed_capsules(points,bundle).max());maxoutside=max(maxoutside,outside)
                 if outside>1e-8 and not args.contact_passes:raise ValueError("Current-vector containment failed")
-                if label in ('neutral','all-1','mixed-035','alternating'):
+                if label in ('neutral','all-1','mixed-035','alternating') and (not identical_endpoints or weight==0.):
                     metrics[node]=contact.surface_metrics(points,region['faces'],bundle)
                     frame=_matrix(skeleton.nodes[node].global_transform)
                     world_points.extend((np.column_stack([points,np.ones(len(points))])@frame.T)[:,:3])
@@ -644,6 +733,8 @@ def main(argv=None):
     parser.add_argument("--bundles", action="store_true", help="Explicit 32-slot fitted bundle candidate; never changes the legacy eight-slot model")
     parser.add_argument("--current-vector",action="store_true",help="Schema3 exact current-vector refit; separate native model, not affine Papyrus input")
     parser.add_argument("--current-counts",help="Nine comma-separated requested triangle group counts; total <=128")
+    parser.add_argument("--support-profile",default='regional',choices=['regional',_settings_module.COARSE_PROFILE],help='Explicit opt-in coarse whole-body skin/claw support; legacy regional defaults remain unchanged')
+    parser.set_defaults(support_regions=None)
     parser.add_argument("--partition-method",default='compact',choices=['auto','compact','compact-extreme','strips-0','strips-1','strips-2'])
     parser.add_argument("--solid-tail",action='store_true',help='Partition the connected tail into solid axial sections before node assignment')
     parser.add_argument("--tail-axis",default='pca',choices=['pca','tangent'],help='Current PCA or experimental signed TRI section tangent for solid tail')
@@ -664,6 +755,7 @@ def main(argv=None):
             if recipe.get('schemaVersion')!=1 or recipe.get('weightDomain')!=[0.,1.] or recipe.get('morphDomain')!=[0.,1.]:raise ValueError('Unsupported contact recipe domains')
             provided=list(sys.argv[1:] if argv is None else argv)
             options={'skinShapes':('skin_shapes',lambda v:','.join(v)),
+                'supportProfile':('support_profile',str),'supportRegions':('support_regions',lambda v:v),
                 'currentCounts':('current_counts',lambda v:','.join(str(x) for x in v)),
                 'femaleP1Counts':('female_p1_counts',lambda v:','.join(str(x) for x in v)),
                 'partitionMethod':('partition_method',str),'contactPasses':('contact_passes',int),
@@ -672,9 +764,12 @@ def main(argv=None):
             for key,(attribute,convert) in options.items():
                 option='--'+attribute.replace('_','-')
                 if key in recipe and not any(value==option or value.startswith(option+'=') for value in provided):setattr(args,attribute,convert(recipe[key]))
-            args.partition_overrides=partition_overrides(recipe.get('partitionOverrides',{}))
+            args.partition_overrides=partition_overrides(recipe.get('partitionOverrides',{}),
+                args.support_regions if args.support_profile==_settings_module.COARSE_PROFILE else None)
             if args.contact_passes not in range(9) or args.fixture_set not in ('full','compact') or args.partition_method not in ('compact','compact-extreme','auto','strips-0','strips-1','strips-2'):raise ValueError('Unsupported contact recipe options')
         if args.partition_overrides and not args.current_vector:raise ValueError('Region partition overrides require a current-vector model')
+        if args.support_profile not in ('regional',_settings_module.COARSE_PROFILE):raise ValueError('Unknown contact support profile')
+        if args.support_profile!= 'regional' and not args.current_vector:raise ValueError('Coarse support requires a current-vector model')
         if args.require_distinct_weight_endpoints:
             for sex in ('male','female'):
                 endpoint=getattr(args,sex+'_nif_1')
@@ -696,7 +791,9 @@ def main(argv=None):
             raise ValueError('Evaluator settings changed since their code was loaded')
         out=safe_output(args.out, paths)
         skeleton=api.NifFile(str(args.skeleton))
-        if any(n not in skeleton.nodes for n in NODES): raise ValueError("Missing XP32 ear/tail nodes")
+        if args.support_profile==_settings_module.COARSE_PROFILE:
+            measured_support_regions(args.support_regions,skeleton)
+        elif any(n not in skeleton.nodes for n in NODES): raise ValueError("Missing XP32 ear/tail nodes")
         if args.current_vector:
             return build_current(args,api,{sex:tri_patch.offsets(snapshots[getattr(args,sex+'_tri').resolve()]) for sex in ('male','female')},skeleton,snapshots,out)
         report={"schemaVersion":2 if args.bundles else 1,"frame":"node-local-game-units","domain":[0.,1.],

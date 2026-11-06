@@ -23,7 +23,7 @@ settings = load('claw_settings_contract', ROOT/'current_model.py')
 
 
 def sign(model):
-    fields = ('evaluator', 'morphs', 'regions', 'slots')
+    fields = settings.identity_fields(model)
     canonical = json.dumps({key:model[key] for key in fields}, sort_keys=True, separators=(',', ':')).encode()
     model['modelIdentity'] = 'CLAW.Physics.CurrentVector.' + hashlib.sha256(canonical).hexdigest()
     return model
@@ -44,6 +44,53 @@ def model(passes=0, padding=1e-4):
 
 
 class CurrentModelTests(unittest.TestCase):
+    def declared_model(self):
+        source=model();old=build.NODES[0];node='Measured Limb [Limb]'
+        source['slots'][0].update(node=node,sexMask='both')
+        source['regions']={sex+'/'+node:source['regions'][sex+'/'+old] for sex in ('male','female')}
+        source.update(supportProfile=settings.COARSE_PROFILE,coveredShapes=['skin'],sourceInputs=[{'sha256':'a'*64}],
+            supportDeclaration={'skinShapes':['skin'],'skeletonSha256':'a'*64,
+                'regions':[{'node':node,'count':1,'sexMask':'both','ancestry':[node,'Root']}]})
+        return sign(source)
+
+    def test_explicit_measured_support_is_data_driven_and_identity_pinned(self):
+        source=self.declared_model();build.validate_fitted_model(source)
+        changed=copy.deepcopy(source);changed['supportDeclaration']['regions'][0]['ancestry'].append('Changed')
+        with self.assertRaisesRegex(ValueError,'identity differs'):build.validate_fitted_model(changed)
+        legacy=copy.deepcopy(source);legacy.pop('supportProfile');legacy.pop('supportDeclaration');sign(legacy)
+        with self.assertRaisesRegex(ValueError,'existing XP32 ear/tail'):build.validate_fitted_model(legacy)
+
+    def test_declared_support_refuses_missing_extra_duplicate_or_wrong_sex_slots(self):
+        source=self.declared_model()
+        for change in ('missing','extra','count','partition','sex','source','shape','unsafe'):
+            value=copy.deepcopy(source)
+            if change=='missing':value['supportDeclaration']['regions'][0]['node']='Other'
+            if change=='extra':value['slots'].append(copy.deepcopy(value['slots'][0]))
+            if change=='count':value['supportDeclaration']['regions'][0]['count']=2
+            if change=='partition':value['slots'][0]['partition']=True
+            if change=='sex':value['slots'][0]['sexMask']='female'
+            if change=='source':value['sourceInputs']=[]
+            if change=='shape':value['coveredShapes']=[]
+            if change=='unsafe':value['supportDeclaration']['regions'][0]['node']='Node\n[ConfigMap]'
+            sign(value)
+            with self.subTest(change=change),self.assertRaises(ValueError):build.validate_fitted_model(value)
+
+    def test_support_declaration_refuses_malformed_counts_cycles_and_masks(self):
+        row={'node':'Measured','count':1,'sexMask':'both','ancestry':['Measured','Root']}
+        for key,wrong in (('node',''),('count',True),('count',0),('count',129),('sexMask','male'),('ancestry',['Measured','Root','Measured'])):
+            value=dict(row);value[key]=wrong
+            with self.subTest(key=key,wrong=wrong),self.assertRaises(ValueError):settings.support_regions([value],measured=True)
+        with self.assertRaisesRegex(ValueError,'duplicate'):settings.support_regions([row,row],measured=True)
+
+    def test_native_fixtures_can_retain_one_actually_observed_sex_only(self):
+        source=self.declared_model()
+        source['fixtures']=[{'values':{},'weight':.3,'sexes':{'male':{'capsules':[
+            {'p1':[0.,0.,0.],'p2':[0.,0.,1.],'radius':1.}]}}}]
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'fixtures.h';fit.write_cpp_fixtures(source,path)
+            text=path.read_text();self.assertEqual(text.count('{false,'),1)
+            self.assertNotIn('{true,',text)
+
     def test_top_level_override_cannot_reuse_the_pinned_identity(self):
         source = model(3)
         changed = copy.deepcopy(source)

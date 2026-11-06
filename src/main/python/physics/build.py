@@ -181,20 +181,32 @@ def validate_fitted_model(model):
             raise ValueError("Current-vector model requires 1..128 stable slots")
         if not re.fullmatch(r"CLAW\.Physics\.CurrentVector\.[0-9a-f]{64}", model.get("modelIdentity", "")):
             raise ValueError("Current-vector model identity must pin its own complete support data")
-        identity_keys = ("evaluator", "morphs", "regions", "slots") + (("weightDependent",) if "weightDependent" in model else ())
+        identity_keys = _settings_module.identity_fields(model)
         canonical = json.dumps({key:model[key] for key in identity_keys}, sort_keys=True, separators=(",", ":")).encode()
         if model["modelIdentity"] != "CLAW.Physics.CurrentVector." + hashlib.sha256(canonical).hexdigest():
             raise ValueError("Current-vector model identity differs from its complete support data")
         regions = model.get("regions")
         if not isinstance(regions, dict): raise ValueError("Current-vector support regions missing")
         _settings_module.evaluator_settings(model)
+        declared = _settings_module.support_declaration(model)
+        if declared is not None:
+            actual={node:sum(slot.get('node')==node for slot in slots) for node in declared}
+            if actual!={node:row['count'] for node,row in declared.items()} or set(slot.get('node') for slot in slots)!=set(declared):
+                raise ValueError('Slots differ from explicit measured support declaration')
+            for node,row in declared.items():
+                indices=[slot.get('partition') for slot in slots if slot.get('node')==node]
+                if any(type(i) is not int for i in indices) or sorted(indices)!=list(range(row['count'])):
+                    raise ValueError('Declared support partitions must occur exactly once')
         for slot in slots:
-            if slot.get("node") not in NODES + BREAST_NODES or slot["node"] == "TailBone04":
+            if declared is None and (slot.get("node") not in NODES + BREAST_NODES or slot["node"] == "TailBone04"):
                 raise ValueError("Current-vector slot must retain measured existing XP32 ear/tail nodes")
             female_only = slot.get("sexMask") == "female"
             if slot.get("sexMask") not in (None, "both", "female"):
                 raise ValueError("Unknown capsule sex mask")
-            if female_only and slot["node"] not in BREAST_NODES or slot["node"] in BREAST_NODES and not female_only:
+            if declared is not None:
+                if slot.get('sexMask','both')!=declared[slot['node']]['sexMask']:
+                    raise ValueError('Slot sex mask differs from measured support declaration')
+            elif (female_only and slot["node"] not in BREAST_NODES) or (slot["node"] in BREAST_NODES and not female_only):
                 raise ValueError("P1 slots require explicit female-only metadata")
             for sex in ("male", "female"):
                 if female_only and sex == "male":
