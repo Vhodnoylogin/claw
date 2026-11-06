@@ -88,5 +88,109 @@ Source analysis SHA256:
 
 This qualifies the bounded SE composition and observed patterns. It does not
 establish all 34 patterns in-game, AE/VR behavior, visual quality, physics or
-collision fit. Human stature's new reference-scale calculation still needs its
-own explicit scale-contrast game check.
+collision fit. The separate stature check below completes the explicit SE
+reference-scale transfer check.
+
+## Captured human stature: low/high game contrast
+
+The same minimal DLL was used for the low run `20261106-203611-39301c` and
+the high run `20261106-212754-bcce02`. These are different disposable actors in
+different native sessions. The base actor, race, sex, HIMBO family, build, all
+61 ordinary source/key maps, weight and available head traits were independently
+matched before comparing the two runs.
+
+`SetScale` takes a reference multiplier, whereas `GetScale` includes the NPC/race
+size. The high run measured that factor instead of assuming those API units
+were identical. Its final reference multiplier of `1` restored both human
+`GetScale` and the cached human height to `1.0299999714`.
+
+| Measured value | Low run | High run |
+|---|---:|---:|
+| Human height / combined scale | 0.7724999785 | 1.2874999046 |
+| Combined wolf scale | 0.8474999666 | 1.4125000238 |
+| `CLAWHeadEarSize` | 0 | 0.4312498569 |
+| `CLAWTailLength` | 0 | 0.5749998093 |
+| `CLAWArmClawLong` | 0 | 0.3593748808 |
+| `CLAWLegClawLong` | 0 | 0.3593748808 |
+
+After transformation, the captured input remained the human height rather than
+the wolf race's combined scale. All 31 independent SKEE target values matched
+the shared compiled evaluator: maximum errors were `2.965e-11` at low stature
+and `2.6514e-10` at high stature. The high run also checked the four featured
+cached target values, completed human return and original-scale restoration,
+and cleared CLAW's wolf keys on the human model.
+
+The low caller stopped after finding its own incorrect absolute-scale assertion;
+its immutable overall result remains failed, with no high-wolf or original-scale
+cleanup acceptance. Its completed low-human/low-wolf evidence remains usable.
+The corrected high run completed all six phases and 163 commands, then exited
+normally with native and child code 0. Both environments were restored and their
+reservations settled separately. These results establish the bounded mechanical
+transfer, not aesthetic quality, physics or AE/VR behavior.
+
+High-run technical review SHA256:
+`7dccdb134e73e575fd6b915d253197f55c2670cc2c9d811a44a914c9632bd181`.
+High-run restoration SHA256:
+`1afdabe15836ea3a8040adcc32715e728a369ce321e905889830a3821a0756ff`.
+
+## CBPC motion: still unconfirmed
+
+Motion06 (`20261106-222912-5421d5`) and Motion07
+(`20261106-231605-6922ea`) used the unchanged minimal DLL and the dedicated
+22-mod CLAW profile with the separately installed CBPC motion adapter. A frozen
+control and an AI-enabled, movement-held transformed female were sampled in
+three stationary windows of 20 observations: active, selected bones stopped,
+and selected bones restarted. Both reference and model-root transforms stayed
+stationary; every window met the fixed cadence limits.
+
+Motion07 added exactly one documented per-actor
+`CBPCPluginScript.RefreshActorBounceSettings` call after AI activation and before
+the baseline. It did not change coefficients, reload global configuration or
+modify CBPC. Ear rotation was present but not selectively suppressed by the
+stop request; tail and breast transforms remained constant. Thus neither run
+establishes CBPC influence. Void callbacks establish receipt only; the observer
+samples a main-thread task without a synchronized physics/render phase or a
+readback of CBPC's actual node/container ownership.
+
+Both native sessions ended normally and were collected/restored. Further fixture
+variations are deferred until the instrumentation can distinguish provider
+simulation from animation. No fitted-physics candidate is installed or activated
+by these runs, and no solver, collision or VR acceptance is claimed.
+
+## Whole-body contact candidate: offline scope
+
+The separate opt-in coarse model extends support beyond the older ear/tail/P1
+regions. Its recipe declares actual skeleton attachment nodes and sex masks;
+the fitter resolves every selected skin influence through the measured skeleton
+ancestry, applies full normalized rest skinning and keeps complete mixed-weight
+triangles at region seams. It does not alter body meshes or TRI fields.
+
+The 128-slot r1 allocation assigns all 58,563 selected triangles per sex exactly
+once, with 120 active male and 128 active female capsules. Its measured support
+uses 30 male / 31 female nonzero morph dependencies, including limb and claw
+fields absent from the earlier regional model. A separate native build passed
+254 numerical cases and 32,512 slot outputs, with maximum error `9.024e-13`.
+The two retained low/high male game vectors are included as explicit offline
+fixtures; their game runs remain distinct.
+
+Morphbench's existing public Physics API imported the separately evaluated
+capsule snapshot for each of eight matching mesh/vector cases. All 984 active
+contacts resolved; radii were finite and positive, exported text was unchanged,
+and maximum local/world coordinate errors were `3.55e-15` / `2.84e-14` against
+the actual loaded skeleton frames. Four standalone inspection pages and complete
+capsule-coordinate exports are retained outside Git. This verifies display and
+export coordinates, not simulation or runtime attachment.
+
+Increasing only the head and upper-spine partition counts reduced whole-union
+unsigned surface P95 mismatch by 10–16% and sampled maxima by 19–47% in the eight
+compared forms. The remaining sampled maximum is still **14.51 game units**;
+contact fit is not accepted. Unsigned mismatch does not uniformly imply outward
+protrusion on this open skin/fur surface. A cheap pelvis comparison of five
+existing partition methods found no alternative improving every tested state,
+so no additional full model was generated from that comparison.
+
+The frozen r1 manifest is `ad0689dfab90dfb659a7c87c797d86d6dfcb9ea1877b18f17b979855930037c8`.
+Morphbench placement review is
+`18bd50550cf6579183a211224419d78deeb7a2323f45633817af06b4f775ac4b`.
+The model and generated header remain external build artifacts. They are not
+installed, provider-qualified or part of a released archive.
