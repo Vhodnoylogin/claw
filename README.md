@@ -107,8 +107,11 @@ The [3 November development record](src/main/docs/verification-20261103.md)
 records the newer universal build, actual-family getter and test-source repair.
 The [5 November development record](src/main/docs/verification-20261105.md)
 adds the completed original-UNP lifecycle trial, the two-actor coat-material
-lifecycle and the source-level physics retirement correction. Broader coat
-coverage and actual physics-provider checks remain pending.
+lifecycle and the source-level physics retirement correction. The
+[6 November record](src/main/docs/verification-20261106.md) covers the alpha
+ownership repair and completed born-female/transformed-male coat lifecycle,
+including independent saved-source checks. Actual physics-provider checks remain
+pending.
 See the [roadmap](src/main/docs/roadmap.md),
 [release record](src/main/resources/publication/CLAW-0.8.0.md),
 [matrix contract](src/main/docs/matrix-contract.md) and
