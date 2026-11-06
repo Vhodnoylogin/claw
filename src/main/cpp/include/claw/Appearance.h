@@ -71,6 +71,8 @@ private:
         std::optional<MaterialLeaseState> materialLease;
         std::array<std::string, RE::BSTextureSet::Texture::kTotal> texturePaths;
         bool patterned{};
+        std::optional<std::int32_t> initializedFeature;
+        std::optional<RGB> initializedTint;
     };
     struct Entry {
         RE::FormID base{};
@@ -87,6 +89,8 @@ private:
         CoatSurfaceAuditCache audit;
         RE::NiPointer<RE::NiAVObject> auditRoot; // Turnover/release occurs only in game tasks.
         std::uint64_t auditGeneration{};
+        CoatSurfaceAuditCache yieldAudit; // Separate plain diagnostic cache; public request tokens unchanged.
+        RE::NiPointer<RE::NiAVObject> yieldReportedRoot; // First diagnostic only per retained model root.
     };
     template<class F> static void visit(RE::NiAVObject* object, F&& f);
     static void unbind(Entry& entry);
@@ -94,13 +98,18 @@ private:
         const RE::BSShaderProperty* original, std::uint32_t tint);
     static bool protectPrivateTint(RE::BSShaderProperty* copy, const RE::BSShaderProperty* original);
     static bool healthyPrivateTint(const Surface& surface);
+    static bool inspectPrivateTint(const Surface& surface, std::vector<MaterialLeaseDifference>* differences);
+    struct SurfaceLeaseFailure { std::string name; std::vector<MaterialLeaseDifference> differences; };
     static MaterialLeaseState materialLeaseState(const RE::BSShaderProperty& property);
+    static std::optional<RGB> observedTint(const RE::BSShaderMaterial* material);
+    static void reportYieldDifferences(RE::FormID actor, const Entry& entry, const std::vector<SurfaceLeaseFailure>& failures);
     static std::string texturePath(RE::BSTextureSet* set, RE::BSTextureSet::Texture slot);
     CoatDecision decision(const Entry& entry) const;
     bool preparePattern(RE::BSShaderProperty* property, const CoatTexture& texture, const CoatDDSInfo& expected, std::string& reason) const;
     struct PatternAssets { bool valid{}; std::map<std::string, CoatDDSInfo, std::less<>> dimensions; };
     const PatternAssets& validatePattern(const std::string& key, const CoatPattern& pattern);
     Entry* entryFor(RE::Actor* actor);
+    bool sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token, CoatSurfaceAuditCache& cache);
     static std::uint64_t auditClock();
     inline static constexpr std::uint32_t record = 0x524C4343; // CCLR
     inline static constexpr std::uint32_t patternRecord = 0x54504343; // CCPT
@@ -125,10 +134,21 @@ inline void Runtime::unbind(Entry& entry) {
     entry.audit.invalidate();
     for (auto& surface : entry.surfaces) {
         auto& current = surface.geometry->GetGeometryRuntimeData().shaderProperty;
-        // A later writer can replace the property OR mutate our clone in place.
-        // Incomplete immediate writes still roll back; successfully tinted
-        // surfaces are restored only while their complete ownership is intact.
-        if (current.get() == surface.own.get() && (!surface.tinted || healthyPrivateTint(surface))) current = surface.original;
+        // A later writer can replace the property OR mutate coat content in
+        // place. Finite per-geometry fade is carried onto rollback separately.
+        if (current.get() == surface.own.get() && (!surface.tinted || healthyPrivateTint(surface))) {
+            RE::BSTSmartPointer<RE::BSShaderMaterial> restorationMaterial;
+            const bool restored = restoreMaterialWithAlpha(current, surface.own, surface.original,
+                [&](const auto& donor) {
+                    RE::NiPointer<RE::BSShaderProperty> copy{static_cast<RE::BSShaderProperty*>(donor->Clone())};
+                    if (copy && copy.get() != donor.get() && copy.get() != surface.own.get() && donor->material)
+                        copy->SetMaterial(donor->material, true);
+                    if (copy) restorationMaterial.reset(copy->material); // Retain exact post-setup identity witness.
+                    return copy;
+                }, [&](const auto& copy) { return copy->FinishSetupGeometry(surface.geometry.get()); });
+            if (!restored) SKSE::log::warn("CLAW coat rollback: surface={} donor restoration unavailable; private/later binding retained",
+                coatAuditQuote(surface.geometry->name.c_str() ? surface.geometry->name.c_str() : ""));
+        }
     }
     entry.surfaces.clear(); entry.root.reset(); entry.yielded = false; entry.appliedPattern.clear();
 }
@@ -145,6 +165,7 @@ inline void Runtime::restore(RE::Actor* actor) {
         auto& entry = found->second; unbind(entry);
         const auto* currentRoot = actor->Is3DLoaded() ? actor->Get3D(false) : nullptr;
         if (entry.auditRoot.get() != currentRoot) { entry.auditRoot.reset(); entry.auditGeneration = 0; }
+        if (entry.yieldReportedRoot.get() != currentRoot) { entry.yieldReportedRoot.reset(); entry.yieldAudit.invalidate(); }
     }
 }
 inline std::string_view Runtime::status(RE::FormID id) const {
@@ -236,12 +257,18 @@ inline std::string Runtime::surfaceAudit(RE::FormID id) const {
     return found == entries_.end() ? std::string{} : found->second.audit.read(auditClock());
 }
 inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token) {
-    // Called only after Distribution validates its pinned actor/runtime/world.
     if (!actor) return false;
     const auto found = entries_.find(actor->formID);
-    if (found == entries_.end() || !found->second.audit.pending(token)) return false;
+    return found != entries_.end() && sampleSurfaceAudit(actor, token, found->second.audit);
+}
+inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token, CoatSurfaceAuditCache& cache) {
+    // Called only after Distribution validates its pinned actor/runtime/world.
+    // The private diagnostic destination cannot publish/cancel a public request.
+    if (!actor) return false;
+    const auto found = entries_.find(actor->formID);
+    if (found == entries_.end() || !cache.pending(token)) return false;
     auto& entry = found->second;
-    const auto fail = [&] { entry.audit.cancel(token); return false; };
+    const auto fail = [&] { cache.cancel(token); return false; };
     RE::NiPointer<RE::NiAVObject> root{actor->Is3DLoaded() ? actor->Get3D(false) : nullptr};
     if (!root || !actor->GetActorBase() || entry.base != actor->GetActorBase()->formID ||
         entry.sex != static_cast<std::uint32_t>(actor->GetActorBase()->GetSex())) return fail();
@@ -322,7 +349,7 @@ inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token) {
         rows.push_back(std::move(row));
     }
     // No apply/refresh/SKEE call occurs during this observation.
-    return entry.audit.publish(token, entry.auditGeneration, auditClock(), entry.root.get() == root.get(), rows);
+    return cache.publish(token, entry.auditGeneration, auditClock(), entry.root.get() == root.get(), rows);
 }
 inline std::string Runtime::texturePath(RE::BSTextureSet* set, RE::BSTextureSet::Texture slot) {
     const auto* value = set ? set->GetTexturePath(slot) : nullptr; return value ? value : "";
@@ -471,35 +498,69 @@ inline bool Runtime::protectPrivateTint(RE::BSShaderProperty* copy, const RE::BS
     return guard && copy->AddExtraData(guard.get()) && copy->GetExtraData(key) == guard.get();
 }
 inline bool Runtime::healthyPrivateTint(const Surface& surface) {
-    if (!surface.own || !surface.original || !surface.own->material ||
-        surface.own->material == surface.original->material) return false;
+    return inspectPrivateTint(surface, nullptr);
+}
+inline bool Runtime::inspectPrivateTint(const Surface& surface, std::vector<MaterialLeaseDifference>* differences) {
+    const auto fail = [&](std::string_view field, const auto& expected, const auto& observed) {
+        if (differences) differences->push_back({std::string(field), materialLeaseDiagnosticValue(expected), materialLeaseDiagnosticValue(observed)});
+        return false;
+    };
+    if (!surface.own || !surface.original || !surface.own->material)
+        return fail("privateSurface", "retained private/original property and material", "unavailable");
+    if (surface.own->material == surface.original->material)
+        return fail("materialIsolation", "private material distinct from donor", "aliases donor material");
+    if (!std::isfinite(surface.own->alpha)) return fail("propertyAlpha", "finite live fade", surface.own->alpha);
     const auto* material = surface.own->material;
     const auto* guardData = surface.own->GetExtraData("NO_TINT");
-    // Compare identities before inspecting live data. The retained old objects
-    // are witnesses, not sources to dereference after another writer replaces
-    // the material or its guard. Initial immediate writes have no lease yet.
-    if (surface.tinted && (material != surface.material.get() || guardData != surface.guard.get())) return false;
-    if (surface.tinted && (!surface.materialLease ||
-        !mayRestoreMaterial(*surface.materialLease, materialLeaseState(*surface.own)))) return false;
-    const auto* guard = netimmerse_cast<RE::NiBooleanExtraData*>(guardData);
-    if (!guard || !guard->data) return false;
-    RGB actual{};
-    if (material->GetFeature() == RE::BSShaderMaterial::Feature::kFaceGenRGBTint) {
-        const auto& tint = static_cast<const RE::BSLightingShaderMaterialFacegenTint*>(material)->tintColor;
-        actual = {tint.red, tint.green, tint.blue};
-    } else if (material->GetFeature() == RE::BSShaderMaterial::Feature::kHairTint) {
-        const auto& tint = static_cast<const RE::BSLightingShaderMaterialHairTint*>(material)->tintColor;
-        actual = {tint.red, tint.green, tint.blue};
-    } else return false;
-    if (surface.tinted && static_cast<const RE::BSLightingShaderMaterialBase*>(material)->textureSet.get() != surface.textureSet.get()) return false;
-    const auto* lighting = static_cast<const RE::BSLightingShaderMaterialBase*>(material);
-    if ((surface.tinted || surface.patterned) && lighting->diffuseTexture.get() != surface.diffuseTexture.get()) return false;
-    if (surface.patterned) {
-        if (lighting->textureSet.get() != surface.textureSet.get()) return false;
-        for (std::uint32_t i = 0; i < RE::BSTextureSet::Texture::kTotal; ++i)
-            if (texturePath(lighting->textureSet.get(), static_cast<RE::BSTextureSet::Texture>(i)) != surface.texturePaths[i]) return false;
+    // Preserve identity-first validation: diagnostics never dereference an old
+    // replaced witness or reclassify its current owner's material as our lease.
+    if (surface.tinted && material != surface.material.get())
+        return fail("materialIdentity", reinterpret_cast<std::uintptr_t>(surface.material.get()),
+            reinterpret_cast<std::uintptr_t>(material));
+    if (surface.tinted && guardData != surface.guard.get())
+        return fail("guardIdentity", reinterpret_cast<std::uintptr_t>(surface.guard.get()),
+            reinterpret_cast<std::uintptr_t>(guardData));
+    if (surface.tinted) {
+        if (!surface.materialLease) return fail("materialLease", "initialized retained witness", "unavailable");
+        const auto current = materialLeaseState(*surface.own);
+        if (!mayRestoreMaterial(*surface.materialLease, current)) {
+            if (differences) *differences = materialLeaseDifferences(*surface.materialLease, current);
+            return false;
+        }
     }
-    return matchesPackedTint(actual, surface.expectedTint);
+    const auto* guard = netimmerse_cast<RE::NiBooleanExtraData*>(guardData);
+    if (!guard || !guard->data) return fail("noTint", "true boolean", guard ? "false boolean" : "missing/nonboolean");
+    const auto actual = observedTint(material);
+    if (!actual) return fail("feature", surface.initializedFeature.value_or(-1), static_cast<std::int32_t>(material->GetFeature()));
+    if (surface.tinted && static_cast<const RE::BSLightingShaderMaterialBase*>(material)->textureSet.get() != surface.textureSet.get())
+        return fail("textureSetIdentity", reinterpret_cast<std::uintptr_t>(surface.textureSet.get()),
+            reinterpret_cast<std::uintptr_t>(static_cast<const RE::BSLightingShaderMaterialBase*>(material)->textureSet.get()));
+    const auto* lighting = static_cast<const RE::BSLightingShaderMaterialBase*>(material);
+    if ((surface.tinted || surface.patterned) && lighting->diffuseTexture.get() != surface.diffuseTexture.get())
+        return fail("diffuseTextureIdentity", reinterpret_cast<std::uintptr_t>(surface.diffuseTexture.get()),
+            reinterpret_cast<std::uintptr_t>(lighting->diffuseTexture.get()));
+    if (surface.patterned) {
+        if (lighting->textureSet.get() != surface.textureSet.get())
+            return fail("textureSetIdentity", reinterpret_cast<std::uintptr_t>(surface.textureSet.get()),
+                reinterpret_cast<std::uintptr_t>(lighting->textureSet.get()));
+        for (std::uint32_t i = 0; i < RE::BSTextureSet::Texture::kTotal; ++i) {
+            const auto current = texturePath(lighting->textureSet.get(), static_cast<RE::BSTextureSet::Texture>(i));
+            if (current != surface.texturePaths[i]) {
+                if (differences) fail("texturePath[" + std::to_string(i) + ']',
+                    surface.texturePaths[i].substr(0, coatAuditMaxPath) + (surface.texturePaths[i].size() > coatAuditMaxPath ? " [truncated]" : ""),
+                    current.substr(0, coatAuditMaxPath) + (current.size() > coatAuditMaxPath ? " [truncated]" : ""));
+                return false;
+            }
+        }
+    }
+    if (!matchesPackedTint(*actual, surface.expectedTint)) {
+        if (differences) for (unsigned i = 0; i < 3; ++i)
+            differences->push_back({"tint[" + std::to_string(i) + ']',
+                materialLeaseDiagnosticValue(surface.initializedTint ? (*surface.initializedTint)[i] : unpack(surface.expectedTint)[i]),
+                materialLeaseDiagnosticValue((*actual)[i])});
+        return false;
+    }
+    return true;
 }
 inline MaterialLeaseState Runtime::materialLeaseState(const RE::BSShaderProperty& property) {
     // The caller has already validated this private lighting/tint material.
@@ -525,6 +586,27 @@ inline MaterialLeaseState Runtime::materialLeaseState(const RE::BSShaderProperty
     result.effectData = reinterpret_cast<std::uintptr_t>(property.effectData.get());
     return result;
 }
+inline std::optional<RGB> Runtime::observedTint(const RE::BSShaderMaterial* material) {
+    if (!material || material->GetType() != RE::BSShaderMaterial::Type::kLighting) return {};
+    if (material->GetFeature() == RE::BSShaderMaterial::Feature::kFaceGenRGBTint) {
+        const auto& rgb = static_cast<const RE::BSLightingShaderMaterialFacegenTint*>(material)->tintColor;
+        return RGB{rgb.red, rgb.green, rgb.blue};
+    }
+    if (material->GetFeature() == RE::BSShaderMaterial::Feature::kHairTint) {
+        const auto& rgb = static_cast<const RE::BSLightingShaderMaterialHairTint*>(material)->tintColor;
+        return RGB{rgb.red, rgb.green, rgb.blue};
+    }
+    return {};
+}
+inline void Runtime::reportYieldDifferences(RE::FormID actor, const Entry& entry, const std::vector<SurfaceLeaseFailure>& failures) {
+    // These plain differences were captured by the actual failed predicate,
+    // before cleanup and without a second later read of the changed fields.
+    SKSE::log::warn("CLAW coat lease {:08X}: first yield root={} failedSurfaces={}; writer unobserved",
+        actor, static_cast<const void*>(entry.root.get()), failures.size());
+    for (const auto& failure : failures) for (const auto& difference : failure.differences)
+        SKSE::log::warn("CLAW coat lease {:08X}: surface={} field={} expected={} observed={}",
+            actor, coatAuditQuote(failure.name), difference.field, coatAuditQuote(difference.expected), coatAuditQuote(difference.observed));
+}
 inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     std::uint64_t saveNamespace, std::uint64_t identity) {
     if (!actor || !actor->GetActorBase() || !provider) return false;
@@ -545,6 +627,9 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     }
     if (entry.loaded) { entry.handle = actor->GetHandle(); entry.loaded = false; }
     auto* root = actor->Get3D(false);
+    if (entry.yieldReportedRoot && entry.yieldReportedRoot.get() != root) {
+        entry.yieldReportedRoot.reset(); entry.yieldAudit.invalidate();
+    }
     if (entry.auditRoot && entry.auditRoot.get() != root) {
         entry.audit.invalidate(); entry.auditRoot.reset(); entry.auditGeneration = 0;
     }
@@ -560,14 +645,46 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         const bool stillInScene = std::all_of(entry.surfaces.begin(), entry.surfaces.end(), [root](const auto& surface) {
             return root->GetObjectByName(surface.geometry->name) == surface.geometry.get();
         });
-        const bool stillOwned = std::all_of(entry.surfaces.begin(), entry.surfaces.end(), [](const auto& surface) {
-            return surface.geometry->GetGeometryRuntimeData().shaderProperty.get() == surface.own.get();
-        });
-        const bool stillTinted = stillOwned && std::all_of(entry.surfaces.begin(), entry.surfaces.end(), healthyPrivateTint);
+        const bool firstReport = entry.yieldReportedRoot.get() != root;
+        std::vector<SurfaceLeaseFailure> failures;
+        bool stillTinted = true;
+        if (firstReport && stillInScene) {
+            for (const auto& surface : entry.surfaces) {
+                std::vector<MaterialLeaseDifference> differences;
+                const auto* current = surface.geometry->GetGeometryRuntimeData().shaderProperty.get();
+                bool healthy = current == surface.own.get();
+                if (!healthy) differences.push_back({"propertyIdentity",
+                    materialLeaseDiagnosticValue(reinterpret_cast<std::uintptr_t>(surface.own.get())),
+                    materialLeaseDiagnosticValue(reinterpret_cast<std::uintptr_t>(current))});
+                else healthy = inspectPrivateTint(surface, &differences);
+                if (!healthy) {
+                    stillTinted = false;
+                    const auto* name = surface.geometry->name.c_str();
+                    failures.push_back({std::string(name ? name : "").substr(0, coatAuditMaxName), std::move(differences)});
+                }
+            }
+        } else {
+            const bool stillOwned = std::all_of(entry.surfaces.begin(), entry.surfaces.end(), [](const auto& surface) {
+                return surface.geometry->GetGeometryRuntimeData().shaderProperty.get() == surface.own.get();
+            });
+            stillTinted = stillOwned && std::all_of(entry.surfaces.begin(), entry.surfaces.end(), healthyPrivateTint);
+        }
         if (stillInScene && stillTinted) return true;
         // A later provider wins until model generation changes; no override war.
         if (stillInScene) {
-            unbind(entry); entry.root.reset(root); entry.yielded = true; entry.status = "yielded to later coat writer"; return false;
+            if (firstReport) { entry.yieldReportedRoot.reset(root); reportYieldDifferences(actor->formID, entry, failures); }
+            unbind(entry); entry.root.reset(root); entry.yielded = true; entry.status = "yielded to later coat writer";
+            if (firstReport) {
+                // Observe AFTER cleanup into a separate plain cache. Do not
+                // alter public request tokens or re-publish known-stale leases.
+                entry.yieldAudit.invalidate();
+                const auto token = nextAuditRequest_ == std::numeric_limits<std::uint64_t>::max() ? 0 : nextAuditRequest_++;
+                const bool sampled = token && entry.yieldAudit.begin(token) && sampleSurfaceAudit(actor, token, entry.yieldAudit);
+                const auto payload = sampled ? entry.yieldAudit.read(auditClock()) : std::string{};
+                SKSE::log::warn("CLAW coat lease {:08X}: post-yield diagnostic cached audit available={} payload={}",
+                    actor->formID, !payload.empty(), payload.empty() ? "unavailable" : payload);
+            }
+            return false;
         }
     }
     if (root == entry.root.get() && entry.yielded) return false;
@@ -685,6 +802,8 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         // Snapshot initialized public state, never pre-initialization scratch
         // values. Retained references make compared pointer identities stable.
         surface.materialLease = materialLeaseState(*surface.own);
+        surface.initializedFeature = static_cast<std::int32_t>(surface.own->material->GetFeature());
+        surface.initializedTint = observedTint(surface.own->material);
         surface.tinted = true;
     }
     entry.appliedPattern = selected ? requestedPattern : "";

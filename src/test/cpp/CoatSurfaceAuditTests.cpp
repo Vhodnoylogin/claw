@@ -85,6 +85,13 @@ int main() {
         row.tracked = row.ownProperty = row.ownMaterial = true;
         const std::vector rows{row};
         CoatSurfaceAuditCache cache;
+        CoatSurfaceAuditCache diagnostic;
+        require(cache.begin(91) && diagnostic.begin(92) && diagnostic.publish(92, 7, 100, true, rows),
+            "Separate diagnostic observation could not be captured");
+        require(cache.pending(91) && cache.read(100).empty() && !diagnostic.read(100).empty(),
+            "Diagnostic sampling published/cancelled a public request");
+        diagnostic.invalidate(); require(cache.pending(91), "Diagnostic cleanup cancelled a public request");
+        cache.invalidate();
         require(cache.read(100).empty() && !cache.begin(0), "Missing audit fabricated data");
         require(cache.begin(1) && !cache.begin(2) && cache.read(100).empty(), "Pending admission reused old data");
         require(!cache.publish(2, 1, 100, true, rows) && cache.pending(1), "Stale completion changed current request");
