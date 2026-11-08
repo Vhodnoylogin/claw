@@ -1,0 +1,100 @@
+[center][size=5][color=#D0B17A][b]Description[/b][/color][/size][/center]
+Give Skyrim's werewolves the same freedom to change their shape that OBody brings to human characters. A lean person becomes a leaner beast; an athletic person becomes a stronger-looking beast; a fuller body carries its bulk into werewolf form.
+
+[b]CLAW now connects human body morphs to male and female werewolf bodies.[/b] The human presets you already use supply the shape. CLAW translates supported body traits into the wolf's torso, arms, legs and belly. Weight and available human face and stature parameters also influence the beast's head, ears, tail and claws. Human hair colour also guides an individual coat pattern, so werewolves can differ in both shape and colouring.
+
+With [url=https://www.nexusmods.com/skyrimspecialedition/mods/77016]OBody NG[/url], that variety can also reach werewolves first encountered in beast form. They receive ordinary human preset values through OBody, which CLAW uses to shape the wolf. No separate pack of wolf body presets is needed.
+
+[center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]
+[size=4][color=#D0B17A][b]What you can use today[/b][/color][/size]
+[list]
+[*]Separate male and female werewolf bodies with visibly leaner and bulkier shapes.[/*]
+[*]Human-to-wolf body variation using your installed human presets.[/*]
+[*]OBody integration for werewolves encountered directly as beasts.[/*]
+[*]Human-driven head, ear, tail and claw proportions.[/*]
+[*]34 Elegant coat patterns, with persistent individual selection.[/*]
+[*]Vanilla weight-based conversion and editable matrices for replacement bodies.[/*]
+[/list]
+[center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]
+[size=4][color=#D0B17A][b]Individual coats[/b][/color][/size]
+CLAW gives each werewolf an individual coat drawn from 34 patterns from [url=https://www.nexusmods.com/skyrimspecialedition/mods/93336]Elegant Werewolf Replacer[/url]. Human hair colour determines a suitable colour group, while a stable character seed selects a pattern within that group. Werewolves without an available human hair colour receive a consistent selection from the natural coat pool.
+
+Automatic selection uses 32 natural patterns. Two additional stylised patterns are available through explicit assignments by integrations. CLAW uses Elegant's original texture colours and applies matching textures to the head, body and fur.
+
+Coat choices persist through transformations, model refresh and save/load. Manual assignments take priority over automatic selection; clearing an assignment restores automatic selection. The texture library is included in the CLAW archive, so no separate coat pack or manual extraction is needed. Elegant remains a requirement and is credited as the source of these assets.
+
+[size=4][color=#D0B17A][b]Supported human bodies[/b][/color][/size]
+[list]
+[*][b]Male:[/b] Vanilla or [url=https://www.nexusmods.com/skyrimspecialedition/mods/46311]HIMBO[/url].[/*]
+[*][b]Female:[/b] Vanilla, [url=https://www.nexusmods.com/skyrimspecialedition/mods/198]CBBE[/url], CBBE + [url=https://www.nexusmods.com/skyrimspecialedition/mods/30174]3BA[/url], [url=https://www.nexusmods.com/skyrimspecialedition/mods/31126]BHUNP[/url], or [url=https://www.nexusmods.com/skyrimspecialedition/mods/1699]classic UNP Renewal 4.6[/url] (new in 0.9.0).[/*]
+[/list]
+
+[size=4][color=#D0B17A][b]Installation[/b][/color][/size]
+CLAW's bodies are based on [url=https://www.nexusmods.com/skyrimspecialedition/mods/93336]Elegant Werewolf Replacer[/url]. Keep Elegant installed as the credited base dependency and use [url=https://www.nexusmods.com/skyrimspecialedition/mods/1988]XP32 Maximum Skeleton Special Extended[/url] for the skeleton. CLAW supplies the adjustable werewolf meshes and morphs.
+
+Choose the male and female bodies on separate installer pages. If several body mods are installed, choose the body whose files actually win your conflicts. CBBE, 3BA and BHUNP need working BodySlide morphs. The BHUNP option also needs its own dependencies and a compatible UNP skin, installed separately. All choices remain available.
+
+The morph mechanism needs [url=https://www.nexusmods.com/skyrimspecialedition/mods/19080]RaceMenu[/url], SKSE and the appropriate Address Library for your game runtime. For automatic human preset variety, install [url=https://www.nexusmods.com/skyrimspecialedition/mods/77016]OBody NG[/url] with its dependencies and human BodySlide presets. Enable CLAW's optional OBody integration in the installer only if you also want preset inputs for actors first encountered as beasts; human-to-wolf links do not require that extra host. Follow OBody's body-building instructions so the human bodies have working morphs. The CLAW download contains neither human bodies nor preset packs.
+
+[b]Use OBody presets for wild werewolves?[/b] Enable this installer option to let CLAW ask OBody for human preset inputs for eligible actors first encountered as werewolves. If left unchecked, CLAW makes no extra preset-assignment requests for those actors. Normal human-to-wolf conversion, actor weight and already assigned preset values continue to work. Existing OBody assignments are not removed.
+
+[b]Updating a save:[/b] existing characters retain their stored conversion matrices. Start a new game to apply all new defaults from the beginning; reinstalling a body option alone does not reset saved characters.
+
+[center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]
+[size=4][color=#D0B17A][b]Developer tools[/b][/color][/size]
+The separate [url=https://github.com/Vhodnoylogin/claw-morphbench-plugin]Morphbench comparison plugin[/url] is optional and is not required to play CLAW. Its earlier 0.3 release targets CLAW 0.7 matrices; an updated tool release for the expanded 0.8 matrices is not yet available. The [url=https://github.com/Vhodnoylogin/claw/blob/main/src/main/docs/matrix-contract.md]matrix contract[/url] documents the conversion data for modders.
+
+[center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]
+[size=4][color=#D0B17A][b]Current limits[/b][/color][/size]
+Extreme shapes, self-intersections and final artistic calibration remain areas for refinement. Physics, fitted collisions and a first-person VR body remain outside this release. The [url=https://github.com/Vhodnoylogin/claw/blob/main/src/main/docs/roadmap.md]roadmap[/url] tracks further work.
+[center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]
+[size=4][color=#D0B17A][b]Technical guide for modders[/b][/color][/size]
+Conversion presets, resource paths, compatibility and current limits.
+[spoiler]
+[b]Version 0.9.0[/b]
+The working installer combines CLAW's body resources, native human morph linkage and optional OBody source integration in one archive. It contains male and female TRI morphs, including separate local muscle and soft-size controls. Test actors, inspection-room lighting, human body assets, skeletons, physics configuration and a first-person VR body are not part of the working mod.
+
+[b]Human bodies and conversion presets[/b]
+The canonical conversion data contains seven matrices: HIMBO male, CBBE female, CBBE 3BA female, BHUNP 3.34 Advanced Ver4 female, classic UNP Renewal 4.6 female, and Vanilla for each sex. Their source names and deformation directions follow the actual human resources. The installer selects one male and one female matrix. Matrices are not randomly distributed; OBody distributes ordinary human presets.
+
+The installer recommends from active HIMBO.esp, CBBE.esp, 3BBB.esp and BHUNP3BBB.esp markers. Female recommendation priority is BHUNP, then 3BA, then CBBE, otherwise Vanilla; male priority is HIMBO, otherwise Vanilla. Plugin presence cannot identify the winning meshes when several bodies are installed. The visible selection declares the effective body family.
+
+A wolf preset consists of coefficient and function matrices: multiple human inputs may contribute to one wolf morph, and one input may affect several wolf morphs. Supported functions are linear, positive, negative, smoothstep, integer power and constant. An all-constant custom matrix defines a wolf independently of human values. No executable expressions are evaluated. The game and the matching Morphbench plugin compile the same C++ evaluator. Arbitrary supported source/target names are data; adding a morph does not require rebuilding the evaluator. Missing edges are absent, missing functions are linear, and coefficients with absolute value at most 1e-6 are omitted. Every matrix declares the normalized actor-weight input explicitly.
+
+Existing saved actor matrices remain authoritative after an update. Replacing XML does not silently replace an actor's saved/custom conversion. Mod integrations can explicitly adopt a new profile with ConfigureMorphFamily. See the [url=https://github.com/Vhodnoylogin/claw/blob/main/src/main/docs/matrix-contract.md]matrix contract[/url] and matching source on GitHub.
+
+[b]OBody and transformation[/b]
+The normal link reads actual human body morph values. It preserves the human source values when the actor transforms and returns. The optional originally-beast integration asks stock OBody to supply an ordinary human preset for an eligible wolf without an observed human source. OBody retains its own assignment, blacklist and distribution rules; CLAW does not promise to override those rules or reroll every beast.
+
+[b]Compatibility and checks[/b]
+Install the current [url=https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170]Microsoft Visual C++ v14 Redistributable (x64)[/url] for the native DLL. The [url=https://aka.ms/vc14/vc_redist.x64.exe]official x64 installer[/url] supplies this runtime; its DLLs are not bundled with CLAW.
+
+The archive contains one CommonLib-based DLL for the declared SE, AE and VR runtime boundaries. Release 0.9.0 game checks verified all 34 coat patterns on both sexes, independent assignments, model refresh, save/load and resetting an assignment. All three runs ended through the normal game menu with clean restoration. The [url=https://github.com/Vhodnoylogin/claw/blob/main/src/main/docs/verification-20261108.md]verification record[/url] documents the exact tested setup and earlier body-family evidence. Tests on one runtime do not establish acceptance of every runtime or body family. Use matching SKSE, Address Library and RaceMenu/SKEE resources. See the [url=https://github.com/Vhodnoylogin/claw/blob/main/src/main/docs/universal-runtime.md]runtime contract[/url].
+
+For the unverified VR route, use SKSEVR, RaceMenu VR and [url=https://www.nexusmods.com/skyrimspecialedition/mods/58101]VR Address Library for SKSEVR[/url]. The retained base ESP is light-flagged, so its VR loading also needs [url=https://www.nexusmods.com/skyrimspecialedition/mods/106712]Skyrim VR ESL Support[/url] and that mod's requirements. This dependency guidance does not establish VR game acceptance.
+
+[b]Resources and current limits[/b]
+Werewolf assets are under Meshes/Actors/WerewolfBeast/Character Assets/: malebodywerewolf_0.nif, malebodywerewolf_1.nif, femalebodywerewolf_0.nif, femalebodywerewolf_1.nif, malebodywerewolf.tri and femalebodywerewolf.tri. Let CLAW's matching files win over Elegant. CLAW.esp supplies the male/female world-model mapping. Custom ArmorAddon overrides must preserve compatible model paths.
+
+Each sex currently has identical neutral _0 and _1 geometry. Shape variety comes from morphs and the explicit weight input. Available FaceGen values and stature participate in head, ear, tail and claw conversion alongside body inputs. An actor first encountered as a wolf has no fabricated human face or colour history. Extreme combinations, female breast naturalness, self-intersections and final artistic calibration remain areas for refinement.
+
+[b]Direct morph example[/b]
+Use your own stable contribution key and a loaded Actor reference:
+[code]NiOverride.SetBodyMorph(target, "CLAWHeadSize", "MyMod.CLAW", coefficient)
+NiOverride.UpdateModelWeight(target)
+
+; Reset only your own contribution:
+NiOverride.SetBodyMorph(target, "CLAWHeadSize", "MyMod.CLAW", 0.0)
+NiOverride.UpdateModelWeight(target)[/code]
+Other mods can contribute additional keys, so one key's value is not the complete visible shape. Never clear another mod's morph keys. The GitHub source and READMEs provide the full API and rebuild information.
+
+[b]Reuse conditions[/b]
+The donor meshes are used under the original authors' permissions. This release includes the complete Elegant 2K 2.1 texture library under its original reuse conditions. These assets are credited to their original authors and are not a new unrestricted texture licence. Required notices and licences are retained in the download; source and build instructions are on GitHub.[/spoiler]
+
+[center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]
+[size=4][color=#D0B17A][b]Credits & source[/b][/color][/size]
+Thanks to [url=https://www.nexusmods.com/profile/Wolflady500]Wolflady500[/url] and [url=https://www.nexusmods.com/profile/KaienHash]KaienHash[/url] for Elegant Werewolf Replacer, [url=https://www.nexusmods.com/profile/Groovtama]Groovtama[/url] for XP32 Maximum Skeleton Special Extended, and [url=https://www.nexusmods.com/profile/expired6978]Expired[/url] for RaceMenu / NiOverride. Thanks also to [url=https://www.nexusmods.com/users/149133973]Aietos[/url] and the OBody team for OBody NG.
+
+Donor asset conditions are listed under [b]Permissions and credits[/b] and in the download. Elegant remains a declared requirement and credited base mod. Its texture library is included for per-actor coat selection under the original asset conditions.
+
+[url=https://github.com/Vhodnoylogin/claw]Source and reproducible build on GitHub[/url]

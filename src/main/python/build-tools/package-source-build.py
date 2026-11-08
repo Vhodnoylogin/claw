@@ -33,7 +33,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[4]
 NAME = "CLAW - Customizable Lycanthrope Appearance and Weight"
 ARCHIVE_NAME = "CLAW - Customizable Lycanthrope Appearance and Weight.zip"
-VERSION = "0.8.0"
+VERSION = "0.9.0"
 MESH = "Meshes/Actors/WerewolfBeast/Character Assets"
 ARCHIVES = {".zip", ".7z", ".rar", ".tar", ".gz", ".gzip", ".tgz", ".bz2", ".bzip2",
             ".tbz", ".tbz2", ".xz", ".txz", ".lz", ".lzma", ".zst", ".zstd", ".tzst",
@@ -228,6 +228,47 @@ MALE_FAMILIES = ("HIMBO", "Vanilla")
 FEMALE_FAMILIES = ("CBBE", "3BA", "BHUNP", "UNP", "Vanilla")
 
 
+def installer_help(config):
+    """Refresh current installer descriptions without changing installation rules."""
+    body_links = {
+        "HIMBO": "HIMBO: https://www.nexusmods.com/skyrimspecialedition/mods/46311",
+        "CBBE": "CBBE: https://www.nexusmods.com/skyrimspecialedition/mods/198",
+        "3BA": ("CBBE: https://www.nexusmods.com/skyrimspecialedition/mods/198\n"
+                "CBBE 3BA: https://www.nexusmods.com/skyrimspecialedition/mods/30174"),
+        "BHUNP": "BHUNP: https://www.nexusmods.com/skyrimspecialedition/mods/31126",
+        "UNP": "UNP Female Body Renewal: https://www.nexusmods.com/skyrimspecialedition/mods/1699",
+    }
+    for sex, families in (("male", MALE_FAMILIES), ("female", FEMALE_FAMILIES)):
+        group = config.find("installSteps/installStep/optionalFileGroups/group[@name='" + sex.title() + " human body']")
+        if group is None:
+            raise ValueError("Missing current body installer group: " + sex)
+        for family in families:
+            description = group.find("plugins/plugin[@name='" + family + "']/description")
+            if description is None:
+                raise ValueError("Missing current body installer description: " + family)
+            if family == "Vanilla":
+                text = ("Body shape follows this sex's actual NPC weight; available head and stature traits are still inherited. "
+                        "No replacement human body mod is required; this option uses the original Skyrim body.")
+            elif family == "UNP":
+                text = ("Classic UNP Female Body Renewal 4.6: body shape follows actual NPC weight; available head and stature traits are still inherited. "
+                        "This archive supplies no runtime BodySlide morphs. Choose manually when its body meshes win; shared female-body paths and optional eyebrow plugins do not identify UNP. Human bodies and physics are not bundled.")
+            else:
+                text = ("Choose the body whose meshes actually win in your mod manager. Plugin markers only recommend a choice; "
+                        "they cannot determine winning meshes, especially when several body mods are installed. Every family remains selectable. "
+                        "Human bodies and physics are not bundled."
+                        + (" Requires BHUNP 3.34 Advanced Ver4 built with body morphs." if family == "BHUNP" else ""))
+            description.text = text + ("\n\n" + body_links[family] if family in body_links else "")
+    host = config.find("installSteps/installStep/optionalFileGroups/group/plugins/plugin[@name='Use OBody presets for wild werewolves?']/description")
+    if host is not None:
+        host.text = ("Enable this optional adapter to let OBody NG assign ordinary human body presets to eligible werewolves first encountered in beast form. "
+                     "CLAW uses those morph values to shape their wolf bodies. Existing assignments and OBody exclusions are respected.\n\n"
+                     "If unchecked: CLAW makes no extra preset-assignment requests for these wild werewolves. "
+                     "Normal human-to-wolf conversion, actor weight and morphs already supplied by OBody or another mod still work. "
+                     "This does not disable OBody or clear existing assignments.\n\n"
+                     "Requires OBody NG and its dependencies. This option is available only when OBody.esp is active.\n"
+                     "OBody NG: https://www.nexusmods.com/skyrimspecialedition/mods/77016")
+
+
 def profiles(data, family, male_family="HIMBO"):
     if family not in FEMALE_FAMILIES or male_family not in MALE_FAMILIES:
         raise ValueError("Select exactly one supported male and female body family")
@@ -312,13 +353,7 @@ def installer(template, entries):
         options = ET.SubElement(group, "plugins", order="Explicit")
         for family in families:
             choice = ET.SubElement(options, "plugin", name=family)
-            ET.SubElement(choice, "description").text = (
-                "Body shape follows this sex's actual NPC weight; available head and stature traits are still inherited. No replacement human body mod is required."
-                if family == "Vanilla" else
-                "Classic UNP Female Body Renewal 4.6: body shape follows actual NPC weight; available head and stature traits are still inherited. This archive supplies no runtime BodySlide morphs. Choose manually when its body meshes win; shared female-body paths and optional eyebrow plugins do not identify UNP. Human bodies and physics are not bundled."
-                if family == "UNP" else
-                "Choose the body whose meshes actually win in your mod manager. Plugin markers only recommend a choice; they cannot determine winning meshes, especially when several body mods are installed. Every family remains selectable. Human bodies and physics are not bundled."
-                + (" Requires BHUNP 3.34 Advanced Ver4 built with body morphs." if family == "BHUNP" else ""))
+            ET.SubElement(choice, "description")
             ET.SubElement(ET.SubElement(choice, "conditionFlags"), "flag", name=sex+"Family").text = family
             if family == "UNP":
                 # Renewal has no unique installed body marker. Never infer it
@@ -360,6 +395,7 @@ def installer(template, entries):
         for step in list(steps):
             if any(row.get("source") == "30 OBody Source" for row in step.findall(".//files/folder")):
                 steps.remove(step)
+    installer_help(config)
     ET.indent(config)
     # Vortex re-encodes this string as UTF-16 but strips only double-quoted
     # encoding declarations. Omit ElementTree's single-quoted declaration.
@@ -528,7 +564,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
         "Install through FOMOD: choose HIMBO or Vanilla for males and CBBE, 3BA, BHUNP, classic UNP or Vanilla for females.\n"
         "Installed plugin markers suggest a choice; every body option remains selectable. Choose the body that actually wins your mod conflicts.\n"
         "The BHUNP matrix targets BHUNP 3.34 Advanced Ver4 with generated body morphs.\n"
-        "The classic UNP matrix targets Renewal 4.6 using NPC weight and available generic traits, without BodySlide morph inputs; select it manually. Its installed-body game check is pending.\n"
+        "The classic UNP matrix targets Renewal 4.6 using NPC weight and available generic traits, without BodySlide morph inputs; select it manually. See the source verification record for installed-game coverage.\n"
         "Requires Elegant textures, XP32 and matching SKSE/RaceMenu/Address Library. Replacement human bodies are required only for their selected matrix.\n"
         "Vanilla matrices use NPC weight. OBody integration supplies morph inputs to eligible born wolves using a morph-based matrix.\n\n" +
         ("Includes all 355 original Elegant 2K 2.1 textures and 34 complete coat patterns. "
@@ -538,7 +574,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
          "Elegant remains required and credited. Alternate eye and Lobo textures are bundled under "
          "separate CLAW paths; they do not override installed eye or companion choices.\n\n"
          if coat_receipt else "Human skin and hair colours can tint the werewolf's existing materials. "
-         "Automatic distribution of different coat patterns is planned for 0.8.5.\n\n") +
+         "Complete coat distribution requires the packaged Elegant texture library and coat policy.\n\n") +
         "Elegant Werewolf Replacer assets by [Wolflady500](https://www.nexusmods.com/profile/Wolflady500) "
         "and [KaienHash](https://www.nexusmods.com/profile/KaienHash).\n" +
         ("Additional Elegant asset credits: LilyValley807 (Valley textures), "

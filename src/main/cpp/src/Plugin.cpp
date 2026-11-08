@@ -2122,7 +2122,7 @@ void message(SKSE::MessagingInterface::Message* event) {
 
 extern "C" __declspec(dllexport) constinit SKSE::PluginVersionData SKSEPlugin_Version = [] {
     SKSE::PluginVersionData version;
-    version.PluginVersion({0, 1, 0, 0});
+    version.PluginVersion({0, 9, 0, 0});
     version.PluginName("CLAWDistribution");
     version.AuthorName("CLAW contributors");
     version.versionIndependenceEx = SKSE::PluginVersionData::kVersionIndependentEx_AddressLibraryV5;

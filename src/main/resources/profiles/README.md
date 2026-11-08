@@ -14,8 +14,8 @@ UNP sliders, imply BHUNP/UUNP compatibility or claim a new geometric calibration
 Skin/hair source capture remains the existing independent appearance mechanism.
 The installer offers UNP as a manual female choice: shared `femalebody` paths
 and the archive's optional `SGEyebrows.esp` are not unique body markers.
-No human UNP assets are bundled. An installed classic-UNP game check is pending;
-source/kernel tests and other families' game records do not establish it.
+No human UNP assets are bundled. Installed classic-UNP and final-release game
+coverage is recorded separately in [the verification record](../../docs/verification-20261108.md).
 
 The source tools are `scripts/calibrate-morph-links.py` and
 `scripts/morph_calibration.py`. Supply explicit human OSP/NIF/shape/set, target

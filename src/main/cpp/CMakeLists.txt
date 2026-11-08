@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(CLAWDistribution VERSION 0.1.0 LANGUAGES CXX)
+project(CLAWDistribution VERSION 0.9.0 LANGUAGES CXX)
 get_filename_component(CLAW_REPOSITORY_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
 set(CLAW_TEST_SOURCE_DIR "${CLAW_REPOSITORY_ROOT}/src/test/cpp")
 set(CMAKE_CXX_STANDARD 23)

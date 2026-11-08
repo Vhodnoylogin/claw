@@ -1,0 +1,7 @@
+Added 34 coat patterns from Elegant and individual coat selection for each werewolf. Human hair colour determines the colour group, while a stable character seed selects the pattern within that group. When no human hair colour is available, selection uses the natural coat pool.
+Automatic choices and manual assignments are preserved through model refresh and save/load.
+Added support for classic UNP Renewal 4.6 using actor weight and available human traits, without BodySlide morphs.
+Fixed how human character scale is taken into account when converting ear, tail and claw proportions.
+Fixed preservation of individual coat materials when model transparency changes.
+Improved preservation of human source parameters; processing does not activate after an unsuccessful save load.
+Added body-mod links and an explanation of the OBody option to the installer.
