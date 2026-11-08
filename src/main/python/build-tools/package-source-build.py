@@ -12,6 +12,8 @@ The caller's review must establish closure completeness and actual build lineage
 this packager checks its bindings and exact inventory, without inferring them.
 Source/SDK review is external provenance and is never included in the game ZIP.
 Only runtime results, FOMOD, license notices and a short user README are shipped.
+Identical texture bytes share one archive source; explicit FOMOD file mappings
+preserve every original installed texture path and its bytes.
 An optional source commit is checked against the actual local source inventory;
 availability of that commit on the public service is a separate publication gate.
 """
@@ -114,6 +116,27 @@ def read_zip(data):
         if archive.testzip() or len(names) != len({name.casefold() for name in names}):
             raise ValueError("Damaged or case-colliding archive")
         return {safe_name(name): archive.read(name) for name in names}
+
+
+def deduplicate_texture_sources(entries):
+    """Return deterministic original-to-canonical DDS sources without mutation.
+
+    Only archive storage is shared. Runtime destinations, the coat catalogue and
+    nontexture payloads retain their original identities. Compare bytes as well
+    as hashes so a digest collision cannot silently substitute a texture.
+    """
+    canonical, aliases = {}, {}
+    for name in sorted(entries):
+        if not name.startswith("00 Base/textures/") or not name.lower().endswith(".dds"):
+            continue
+        data = entries[name]
+        candidates = canonical.setdefault((len(data), sha(data)), [])
+        source = next((source for source in candidates if entries[source] == data), None)
+        if source is None:
+            source = name
+            candidates.append(source)
+        aliases[name] = source
+    return aliases
 
 
 class Inputs:
@@ -402,16 +425,36 @@ def installer(template, entries):
     return ET.tostring(config, encoding="utf-8", xml_declaration=False)
 
 
-def selection_audit(entries):
+def selection_audit(entries, expected_coat_payloads=None):
     spec = importlib.util.spec_from_file_location("claw_source_fomod_reader", ROOT / "src/main/python/build-tools/build-unified-release.py")
     reader = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(reader)
     config = ET.fromstring(entries["fomod/ModuleConfig.xml"])
     required = config.find("requiredInstallFiles")
-    extra_base = {name.removeprefix("00 Base/") for name in entries
-                  if name.startswith(("00 Base/textures/", "00 Base/SKSE/Plugins/CLAW/Coat"))}
+    # A shared archive DDS may populate several original destinations. Derive
+    # runtime coverage from literal file mappings, never stored source count.
+    extra_base = {row.get("destination", "") for row in (() if required is None else required)
+                  if row.get("destination", "").startswith(("textures/", "SKSE/Plugins/CLAW/Coat"))}
     if required is None or len(required) != 7 + len(extra_base) or any(row.tag != "file" for row in required):
         raise ValueError("Literal serialized FOMOD must contain seven explicit body/base mappings plus all coat resources")
+    stored_coat_sources = {name for name in entries
+                          if name.startswith(("00 Base/textures/", "00 Base/SKSE/Plugins/CLAW/Coat"))}
+    coat_mappings = {row.get("destination"): row.get("source") for row in required
+                     if row.get("destination") in extra_base}
+    if set(coat_mappings.values()) != stored_coat_sources:
+        raise ValueError("Literal serialized FOMOD must contain seven explicit body/base mappings plus all coat resources")
+    for destination, source in coat_mappings.items():
+        safe_name(destination)
+        safe_name(source)
+        if ((destination.startswith("textures/") and not source.startswith("00 Base/textures/")) or
+                (destination.startswith("SKSE/Plugins/CLAW/Coat") and source != "00 Base/" + destination)):
+            raise ValueError("Coat mapping crossed its runtime resource namespace")
+    if expected_coat_payloads is not None:
+        if set(expected_coat_payloads) != extra_base:
+            raise ValueError("Coat destination coverage differs from the verified full bundle")
+        for destination, source in coat_mappings.items():
+            if sha(entries[source]) != expected_coat_payloads[destination]:
+                raise ValueError("Coat destination bytes differ from the verified full bundle: " + destination)
     rows = []
     for male, family in ((male, female) for male in MALE_FAMILIES for female in FEMALE_FAMILIES):
         for host in (False, True):
@@ -547,6 +590,18 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
             entries["00 Base/" + name] = data
     template = ROOT / "src/main/resources/publication/unified-installer"
     entries["fomod/ModuleConfig.xml"] = installer(inputs.read(template / "ModuleConfig.xml"), entries)
+    coat_payloads = {name.removeprefix("00 Base/"): sha(data) for name, data in entries.items()
+                     if name.startswith(("00 Base/textures/", "00 Base/SKSE/Plugins/CLAW/Coat"))}
+    texture_sources = deduplicate_texture_sources(entries)
+    config = ET.fromstring(entries["fomod/ModuleConfig.xml"])
+    for row in config.find("requiredInstallFiles"):
+        source = row.get("source")
+        if source in texture_sources:
+            row.set("source", texture_sources[source])
+    entries["fomod/ModuleConfig.xml"] = ET.tostring(config, encoding="utf-8", xml_declaration=False)
+    for source, canonical in texture_sources.items():
+        if source != canonical:
+            del entries[source]
     info = ET.fromstring(inputs.read(template / "info.xml"))
     info.find("Name").text = NAME
     info.find("Version").text = version
@@ -587,7 +642,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     readback = read_zip(packed)
     if readback != entries:
         raise ValueError("Literal ZIP/readback installation differs from the recorded payload")
-    selections = selection_audit(readback)
+    selections = selection_audit(readback, expected_coat_payloads=coat_payloads)
     receipt = {"schemaVersion": 1, "status": "packaged-explicit-build-inputs-not-game-qualified-not-published",
                "name": NAME, "version": version, "sourceCommit": reference["commit"],
                "sourceCheckoutHead": commit, "sourceReference": reference, "nativeDllSha256": native_sha,
@@ -603,6 +658,9 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
                "configuration": "canonical MorphLinks.xml family defaults; runtime has no INI reader",
                "coatBundle": {"textures": 355, "patterns": 34, "payloadFiles": 357,
                               "elegantRequirementRetained": True} if coat_receipt else None,
+               "textureSourceDeduplication": {"installedFiles": len(texture_sources),
+                    "archiveFiles": len(set(texture_sources.values())),
+                    "removedArchiveCopies": sum(source != canonical for source, canonical in texture_sources.items())},
                "payloads": {name: {"sha256": sha(data), "bytes": len(data)} for name, data in sorted(entries.items())}}
     validate_no_nested_archives(readback)
     inputs.verify()

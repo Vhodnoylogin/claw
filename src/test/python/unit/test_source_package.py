@@ -135,6 +135,61 @@ class SourcePackageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'seven explicit'):
             package.selection_audit(files)
 
+    def test_texture_source_deduplication_is_pure_deterministic_and_texture_only(self):
+        first = '00 Base/textures/claw/a.dds'
+        second = '00 Base/textures/claw/b.dds'
+        separate = '00 Base/textures/claw/c.dds'
+        entries = {second: b'same DDS', separate: b'other DDS',
+                   '00 Base/meshes/same.nif': b'same DDS', first: b'same DDS',
+                   'README.md': b'same DDS'}
+        original = dict(entries)
+        expected = {first: first, second: first, separate: separate}
+        self.assertEqual(package.deduplicate_texture_sources(entries), expected)
+        self.assertEqual(package.deduplicate_texture_sources(dict(reversed(list(entries.items())))), expected)
+        self.assertEqual(entries, original)
+        # Equal digests alone must never substitute different texture bytes.
+        with patch.object(package, 'sha', return_value='collision'):
+            entries[separate] = b'else DDS'
+            self.assertEqual(package.deduplicate_texture_sources(entries), expected)
+
+    def test_deduplicated_texture_sources_preserve_all_installed_destinations_and_hashes(self):
+        folder, receipt, payloads, module = self.coat_fixture()
+        canonical = 'textures/claw/pattern-0.dds'
+        duplicates = ('textures/claw/pattern-1.dds', 'textures/claw/pattern-42.dds')
+        for name in duplicates:
+            data = payloads[name] = payloads[canonical]
+            (folder/name).write_bytes(data)
+            receipt['payloads'][name] = {'bytes': len(data), 'sha256': package.sha(data)}
+        (folder/'bundle-receipt.json').write_bytes(package.encoded(receipt))
+        with patch.object(module, 'verify', return_value=receipt):
+            result = package.build(**self.arguments(), coat_bundle=folder)
+        files = package.read_zip(Path(result['archive']).read_bytes())
+        self.assertEqual(result['textureSourceDeduplication'],
+                         {'installedFiles': 355, 'archiveFiles': 353, 'removedArchiveCopies': 2})
+        self.assertEqual(sum(name.lower().endswith('.dds') for name in files), 353)
+        self.assertTrue(all('00 Base/'+name not in files for name in duplicates))
+        self.assertEqual(files['00 Base/'+canonical], payloads[canonical])
+        expected_pins = {name: package.sha(data) for name, data in payloads.items()}
+        config = ET.fromstring(files['fomod/ModuleConfig.xml'])
+        mappings = {row.get('destination'): row.get('source') for row in config.find('requiredInstallFiles')}
+        self.assertTrue(all(mappings[name] == '00 Base/'+canonical for name in duplicates))
+        for selection in result['selections']:
+            self.assertIn(selection['runtimeFiles'], (367, 369))
+            actual = {row['path']: row['sha256'] for row in selection['files']}
+            self.assertEqual({name: actual[name] for name in payloads}, expected_pins)
+        self.assertEqual(package.selection_audit(files, expected_pins), result['selections'])
+        for change in ('missing-alias', 'wrong-bytes', 'missing-source', 'duplicate-destination'):
+            broken = ET.fromstring(files['fomod/ModuleConfig.xml'])
+            required = broken.find('requiredInstallFiles')
+            alias = next(row for row in required if row.get('destination') == duplicates[0])
+            if change == 'missing-alias': required.remove(alias)
+            elif change == 'wrong-bytes': alias.set('source', '00 Base/textures/claw/pattern-2.dds')
+            elif change == 'missing-source': alias.set('source', '00 Base/textures/claw/absent.dds')
+            else: required.append(ET.fromstring(ET.tostring(alias)))
+            modified = {**files, 'fomod/ModuleConfig.xml': ET.tostring(broken)}
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                package.selection_audit(modified, expected_pins)
+
     def test_coat_payload_changed_between_verification_and_capture_is_rejected(self):
         folder, receipt, _, module = self.coat_fixture()
         def verified_then_changed(_folder):
