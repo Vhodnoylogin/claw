@@ -6,7 +6,7 @@ Tags: CLAW, head, face, morphs, transformation
 
 The development DLL now captures five vanilla FaceGen values and human stature,
 and the five default resource-family matrices explicitly link them. These are
-read-only engine record inputs. They are not invented RaceMenu body morphs,
+read-only engine inputs. They are not invented RaceMenu body morphs,
 custom face slider names, sculpt measurements or a claim to reproduce baked NPC
 FaceGen geometry. The earlier research and frozen geometry audit below remain
 the limits of the available resource evidence; installed-game acceptance is
@@ -19,12 +19,12 @@ still required for the new candidate.
 | `$human.face.chinForward` | `kChin_UnderbiteOverbite` | Negative side adds muzzle length at gain 0.1 |
 | `$human.face.jawWidth` | `kJaw_NarrowWide` | Positive side adds muzzle width at gain 0.3 |
 | `$human.face.chinWidth` | `kChin_NarrowWide` | Positive side adds muzzle width at gain 0.15 |
-| `$human.height` | NPC `height` (NAM6) multiplied once by the current human race's sex-specific height | Above ratio 1: head/ears gain 1.5, tail length gain 2, both claw lengths gain 1.25 |
+| `$human.height` | Raw NPC `height` (NAM6) × current human race's sex-specific height × raw reference `refScale/100`, each once | Above ratio 1: head/ears gain 1.5, tail length gain 2, both claw lengths gain 1.25 |
 
 The raw signed face values retain their engine representation. The default gains
 and sign interpretation are authored projections, pending race/resource visual
-qualification. They are not measured anatomical dimensions. Height omits actor
-reference scale and skeleton/node overrides. The height-to-ear/tail/claw relation
+qualification. They are not measured anatomical dimensions. Height omits skeleton/node
+overrides and bounds-derived rendered height. The height-to-ear/tail/claw relation
 is an explicit artistic stature analogy, not a claim that humans have a tail or
 that stature measures nails. Height 1 gives zero on these rows; height 1.1 gives
 head/ear 0.15, tail 0.2 and claw 0.125. Shorter values cannot shrink these existing
@@ -45,7 +45,12 @@ available and do not stop the existing body/weight conversion.
 
 Source capture requires a current non-werewolf race carrying `ActorTypeNPC`;
 other creature forms retain the preceding human snapshot and cannot overwrite
-it with creature records. Within this eligible form, human refresh atomically
+it with creature records. The shared eligibility gate also requires successful
+current-race and werewolf-race resolution and applies to human weight/history
+and colour capture. Creature forms and unresolved races leave the last human
+weight and observed-human flag intact; they cannot create a human observation
+for a born wolf. Independent bootstrap runtime/root/provider guards still apply.
+Within this eligible form, human refresh atomically
 replaces the snapshot, including removals and changed
 race/face/sex. Wolf refresh reads the retained snapshot and never reads the wolf
 face as human. A new born wolf has no human snapshot; OBody body bootstrap cannot
@@ -70,6 +75,15 @@ preserving relative signs and cancellation, for the larger expressive-v3 breast
 field. This prevents the retained high fixture saturating before the new field
 can express differences; it is an authored geometry-dependent change, not a new
 measured calibration. A zero breast coefficient retains the nonzero donor mesh.
+
+## Reference-scale development candidate, 6 November 2026
+
+Human-only stature includes raw reference `refScale/100` exactly once alongside
+NPC NAM6 and current-race sex height. Each raw term and result must be finite and
+positive; otherwise height is unavailable. Saved and wolf snapshots keep their
+values until the next eligible human capture. Node overrides and bounds-derived
+height remain unsupported. Offline checks and adapter compilation do not establish
+engine acceptance.
 
 ## Earlier research and frozen audit
 

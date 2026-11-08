@@ -1,0 +1,55 @@
+{
+  "kind": "portable classic UNP weight lifecycle contract; not an executable or installed order",
+  "automaticSpawn": false,
+  "freshReferencesRequired": true,
+  "maximumCreatedActors": 2,
+  "ownedSaveParticipants": 2,
+  "cell": {"editorId": "QASmoke", "plugin": "Skyrim.esm", "localFormId": "032AE7"},
+  "anchor": {"plugin": "Dragonborn.esm", "localFormId": "02A1B9", "position": [-2633.919189453125, 1521.9630126953125, 6976.0]},
+  "selectedFamilies": {"male": "CLAW.HIMBO.5.8.Geometry1", "female": "CLAW.UNP.4.6.Weight1"},
+  "originallyBeastOBodyHost": false,
+  "obodyAssignmentRequired": false,
+  "emptyOrdinaryMorphMapIsValid": true,
+  "actorPreparation": {
+    "when": "Immediately after each owned creation, before its human baseline or any measurement; reverify after every race/model/load transition.",
+    "scope": "Each of the two owned actors; global engine switches are not required.",
+    "aiEnabled": false,
+    "referenceCollisionsEnabled": false,
+    "characterControllerCollisionsEnabled": false,
+    "explicitLocomotionHold": true,
+    "actualStateReadbackRequired": true,
+    "explicitDesiredStateSettersOnly": true,
+    "onUnavailableOrIncompleteFreeze": "Stop before baseline/measurement; a reference flag alone does not prove controller collision is disabled. Do not guess or repeat an uncertain mutation."
+  },
+  "humanResources": {
+    "family": "UNP Female Body Renewal 4.6",
+    "originalArchiveSha256": "a46b8ed7291c1e2878c4217e0730724ebf2152928ca7658ce03e5fe0a6286c35",
+    "requiredProof": "Original Renewal body, hand and foot meshes must be actual process VFS winners. Record each selected original archive member and installed size/hash. Disable overriding generated CBBE/3BA/BHUNP body resources; a mod name alone is insufficient.",
+    "triRequirement": "No body TRI is expected from the original Renewal archive. Do not substitute BHUNP/UUNP or generate fake human morph keys."
+  },
+  "actors": [
+    {"tag": "UNPThinHuman", "initialNpcBase": {"plugin": "Skyrim.esm", "localFormId": "0A2C8E"}, "sex": "female", "initialForm": "human", "position": [-2377.94482421875, 1836.0, 6976.4501953125], "headingDegrees": 270},
+    {"tag": "UNPHeavyHuman", "initialNpcBase": {"plugin": "Skyrim.esm", "localFormId": "0A2C91"}, "sex": "female", "initialForm": "human", "position": [-2377.94482421875, 1236.0, 6976.4501953125], "headingDegrees": 270}
+  ],
+  "sourceAdmission": {
+    "weightSource": "Measured actual NPC weight in 0..100, supplied to $actor.weight without replacing it by a BodySlide value.",
+    "distinctMeasuredWeightsRequired": true,
+    "defaultWeightsNotAssumed": true,
+    "noUnqualifiedWeightSetter": true,
+    "onEqualOrUnavailableWeights": "Stop as a fixture/admission limitation before claiming UNP diversification; do not invent values or silently replace an actor.",
+    "genericTraits": "Capture actual available typed human head/stature values before transformation; distinguish unavailable from zero.",
+    "ordinaryMorphs": "Retain the actual aggregate and contribution-key baseline if available. An empty map is valid; a failed query is unavailable, not an empty map."
+  },
+  "checkpoints": ["human-baseline", "wolves", "refreshed-wolves", "loaded-wolves", "returned-humans", "retransformed-wolves"],
+  "requiredChecks": [
+    "Both actors bind to the explicit installed UNP default, never an old saved matrix.",
+    "Compare every female target, including zero/absence, with the shared native evaluator using measured weight and available traits.",
+    "Within each captured source vector, vary only ordinary human body keys offline: the UNP outputs must remain identical.",
+    "Hold measured generic traits fixed and evaluate the two measured weights offline: at least one weight-linked body target must differ; compare the corresponding complete observed vectors without confusing head differences with weight influence.",
+    "Refresh once, save/load both distinct owned references once, resolve their fresh identities and preserve profile/output/source state.",
+    "Return both actors to their witnessed human races, preserve original weight/traits/keyed values, remove own wolf morphs, then transform again and compare.",
+    "Retain all positions/headings and actual AI/collision/locomotion hold states; finish through the game menu and verify restoration."
+  ],
+  "excludedAcceptance": ["artistic calibration", "UNP BodySlide morph support", "OBody distribution", "rendered coat colour", "physics", "VR body", "unobserved engine editions"],
+  "executionBoundary": "A qualified operator must bind actual installed payloads, process VFS, dependencies, exact source/profile, adapter and exclusive installation/game ownership. This source file grants no launch or readiness."
+}

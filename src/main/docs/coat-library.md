@@ -1,16 +1,18 @@
-# Local Elegant pattern library
+# Elegant texture library and runtime contract
 
-This tool prepares all 34 coat patterns from the user's existing **Elegant
-Werewolf Replacer 2K**, Nexus mod 93336, file 791439, version 2.1. It does not
-download, install, enable or publish a mod. The resulting DDS files are local
-dependency resources; **never include the generated library in Git**. This helper
-is development preparation, not the owner-approved end-user installation flow.
-The private repository permission covers the two meshes and excludes textures
-from that repository. Public runtime reuse terms separately permit derivative
-texture use subject to attribution and non-obsolescence; they are not an
-unrestricted grant to redistribute the full donor as a replacement. Original
-Elegant remains required by the current package for shared normal,
-specular, eye, claw and mouth resources.
+The 0.8.5 source candidate packages all 355 original DDS members from **Elegant
+Werewolf Replacer 2K**, Nexus mod 93336, file 791439, version 2.1, plus the runtime
+catalog and policy. The original diffuse-only preparation helper remains useful
+for development measurements; it is not an end-user installation requirement.
+Neither helper downloads, installs, enables or publishes a mod. Generated DDS
+files remain outside Git.
+
+Elegant remains a declared Nexus requirement at the owner's request, with
+Wolflady500, KaienHash and the donor's asset contributors credited, and the reuse terms retained. The
+private repository permission excludes textures from that repository; it does
+not replace the separate runtime terms or grant unrestricted donor replacement.
+The bundle is not a new texture licence, and attribution/non-obsolescence
+conditions still apply.
 
 Only this exact source archive is qualified:
 
@@ -25,7 +27,39 @@ blind FOMOD replay. In particular, Spirit's FOMOD source ends in `Data/Textures`
 with an empty destination. The tool correctly retains its actual source path
 and writes the same namespaced `textures/...` layout as every other pattern.
 
-## Local preparation
+## Complete 0.8.5 bundle
+
+`coat_bundle.py` includes 306 pattern diffuse files, 11 shared resources, 28 eye
+variants and 10 Lobo patch textures. All 34 nine-map patterns remain intact. Shared
+textures retain their expected Elegant paths; pattern maps, alternate eyes and
+Lobo files use CLAW namespaces. The alternate eyes and Lobo files are bundled but
+are not automatically applied or used to override an installed eye/companion
+choice. The per-actor adapter still changes only its named body/head/fur diffuse
+slots.
+
+```powershell
+python -B src/main/python/build-tools/coat_bundle.py prepare `
+  --archive '<existing Elegant 2K 2.1 archive.7z>' `
+  --executable 'C:/Program Files/7-Zip/7z.exe' `
+  --metrics '<reviewed palette-metrics.json>' --output '<NEW_BUNDLE_DIRECTORY>'
+
+python -B src/main/python/build-tools/coat_bundle.py verify `
+  --folder '<BUNDLE_DIRECTORY>'
+```
+
+This build interface consumes the pinned complete inventory, archive identity
+and approved real-pixel metrics SHA256. It verifies all 355 members and exactly
+reconstructs `CoatLibrary.xml` from those measured palettes. The bundle has 357
+runtime resources: DDS files plus `CoatLibrary.xml` and `CoatPolicy.xml`.
+`bundle-receipt.json` and `palette-metrics.json` are external provenance, not
+runtime payloads. `package-source-build.py --coat-bundle` checks captured payload
+size/SHA256 and maps those resources into every body-family selection. Users
+install the resulting normal archive, without extracting the donor archive.
+
+These are offline preparation and packaging checks. The new policy, fallback
+and persistence mechanism still require actual game acceptance.
+
+## Diffuse-only development preparation
 
 Python 3 and an explicitly supplied trusted 7-Zip executable are required.
 Choose a **new directory outside the game, MO2, repositories and release staging**.
@@ -62,7 +96,7 @@ as a completed output. Temporary files remain under the explicitly chosen parent
 The current publication rename contract is qualified on Windows: it refuses an
 already existing target directory and never uses overwrite/merge/replace.
 
-The local payload has 306 original diffuse DDS files, 549,498,912 bytes:
+This older diffuse-only helper payload has 306 original DDS files, 549,498,912 bytes:
 
 ```text
 textures/actors/character/werewolf/claw/elegant-2k-2.1/<pattern-id>/<name>.dds
@@ -134,16 +168,20 @@ files establishes none of those runtime or visual acceptance claims.
 
 The development DLL reads `Data/SKSE/Plugins/CLAW/CoatLibrary.xml` once during
 startup. Without this optional catalog, the existing human skin/hair tint remains
-available. The local library supplies diffuse patterns; Elegant still supplies
-the shared remaining textures. The comparison plugin's untextured preview does
-not establish the game's material output.
+available when no policy changes that behavior. It separately reads
+`CoatPolicy.xml`; the bundled policy defaults to original texture colours, with
+skin/hair tint opt-in via `tintMode="linked"`. The comparison plugin's untextured
+preview does not establish the game's material output.
 
-For an observed human hair colour, the automatic selector compares the measured
-fur palettes in linear RGB and resolves ties by the stable library/pattern ID.
-Rendered hair takes precedence when unambiguous, with the existing record-hair
-fallback. Skin continues to control the separate undercoat material tint. This
-initial deterministic colour metric is not an artistic colour match or a
-biological mask of skin versus hair-covered vertices.
+The policy has six hair pools (`dark`, `dark-brown`, `brown`, `red-gold`, `grey`,
+`light`). Real hair chooses the pool containing the nearest eligible measured fur
+colour in linear RGB; a stable saved-reference selector chooses a marking within
+that pool. Rendered hair takes precedence when unambiguous, with record-hair
+fallback. The 32-pattern `natural` fallback covers absent/unreadable human hair.
+Hyena Spotted and Khajiit remain manual-only; all 34 patterns are explicitly
+selectable. Known skin remains independent for opt-in linked tint. Neither
+material groups nor this technical colour metric establish biological pixel
+masks or artistic colour matching.
 
 The native `CLAWDistributionNative` Papyrus interface provides:
 
@@ -154,6 +192,9 @@ Bool ClearCoatPattern(Actor target)
 String GetCoatPattern(Actor target)
 String GetAppliedCoatPattern(Actor target)
 String GetCoatPatternStatus(Actor target)
+Bool RequestCoatSurfaceAudit(Actor target)
+String GetCoatSurfaceAudit(Actor target)
+String[] GetCoatSurfaceAuditChunks(Actor target)
 ```
 
 Use a fully qualified ID returned by the catalog, for example
@@ -164,11 +205,82 @@ last successfully bound pattern ID, or empty. Status explains pending, unavailab
 fallback or yielded application. These reads are cached diagnostics from CLAW,
 not independent renderer measurements.
 
-An explicit choice overrides automatic selection. Clearing it resumes automatic
-selection when human hair was observed. A beast without that history can receive
-an explicit pattern with a neutral tint multiplier; it never gains fabricated
-human hair, skin or facial values. Clearing such a choice restores its original
-material. Choices belong to actor references, not their shared NPC base.
+### Explicit current-surface observations
+
+`RequestCoatSurfaceAudit(actor)` requests a separate read-only main-task sample
+of an already bound actor's loaded werewolf model. It never refreshes or applies
+materials. `true` means queued; an already pending request or unavailable bound
+appearance entry returns `false`. Poll `GetCoatSurfaceAudit(actor)` promptly after
+admission. It returns empty while pending, invalidated, unavailable or more than
+2,000 milliseconds old. A new request immediately hides the previous sample.
+An accepted body/coat request, a model/race/load notification, material unbind,
+unload, deletion or world reset invalidates the sample. The VM getter reads only
+plain retained data and a monotonic clock; scene/material access stays in the
+queued task with the actor, Distribution runtime and world checked again.
+
+The result is JSON schema 1. Its `sample` and `modelGeneration` are process-local
+decimal-string tokens, not saved reference IDs or pointer addresses. The model
+token refers to a retained, observed third-person root; a different observed root
+or an unload starts a new token. `ageMs` reports elapsed time since the main-task
+sample. This is a timestamped observation, not a guarantee that an unreported
+external write cannot occur between sampling and reading. Request a fresh sample
+after every test action and retain each result outside the game for comparison.
+
+For consumers with a short-string transport, use `GetCoatSurfaceAuditChunks`.
+It reads the same cache once and returns the JSON as at most 64 ordered ASCII
+strings, each at most 1,024 bytes. Join all elements with no separator **before**
+parsing JSON; an escape sequence may cross a chunk boundary. One array contains
+one complete observation and one age value. An empty array means unavailable,
+with the same pending/invalidation/two-second freshness rules as the full-string
+getter. It neither starts a sample nor relaxes the audit's inventory limits.
+
+`surfaces` contains every geometry encountered beneath that root, including
+unnamed and duplicate-name geometries. `managed` is membership in CLAW's twelve
+explicit material names, with the engine's name comparison; all other rows are
+excluded by that application rule. The sampler fails closed rather than
+publishing a partial inventory when it exceeds 512 scene objects, 64 geometries,
+128 name bytes, 512 bytes per texture string or its 64-KiB JSON budget.
+
+Each row reports these observations independently of catalog selection:
+
+- `name`, actual material `materialType` and `feature` numeric engine enums.
+- `diffusePath` from the current lighting material's texture set and
+  `diffuseResource` from its currently bound diffuse texture's resource name.
+  They are separate fields and can disagree; neither comes from the desired
+  catalog path. Missing or unsupported fields are JSON `null`.
+- The current `tint` RGB for FaceGenRGBTint/HairTint features, without palette
+  rounding, clamping or substitution; other features report `null`. Nonfinite
+  channels report `null`. `materialAlpha`, `propertyAlpha` and decimal-string
+  `shaderFlags` are likewise sampled actual fields.
+- `noTint`: -1 unavailable, 0 absent, 1 false boolean, 2 true boolean, 3 other
+  extra-data type. `tracked` identifies a surviving CLAW surface lease.
+  `ownProperty`, `ownMaterial`, `ownGuard`, `ownTextureSet` and `ownDiffuse`
+  compare current identities with retained lease witnesses. `healthyLease`
+  additionally checks the existing full lease/tint contract. These are
+  comparisons, not claims to discover arbitrary external owners.
+
+`leaseRootCurrent` compares the sampled root with CLAW's applied lease root.
+Strings preserve source bytes: ordinary ASCII uses normal JSON escaping;
+non-ASCII bytes use `\u00xx` escapes (`stringEncoding="bytes-u00xx"`). This avoids
+inventing a Unicode decoding for engine paths. Compare names/paths as source
+bytes when non-ASCII is present.
+
+For excluded-shape checks, compare the observed name/path/resource/feature/tint/
+alpha/flag fields in complete samples around a bounded action, accounting for
+model-token changes and duplicate names. This instrumentation does not itself
+declare an excluded shape unchanged. It does not inspect pixels, opaque renderer
+state, every texture slot, first-person VR graphs or unknown animation state.
+Source/native tests establish transport, bounds and freshness; actual sampler
+execution, lease readback and rendered output still require game evidence.
+
+An explicit choice overrides automatic selection. Clearing it returns to the
+configured hair or fallback policy, preserving its automatic caches. A source-less
+beast uses neutral material multipliers and never gains fabricated human hair,
+skin or facial values. The seed uses the Distribution save namespace and persistent
+actor identity, not its runtime FormID or shared NPC base. Source arrival/removal
+selects the appropriate saved hair/fallback choice. An absent policy retains the
+older nearest-hair/linked-tint behavior; invalid policy disables automatic
+selection rather than broadening its pools.
 
 Before first use, the adapter checks all nine loose DDS files through the current
 Data view for expected byte size and valid dimensions/header. The preparation
@@ -181,14 +293,15 @@ resources. All selected surfaces are prepared before the live binding transactio
 The surface lease retains material, guard, texture-set and diffuse-resource
 identities plus all texture paths. A later material writer wins; clear/return
 does not restore over its changes. Separate bounded `CCPT` version-1 records keep
-only explicit IDs and actor/base/sex identity. Automatic selection is recomputed
-from the retained real colour source. Existing `CCLR` version-1 colour records
-keep their byte layout. Invalid or unavailable patterns fall back to the original
-material or existing tint, with a diagnostic; missing files are not accepted as
-a successfully applied pattern.
+only explicit IDs and actor/base/sex identity. Additive bounded `CCAS` version-1
+records store the seed, Distribution identity and separate automatic hair/fallback
+choices. Actor/base FormIDs are remapped on load and the seed/identity must match
+the owning Distribution state. Existing `CCLR` colour and `CCPT` choice layouts
+remain unchanged. Invalid or unavailable patterns preserve original material or
+eligible tint with a diagnostic; missing files are not accepted as applied.
 
-The runtime extension has passed universal compilation and offline tests.
-The 1 November game11 additionally checked automatic Valley Brown, explicit
+The earlier runtime extension passed universal compilation and offline tests.
+The 1 November game11 checked automatic Valley Brown, explicit
 Black/Timber on both sexes, same-base per-reference isolation, invalid choices,
 clear, model refresh, six-reference save/load and the control's human return.
 Independent saved-byte checks verified the real source palette and explicit
@@ -199,6 +312,8 @@ passed and the termination cause is unknown. These checks cover the installed
 SE candidate, not all runtimes, all patterns, every visible surface or artistic
 colour matching. Preparing the library alone establishes none of this runtime
 coverage. See the [remaining variation and release plan](coat-variation-plan.md).
+The 0.8.5 pools, original-colour default, automatic fallback and CCAS record are
+new source mechanisms and are not qualified by that earlier game run.
 
 ## Source and verification boundaries
 
@@ -209,7 +324,8 @@ unqualified versions/hash, truncation/order/CRC failures, source tampering,
 Spirit's mapping, strict runtime XML, transparent/partial-alpha sampling and
 absence of invented RGB. Full-library verification and actual DDS measurements
 are separate integration evidence; synthetic unit pixels are not called Elegant
-measurements. Generated libraries, reports, XML and archives stay outside Git.
+measurements. Generated libraries, reports, catalog XML and archives stay outside
+Git; authored policy and inventory source remain tracked separately.
 
 ## Authored source and donor rights
 
@@ -220,5 +336,8 @@ and no new texture redistribution permission is asserted.
 Original Elegant textures remain credited to Wolflady500 and KaienHash and are
 subject to their original terms. A repository-only mesh permission does not
 replace the separate runtime reuse terms. Current source patches contain no
-generated texture, library ZIP or texture pixel. The planned 0.8.5 distribution
-must resolve the full-bundle scope and provide a normal end-user installation.
+generated texture, library ZIP or texture pixel. The 0.8.5 runtime packaging candidate
+uses the complete texture bundle and a normal archive installation while keeping
+Elegant's Nexus requirement and credits. This documents the owner's packaging
+decision; it does not waive the donor's original reuse conditions or claim a new
+permission grant.

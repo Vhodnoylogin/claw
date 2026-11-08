@@ -95,6 +95,70 @@ int main(int argc, char** argv) {
                 }
             }
         }
+        {
+            const auto* unp = catalog.find("CLAW.UNP.4.6.Weight1", claw::Sex::female);
+            const auto* vanilla = catalog.find("CLAW.VanillaFemale.Weight1", claw::Sex::female);
+            require(unp && vanilla && unp->sourceFamily == "UNP" && unp->sourceVersion == "4.6" &&
+                    !catalog.find(unp->id, claw::Sex::male) && !unp->link.hasProviderSources(),
+                    "classic UNP lost its female weight-only resource binding");
+            const auto low = evaluate(*unp, {}, 0.F), middle = evaluate(*unp, {}, 50.F), high = evaluate(*unp, {}, 100.F);
+            require(low.at("CLAWArmLean") > middle.at("CLAWArmLean") && high.at("CLAWArmGirth") > middle.at("CLAWArmGirth") &&
+                    low.at("CLAWTorsoBellyRound") < high.at("CLAWTorsoBellyRound"),
+                    "classic UNP did not inherit the effective actor weight");
+            for (const auto weight : {0.F, 25.F, 50.F, 75.F, 100.F}) {
+                const claw::Morphs traits{{"$human.height", 1.1F}, {"$human.face.jawWidth", .3F}};
+                require(evaluate(*unp, traits, weight) == evaluate(*vanilla, traits, weight),
+                        "classic UNP changed the declared Vanilla weight/generic-trait rules");
+                require(evaluate(*unp, {{"Arms", 1.F}, {"UNP Low", 1.F}, {"Breasts", 1.F}}, weight) == evaluate(*unp, {}, weight),
+                        "classic UNP invented BodySlide inputs from a different UNP-branded body");
+            }
+            const auto traits = evaluate(*unp, {{"$human.height", 1.1F}, {"$human.face.jawWidth", .3F}});
+            require(traits.at("CLAWHeadEarSize") > middle.at("CLAWHeadEarSize") &&
+                    traits.at("CLAWTailLength") > middle.at("CLAWTailLength") && traits.at("CLAWArmClawLong") > 0,
+                    "classic UNP lost available generic head/appendage inputs");
+            // Classic UNP has no provider TRI. Exercise the real snapshot
+            // adapter so partial/unavailable human traits cannot become fake
+            // SKEE reads or prevent its independent actor-weight conversion.
+            const auto captureUNP = [&](const claw::HumanTraits& human, float weight) {
+                auto link = unp->link;
+                link.captureActor([](std::string_view) -> float { throw std::runtime_error("classic UNP requested a provider morph"); },
+                    weight, [&](std::string_view source) { return human.input(source, claw::Sex::female); });
+                return link.compose(claw::Sex::female);
+            };
+            claw::HumanTraits human;
+            for (const float weight : {0.F, 50.F, 100.F})
+                require(captureUNP(human, weight) == evaluate(*unp, {}, weight) && !human.unavailable(unp->link, claw::Sex::female).empty(),
+                        "born-wolf UNP fabricated available anatomy or lost weight conversion");
+            human.observe(0x13746, 0x7, 0x7, claw::Sex::female, std::nullopt,
+                [](auto slot) -> std::optional<float> { return slot == 3 ? std::optional<float>{.4F} : std::nullopt; });
+            const auto partial = captureUNP(human, 50.F);
+            require(human.available("$human.face.jawWidth", claw::Sex::female) &&
+                    !human.available("$human.face.noseLength", claw::Sex::female) && !human.available("$human.height", claw::Sex::female) &&
+                    partial == evaluate(*unp, {{"$human.face.jawWidth", .4F}}) &&
+                    partial.at("CLAWHeadMuzzleWide") > middle.at("CLAWHeadMuzzleWide") &&
+                    partial.at("CLAWHeadEarTilt") > middle.at("CLAWHeadEarTilt") && partial.at("CLAWTailLength") == 0 && partial.at("CLAWArmClawLong") == 0,
+                    "partial UNP face snapshot blocked available channels or invented unavailable stature");
+            std::vector<std::uint32_t> integers; std::vector<std::string> strings;
+            claw::writeHumanTraits(human, [&](auto value) { integers.push_back(value); }, [&](const auto& value) { strings.push_back(value); });
+            struct SnapshotReader {
+                const std::vector<std::uint32_t>& integers; const std::vector<std::string>& strings;
+                std::size_t ii{}, si{};
+                std::uint32_t u32() { return integers.at(ii++); }
+                std::string string() { return strings.at(si++); }
+            } reader{integers, strings};
+            const auto restored = claw::readHumanTraits(reader);
+            require(restored.values == human.values && restored.unavailable(unp->link, claw::Sex::female) == human.unavailable(unp->link, claw::Sex::female) &&
+                    captureUNP(restored, 50.F) == partial && reader.ii == integers.size() && reader.si == strings.size(),
+                    "persisted partial UNP anatomy lost availability or changed conversion");
+            human.observe(0x13746, 0x7, 0x7, claw::Sex::female, 1.F,
+                [](auto) -> std::optional<float> { return 0.F; });
+            require(human.unavailable(unp->link, claw::Sex::female).empty() && captureUNP(human, 50.F) == middle,
+                    "legitimate neutral UNP traits were treated as missing");
+            human.observe(0x13746, 0x7, 0x7, claw::Sex::male, 1.1F,
+                [](auto) -> std::optional<float> { return .4F; });
+            require(captureUNP(human, 100.F) == high && !human.unavailable(unp->link, claw::Sex::female).empty(),
+                    "UNP reused a human snapshot of a different bound sex");
+        }
         for (const auto sex : {claw::Sex::male, claw::Sex::female}) for (const auto& name : catalog.names(sex)) {
             const auto* profile = catalog.find(name, sex);
             for (const float value : {-1.F, 0.F, 1.F}) {

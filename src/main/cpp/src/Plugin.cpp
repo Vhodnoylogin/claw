@@ -9,6 +9,7 @@
 #include "claw/MorphProfiles.h"
 #include "claw/SourceBootstrapPolicy.h"
 #include "claw/RuntimeSupport.h"
+#include "claw/WorldStartPolicy.h"
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
 #include "claw/PhysicsFit.h"
 #include CLAW_PHYSICS_MODEL_HEADER
@@ -667,13 +668,15 @@ void captureSources(RE::Actor* actor, claw::MorphLink& link, claw::Sex boundSex,
     // wolf's base NPC, or recapture FaceData after the transformation.
     auto stagedTraits = humanTraits;
     if (stagedTraits.observed() && (stagedTraits.npc != base->GetFormID() || stagedTraits.sex != boundSex)) stagedTraits = {};
-    if (race != beastRace && race->HasKeywordString("ActorTypeNPC")) {
+    if (claw::humanSourceEligible(beastRace->GetFormID(), race->GetFormID(), race->HasKeywordString("ActorTypeNPC"))) {
         using M = RE::TESNPC::FaceData::Morphs;
         static_assert(M::kNose_LongShort == 0 && M::kJaw_NarrowWide == 3 && M::kJaw_ForwardBack == 4 &&
             M::kChin_NarrowWide == 14 && M::kChin_UnderbiteOverbite == 16);
         const auto* faceNPC = base->GetRootFaceNPC();
         const auto* face = faceNPC ? faceNPC->faceData : nullptr;
-        const auto height = base->height * race->data.height[static_cast<std::size_t>(currentSex)];
+        const auto height = claw::humanReferenceHeight(base->height,
+            race->data.height[static_cast<std::size_t>(currentSex)],
+            static_cast<float>(actor->GetReferenceRuntimeData().refScale));
         stagedTraits.observe(race->GetFormID(), base->GetFormID(), faceNPC ? faceNPC->GetFormID() : 0,
             currentSex, height, [face](std::uint32_t slot) -> std::optional<float> {
                 return face ? std::optional<float>{face->morphs[slot]} : std::nullopt;
@@ -710,6 +713,8 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         beastRace = data->LookupForm<RE::TESRace>(0xCDD84, "Skyrim.esm");
     const auto* currentRace = actor->GetRace();
     const bool beast = beastRace && currentRace == beastRace; // current race, never NPC base race
+    const bool human = claw::humanSourceEligible(beastRace ? beastRace->GetFormID() : 0,
+        currentRace ? currentRace->GetFormID() : 0, currentRace && currentRace->HasKeywordString("ActorTypeNPC"));
     const auto actorSex = actor->GetActorBase()->GetSex();
     const bool defaultDeclared = (actorSex == RE::SEX::kMale || actorSex == RE::SEX::kFemale) &&
         morphProfiles.defaultFor(actorSex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male);
@@ -723,9 +728,9 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     const float rawNPCWeight = weightBase ? weightBase->weight : std::numeric_limits<float>::quiet_NaN();
     const float observedWeight = std::isfinite(rawNPCWeight) && rawNPCWeight >= 0 && rawNPCWeight <= 100 ? rawNPCWeight / 100.0F : -1.0F;
     if (beast) state->beastWeight = observedWeight;
-    else { state->humanWeight = observedWeight; state->observedHuman = true; revokeSourceBootstrap(*state); }
+    else if (human) { state->humanWeight = observedWeight; state->observedHuman = true; revokeSourceBootstrap(*state); }
     if (!actor->Is3DLoaded() || !actor->Get3D()) { claw::appearance::runtime.restore(actor); state->status = Status::unloaded; state->dirty = true; return; }
-    if (beastRace && !beast && !bindingMismatch && currentRace && currentRace->HasKeywordString("ActorTypeNPC")) claw::appearance::runtime.captureHuman(actor);
+    if (human && !bindingMismatch) claw::appearance::runtime.captureHuman(actor);
     if (!beast || state->suppressed || bindingMismatch) claw::appearance::runtime.restore(actor);
     if (!morphs) { logError(*state, "SKEE BodyMorph API is unavailable", Status::providerUnavailable); return; }
     // Human coefficients already include the provider's weight interpolation.
@@ -799,7 +804,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         invalidatePhysics(actor->GetFormID());
         if (!readback(actor, expected)) { logError(*state, "SKEE own morph readback differs from requested values"); return; }
     }
-    (void)claw::appearance::runtime.applyWolf(actor, appearanceOverrides);
+    (void)claw::appearance::runtime.applyWolf(actor, appearanceOverrides, saveNamespace, state->identity);
     state->sex = desiredSex; state->cache = std::move(expected); state->lastRoot = root; state->lastWeight = weight;
     state->dirty = false; state->status = Status::applied; state->error.clear();
 }
@@ -867,6 +872,7 @@ void queueScan() {
 
 void queueActor(RE::FormID id, bool force = false) {
     if (!id || !tasks) return;
+    { std::lock_guard lock(mutex); claw::appearance::runtime.invalidateSurfaceAudit(id); }
     const auto token = epoch.load();
     tasks->AddTask([id, force, token] {
         if (!enabled || token != epoch) return;
@@ -1074,9 +1080,10 @@ void load(SKSE::SerializationInterface* interface) {
     if (!sessionFound) { states.clear(); claw::appearance::runtime.reset(); saveNamespace = newNamespace(); nextIdentity = 1; }
     // Colour records cannot outlive the Distribution identity that owns them.
     // A rejected/quarantined actor record must not become a fresh colour lease.
-    claw::appearance::runtime.retainIf([](RE::FormID id) {
+    claw::appearance::runtime.retainIf([](RE::FormID id, std::uint64_t identity, std::uint64_t seed) {
         const auto state = states.find(id);
-        return state != states.end() && !state->second.quarantined;
+        return state != states.end() && !state->second.quarantined &&
+            (!identity || (identity == state->second.identity && seed == claw::appearance::coatSeed(saveNamespace, identity)));
     });
     for (const auto& [id, state] : states) { (void)id; nextIdentity = std::max(nextIdentity, state.identity + 1); }
 }
@@ -1135,6 +1142,7 @@ bool actorRequest(RE::Actor* actor, Operation operation, std::string presetName 
         if (!owner) return false;
         ticket = requests.begin(id, epoch.load(), owner->serial, owner);
         if (!ticket) return false;
+        claw::appearance::runtime.invalidateSurfaceAudit(id);
         if (auto found = states.find(id); found != states.end() && boundTo(found->second, actor)) {
             if (operation != Operation::refresh) {
                 revokeSourceBootstrap(found->second); found->second.adoptedDefault = false;
@@ -1197,6 +1205,7 @@ bool coatRequest(RE::Actor* actor, std::optional<std::string> choice) {
         if (!enabled || (choice && !claw::appearance::runtime.knowsPattern(*choice))) return false;
         owner = pinActor(actor); if (!owner) return false;
         ticket = coatRequests.begin(id, epoch.load(), owner->serial, owner); if (!ticket) return false;
+        claw::appearance::runtime.invalidateSurfaceAudit(id);
         if (auto found = states.find(id); found != states.end() && boundTo(found->second, actor))
             found->second.latestCoatRequest = {*ticket, found->second.runtimeSerial};
         // No body status, body ticket, policy or bootstrap lease is changed.
@@ -1235,6 +1244,49 @@ const State* cachedState(RE::Actor* actor) {
     if (!enabled || !actor) return nullptr;
     const auto found = states.find(actor->formID);
     return found != states.end() && boundTo(found->second, actor) ? &found->second : nullptr;
+}
+bool requestCoatSurfaceAudit(RE::StaticFunctionTag*, RE::Actor* actor) {
+    if (!actor || !tasks || !enabled) return false;
+    std::lock_guard lock(mutex);
+    const auto* state = cachedState(actor);
+    if (!state || state->quarantined || state->status == Status::unloaded) return false;
+    auto owner = pinActor(actor); if (!owner) return false;
+    const auto id = actor->formID;
+    const auto token = claw::appearance::runtime.beginSurfaceAudit(id); if (!token) return false;
+    const auto world = epoch.load(), runtime = state->runtimeSerial;
+    tasks->AddTask([id, token, world, runtime, owner = std::move(owner)] {
+        std::lock_guard lock(mutex);
+        const auto cancel = [&] { claw::appearance::runtime.cancelSurfaceAudit(id, token); };
+        auto* target = owner->actor.get();
+        const auto found = states.find(id);
+        if (!enabled || world != epoch || found == states.end() || found->second.quarantined ||
+            found->second.runtimeSerial != runtime || !boundTo(found->second, target) ||
+            !claw::mayRunActorRequest(target, RE::TESForm::LookupByID<RE::Actor>(id), target && target->formID == id, !target || target->IsDeleted()) ||
+            !beastRace || target->GetRace() != beastRace || !target->Is3DLoaded() || !target->Get3D(false)) { cancel(); return; }
+        (void)claw::appearance::runtime.sampleSurfaceAudit(target, token);
+    });
+    return true;
+}
+RE::BSFixedString coatSurfaceAudit(RE::StaticFunctionTag*, RE::Actor* actor) {
+    std::lock_guard lock(mutex);
+    const auto* state = cachedState(actor);
+    // This getter reads only plain cached data and a monotonic clock. It never
+    // resolves a handle/root/material on the calling VM thread.
+    return state && !state->quarantined && state->status != Status::unloaded ?
+        RE::BSFixedString(claw::appearance::runtime.surfaceAudit(actor->formID)) : RE::BSFixedString{};
+}
+std::vector<RE::BSFixedString> coatSurfaceAuditChunks(RE::StaticFunctionTag*, RE::Actor* actor) {
+    std::lock_guard lock(mutex);
+    const auto* state = cachedState(actor);
+    if (!state || state->quarantined || state->status == Status::unloaded) return {};
+    // Read once: every fragment belongs to this exact cached JSON observation,
+    // including one ageMs value. No queueing or scene access occurs here.
+    const auto payload = claw::appearance::runtime.surfaceAudit(actor->formID);
+    const auto chunks = claw::appearance::coatAuditChunks(payload);
+    std::vector<RE::BSFixedString> result;
+    result.reserve(chunks.size());
+    for (const auto& chunk : chunks) result.emplace_back(chunk);
+    return result;
 }
 bool hasHumanTrait(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString source) {
     std::lock_guard lock(mutex);
@@ -1282,6 +1334,11 @@ RE::BSFixedString assigned(RE::StaticFunctionTag*, RE::Actor* actor) {
     std::lock_guard lock(mutex);
     const auto* state = cachedState(actor);
     return state && !state->quarantined && !state->link.enabled() ? RE::BSFixedString(state->preset) : RE::BSFixedString{};
+}
+RE::BSFixedString morphFamily(RE::StaticFunctionTag*, RE::Actor* actor) {
+    std::lock_guard lock(mutex);
+    const auto* state = cachedState(actor);
+    return state && !state->quarantined && state->link.enabled() ? RE::BSFixedString(state->link.profile) : RE::BSFixedString{};
 }
 std::int32_t getStatus(RE::StaticFunctionTag*, RE::Actor* actor) {
     std::lock_guard lock(mutex);
@@ -1556,8 +1613,12 @@ bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("GetCoatPattern", script, coatPattern);
     vm->RegisterFunction("GetAppliedCoatPattern", script, appliedCoatPattern);
     vm->RegisterFunction("GetCoatPatternStatus", script, coatPatternStatus);
+    vm->RegisterFunction("RequestCoatSurfaceAudit", script, requestCoatSurfaceAudit);
+    vm->RegisterFunction("GetCoatSurfaceAudit", script, coatSurfaceAudit);
+    vm->RegisterFunction("GetCoatSurfaceAuditChunks", script, coatSurfaceAuditChunks);
     vm->RegisterFunction("AssignPreset", script, assignPreset);
     vm->RegisterFunction("GetAssigned", script, assigned);
+    vm->RegisterFunction("GetMorphFamily", script, morphFamily);
     vm->RegisterFunction("GetStatus", script, getStatus);
     vm->RegisterFunction("GetLastError", script, lastError);
     vm->RegisterFunction("GetOwnMorph", script, ownMorph);
@@ -1685,6 +1746,26 @@ void message(SKSE::MessagingInterface::Message* event) {
                 claw::appearance::runtime.setLibrary(std::move(library), dataRoot);
                 SKSE::log::info("CLAW optional coat library contains {} patterns", count);
             } catch (const std::exception& error) { SKSE::log::warn("CLAW optional coat library unavailable; existing tint retained: {}", error.what()); }
+            const auto policyPath = dataRoot / claw::appearance::coatPolicyRelativePath;
+            std::error_code policyError;
+            const auto policyBytes = std::filesystem::file_size(policyPath, policyError);
+            if (!policyError) try {
+                if (policyBytes == 0 || policyBytes > 65536) throw std::runtime_error("coat policy exceeds bounded size");
+                std::ifstream input(policyPath, std::ios::binary);
+                std::string xml(static_cast<std::size_t>(policyBytes), '\0');
+                if (!input.read(xml.data(), static_cast<std::streamsize>(xml.size())) || input.peek() != std::char_traits<char>::eof())
+                    throw std::runtime_error("coat policy read/size mismatch");
+                claw::appearance::runtime.setPolicy(xml);
+                SKSE::log::info("CLAW coat policy loaded");
+            } catch (const std::exception& error) {
+                claw::appearance::runtime.unavailablePolicy(std::string("coat policy unavailable: ") + error.what());
+                SKSE::log::warn("CLAW coat policy unavailable; automatic pattern selection disabled: {}", error.what());
+            } else if (policyError && policyError != std::errc::no_such_file_or_directory) {
+                // Only an absent optional file selects legacy behavior. A
+                // present but unreadable/invalid path cannot widen auto pools.
+                claw::appearance::runtime.unavailablePolicy("coat policy unreadable: " + policyError.message());
+                SKSE::log::warn("CLAW coat policy unreadable; automatic pattern selection disabled: {}", policyError.message());
+            }
         }
         if (auto* source = RE::ScriptEventSourceHolder::GetSingleton()) {
             source->AddEventSink<RE::TESObjectLoadedEvent>(&events);
@@ -1709,6 +1790,14 @@ void message(SKSE::MessagingInterface::Message* event) {
         }
         [[fallthrough]];
     case Type::kPostLoadGame:
+        if (!claw::mayActivateWorld(event->type == Type::kNewGame ? claw::WorldStart::newGame : claw::WorldStart::postLoadGame,
+            event->dataLen, reinterpret_cast<std::uintptr_t>(event->data))) {
+            // Retain state for safe later recovery, but admit no work or Loaded
+            // notification after a failed/malformed load-completion message.
+            enabled = false; ++epoch;
+            SKSE::log::warn("CLAW world activation refused: saved game did not load successfully");
+            break;
+        }
         {
             std::lock_guard lock(mutex);
             enabled = true; ++epoch;
@@ -1721,7 +1810,7 @@ void message(SKSE::MessagingInterface::Message* event) {
 
 extern "C" __declspec(dllexport) constinit SKSE::PluginVersionData SKSEPlugin_Version = [] {
     SKSE::PluginVersionData version;
-    version.PluginVersion({0, 1, 0, 0});
+    version.PluginVersion({0, 9, 0, 0});
     version.PluginName("CLAWDistribution");
     version.AuthorName("CLAW contributors");
     version.versionIndependenceEx = SKSE::PluginVersionData::kVersionIndependentEx_AddressLibraryV5;

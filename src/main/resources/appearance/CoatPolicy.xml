@@ -1,0 +1,82 @@
+<CoatPolicy schemaVersion="1" tintMode="original" fallbackPool="natural">
+  <Pools>
+    <Pool id="dark" use="hair">
+      <Pattern id="elegant-2k-2.1/ashen" />
+      <Pattern id="elegant-2k-2.1/black" />
+      <Pattern id="elegant-2k-2.1/black-alt" />
+      <Pattern id="elegant-2k-2.1/coal" />
+      <Pattern id="elegant-2k-2.1/timber-rock" />
+      <Pattern id="elegant-2k-2.1/valley-black" />
+    </Pool>
+    <Pool id="dark-brown" use="hair">
+      <Pattern id="elegant-2k-2.1/bean" />
+      <Pattern id="elegant-2k-2.1/brown-alt" />
+      <Pattern id="elegant-2k-2.1/brown-blend" />
+      <Pattern id="elegant-2k-2.1/himalayan" />
+      <Pattern id="elegant-2k-2.1/timber-dark" />
+      <Pattern id="elegant-2k-2.1/umber" />
+      <Pattern id="elegant-2k-2.1/valley-brown" />
+    </Pool>
+    <Pool id="brown" use="hair">
+      <Pattern id="elegant-2k-2.1/brown" />
+      <Pattern id="elegant-2k-2.1/dust" />
+      <Pattern id="elegant-2k-2.1/shepherd" />
+      <Pattern id="elegant-2k-2.1/timber" />
+      <Pattern id="elegant-2k-2.1/timber-sand" />
+      <Pattern id="elegant-2k-2.1/tundra" />
+    </Pool>
+    <Pool id="red-gold" use="hair">
+      <Pattern id="elegant-2k-2.1/amber" />
+      <Pattern id="elegant-2k-2.1/ginger" />
+      <Pattern id="elegant-2k-2.1/gold" />
+      <Pattern id="elegant-2k-2.1/swamp" />
+    </Pool>
+    <Pool id="grey" use="hair">
+      <Pattern id="elegant-2k-2.1/grey" />
+      <Pattern id="elegant-2k-2.1/maned" />
+      <Pattern id="elegant-2k-2.1/silver" />
+      <Pattern id="elegant-2k-2.1/silver-alt" />
+      <Pattern id="elegant-2k-2.1/timber-pebble" />
+      <Pattern id="elegant-2k-2.1/valley-grey" />
+    </Pool>
+    <Pool id="light" use="hair">
+      <Pattern id="elegant-2k-2.1/spirit" />
+      <Pattern id="elegant-2k-2.1/valley-white" />
+      <Pattern id="elegant-2k-2.1/white" />
+    </Pool>
+    <Pool id="natural" use="fallback">
+      <Pattern id="elegant-2k-2.1/amber" />
+      <Pattern id="elegant-2k-2.1/ashen" />
+      <Pattern id="elegant-2k-2.1/bean" />
+      <Pattern id="elegant-2k-2.1/black" />
+      <Pattern id="elegant-2k-2.1/black-alt" />
+      <Pattern id="elegant-2k-2.1/brown" />
+      <Pattern id="elegant-2k-2.1/brown-alt" />
+      <Pattern id="elegant-2k-2.1/brown-blend" />
+      <Pattern id="elegant-2k-2.1/coal" />
+      <Pattern id="elegant-2k-2.1/dust" />
+      <Pattern id="elegant-2k-2.1/ginger" />
+      <Pattern id="elegant-2k-2.1/gold" />
+      <Pattern id="elegant-2k-2.1/grey" />
+      <Pattern id="elegant-2k-2.1/himalayan" />
+      <Pattern id="elegant-2k-2.1/maned" />
+      <Pattern id="elegant-2k-2.1/shepherd" />
+      <Pattern id="elegant-2k-2.1/silver" />
+      <Pattern id="elegant-2k-2.1/silver-alt" />
+      <Pattern id="elegant-2k-2.1/spirit" />
+      <Pattern id="elegant-2k-2.1/swamp" />
+      <Pattern id="elegant-2k-2.1/timber" />
+      <Pattern id="elegant-2k-2.1/timber-dark" />
+      <Pattern id="elegant-2k-2.1/timber-pebble" />
+      <Pattern id="elegant-2k-2.1/timber-rock" />
+      <Pattern id="elegant-2k-2.1/timber-sand" />
+      <Pattern id="elegant-2k-2.1/tundra" />
+      <Pattern id="elegant-2k-2.1/umber" />
+      <Pattern id="elegant-2k-2.1/valley-black" />
+      <Pattern id="elegant-2k-2.1/valley-brown" />
+      <Pattern id="elegant-2k-2.1/valley-grey" />
+      <Pattern id="elegant-2k-2.1/valley-white" />
+      <Pattern id="elegant-2k-2.1/white" />
+    </Pool>
+  </Pools>
+</CoatPolicy>

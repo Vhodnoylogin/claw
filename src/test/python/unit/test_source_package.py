@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -97,9 +98,67 @@ class SourcePackageTests(unittest.TestCase):
             values.update(obody_esp=self.host, obody_pex=self.host_pex)
         return values
 
-    def test_full_package_has_literal_minimal_sixteen_selections_and_no_development_payload(self):
+    def coat_fixture(self):
+        """Packaging boundary only; the real DDS/catalog verifier has its own tests."""
+        sys.path.insert(0, str(ROOT/'src/main/python/build-tools'))
+        import coat_bundle
+        folder = self.root / 'target/coat-fixture'
+        payloads = {f'textures/claw/pattern-{index}.dds': b'DDS fixture '+str(index).encode()
+                    for index in range(355)}
+        payloads.update({'SKSE/Plugins/CLAW/CoatPolicy.xml': b'<CoatPolicy/>',
+                         'SKSE/Plugins/CLAW/CoatLibrary.xml': b'<CoatLibrary/>'})
+        for name, data in payloads.items(): self.write('target/coat-fixture/'+name, data)
+        receipt = {'payloads': {name: {'bytes': len(data), 'sha256': package.sha(data)}
+                                for name, data in payloads.items()}}
+        self.write('target/coat-fixture/bundle-receipt.json', package.encoded(receipt))
+        self.write('target/coat-fixture/palette-metrics.json', b'{}')
+        for name in package.COAT_SOURCES: self.write(name, (ROOT/name).read_bytes())
+        subprocess.run(['git', '-C', str(self.root), 'add', '--all'], check=True)
+        return folder, receipt, payloads, coat_bundle
+
+    def test_coats_ship_in_every_body_selection_without_source_or_provenance_files(self):
+        folder, receipt, payloads, module = self.coat_fixture()
+        with patch.object(module, 'verify', return_value=receipt):
+            result = package.build(**self.arguments(), coat_bundle=folder, version='0.8.5')
+        files = package.read_zip(Path(result['archive']).read_bytes())
+        self.assertEqual([367, 369]*10, [row['runtimeFiles'] for row in result['selections']])
+        self.assertEqual(payloads, {name.removeprefix('00 Base/'): data for name, data in files.items()
+                                  if name.removeprefix('00 Base/') in payloads})
+        for row in result['selections']:
+            self.assertTrue(set(payloads) <= {item['path'] for item in row['files']})
+        self.assertTrue(package.COAT_SOURCES <= set(result['sourceSelection']['selected']))
+        self.assertFalse(any(name.endswith(('bundle-receipt.json', 'palette-metrics.json', '.py')) for name in files))
+        config = ET.fromstring(files['fomod/ModuleConfig.xml'])
+        required = config.find('requiredInstallFiles')
+        required.remove(next(row for row in required if row.get('destination') in payloads))
+        files['fomod/ModuleConfig.xml'] = ET.tostring(config)
+        with self.assertRaisesRegex(ValueError, 'seven explicit'):
+            package.selection_audit(files)
+
+    def test_coat_payload_changed_between_verification_and_capture_is_rejected(self):
+        folder, receipt, _, module = self.coat_fixture()
+        def verified_then_changed(_folder):
+            path = folder/'textures/claw/pattern-0.dds'
+            original = path.read_bytes()
+            path.write_bytes(original[:-1]+b'X')  # Same size: a size-only check would miss this.
+            return receipt
+        args = self.arguments()
+        with patch.object(module, 'verify', side_effect=verified_then_changed):
+            with self.assertRaisesRegex(ValueError, 'Coat payload changed after verification'):
+                package.build(**args, coat_bundle=folder)
+        self.assertFalse(args['out'].exists())
+
+    def test_coat_source_closure_requires_tracked_preparation_and_policy_inputs(self):
+        folder, receipt, _, module = self.coat_fixture()
+        subprocess.run(['git', '-C', str(self.root), 'rm', '--cached', '-q',
+                        'src/main/resources/appearance/CoatPolicy.xml'], check=True)
+        with patch.object(module, 'verify', return_value=receipt):
+            with self.assertRaisesRegex(ValueError, 'must be tracked'):
+                package.build(**self.arguments(), coat_bundle=folder)
+
+    def test_full_package_has_literal_minimal_twenty_selections_and_no_development_payload(self):
         result = package.build(**self.arguments())
-        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [10, 12]*8)
+        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [10, 12]*10)
         self.assertEqual({(row['maleFamily'], row['family'], row['obody']) for row in result['selections']},
                          {(male, female, host) for male in package.MALE_FAMILIES
                           for female in package.FEMALE_FAMILIES for host in (False, True)})
@@ -155,6 +214,10 @@ class SourcePackageTests(unittest.TestCase):
             package.profiles(original, "Unknown")
         with self.assertRaisesRegex(ValueError, "supported male and female body"):
             package.profiles(original, 'CBBE', 'Unknown')
+        missing = ET.fromstring(original)
+        missing.remove(next(row for row in missing if row.get('family') == 'UNP'))
+        with self.assertRaisesRegex(ValueError, 'canonical seven'):
+            package.profiles(ET.tostring(missing), 'UNP')
 
     def test_packaged_fomod_survives_vortex_string_stream_encoding(self):
         # Nexus-Mods/fomod-installer XmlScriptType.StringStream at
@@ -177,11 +240,11 @@ class SourcePackageTests(unittest.TestCase):
                 direct = ET.fromstring(files[name])
                 processed = ET.fromstring(vortex_stream(files[name]))
                 self.assertEqual(ET.tostring(direct), ET.tostring(processed))
-        self.assertEqual([row['runtimeFiles'] for row in result['selections']], [10, 12]*8)
+        self.assertEqual([row['runtimeFiles'] for row in result['selections']], [10, 12]*10)
 
     def test_absent_optional_host_has_no_broken_host_choice(self):
         result = package.build(**self.arguments(host=False))
-        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [10]*8)
+        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [10]*10)
         files = package.read_zip(Path(result["archive"]).read_bytes())
         self.assertNotIn(b'folder source="30 OBody Source"', files["fomod/ModuleConfig.xml"])
         self.assertFalse(any(name.startswith("30 OBody Source/") for name in files))
@@ -233,6 +296,26 @@ class SourcePackageTests(unittest.TestCase):
                     reader.resolve_selection(config, files, native=True, male_family=male,
                                              family=female, additional_active=active)
 
+    def test_classic_unp_is_manual_and_does_not_guess_from_shared_body_or_eyebrow_markers(self):
+        result = package.build(**self.arguments())
+        files = package.read_zip(Path(result['archive']).read_bytes())
+        config = ET.fromstring(files['fomod/ModuleConfig.xml'])
+        group = config.find("installSteps/installStep[@name='Female body']/optionalFileGroups/group")
+        unp = group.find("plugins/plugin[@name='UNP']")
+        self.assertEqual(unp.find('typeDescriptor/type').get('name'), 'Optional')
+        self.assertEqual(unp.findall('.//fileDependency'), [])
+        self.assertIn('Renewal 4.6', unp.findtext('description'))
+        self.assertIn('no runtime BodySlide morphs', unp.findtext('description'))
+        markers = {'SGEyebrows.esp', 'UNP.esp', 'meshes/actors/character/character assets/femalebody_0.nif'}
+        for active in (set(), markers, markers | {'CBBE.esp', '3BBB.esp', 'BHUNP3BBB.esp'}):
+            self.assertEqual(reader.plugin_type(unp, '1.7.104.0', active, {}), 'Optional')
+            for male in package.MALE_FAMILIES:
+                installed = reader.resolve_selection(config, files, native=True, male_family=male,
+                                                     family='UNP', additional_active=active)
+                matrix = ET.fromstring(files[installed[reader.FAMILY_DEST]])
+                self.assertEqual(matrix.find('Defaults').get('female'), 'CLAW.UNP.4.6.Weight1')
+                self.assertEqual({row.get('family') for row in matrix if row.get('sex') == 'female'}, {'UNP'})
+
     def test_conditional_mapping_missing_or_duplicated_cannot_pass_selection_audit(self):
         result = package.build(**self.arguments())
         files = package.read_zip(Path(result['archive']).read_bytes())
@@ -254,6 +337,8 @@ class SourcePackageTests(unittest.TestCase):
         for game in ('1.4.15.0', '1.5.97.0', '1.6.1170.0', '1.7.104.1'):
             with self.subTest(game=game), self.assertRaisesRegex(ValueError, 'Unsupported'):
                 reader.resolve_selection(config, files, native=True, family='CBBE', game_version=game)
+        with self.assertRaisesRegex(ValueError, 'Unknown human resource family'):
+            reader.resolve_selection(config, files, native=True, family='UNP')
 
     def test_missing_pex_and_half_supplied_host_fail_before_output(self):
         for change in ("missing", "half-host"):

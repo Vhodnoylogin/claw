@@ -5,6 +5,18 @@ HIMBO5.8. Install it as `SKSE/Plugins/CLAW/MorphLinks.xml` alongside the native
 companion. It contains no human assets, independent wolf presets or OBody choices.
 Each profile identifies a human body-resource version, sex and calibration.
 
+The development catalog also includes the separate female
+`CLAW.UNP.4.6.Weight1` profile for classic **UNP Female Body Renewal 4.6**.
+That original archive supplies fixed `_0`/`_1` meshes but no BodySlide OSP/OSD
+or runtime TRI. This profile therefore reuses the female Vanilla weight rules
+and generic available FaceGen/stature inputs exactly; it does not read invented
+UNP sliders, imply BHUNP/UUNP compatibility or claim a new geometric calibration.
+Skin/hair source capture remains the existing independent appearance mechanism.
+The installer offers UNP as a manual female choice: shared `femalebody` paths
+and the archive's optional `SGEyebrows.esp` are not unique body markers.
+No human UNP assets are bundled. Installed classic-UNP and final-release game
+coverage is recorded separately in [the verification record](../../docs/verification-20261108.md).
+
 The source tools are `scripts/calibrate-morph-links.py` and
 `scripts/morph_calibration.py`. Supply explicit human OSP/NIF/shape/set, target
 NIF/TRI and PyNifly inputs. Source OSD fields are read through public PyNifly.

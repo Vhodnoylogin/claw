@@ -6,8 +6,8 @@ Use a fresh `target/native` or external build directory. Generated DLLs, object
 files, executables and reports are not source resources and are not tracked.
 The runtime implementation has not changed as part of this layout migration.
 
-The current released source is CLAW 0.7.0.0. Its actual SE mechanism and textured
-inspection results are recorded in [the final verification](../docs/verification-20261031.md).
+The current release source is CLAW 0.9.0. Its mechanism checks and remaining
+runtime limits are recorded in [the verification record](../docs/verification-20261108.md).
 The detailed sections below retain earlier companion-development history;
 historical pending acceptance and exact-SE build notes do not supersede that
 release record or expand the documented runtime coverage.

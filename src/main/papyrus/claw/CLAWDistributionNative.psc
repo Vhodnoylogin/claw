@@ -26,6 +26,11 @@ String[] Function GetPresetNames(Bool female) Global Native
 ; True means queued; inspect GetStatus/GetLastError for the application outcome.
 Bool Function AssignPreset(Actor target, String presetName) Global Native
 String Function GetAssigned(Actor target) Global Native
+; Actual cached morph-link family, not the requested installer/default selection.
+; Empty before binding, with a disabled link or unavailable/quarantined actor.
+; A queued change may still report the prior binding: check GetStatus separately.
+; This read never creates state, adopts a default or touches SKEE/the engine.
+String Function GetMorphFamily(Actor target) Global Native
 ; 0 unknown, 1 pending, 2 coefficients read back/update requested, 3 unloaded,
 ; 4 error, 5 human (own key cleared), 6 explicitly cleared, 7 SKEE unavailable.
 Int Function GetStatus(Actor target) Global Native
@@ -42,17 +47,33 @@ Float Function GetHumanTrait(Actor target, String source) Global Native
 ; Skin/fur sources, private material application, or reason for unavailable colour.
 String Function GetAppearanceStatus(Actor target) Global Native
 
-; Optional local coat library. No third-party DDS are bundled with CLAW.
+; 0.8.5 bundles the complete Elegant texture library; original dependency/credits remain.
 String[] Function GetCoatPatterns() Global Native
 ; True means queued only. Read GetAppliedCoatPattern/GetCoatPatternStatus after it.
 Bool Function SetCoatPattern(Actor target, String patternId) Global Native
-; Removes the manual override; real human hair may select an automatic pattern.
+; Removes the manual override; configured hair/fallback policy resumes its saved choice.
 Bool Function ClearCoatPattern(Actor target) Global Native
-; Requested manual override, or empty for automatic/tint-only behaviour.
+; Requested manual override, or empty for the automatic/original-material policy.
 String Function GetCoatPattern(Actor target) Global Native
 ; Cached last successful private-material application; empty after unbind/failure.
 String Function GetAppliedCoatPattern(Actor target) Global Native
 String Function GetCoatPatternStatus(Actor target) Global Native
+
+; Explicit read-only main-task sample of the currently loaded beast model.
+; True means queued; it does not refresh/apply materials. A new request clears
+; the previous sample. False means admission unavailable or already pending.
+Bool Function RequestCoatSurfaceAudit(Actor target) Global Native
+; Bounded JSON of actual sampled geometry/material/path/tint and lease comparisons.
+; Empty while pending, missing, invalidated, unloaded or older than 2000ms.
+; ageMs is sample age, not a continuously current renderer guarantee. Request
+; again after every transition. All engine reads occur in the queued main task;
+; this getter reads plain cached data only. See docs/coat-library.md for schema.
+String Function GetCoatSurfaceAudit(Actor target) Global Native
+; Same cached JSON as above, read once and split into at most 64 ordered ASCII
+; fragments of at most 1024 bytes. Concatenate all elements before JSON parsing;
+; an escape sequence may cross a fragment boundary. Empty array means unavailable.
+; This avoids a caller's per-String return bound without changing the full getter.
+String[] Function GetCoatSurfaceAuditChunks(Actor target) Global Native
 
 ; Explicit morph-to-morph developer profile. No preset-name pairing or OBody writes.
 ; Applied signed source values are read from SKEE; weight must not be applied twice.

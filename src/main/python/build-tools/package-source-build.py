@@ -26,13 +26,14 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import subprocess
+import sys
 import xml.etree.ElementTree as ET
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[4]
 NAME = "CLAW - Customizable Lycanthrope Appearance and Weight"
 ARCHIVE_NAME = "CLAW - Customizable Lycanthrope Appearance and Weight.zip"
-VERSION = "0.8.0"
+VERSION = "0.9.0"
 MESH = "Meshes/Actors/WerewolfBeast/Character Assets"
 ARCHIVES = {".zip", ".7z", ".rar", ".tar", ".gz", ".gzip", ".tgz", ".bz2", ".bzip2",
             ".tbz", ".tbz2", ".xz", ".txz", ".lz", ".lzma", ".zst", ".zstd", ".tzst",
@@ -51,6 +52,11 @@ SOURCE_FILES = {"CMakeLists.txt", "src/main/resources/profiles/MorphLinks.xml",
 HOST_SOURCES = {"src/main/papyrus/obody/CLAWOBodySourceHost.psc",
                 "src/main/papyrus/obody/build.py", "src/main/papyrus/obody/README.md",
                 "src/main/python/physics/wiring.py"}
+COAT_SOURCES = {"src/main/python/build-tools/coat_bundle.py",
+                "src/main/python/build-tools/coat_library.py",
+                "src/main/resources/appearance/CoatPolicy.xml",
+                "src/main/resources/appearance/elegant-2k-2.1.textures.json",
+                "src/main/resources/appearance/elegant-2k-2.1.inventory.json"}
 
 
 def sha(data):
@@ -148,10 +154,10 @@ class Inputs:
                 raise ValueError("Input changed during packaging: " + str(path))
 
 
-def tracked_source(inputs, include_host):
+def tracked_source(inputs, include_host, include_coats=False):
     result = subprocess.run(["git", "-C", str(ROOT), "ls-files", "-z"], capture_output=True, check=True)
     names = [name.decode("utf-8") for name in result.stdout.split(b"\0") if name]
-    required = SOURCE_FILES | (HOST_SOURCES if include_host else set())
+    required = SOURCE_FILES | (HOST_SOURCES if include_host else set()) | (COAT_SOURCES if include_coats else set())
     selected = sorted(name for name in names if name.startswith(SOURCE_PREFIXES) or name in required)
     if not required.issubset(selected) or not any(name.startswith("src/main/cpp/") for name in selected):
         raise ValueError("Current source hierarchy/packager must be tracked (stage src/ before packaging)")
@@ -219,7 +225,48 @@ def companion(inputs, directory, native_sha, native_sources, commonlib_commit):
 
 
 MALE_FAMILIES = ("HIMBO", "Vanilla")
-FEMALE_FAMILIES = ("CBBE", "3BA", "BHUNP", "Vanilla")
+FEMALE_FAMILIES = ("CBBE", "3BA", "BHUNP", "UNP", "Vanilla")
+
+
+def installer_help(config):
+    """Refresh current installer descriptions without changing installation rules."""
+    body_links = {
+        "HIMBO": "HIMBO: https://www.nexusmods.com/skyrimspecialedition/mods/46311",
+        "CBBE": "CBBE: https://www.nexusmods.com/skyrimspecialedition/mods/198",
+        "3BA": ("CBBE: https://www.nexusmods.com/skyrimspecialedition/mods/198\n"
+                "CBBE 3BA: https://www.nexusmods.com/skyrimspecialedition/mods/30174"),
+        "BHUNP": "BHUNP: https://www.nexusmods.com/skyrimspecialedition/mods/31126",
+        "UNP": "UNP Female Body Renewal: https://www.nexusmods.com/skyrimspecialedition/mods/1699",
+    }
+    for sex, families in (("male", MALE_FAMILIES), ("female", FEMALE_FAMILIES)):
+        group = config.find("installSteps/installStep/optionalFileGroups/group[@name='" + sex.title() + " human body']")
+        if group is None:
+            raise ValueError("Missing current body installer group: " + sex)
+        for family in families:
+            description = group.find("plugins/plugin[@name='" + family + "']/description")
+            if description is None:
+                raise ValueError("Missing current body installer description: " + family)
+            if family == "Vanilla":
+                text = ("Body shape follows this sex's actual NPC weight; available head and stature traits are still inherited. "
+                        "No replacement human body mod is required; this option uses the original Skyrim body.")
+            elif family == "UNP":
+                text = ("Classic UNP Female Body Renewal 4.6: body shape follows actual NPC weight; available head and stature traits are still inherited. "
+                        "This archive supplies no runtime BodySlide morphs. Choose manually when its body meshes win; shared female-body paths and optional eyebrow plugins do not identify UNP. Human bodies and physics are not bundled.")
+            else:
+                text = ("Choose the body whose meshes actually win in your mod manager. Plugin markers only recommend a choice; "
+                        "they cannot determine winning meshes, especially when several body mods are installed. Every family remains selectable. "
+                        "Human bodies and physics are not bundled."
+                        + (" Requires BHUNP 3.34 Advanced Ver4 built with body morphs." if family == "BHUNP" else ""))
+            description.text = text + ("\n\n" + body_links[family] if family in body_links else "")
+    host = config.find("installSteps/installStep/optionalFileGroups/group/plugins/plugin[@name='Use OBody presets for wild werewolves?']/description")
+    if host is not None:
+        host.text = ("Enable this optional adapter to let OBody NG assign ordinary human body presets to eligible werewolves first encountered in beast form. "
+                     "CLAW uses those morph values to shape their wolf bodies. Existing assignments and OBody exclusions are respected.\n\n"
+                     "If unchecked: CLAW makes no extra preset-assignment requests for these wild werewolves. "
+                     "Normal human-to-wolf conversion, actor weight and morphs already supplied by OBody or another mod still work. "
+                     "This does not disable OBody or clear existing assignments.\n\n"
+                     "Requires OBody NG and its dependencies. This option is available only when OBody.esp is active.\n"
+                     "OBody NG: https://www.nexusmods.com/skyrimspecialedition/mods/77016")
 
 
 def profiles(data, family, male_family="HIMBO"):
@@ -230,13 +277,13 @@ def profiles(data, family, male_family="HIMBO"):
     tree = ET.fromstring(data)
     rows = tree.findall("Profile")
     inventory = {(row.get("sex"), row.get("family")) for row in rows}
-    if (tree.tag != "MorphLinkProfiles" or len(rows) != 6 or inventory !=
+    if (tree.tag != "MorphLinkProfiles" or len(rows) != 7 or inventory !=
             {("male", "HIMBO"), ("female", "CBBE"), ("female", "3BA"),
-             ("female", "BHUNP"),
+             ("female", "BHUNP"), ("female", "UNP"),
              ("male", "Vanilla"), ("female", "Vanilla")}):
-        raise ValueError("Expected the canonical six sex-specific body-family matrices")
-    if any(not row.get('id') for row in rows) or len({row.get('id') for row in rows}) != 6:
-        raise ValueError("Canonical matrices require six distinct explicit profile identifiers")
+        raise ValueError("Expected the canonical seven sex-specific body-family matrices")
+    if any(not row.get('id') for row in rows) or len({row.get('id') for row in rows}) != 7:
+        raise ValueError("Canonical matrices require seven distinct explicit profile identifiers")
     for old in tree.findall("Defaults"):
         tree.remove(old)
     selected = {("male", male_family), ("female", family)}
@@ -259,6 +306,8 @@ def installer(template, entries):
     required.clear()
     destinations = {"CLAW.esp"} | {MESH + "/" + sex + "bodywerewolf" + ending
         for sex in ("male", "female") for ending in ("_0.nif", "_1.nif", ".tri")}
+    destinations |= {name.removeprefix("00 Base/") for name in entries
+                     if name.startswith(("00 Base/textures/", "00 Base/SKSE/Plugins/CLAW/Coat"))}
     for destination in sorted(destinations):
         source = "00 Base/" + destination
         if source not in entries:
@@ -304,12 +353,13 @@ def installer(template, entries):
         options = ET.SubElement(group, "plugins", order="Explicit")
         for family in families:
             choice = ET.SubElement(options, "plugin", name=family)
-            ET.SubElement(choice, "description").text = (
-                "Body shape follows this sex's actual NPC weight; available head and stature traits are still inherited. No replacement human body mod is required."
-                if family == "Vanilla" else
-                "Choose the body whose meshes actually win in your mod manager. Plugin markers only recommend a choice; they cannot determine winning meshes, especially when several body mods are installed. Every family remains selectable. Human bodies and physics are not bundled."
-                + (" Requires BHUNP 3.34 Advanced Ver4 built with body morphs." if family == "BHUNP" else ""))
+            ET.SubElement(choice, "description")
             ET.SubElement(ET.SubElement(choice, "conditionFlags"), "flag", name=sex+"Family").text = family
+            if family == "UNP":
+                # Renewal has no unique installed body marker. Never infer it
+                # from common femalebody paths or its optional eyebrow plugin.
+                ET.SubElement(ET.SubElement(choice, "typeDescriptor"), "type", name="Optional")
+                continue
             dependent = ET.SubElement(ET.SubElement(choice, "typeDescriptor"), "dependencyType")
             ET.SubElement(dependent, "defaultType", name="Optional")
             patterns = ET.SubElement(dependent, "patterns")
@@ -345,6 +395,7 @@ def installer(template, entries):
         for step in list(steps):
             if any(row.get("source") == "30 OBody Source" for row in step.findall(".//files/folder")):
                 steps.remove(step)
+    installer_help(config)
     ET.indent(config)
     # Vortex re-encodes this string as UTF-16 but strips only double-quoted
     # encoding declarations. Omit ElementTree's single-quoted declaration.
@@ -357,8 +408,10 @@ def selection_audit(entries):
     spec.loader.exec_module(reader)
     config = ET.fromstring(entries["fomod/ModuleConfig.xml"])
     required = config.find("requiredInstallFiles")
-    if required is None or len(required) != 7 or any(row.tag != "file" for row in required):
-        raise ValueError("Literal serialized FOMOD must contain seven explicit base file mappings")
+    extra_base = {name.removeprefix("00 Base/") for name in entries
+                  if name.startswith(("00 Base/textures/", "00 Base/SKSE/Plugins/CLAW/Coat"))}
+    if required is None or len(required) != 7 + len(extra_base) or any(row.tag != "file" for row in required):
+        raise ValueError("Literal serialized FOMOD must contain seven explicit body/base mappings plus all coat resources")
     rows = []
     for male, family in ((male, female) for male in MALE_FAMILIES for female in FEMALE_FAMILIES):
         for host in (False, True):
@@ -375,8 +428,8 @@ def selection_audit(entries):
                 if source not in entries or destination in installed:
                     raise ValueError("Missing source or duplicate required destination")
                 installed[destination] = source
-            expected = reader.BASE_RUNTIME | reader.NATIVE_RUNTIME | {reader.FAMILY_DEST} | (reader.HOST_RUNTIME if host else set())
-            if set(installed) != expected or len(installed) != (12 if host else 10):
+            expected = reader.BASE_RUNTIME | reader.NATIVE_RUNTIME | {reader.FAMILY_DEST} | extra_base | (reader.HOST_RUNTIME if host else set())
+            if set(installed) != expected or len(installed) != (12 if host else 10) + len(extra_base):
                 raise ValueError("Nonminimal/incomplete selected runtime")
             matrix = ET.fromstring(entries[installed[reader.FAMILY_DEST]])
             selected = {(row.get("sex"), row.get("family")) for row in matrix.findall("Profile")}
@@ -444,7 +497,7 @@ def runtime_notices(licenses, review):
 
 
 def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
-          commonlib_commit, out, obody_esp=None, obody_pex=None, version=VERSION, source_commit=None):
+          commonlib_commit, out, obody_esp=None, obody_pex=None, version=VERSION, source_commit=None, coat_bundle=None):
     original_output = Path(out).absolute()
     if any(part.exists() and (part.is_symlink() or part.is_junction()) for part in (original_output, *original_output.parents)):
         raise ValueError("Linked output ancestry refused")
@@ -476,6 +529,22 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     for male in MALE_FAMILIES:
         for family in FEMALE_FAMILIES:
             entries["20 Human Family/"+male+"-and-"+family+"/SKSE/Plugins/CLAW/MorphLinks.xml"] = profiles(matrix, family, male)
+    coat_receipt = None
+    if coat_bundle is not None:
+        sys.path.insert(0, str(ROOT / "src/main/python/build-tools"))
+        from coat_bundle import verify as verify_coats
+        for name in COAT_SOURCES:
+            inputs.read(ROOT / name)
+        recorded_receipt = inputs.read(Path(coat_bundle) / "bundle-receipt.json")
+        inputs.read(Path(coat_bundle) / "palette-metrics.json")
+        coat_receipt = verify_coats(coat_bundle)
+        if json.loads(recorded_receipt) != coat_receipt:
+            raise ValueError("Coat bundle receipt changed during verification")
+        for name, pin in coat_receipt["payloads"].items():
+            data = inputs.read(Path(coat_bundle) / safe_name(name))
+            if len(data) != pin["bytes"] or sha(data) != pin["sha256"]:
+                raise ValueError("Coat payload changed after verification: " + name)
+            entries["00 Base/" + name] = data
     template = ROOT / "src/main/resources/publication/unified-installer"
     entries["fomod/ModuleConfig.xml"] = installer(inputs.read(template / "ModuleConfig.xml"), entries)
     info = ET.fromstring(inputs.read(template / "info.xml"))
@@ -483,7 +552,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     info.find("Version").text = version
     info.find("Description").text = "Links human body morphs to werewolf bodies."
     entries["fomod/info.xml"] = ET.tostring(info, encoding="utf-8", xml_declaration=False)
-    own, native_sources, commit, source_selection = tracked_source(inputs, obody_esp is not None)
+    own, native_sources, commit, source_selection = tracked_source(inputs, obody_esp is not None, coat_bundle is not None)
     native_sha = sha(entries["10 Native/SKSE/Plugins/CLAWDistribution.dll"])
     external, licenses, review = companion(inputs, source_companion_dir, native_sha, native_sources, commonlib_commit)
     validate_no_nested_archives(external)
@@ -492,18 +561,33 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     entries.update(notices)
     entries["README.md"] = ("# " + NAME + "\n\n"
         "Human body morphs carried into werewolf shape.\n"
-        "Install through FOMOD: choose HIMBO or Vanilla for males and CBBE, 3BA, BHUNP or Vanilla for females.\n"
+        "Install through FOMOD: choose HIMBO or Vanilla for males and CBBE, 3BA, BHUNP, classic UNP or Vanilla for females.\n"
         "Installed plugin markers suggest a choice; every body option remains selectable. Choose the body that actually wins your mod conflicts.\n"
         "The BHUNP matrix targets BHUNP 3.34 Advanced Ver4 with generated body morphs.\n"
+        "The classic UNP matrix targets Renewal 4.6 using NPC weight and available generic traits, without BodySlide morph inputs; select it manually. See the source verification record for installed-game coverage.\n"
         "Requires Elegant textures, XP32 and matching SKSE/RaceMenu/Address Library. Replacement human bodies are required only for their selected matrix.\n"
-        "Vanilla matrices use NPC weight. OBody integration supplies morph inputs to eligible born wolves using a morph-based matrix.\n\n"
-        "Human skin and hair colours can tint the werewolf's existing materials. "
-        "Automatic distribution of different coat patterns is planned for 0.8.5.\n\n"
+        "Vanilla matrices use NPC weight. OBody integration supplies morph inputs to eligible born wolves using a morph-based matrix.\n\n" +
+        ("Includes all 355 original Elegant 2K 2.1 textures and 34 complete coat patterns. "
+         "Human hair selects a colour group; each actor keeps its own marking choice. "
+         "Wild werewolves receive a stable individual natural coat. A manual choice takes priority. "
+         "CoatPolicy.xml controls allowed patterns and original colours or linked skin/hair tint. "
+         "Elegant remains required and credited. Alternate eye and Lobo textures are bundled under "
+         "separate CLAW paths; they do not override installed eye or companion choices.\n\n"
+         if coat_receipt else "Human skin and hair colours can tint the werewolf's existing materials. "
+         "Complete coat distribution requires the packaged Elegant texture library and coat policy.\n\n") +
         "Elegant Werewolf Replacer assets by [Wolflady500](https://www.nexusmods.com/profile/Wolflady500) "
-        "and [KaienHash](https://www.nexusmods.com/profile/KaienHash).\n\n"
+        "and [KaienHash](https://www.nexusmods.com/profile/KaienHash).\n" +
+        ("Additional Elegant asset credits: LilyValley807 (Valley textures), "
+         "XilaMonstrr (texture improvements and glow maps), CinnaMewRolle (mouth textures). "
+         "Original asset terms: https://www.nexusmods.com/skyrimspecialedition/mods/93336\n\n"
+         if coat_receipt else "\n") +
         "Source code: " + reference["url"] + "\n").encode("utf-8")
     validate_no_nested_archives(entries)
-    selections = selection_audit(read_zip(zip_bytes(entries)))
+    packed = zip_bytes(entries)
+    readback = read_zip(packed)
+    if readback != entries:
+        raise ValueError("Literal ZIP/readback installation differs from the recorded payload")
+    selections = selection_audit(readback)
     receipt = {"schemaVersion": 1, "status": "packaged-explicit-build-inputs-not-game-qualified-not-published",
                "name": NAME, "version": version, "sourceCommit": reference["commit"],
                "sourceCheckoutHead": commit, "sourceReference": reference, "nativeDllSha256": native_sha,
@@ -517,11 +601,10 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
                "runtimeInputProvenance": inputs.runtime_roles,
                "historicalArchiveUsedAsSource": False, "iniInstalled": False,
                "configuration": "canonical MorphLinks.xml family defaults; runtime has no INI reader",
+               "coatBundle": {"textures": 355, "patterns": 34, "payloadFiles": 357,
+                              "elegantRequirementRetained": True} if coat_receipt else None,
                "payloads": {name: {"sha256": sha(data), "bytes": len(data)} for name, data in sorted(entries.items())}}
-    packed = zip_bytes(entries)
-    validate_no_nested_archives(read_zip(packed))
-    if read_zip(packed) != entries or selection_audit(read_zip(packed)) != selections:
-        raise ValueError("Literal ZIP/readback installation differs from the recorded payload")
+    validate_no_nested_archives(readback)
     inputs.verify()
     output.mkdir(parents=True, exist_ok=False)
     archive = output / ARCHIVE_NAME
@@ -545,6 +628,7 @@ def main(argv=None):
     parser.add_argument("--obody-pex", type=Path)
     parser.add_argument("--version", default=VERSION)
     parser.add_argument("--source-commit", help="Optional exact local commit matching reviewed source; verify public availability before publishing")
+    parser.add_argument("--coat-bundle", type=Path, help="Verified complete Elegant texture bundle (no source/archive files shipped)")
     args = parser.parse_args(argv)
     try:
         print(json.dumps(build(**vars(args)), indent=2))

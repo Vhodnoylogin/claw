@@ -34,11 +34,12 @@ class ShippedFamilyTests(unittest.TestCase):
                   ('female','CBBE'):'CLAW.CBBE.2.0.3.Geometry1',
                   ('female','3BA'):'CLAW.3BA.2.48.Geometry1',
                   ('female','BHUNP'):'CLAW.BHUNP.3.34.AdvancedV4',
+                  ('female','UNP'):'CLAW.UNP.4.6.Weight1',
                   ('male','Vanilla'):'CLAW.VanillaMale.Weight1',
                   ('female','Vanilla'):'CLAW.VanillaFemale.Weight1'}
-        self.assertEqual(len(self.root.findall('Profile')),6)
+        self.assertEqual(len(self.root.findall('Profile')),7)
         self.assertEqual({key:node.get('id') for key,node in self.profiles.items()},expected)
-        self.assertEqual(len({node.get('id') for node in self.profiles.values()}),6)
+        self.assertEqual(len({node.get('id') for node in self.profiles.values()}),7)
         self.assertIsNone(self.root.find('Defaults'))
         for (sex,family),profile in self.profiles.items():
             self.assertEqual(profile.get('sex'),sex)
@@ -53,6 +54,23 @@ class ShippedFamilyTests(unittest.TestCase):
                 self.assertTrue(any(rule.get('source')=='$human.height' for rule in profile))
                 self.assertTrue(any(rule.get('source')=='$human.face.noseLength' for rule in profile))
                 self.assertTrue(all((rule.get('function')=='constant') == (rule.get('source')=='') for rule in profile))
+
+    def test_classic_unp_uses_weight_and_generic_traits_without_invented_body_keys(self):
+        # Renewal 4.6 supplies _0/_1 meshes, not runtime BodySlide TRI inputs.
+        # Reuse the Vanilla mechanical contract without claiming a UNP fit.
+        unp=self.profiles['female','UNP']
+        self.assertEqual(unp.get('version'),'4.6')
+        self.assertEqual(unp.get('calibration'),'vanilla-female-weight-contract1')
+        self.assertEqual([rule.attrib for rule in unp],
+                         [rule.attrib for rule in self.profiles['female','Vanilla']])
+        sources={rule.get('source') for rule in unp}
+        self.assertTrue(sources <= {'','$actor.weight','$human.height',
+                                   '$human.face.noseLength','$human.face.jawForward',
+                                   '$human.face.chinForward','$human.face.jawWidth',
+                                   '$human.face.chinWidth'})
+        self.assertIn('$actor.weight',sources)
+        self.assertIn('$human.height',sources)
+        self.assertNotIn(('male','UNP'),self.profiles)
 
     def test_actual_source_girth_sign_is_preserved(self):
         for family in ('CBBE','3BA'):

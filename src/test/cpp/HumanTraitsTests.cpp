@@ -28,6 +28,40 @@ int main() {
         require(claw::sourceValueWellFormed("$human.face.noseLength", -.7F) &&
             !claw::sourceValueWellFormed("$human.face.noseLength", std::numeric_limits<float>::max()), "face sentinel interpreted as anatomy");
         require(!claw::sourceValueWellFormed("$human.height", 0.F) && !claw::sourceValueWellFormed("$human.height", -1.F), "invalid human height accepted");
+        require(claw::humanReferenceHeight(1.125F, 1.25F, 100.F) == 1.40625F,
+            "default reference scale changed NPC/race height");
+        require(claw::humanReferenceHeight(1.125F, 1.25F, 150.F) == 2.109375F,
+            "NPC/race/reference terms were omitted or multiplied twice");
+        require(claw::humanReferenceHeight(1.F, 1.F, 75.F) == .75F &&
+            claw::humanReferenceHeight(1.F, 1.F, 125.F) == 1.25F,
+            "distinct references sharing one NPC/race lost their stature difference");
+        for (const auto bad : {0.F, -1.F, std::numeric_limits<float>::infinity(),
+                -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()}) {
+            require(!claw::humanReferenceHeight(bad, 1.F, 100.F) && !claw::humanReferenceHeight(1.F, bad, 100.F) &&
+                !claw::humanReferenceHeight(1.F, 1.F, bad), "invalid raw stature input gained an available value");
+        }
+        require(!claw::humanReferenceHeight(std::numeric_limits<float>::max(), 2.F, 100.F) &&
+            !claw::humanReferenceHeight(std::numeric_limits<float>::denorm_min(), .5F, 100.F),
+            "overflow/underflow stature result was accepted");
+        {
+            claw::HumanTraits scaled;
+            scaled.observe(0x13746, 0x7, 0, Sex::male, claw::humanReferenceHeight(1.F, 1.F, 125.F),
+                [](auto) -> std::optional<float> { throw std::runtime_error("absent face was read"); });
+            Record saved;
+            claw::writeHumanTraits(scaled, [&](auto value) { saved.integers.push_back(value); }, [&](const auto& value) { saved.strings.push_back(value); });
+            auto restored = claw::readHumanTraits(saved);
+            require(restored.available("$human.height", Sex::male) && restored.input("$human.height", Sex::male) == 1.25F,
+                "saved scaled stature was lost or scaled again on load");
+            // A different current wolf scale cannot reinterpret the retained
+            // value. Only the next eligible human observe replaces the snapshot.
+            require(claw::humanReferenceHeight(1.F, 1.F, 200.F) == 2.F && restored.input("$human.height", Sex::male) == 1.25F,
+                "current scale changed retained human stature without recapture");
+            restored.observe(0x13746, 0x7, 0, Sex::male, claw::humanReferenceHeight(1.F, 1.F, 75.F), [](auto) { return std::optional<float>{}; });
+            require(restored.input("$human.height", Sex::male) == .75F, "next human capture did not replace saved stature");
+            restored.observe(0x13746, 0x7, 0, Sex::male, claw::humanReferenceHeight(1.F, 1.F, 0.F), [](auto) { return std::optional<float>{}; });
+            require(!restored.available("$human.height", Sex::male) && restored.input("$human.height", Sex::male) == 1.F,
+                "unavailable reference scale revived old stature or an available neutral");
+        }
         claw::MorphLink link{"HumanHead", {
             {"$human.face.noseLength", "CLAWHeadMuzzleLong", .5F, 1},
             {"$human.height", "CLAWTailLength", 2.F, 1},
