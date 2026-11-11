@@ -92,3 +92,25 @@ the shutdown failure. The later focused fade run passed its complete lifecycle.
 OBody was not present in these profiles, so these runs do not qualify its optional
 originally-beast preset-request path. Physics and VR-body work remain outside this
 release's acceptance scope.
+
+## Published package
+
+The accepted runtime was published on 11 November 2026 as
+[GitHub release claw/0.9.0-r3](https://github.com/Vhodnoylogin/claw/releases/tag/claw/0.9.0-r3)
+and [Nexus file 836835](https://www.nexusmods.com/skyrimspecialedition/mods/194798?tab=files).
+The ZIP contains43 entries and20 validated FOMOD combinations. It is14,420,086
+bytes, SHA256
+`f7ae8b52877680eafd3ef9c5c1f3bf1cdf94605e9a69d6d3acabaf2093adcbf8`.
+The tag retains exact runtime source `b6f65b5160efbd373ac35bd286810f8b3f805965`;
+later main commits contain source documentation and the one-use upload workflow,
+without substituting runtime bytes.
+
+Official API readback confirmed0.9.0 is the primary Main file, manager downloads
+are enabled and its security scan is cleared. The previous0.8.0 version remains
+archived in the same update chain. All eight existing requirement groups were
+preserved. The approved page description matches after Nexus's newline/HTML
+normalization and terminal-newline removal. The existing0.9.0 changelog was
+edited through the file's **Edit changelog** action and its eleven entries match
+the source text exactly; no duplicate version was appended. The temporary
+upload credential was removed and its absence verified after the one-use
+GitHub Actions transfer.
