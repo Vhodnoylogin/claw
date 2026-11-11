@@ -37,6 +37,26 @@ are never removed or recomposed. The public component-removal API may retain an
 empty key container; no transform data or saved-game change is claimed to remain.
 Unknown native physics completion still forbids a guessed all-on restoration.
 
+The actual SKEE implementation's HasNodeTransformPosition reports container
+existence even after removing its three position components. Absence is checked
+by a known successful RemoveNodeTransformPosition followed by a separate scoped
+removal returning literal false; an uncertain first outcome is never replayed.
+Each captured anchor cleanup is attempted independently, with errors aggregated
+afterward and any primary failure preserved. The failed November 11 container
+check and earlier cadence report remain retained evidence, not rewritten passes.
+
+The direct-anchor case declares a **0.85-second point period before launch** for
+all three windows. Producer-clock cadence thresholds are unchanged. Large raw
+observations are immutable per-sample files; small pre-dispatch intent journals
+do not repeatedly serialize earlier windows. The full report is written once at
+case end. This avoids the increasing pacing cost observed in the earlier trial.
+Runtime cadence must still pass its actual measurement checks.
+
+Head/Tails-relative rotation is accumulated motion, not a per-joint limit check.
+Binding/contrast acceptance does not qualify the nominal unit-scale authored
+bounds, culling, contact fit or numerical solver compliance; actual actor/node
+scale and parent-relative joint excursions need their own resource audit.
+
 For direct-anchor score input, set `stimulus: "xml-anchors"` and retain raw
 `stimulusBaseline` plus `anchorCalibration.moved` and `.reset` snapshots between
 reenable receipt and first active sample. The scorer preserves the same strict

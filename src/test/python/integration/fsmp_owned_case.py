@@ -10,7 +10,7 @@ import time
 import fsmp_probe as probe
 
 
-def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference"):
+def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", sleep=time.sleep):
     probe.require(type(maximum_seconds) in (int, float) and 30 <= maximum_seconds <= 180,
                   "FSMP callback requires a finite 30..180-second bound")
     probe.require(stimulus in ("reference", "xml-anchors") and (stimulus != "xml-anchors" or sex == "male"),
@@ -18,15 +18,32 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference"):
     end = time.monotonic() + maximum_seconds
     output = session.dir / "fsmp-probe"
     output.mkdir(exist_ok=False)
+    observations = output / "observations"
+    observations.mkdir()
     state = {"reference": reference, "sex": sex, "receipts": {}, "windows": {},
              "original": None, "current": None, "uncertain": False, "intent": None,
              "stimulus": stimulus, "anchorOriginals": {}}
+    state["declaredPointPeriodSeconds"] = .85 if stimulus == "xml-anchors" else None
     baseline = previous = None
     cleaning = False
 
-    def save():
-        (output / "state.json").write_text(json.dumps(state, indent=2), encoding="utf-8")
-        session.state["fsmpProbe"] = {"directory": str(output), "intent": state["intent"],
+    def save(*, full=False):
+        # Large immutable observations are written once. The pre-dispatch
+        # journal stays small instead of reserializing every previous window on
+        # every key operation, which changed the actual stimulus cadence.
+        journal = {key: value for key, value in state.items() if key not in (
+            "windows", "baseline", "stimulusBaseline", "anchorCalibration", "receipts", "intent")}
+        journal["windows"] = {phase: [row["sampleId"] for row in rows] for phase, rows in state["windows"].items()}
+        journal["receipts"] = {action: {key: value for key, value in receipt.items() if key not in ("before", "after")}
+                               | {side + "Sample": receipt[side]["sampleId"] for side in ("before", "after")}
+                               for action, receipt in state["receipts"].items()}
+        intent = state["intent"]
+        journal["intent"] = ({key: value for key, value in intent.items() if key != "before"}
+                             | ({"beforeSample": intent["before"]["sampleId"]} if "before" in intent else {})) if intent else None
+        (output / "journal.json").write_text(json.dumps(journal, indent=2), encoding="utf-8")
+        if full:
+            (output / "state.json").write_text(json.dumps(state, indent=2), encoding="utf-8")
+        session.state["fsmpProbe"] = {"directory": str(output), "intent": journal["intent"],
                                       "uncertain": state["uncertain"]}
         session.save()
 
@@ -49,6 +66,8 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference"):
             probe.require(value["sample"] > previous["sample"] and value["time"] > previous["time"],
                           "Replayed/nonadvancing FSMP guard")
         previous = value
+        (observations / (str(value["sample"]) + "-" + name + ".json")).write_text(
+            json.dumps(raw, indent=2), encoding="utf-8")
         return raw
 
     def toggle(action, on, names=None):
@@ -147,7 +166,10 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference"):
                 probe.require(toggle("restore", True) == [False]*expected, "Restore state mismatch")
             wait(2., phase + "-settle")
             state["windows"][phase] = []
+            phase_start = time.monotonic()
             for index, point in enumerate(plan["windows"][phase]):
+                if stimulus == "xml-anchors":
+                    sleep(max(0., phase_start + index*state["declaredPointPeriodSeconds"] - time.monotonic()))
                 observe(phase + "-guard-" + str(index))
                 if stimulus == "xml-anchors":
                     apply_anchors(probe.anchor_offset(index))
@@ -171,11 +193,15 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference"):
                                          "observation": diagnostic})
         session.save()
         return diagnostic
+    except Exception as error:
+        state["primaryError"] = str(error)
+        raise
     finally:
         cleaning = True
         cleanup = {"physics": "no-known-restore-needed", "position": "not-admitted"}
         if stimulus == "xml-anchors":
             cleanup["position"] = "not-mutated-by-anchor-probe"
+        errors = []
         try:
             if baseline is not None and not state["uncertain"] and state["original"] is not None and state["current"] is not None:
                 names = [name for name, old, now in zip(probe.drivers(sex), state["original"], state["current"]) if old and not now]
@@ -184,9 +210,12 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference"):
                     cleanup["physics"] = "originally-true-only-restored"
             elif state["uncertain"]:
                 cleanup["physics"] = "unknown-no-replay; owned game teardown required"
-            if state["anchorOriginals"]:
-                cleanup["anchors"] = {}
-                for name, original in state["anchorOriginals"].items():
+        except Exception as error:
+            errors.append("physics: " + str(error))
+        if state["anchorOriginals"]:
+            cleanup["anchors"] = {}
+            for name, original in state["anchorOriginals"].items():
+                try:
                     observe("cleanup-anchor-guard-" + name)
                     args = transform_args(name) + [original["key"]]
                     keys = pap("cleanup-anchor-keys-" + name, "NiOverride", "GetNodeTransformKeys", transform_args(name))
@@ -212,10 +241,19 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference"):
                                       "Original anchor local transform not restored")
                     probe.require(abs(current["nodes"][name]["local"]["scale"] - original["local"]["scale"]) <= 1e-5,
                                   "Original anchor scale not restored")
-                    probe.require(pap("cleanup-anchor-absent-" + name, "NiOverride", "HasNodeTransformPosition", args) is False,
-                                  "Own anchor position data remains")
+                    # HasPosition reflects key-container presence in this SKEE
+                    # implementation, even after all three components are gone.
+                    # Only after the first known successful removal, a second
+                    # scoped removal returning false proves no component remains.
+                    probe.require(pap("cleanup-anchor-component-absent-" + name, "NiOverride", "RemoveNodeTransformPosition", args) is False,
+                                  "Own anchor position component still existed")
+                    has_container = pap("cleanup-anchor-container-" + name, "NiOverride", "HasNodeTransformPosition", args)
                     cleanup["anchors"][name] = {"ownPositionComponentAbsent": True, "originalLocalReadback": current["nodes"][name]["local"],
-                                               "emptyKeyContainerMayRemain": True}
+                                               "hasKeyContainerAfterRemoval": has_container, "emptyKeyContainerMayRemain": True}
+                except Exception as error:
+                    cleanup["anchors"][name] = {"error": str(error)}
+                    errors.append(name + ": " + str(error))
+        try:
             if baseline is not None and stimulus == "reference" and end - time.monotonic() > 5:
                 observe("cleanup-position-guard")
                 call("cleanup-position", "papyrus", {"action": "call", "script": "ObjectReference", "function": "SetPosition",
@@ -225,8 +263,10 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference"):
                 probe.require(probe.max_delta(actual, baseline["position"]) <= .025, "Original position restore not observed")
                 cleanup["position"] = "observed-original-origin"
         except Exception as error:
-            cleanup["error"] = str(error)
-            raise
-        finally:
-            (output / "cleanup.json").write_text(json.dumps(cleanup, indent=2), encoding="utf-8")
-            save()
+            errors.append("position: " + str(error))
+        cleanup["errors"] = errors
+        cleanup["primaryError"] = state.get("primaryError")
+        (output / "cleanup.json").write_text(json.dumps(cleanup, indent=2), encoding="utf-8")
+        save(full=True)
+        if errors:
+            raise ValueError("; ".join((["primary: " + state["primaryError"]] if state.get("primaryError") else []) + errors))

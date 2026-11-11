@@ -19,7 +19,8 @@ finally:
 
 
 class Session:
-    def __init__(self, directory, previous=None, timeout=False, frozen_anchors=False, world_response=False):
+    def __init__(self, directory, previous=None, timeout=False, frozen_anchors=False, world_response=False,
+                 fail_head_restore=False):
         self.dir = Path(directory)
         self.state = {"checks": [], "id": "synthetic-owned-run"}
         self.sample = fixture("male", effect=False)["baseline"]
@@ -28,6 +29,7 @@ class Session:
         self.timeout = timeout
         self.frozen_anchors = frozen_anchors
         self.world_response = world_response
+        self.fail_head_restore = fail_head_restore
         self.anchor_keys = {}
         self.original_nodes = {n["name"]: copy.deepcopy(n) for n in self.sample["nodes"]}
 
@@ -54,11 +56,15 @@ class Session:
             if function == "AddNodeTransformPosition":
                 self.anchor_keys.setdefault(name, {})[key] = values[5][:]
             elif function == "GetNodeTransformPosition":
-                return {"returned": self.anchor_keys[name][key][:]}
+                return {"returned": (self.anchor_keys[name][key] or [0.,0.,0.])[:]}
             elif function == "RemoveNodeTransformPosition":
-                return {"returned": self.anchor_keys[name].pop(key, None) is not None}
+                values = self.anchor_keys.setdefault(name, {})
+                existed = values.get(key) is not None
+                if key in values:
+                    values[key] = None  # Actual SKEE retains the empty key container.
+                return {"returned": existed}
             elif function == "UpdateNodeTransform" and not self.frozen_anchors:
-                offset = next(iter(self.anchor_keys.get(name, {}).values()), [0.,0.,0.])
+                offset = next((v for v in self.anchor_keys.get(name, {}).values() if v is not None), [0.,0.,0.])
                 anchor_world = self.original_nodes[name]["world"]
                 moved = compose(anchor_world, transform(offset))
                 for row in self.sample["nodes"]:
@@ -74,6 +80,8 @@ class Session:
             return {"returned": None}
         if args.get("script") == "NetImmerse":
             name, value = args["args"][1:3]
+            if self.fail_head_restore and name == "NPC Head [Head]" and args["function"] == "SetNodeLocalRotationMatrix":
+                return {"returned": False}
             row = next(row for row in self.sample["nodes"] if row["name"] == name)
             channel = {"SetNodeLocalPosition": "translation", "SetNodeLocalRotationMatrix": "rotationRowMajor", "SetNodeScale": "scale"}[args["function"]]
             row["local"][channel] = copy.deepcopy(value)
@@ -141,11 +149,13 @@ class OwnedFsmpCaseTests(unittest.TestCase):
     def test_owned_anchor_keys_are_cleaned_without_writing_dynamic_bones(self):
         with tempfile.TemporaryDirectory() as directory:
             session = Session(directory)
-            result = case.run(session, "0xFF001234", "male", stimulus="xml-anchors")
+            result = case.run(session, "0xFF001234", "male", stimulus="xml-anchors", sleep=lambda _: None)
             self.assertEqual(result["status"], "unconfirmed")
             self.assertTrue(result["anchorExcitationQualified"])
             self.assertEqual(session.previous, [True]*9)
-            self.assertTrue(all(not values for values in session.anchor_keys.values()))
+            self.assertTrue(all(v is None for values in session.anchor_keys.values() for v in values.values()))
+            cleanup = json.loads((Path(directory)/"fsmp-probe/cleanup.json").read_bytes())
+            self.assertTrue(all(row["hasKeyContainerAfterRemoval"] for row in cleanup["anchors"].values()))
             writes = [args for tool,args in session.calls if args.get("script") in ("NiOverride", "NetImmerse")
                       and args.get("function", "").startswith(("Add", "Remove", "Update", "Set"))]
             self.assertTrue(writes)
@@ -157,19 +167,29 @@ class OwnedFsmpCaseTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             session = Session(directory, frozen_anchors=True)
             with self.assertRaisesRegex(ValueError, "anchor world displacement"):
-                case.run(session, "0xFF001234", "male", stimulus="xml-anchors")
+                case.run(session, "0xFF001234", "male", stimulus="xml-anchors", sleep=lambda _: None)
             state = json.loads((Path(directory)/"fsmp-probe/state.json").read_bytes())
             self.assertEqual(state["windows"], {})
-            self.assertTrue(all(not values for values in session.anchor_keys.values()))
+            self.assertTrue(all(v is None for values in session.anchor_keys.values() for v in values.values()))
 
     def test_direct_anchor_world_response_is_discriminated_without_local_writes(self):
         with tempfile.TemporaryDirectory() as directory:
             session = Session(directory, world_response=True)
-            result = case.run(session, "0xFF001234", "male", stimulus="xml-anchors")
+            result = case.run(session, "0xFF001234", "male", stimulus="xml-anchors", sleep=lambda _: None)
             self.assertEqual(result["status"], "sampled-selective-contrast-observed")
             self.assertTrue(result["localAnimationQuiet"])
             self.assertTrue(result["controlParentsQuiet"])
             self.assertFalse(result["solverQualified"])
+
+    def test_one_anchor_cleanup_error_does_not_skip_the_other_or_hide_primary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            session = Session(directory, frozen_anchors=True, fail_head_restore=True)
+            with self.assertRaisesRegex(ValueError, "primary: Mass-zero anchor world displacement"):
+                case.run(session, "0xFF001234", "male", stimulus="xml-anchors", sleep=lambda _: None)
+            cleanup = json.loads((Path(directory)/"fsmp-probe/cleanup.json").read_bytes())
+            self.assertIn("error", cleanup["anchors"]["NPC Head [Head]"])
+            self.assertTrue(cleanup["anchors"]["Tails"]["ownPositionComponentAbsent"])
+            self.assertTrue(all(v is None for values in session.anchor_keys.values() for v in values.values()))
 
 
 if __name__ == "__main__":
