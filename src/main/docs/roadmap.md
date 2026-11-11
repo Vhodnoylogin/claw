@@ -39,6 +39,17 @@ The final visual review covers musculature, lean/bulky extremes, cosmetic
 self-intersection tuning and new morph authoring. Fix functional
 defects such as missing textures or broken animation as they are found.
 
+### Visual reference library
+
+Use the different female werewolf body shapes supplied in the Elegant archives
+as references when assessing the appearance of CLAW's results. Include the
+other werewolf/body/coat mods previously supplied by the owner, rather than
+limiting comparisons to Elegant. Recover the existing archive inventory and
+technical audits when this stage starts; Werewolf Colour Sync and its Fluffworks
+variants are among the previously supplied references. Record each source and
+compare equivalent poses and morph states. This is deferred aesthetic work,
+not authorization to redistribute reference artwork or begin visual retuning now.
+
 No separate neutral _0/_1 authoring task or synthetic age input is implied.
 Every matrix retains actor weight as an explicit input. Human presets remain
 OBody's responsibility; CLAW does not randomly distribute conversion matrices.
