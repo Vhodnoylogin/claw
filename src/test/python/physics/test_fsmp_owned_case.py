@@ -317,6 +317,24 @@ class OwnedFsmpCaseTests(unittest.TestCase):
             self.assertEqual(state["windows"], {})
             self.assertEqual(len(state["pulses"]["active"]), 4)
 
+    def test_late_read_cannot_compress_the_following_sample_gap(self):
+        def dispatches(schedule):
+            now, last, result = 0., None, []
+            for index in range(25):
+                now = max(now, schedule(index, last))
+                result.append(now)
+                now += .008  # Read completion precedes evidence persistence.
+                last = now
+                # A slow journal write leaves little time to the next slot.
+                now += .166 if index == 1 else .006
+            return result
+        old = dispatches(lambda index, last: index*.1)
+        fixed = dispatches(lambda index, last: case.next_sample_time(0., index, .1, .04, last))
+        self.assertLess(min(b-a for a, b in zip(old, old[1:])), .04)
+        self.assertGreaterEqual(min(b-a for a, b in zip(fixed, fixed[1:])), .04)
+        self.assertLessEqual(max(b-a for a, b in zip(fixed, fixed[1:])), .2)
+        self.assertAlmostEqual(fixed[-1], 2.4)
+
     def test_pulse_uncertain_body_receipt_is_not_replayed_or_excited(self):
         class UncertainBody(Session):
             def tool(self, tool, args, **kwargs):

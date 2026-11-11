@@ -6,6 +6,15 @@ Its sibling FSMP module supplies tested World Observer parsing, incarnation/root
 guards, inverse transforms, anchor calibration and the inspected skeleton node
 inventory. The FSMP previous-state/binding protocol is deliberately not reused.
 
+The separately declared `cbpc_pulse.py` path evaluates read-only response after
+an anchor returns to zero. It requires the pinned XP32 immediate-parent paths,
+both current and base werewolf races, exact per-node Start/Stop/Start completions
+and every requested driver's own local **and** immediate-parent-relative motion.
+A child merely inheriting a bound parent's motion cannot pass. Dynamic local
+writes are CBPC outputs; independent torso/CME controls must remain quiet.
+Void calls leave binding state unknown. This scorer has offline counterexample
+coverage; no actual CBPC pulse run or release acceptance is implied.
+
 Use a fresh owned **born-beast** NPC with verified sex/race, current mesh and skin
 influences, matching skeleton and sole CBPC motion ownership. Keep it 3D-loaded,
 within the effective CBPC bounce range and under the existing bounded Session's

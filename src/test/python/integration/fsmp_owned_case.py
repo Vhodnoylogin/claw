@@ -72,6 +72,12 @@ def dispose_fixture(session, reference, sex, admitted, *, maximum_seconds=8, sle
     raise ValueError("Owned fixture disabled/null-crosshair readback not observed")
 
 
+def next_sample_time(start, index, period, minimum_gap, last_completed=None):
+    """Keep nominal cadence without catching up before a prior read can settle."""
+    target = start + index*period
+    return target if last_completed is None else max(target, last_completed + minimum_gap)
+
+
 def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", sleep=time.sleep):
     probe.require(type(maximum_seconds) in (int, float) and 30 <= maximum_seconds <= 180,
                   "FSMP callback requires a finite 30..180-second bound")
@@ -273,9 +279,13 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
                     pulse.anchor_excitation(probe.snapshot(row["returned"], reference, sex), stimulus_baseline, sex, anchor, [0., 0., 0.])
                     save()
                     sample_start = time.monotonic()
+                    last_completed = None
                     for index in range(state["protocol"]["samples"]):
-                        sleep(max(0., sample_start + index*state["protocol"]["samplePeriodSeconds"] - time.monotonic()))
+                        next_at = next_sample_time(sample_start, index, state["protocol"]["samplePeriodSeconds"],
+                                                   state["protocol"]["minGapSeconds"], last_completed)
+                        sleep(max(0., next_at - time.monotonic()))
                         row["samples"].append(observe(phase + "-pulse-sample-" + anchor + "-" + str(index)))
+                        last_completed = time.monotonic()
                         save()
                 continue
             state["windows"][phase] = []
