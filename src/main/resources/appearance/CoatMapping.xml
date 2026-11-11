@@ -1,0 +1,36 @@
+<CoatMapping schemaVersion="1" output="coat.selector">
+  <Range min="0" max="0.1" id="elegant-2k-2.1/black" material="randomized/black" />
+  <Range min="0.1" max="0.2" id="elegant-2k-2.1/valley-black" material="randomized/valley-black" />
+  <Range min="0.2" max="0.3" id="elegant-2k-2.1/timber-dark" material="randomized/timber-dark" />
+  <Range min="0.3" max="0.4" id="elegant-2k-2.1/valley-brown" material="randomized/valley-brown" />
+  <Range min="0.4" max="0.5" id="elegant-2k-2.1/brown" material="randomized/brown" />
+  <Range min="0.5" max="0.6" id="elegant-2k-2.1/timber" material="randomized/timber" />
+  <Range min="0.6" max="0.7" id="elegant-2k-2.1/valley-grey" material="randomized/valley-grey" />
+  <Range min="0.7" max="0.8" id="elegant-2k-2.1/grey" material="randomized/grey" />
+  <Range min="0.8" max="0.9" id="elegant-2k-2.1/valley-white" material="randomized/valley-white" />
+  <Range min="0.9" max="1" id="elegant-2k-2.1/white" material="randomized/white" />
+  <Alias id="elegant-2k-2.1/coal" material="randomized/black" />
+  <Alias id="elegant-2k-2.1/black-alt" material="randomized/valley-black" />
+  <Alias id="elegant-2k-2.1/ashen" material="randomized/valley-black" />
+  <Alias id="elegant-2k-2.1/timber-rock" material="randomized/valley-black" />
+  <Alias id="elegant-2k-2.1/bean" material="randomized/timber-dark" />
+  <Alias id="elegant-2k-2.1/umber" material="randomized/timber-dark" />
+  <Alias id="elegant-2k-2.1/himalayan" material="randomized/timber-dark" />
+  <Alias id="elegant-2k-2.1/brown-blend" material="randomized/valley-brown" />
+  <Alias id="elegant-2k-2.1/brown-alt" material="randomized/valley-brown" />
+  <Alias id="elegant-2k-2.1/shepherd" material="randomized/brown" />
+  <Alias id="elegant-2k-2.1/ginger" material="randomized/brown" />
+  <Alias id="elegant-2k-2.1/swamp" material="randomized/brown" />
+  <Alias id="elegant-2k-2.1/dust" material="randomized/brown" />
+  <Alias id="elegant-2k-2.1/gold" material="randomized/timber" />
+  <Alias id="elegant-2k-2.1/amber" material="randomized/timber" />
+  <Alias id="elegant-2k-2.1/timber-sand" material="randomized/timber" />
+  <Alias id="elegant-2k-2.1/tundra" material="randomized/timber" />
+  <Alias id="elegant-2k-2.1/hyena-spotted" material="randomized/timber" />
+  <Alias id="elegant-2k-2.1/khajiit" material="randomized/timber" />
+  <Alias id="elegant-2k-2.1/maned" material="randomized/valley-grey" />
+  <Alias id="elegant-2k-2.1/timber-pebble" material="randomized/valley-grey" />
+  <Alias id="elegant-2k-2.1/silver-alt" material="randomized/grey" />
+  <Alias id="elegant-2k-2.1/silver" material="randomized/grey" />
+  <Alias id="elegant-2k-2.1/spirit" material="randomized/valley-white" />
+</CoatMapping>

@@ -116,6 +116,16 @@
     <Rule source="$human.face.jawWidth" target="CLAWHeadEarSize" gain="0.1" cap="1" function="positive" />
     <Rule source="$human.face.chinWidth" target="CLAWHeadEarTilt" gain="0.06" cap="1" function="positive" />
     <Rule source="$human.face.jawWidth" target="CLAWHeadEarTilt" gain="0.08" cap="1" function="positive" />
+    <Rule source="MuscleAbs" target="CLAWTorsoGirth" gain="0.02" cap="0.25" function="positive" />
+    <Rule source="MuscleAbs" target="CLAWTorsoLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="MuscleButt" target="CLAWLegThighGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="MuscleButt" target="CLAWLegThighLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="Butt" target="CLAWLegThighGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="Butt" target="CLAWLegThighLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="ChubbyButt" target="CLAWLegThighGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="ChubbyButt" target="CLAWLegThighLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="RibsProminance" target="CLAWTorsoLean" gain="0.02" cap="1" function="positive" />
+    <Rule source="RibsProminance" target="CLAWTorsoGirth" gain="0.02" cap="0.25" function="negative" />
   </Profile>
   <Profile id="CLAW.HIMBO.5.8.Geometry1" family="HIMBO" version="5.8" sex="male" calibration="anatomy-v4-response-normalized">
     <Rule source="" target="CLAWTorsoLean" gain="0.125" cap="1" function="constant" value="1" />
@@ -255,6 +265,14 @@
     <Rule source="$human.face.jawWidth" target="CLAWHeadEarSize" gain="0.1" cap="1" function="positive" />
     <Rule source="$human.face.chinWidth" target="CLAWHeadEarTilt" gain="0.06" cap="1" function="positive" />
     <Rule source="$human.face.jawWidth" target="CLAWHeadEarTilt" gain="0.08" cap="1" function="positive" />
+    <Rule source="TorsoVLine" target="CLAWTorsoWaistNarrow" gain="0.02" cap="1" function="positive" />
+    <Rule source="TorsoVLine" target="CLAWTorsoGirth" gain="0.02" cap="0.25" function="negative" />
+    <Rule source="TorsoBackObliques" target="CLAWTorsoBackWide" gain="0.02" cap="1" function="positive" />
+    <Rule source="TorsoBackObliques" target="CLAWTorsoLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="TorsoBackDefinition" target="CLAWTorsoBackWide" gain="0.02" cap="1" function="positive" />
+    <Rule source="TorsoBackDefinition" target="CLAWTorsoLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="LegsGlutes" target="CLAWLegThighGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="LegsGlutes" target="CLAWLegThighLean" gain="0.02" cap="1" function="negative" />
   </Profile>
   <Profile id="CLAW.CBBE.2.0.3.Geometry1" family="CBBE" version="2.0.3" sex="female" calibration="anatomy-v4-response-normalized">
     <Rule source="" target="CLAWTorsoLean" gain="0.125" cap="1" function="constant" value="1" />
@@ -373,6 +391,16 @@
     <Rule source="$human.face.jawWidth" target="CLAWHeadEarSize" gain="0.1" cap="1" function="positive" />
     <Rule source="$human.face.chinWidth" target="CLAWHeadEarTilt" gain="0.06" cap="1" function="positive" />
     <Rule source="$human.face.jawWidth" target="CLAWHeadEarTilt" gain="0.08" cap="1" function="positive" />
+    <Rule source="MuscleAbs" target="CLAWTorsoGirth" gain="0.02" cap="0.25" function="positive" />
+    <Rule source="MuscleAbs" target="CLAWTorsoLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="MuscleButt" target="CLAWLegThighGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="MuscleButt" target="CLAWLegThighLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="Butt" target="CLAWLegThighGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="Butt" target="CLAWLegThighLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="ChubbyButt" target="CLAWLegThighGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="ChubbyButt" target="CLAWLegThighLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="RibsProminance" target="CLAWTorsoLean" gain="0.02" cap="1" function="positive" />
+    <Rule source="RibsProminance" target="CLAWTorsoGirth" gain="0.02" cap="0.25" function="negative" />
   </Profile>
   <Profile id="CLAW.VanillaMale.Weight1" family="Vanilla" version="game-weight-v1" sex="male" calibration="anatomy-v4-response-normalized">
     <Rule source="" target="CLAWArmLean" gain="1" cap="0.5" function="constant" value="1" />
@@ -630,6 +658,38 @@
     <Rule source="MuscleArms" target="CLAWTailFluff" gain="0.03" cap="1" function="positive" />
     <Rule source="ForearmSize" target="CLAWArmClawLong" gain="0.08" cap="1" function="positive" />
     <Rule source="MuscleLegs" target="CLAWLegClawLong" gain="0.04" cap="1" function="positive" />
+    <Rule source="Brachioradialis" target="CLAWArmGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="Brachioradialis" target="CLAWArmLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="MusclePecs" target="CLAWTorsoChestSize" gain="0.02" cap="1" function="positive" />
+    <Rule source="MusclePecs" target="CLAWTorsoLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="RectusAbdominis" target="CLAWTorsoGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="RectusAbdominis" target="CLAWTorsoLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="RectusOuterDetail" target="CLAWTorsoWaistNarrow" gain="0.02" cap="1" function="positive" />
+    <Rule source="RectusOuterDetail" target="CLAWTorsoGirth" gain="0.02" cap="1" function="negative" />
+    <Rule source="BackTrapezius" target="CLAWTorsoShoulderGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="BackTrapezius" target="CLAWTorsoLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="RectusFemoris" target="CLAWLegThighGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="RectusFemoris" target="CLAWLegThighLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="VastusLateralis" target="CLAWLegThighGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="VastusLateralis" target="CLAWLegThighLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="VastusMedialis" target="CLAWLegThighGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="VastusMedialis" target="CLAWLegThighLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="Soleus" target="CLAWLegCalfGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="Soleus" target="CLAWLegCalfLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="MuscleButt" target="CLAWLegThighGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="MuscleButt" target="CLAWLegThighLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="Butt" target="CLAWLegThighGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="Butt" target="CLAWLegThighLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="BackWing" target="CLAWTorsoBackWide" gain="0.02" cap="1" function="positive" />
+    <Rule source="BackWing" target="CLAWTorsoLean" gain="0.02" cap="1" function="negative" />
+    <Rule source="LegsThin" target="CLAWLegThighLean" gain="0.01" cap="1" function="positive" />
+    <Rule source="LegsThin" target="CLAWLegThighGirth" gain="0.01" cap="1" function="negative" />
+    <Rule source="LegsThin" target="CLAWLegCalfLean" gain="0.01" cap="1" function="positive" />
+    <Rule source="LegsThin" target="CLAWLegCalfGirth" gain="0.01" cap="1" function="negative" />
+    <Rule source="RibsProminance" target="CLAWTorsoLean" gain="0.02" cap="1" function="positive" />
+    <Rule source="RibsProminance" target="CLAWTorsoGirth" gain="0.02" cap="1" function="negative" />
+    <Rule source="ThighThicker" target="CLAWLegThighGirth" gain="0.02" cap="1" function="positive" />
+    <Rule source="ThighThicker" target="CLAWLegThighLean" gain="0.02" cap="1" function="negative" />
   </Profile>
   <Profile id="CLAW.UNP.4.6.Weight1" family="UNP" version="4.6" sex="female" calibration="vanilla-female-weight-contract1">
     <Rule source="" target="CLAWArmLean" gain="1" cap="0.5" function="constant" value="1" />

@@ -1,0 +1,128 @@
+<CoatLibrary schemaVersion="2" id="randomized" sourceArchiveSha256="0cec26f8b14a1a91aa8ffc0e14ca80989deda1f5a7d2386d11451af5cf52b0a8">
+  <Surfaces>
+    <Surface name="body" texture="body.dds" group="undercoat" />
+    <Surface name="head" texture="head.dds" group="undercoat" />
+    <Surface name="fur_arms" texture="furarms.dds" group="fur" />
+    <Surface name="fur_back" texture="furback.dds" group="fur" />
+    <Surface name="fur_belly" texture="furbelly.dds" group="fur" />
+    <Surface name="fur_chest" texture="furchest.dds" group="fur" />
+    <Surface name="fur_face" texture="furface.dds" group="fur" />
+    <Surface name="fur_shoulders" texture="furshoulders.dds" group="fur" />
+    <Surface name="fur_tailtip" texture="furtail.dds" group="fur" />
+    <Surface name="ChestBlend" texture="furback.dds" group="fur" />
+    <Surface name="FurfaceBlend" texture="furface.dds" group="fur" />
+    <Surface name="ScalpFurBlend" texture="furback.dds" group="fur" />
+  </Surfaces>
+  <Patterns>
+    <Pattern id="black" label="Black">
+      <Texture name="body.dds" path="textures/DiverseElegantWerewolves/Black/body.dds" bytes="4194452" sha256="e1790eca5b841adce5edd9325fdf759e505741f9ec49dbb3a1d964753f82e0d3" />
+      <Texture name="furarms.dds" path="textures/DiverseElegantWerewolves/Black/furarms.dds" bytes="1048724" sha256="7af3ed909a85d6c661845dcee6c1aaf7715a7835a32f7299a12790e7b04a110f" />
+      <Texture name="furback.dds" path="textures/DiverseElegantWerewolves/Black/furback.dds" bytes="1048724" sha256="7af3ed909a85d6c661845dcee6c1aaf7715a7835a32f7299a12790e7b04a110f" />
+      <Texture name="furbelly.dds" path="textures/DiverseElegantWerewolves/Black/furbelly.dds" bytes="1048724" sha256="7af3ed909a85d6c661845dcee6c1aaf7715a7835a32f7299a12790e7b04a110f" />
+      <Texture name="furchest.dds" path="textures/DiverseElegantWerewolves/Black/furchest.dds" bytes="1048724" sha256="7af3ed909a85d6c661845dcee6c1aaf7715a7835a32f7299a12790e7b04a110f" />
+      <Texture name="furface.dds" path="textures/DiverseElegantWerewolves/Black/furface.dds" bytes="1048724" sha256="7af3ed909a85d6c661845dcee6c1aaf7715a7835a32f7299a12790e7b04a110f" />
+      <Texture name="furshoulders.dds" path="textures/DiverseElegantWerewolves/Black/furshoulders.dds" bytes="1048724" sha256="7af3ed909a85d6c661845dcee6c1aaf7715a7835a32f7299a12790e7b04a110f" />
+      <Texture name="furtail.dds" path="textures/DiverseElegantWerewolves/Black/furtail.dds" bytes="1048724" sha256="7af3ed909a85d6c661845dcee6c1aaf7715a7835a32f7299a12790e7b04a110f" />
+      <Texture name="head.dds" path="textures/DiverseElegantWerewolves/Black/head.dds" bytes="4194452" sha256="7031e3ae0e2726c80d2b392b4370060b76f7080141b8fc7fa9a2f19e0c8eea6f" />
+    </Pattern>
+    <Pattern id="valley-black" label="ValleyBlack">
+      <Texture name="body.dds" path="textures/DiverseElegantWerewolves/ValleyBlack/body.dds" bytes="4194452" sha256="dd2cf7c49d0b8a6c9d2aa33b16596af718a9b042d123abd8672f9a11ee8b4ab9" />
+      <Texture name="furarms.dds" path="textures/DiverseElegantWerewolves/ValleyBlack/furarms.dds" bytes="1048724" sha256="f85229e1a9c2058c5c264b9ecec77bb00d2d8923968c55697d480a478e844ca3" />
+      <Texture name="furback.dds" path="textures/DiverseElegantWerewolves/ValleyBlack/furback.dds" bytes="1048724" sha256="f85229e1a9c2058c5c264b9ecec77bb00d2d8923968c55697d480a478e844ca3" />
+      <Texture name="furbelly.dds" path="textures/DiverseElegantWerewolves/ValleyBlack/furbelly.dds" bytes="1048724" sha256="f85229e1a9c2058c5c264b9ecec77bb00d2d8923968c55697d480a478e844ca3" />
+      <Texture name="furchest.dds" path="textures/DiverseElegantWerewolves/ValleyBlack/furchest.dds" bytes="1048724" sha256="f85229e1a9c2058c5c264b9ecec77bb00d2d8923968c55697d480a478e844ca3" />
+      <Texture name="furface.dds" path="textures/DiverseElegantWerewolves/ValleyBlack/furface.dds" bytes="1048724" sha256="f85229e1a9c2058c5c264b9ecec77bb00d2d8923968c55697d480a478e844ca3" />
+      <Texture name="furshoulders.dds" path="textures/DiverseElegantWerewolves/ValleyBlack/furshoulders.dds" bytes="1048724" sha256="f85229e1a9c2058c5c264b9ecec77bb00d2d8923968c55697d480a478e844ca3" />
+      <Texture name="furtail.dds" path="textures/DiverseElegantWerewolves/ValleyBlack/furtail.dds" bytes="1048724" sha256="320f4801c7cd795e9bfc0547e19b29ab92aa1265b277046f83596208f6eb3b86" />
+      <Texture name="head.dds" path="textures/DiverseElegantWerewolves/ValleyBlack/head.dds" bytes="4194452" sha256="263f29cb49dfac21deeeebd085b8b0c43dfdf0ac1693d2a26d8a67affeb8bb5b" />
+    </Pattern>
+    <Pattern id="timber-dark" label="TimberDark">
+      <Texture name="body.dds" path="textures/DiverseElegantWerewolves/TimberDark/body.dds" bytes="4194452" sha256="e6f51f2ed73a84150de3945551b339443d9415e9d54307ce468572ed67de2fc9" />
+      <Texture name="furarms.dds" path="textures/DiverseElegantWerewolves/TimberDark/furarms.dds" bytes="1048724" sha256="57a47234a51d931c39cf651ec7cbe28e4d7cedd175c60578515e19c0fbf93882" />
+      <Texture name="furback.dds" path="textures/DiverseElegantWerewolves/TimberDark/furback.dds" bytes="1048724" sha256="9e0f701874049516b0a8f61e0083d42bce9e634f9cedf81aa4d439f857190056" />
+      <Texture name="furbelly.dds" path="textures/DiverseElegantWerewolves/TimberDark/furbelly.dds" bytes="1048724" sha256="57a47234a51d931c39cf651ec7cbe28e4d7cedd175c60578515e19c0fbf93882" />
+      <Texture name="furchest.dds" path="textures/DiverseElegantWerewolves/TimberDark/furchest.dds" bytes="1048724" sha256="57a47234a51d931c39cf651ec7cbe28e4d7cedd175c60578515e19c0fbf93882" />
+      <Texture name="furface.dds" path="textures/DiverseElegantWerewolves/TimberDark/furface.dds" bytes="1048724" sha256="9e0f701874049516b0a8f61e0083d42bce9e634f9cedf81aa4d439f857190056" />
+      <Texture name="furshoulders.dds" path="textures/DiverseElegantWerewolves/TimberDark/furshoulders.dds" bytes="1048724" sha256="9e0f701874049516b0a8f61e0083d42bce9e634f9cedf81aa4d439f857190056" />
+      <Texture name="furtail.dds" path="textures/DiverseElegantWerewolves/TimberDark/furtail.dds" bytes="1048724" sha256="86c3ab957110b8f765c72000b86da5851113676561e97b9caa5dec95bd7f6a10" />
+      <Texture name="head.dds" path="textures/DiverseElegantWerewolves/TimberDark/head.dds" bytes="4194452" sha256="72687c21746324223c1598aa68db3f43008186e15ed708640b836d81f4310c24" />
+    </Pattern>
+    <Pattern id="valley-brown" label="ValleyBrown">
+      <Texture name="body.dds" path="textures/DiverseElegantWerewolves/ValleyBrown/body.dds" bytes="4194452" sha256="5846b8a55f1777bdae1918c3d2e938d165add148219485febd2e4e214331b708" />
+      <Texture name="furarms.dds" path="textures/DiverseElegantWerewolves/ValleyBrown/furarms.dds" bytes="1048724" sha256="40274d394aadaa4a88a779f0f50640c03cd6e51178f2f1b2c5bcf95e3f00e66c" />
+      <Texture name="furback.dds" path="textures/DiverseElegantWerewolves/ValleyBrown/furback.dds" bytes="1048724" sha256="306952b7e421b041189a64c97dccdae5824eb8c14891ee46901bb1663db58f0f" />
+      <Texture name="furbelly.dds" path="textures/DiverseElegantWerewolves/ValleyBrown/furbelly.dds" bytes="1048724" sha256="306952b7e421b041189a64c97dccdae5824eb8c14891ee46901bb1663db58f0f" />
+      <Texture name="furchest.dds" path="textures/DiverseElegantWerewolves/ValleyBrown/furchest.dds" bytes="1048724" sha256="306952b7e421b041189a64c97dccdae5824eb8c14891ee46901bb1663db58f0f" />
+      <Texture name="furface.dds" path="textures/DiverseElegantWerewolves/ValleyBrown/furface.dds" bytes="1048724" sha256="306952b7e421b041189a64c97dccdae5824eb8c14891ee46901bb1663db58f0f" />
+      <Texture name="furshoulders.dds" path="textures/DiverseElegantWerewolves/ValleyBrown/furshoulders.dds" bytes="1048724" sha256="40274d394aadaa4a88a779f0f50640c03cd6e51178f2f1b2c5bcf95e3f00e66c" />
+      <Texture name="furtail.dds" path="textures/DiverseElegantWerewolves/ValleyBrown/furtail.dds" bytes="1048724" sha256="40274d394aadaa4a88a779f0f50640c03cd6e51178f2f1b2c5bcf95e3f00e66c" />
+      <Texture name="head.dds" path="textures/DiverseElegantWerewolves/ValleyBrown/head.dds" bytes="4194452" sha256="c637d4eb66bab34b1fbb3d8e60fd0c4bccdc96345b6f764803b2727fe1233e80" />
+    </Pattern>
+    <Pattern id="brown" label="Brown">
+      <Texture name="body.dds" path="textures/DiverseElegantWerewolves/Brown/body.dds" bytes="4194452" sha256="0be57b21b5b0991ab72527c4b303eb7fdfd9382a7913426a20173fd6013b025d" />
+      <Texture name="furarms.dds" path="textures/DiverseElegantWerewolves/Brown/furarms.dds" bytes="1048724" sha256="07d6d77b562096f2c2313811713df5e516726fd2a9db7462ae3530de8b27cd28" />
+      <Texture name="furback.dds" path="textures/DiverseElegantWerewolves/Brown/furback.dds" bytes="1048724" sha256="07d6d77b562096f2c2313811713df5e516726fd2a9db7462ae3530de8b27cd28" />
+      <Texture name="furbelly.dds" path="textures/DiverseElegantWerewolves/Brown/furbelly.dds" bytes="1048724" sha256="07d6d77b562096f2c2313811713df5e516726fd2a9db7462ae3530de8b27cd28" />
+      <Texture name="furchest.dds" path="textures/DiverseElegantWerewolves/Brown/furchest.dds" bytes="1048724" sha256="07d6d77b562096f2c2313811713df5e516726fd2a9db7462ae3530de8b27cd28" />
+      <Texture name="furface.dds" path="textures/DiverseElegantWerewolves/Brown/furface.dds" bytes="1048724" sha256="07d6d77b562096f2c2313811713df5e516726fd2a9db7462ae3530de8b27cd28" />
+      <Texture name="furshoulders.dds" path="textures/DiverseElegantWerewolves/Brown/furshoulders.dds" bytes="1048724" sha256="07d6d77b562096f2c2313811713df5e516726fd2a9db7462ae3530de8b27cd28" />
+      <Texture name="furtail.dds" path="textures/DiverseElegantWerewolves/Brown/furtail.dds" bytes="1048724" sha256="07d6d77b562096f2c2313811713df5e516726fd2a9db7462ae3530de8b27cd28" />
+      <Texture name="head.dds" path="textures/DiverseElegantWerewolves/Brown/head.dds" bytes="4194452" sha256="dec8b944471489b92e9ec48206b9d2ef09d4ee146ac004267142f7ebc03388a7" />
+    </Pattern>
+    <Pattern id="timber" label="Timber">
+      <Texture name="body.dds" path="textures/DiverseElegantWerewolves/Timber/body.dds" bytes="4194452" sha256="47214cbb2cb6b02c3adc27470391090d55ffe4cc014fa763b370c5b60ac4296f" />
+      <Texture name="furarms.dds" path="textures/DiverseElegantWerewolves/Timber/furarms.dds" bytes="1048724" sha256="97c2d4f2d679cf2cb5817f5894ddc17979007a3857cc1ea5591a51b62b4a64e9" />
+      <Texture name="furback.dds" path="textures/DiverseElegantWerewolves/Timber/furback.dds" bytes="1048724" sha256="5331252c0bdfcff9879a0b49e4db927474c4d41f58079ee9aa5cd72478ea6527" />
+      <Texture name="furbelly.dds" path="textures/DiverseElegantWerewolves/Timber/furbelly.dds" bytes="1048724" sha256="97c2d4f2d679cf2cb5817f5894ddc17979007a3857cc1ea5591a51b62b4a64e9" />
+      <Texture name="furchest.dds" path="textures/DiverseElegantWerewolves/Timber/furchest.dds" bytes="1048724" sha256="97c2d4f2d679cf2cb5817f5894ddc17979007a3857cc1ea5591a51b62b4a64e9" />
+      <Texture name="furface.dds" path="textures/DiverseElegantWerewolves/Timber/furface.dds" bytes="1048724" sha256="5331252c0bdfcff9879a0b49e4db927474c4d41f58079ee9aa5cd72478ea6527" />
+      <Texture name="furshoulders.dds" path="textures/DiverseElegantWerewolves/Timber/furshoulders.dds" bytes="1048724" sha256="5331252c0bdfcff9879a0b49e4db927474c4d41f58079ee9aa5cd72478ea6527" />
+      <Texture name="furtail.dds" path="textures/DiverseElegantWerewolves/Timber/furtail.dds" bytes="1048724" sha256="8f66f41610de5870972e2090710e1371051b5d5530a7ed18188957c1c9c2a9f3" />
+      <Texture name="head.dds" path="textures/DiverseElegantWerewolves/Timber/head.dds" bytes="4194452" sha256="3e5487356adade3882371d4568a075356dd2429802c57c79ef62e72eec76e6dd" />
+    </Pattern>
+    <Pattern id="valley-grey" label="ValleyGrey">
+      <Texture name="body.dds" path="textures/DiverseElegantWerewolves/ValleyGrey/body.dds" bytes="4194452" sha256="1be174e797b705bb57adf0edbc807008269d3eee1c05bc23ccd550950f67a29a" />
+      <Texture name="furarms.dds" path="textures/DiverseElegantWerewolves/ValleyGrey/furarms.dds" bytes="1048724" sha256="1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82" />
+      <Texture name="furback.dds" path="textures/DiverseElegantWerewolves/ValleyGrey/furback.dds" bytes="1048724" sha256="1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82" />
+      <Texture name="furbelly.dds" path="textures/DiverseElegantWerewolves/ValleyGrey/furbelly.dds" bytes="1048724" sha256="4cde6f05a96bff8130267483975eaed3c9276af3b1e5ad722be23bbcfaee1bde" />
+      <Texture name="furchest.dds" path="textures/DiverseElegantWerewolves/ValleyGrey/furchest.dds" bytes="1048724" sha256="7d8b81110835f0ba17888f52ca1e5dfc5e10170e127ddabcf829d5f46a7bc9b7" />
+      <Texture name="furface.dds" path="textures/DiverseElegantWerewolves/ValleyGrey/furface.dds" bytes="1048724" sha256="7d8b81110835f0ba17888f52ca1e5dfc5e10170e127ddabcf829d5f46a7bc9b7" />
+      <Texture name="furshoulders.dds" path="textures/DiverseElegantWerewolves/ValleyGrey/furshoulders.dds" bytes="1048724" sha256="1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82" />
+      <Texture name="furtail.dds" path="textures/DiverseElegantWerewolves/ValleyGrey/furtail.dds" bytes="1048724" sha256="7d8b81110835f0ba17888f52ca1e5dfc5e10170e127ddabcf829d5f46a7bc9b7" />
+      <Texture name="head.dds" path="textures/DiverseElegantWerewolves/ValleyGrey/head.dds" bytes="4194452" sha256="d4d3d032de3c3994f67a3f0362f3b44f7d7f84576c699c1bea072b0581ec7b32" />
+    </Pattern>
+    <Pattern id="grey" label="Grey">
+      <Texture name="body.dds" path="textures/DiverseElegantWerewolves/Grey/body.dds" bytes="4194452" sha256="b4ef31eb11f88129865a7710743afe78ae68754ac93593c44acfd3de2f2647cc" />
+      <Texture name="furarms.dds" path="textures/DiverseElegantWerewolves/Grey/furarms.dds" bytes="1048724" sha256="1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82" />
+      <Texture name="furback.dds" path="textures/DiverseElegantWerewolves/Grey/furback.dds" bytes="1048724" sha256="1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82" />
+      <Texture name="furbelly.dds" path="textures/DiverseElegantWerewolves/Grey/furbelly.dds" bytes="1048724" sha256="1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82" />
+      <Texture name="furchest.dds" path="textures/DiverseElegantWerewolves/Grey/furchest.dds" bytes="1048724" sha256="1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82" />
+      <Texture name="furface.dds" path="textures/DiverseElegantWerewolves/Grey/furface.dds" bytes="1048724" sha256="1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82" />
+      <Texture name="furshoulders.dds" path="textures/DiverseElegantWerewolves/Grey/furshoulders.dds" bytes="1048724" sha256="1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82" />
+      <Texture name="furtail.dds" path="textures/DiverseElegantWerewolves/Grey/furtail.dds" bytes="1048724" sha256="1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82" />
+      <Texture name="head.dds" path="textures/DiverseElegantWerewolves/Grey/head.dds" bytes="4194452" sha256="f5704933ada820f112c840c55881a4ea2f9fb7c4076c67ac030ab9ca151dfa05" />
+    </Pattern>
+    <Pattern id="valley-white" label="ValleyWhite">
+      <Texture name="body.dds" path="textures/DiverseElegantWerewolves/ValleyWhite/body.dds" bytes="4194452" sha256="4b843b2a6b259054ffb8fd1f96fc39b5982347b364c5506eb4732b8d7ec72946" />
+      <Texture name="furarms.dds" path="textures/DiverseElegantWerewolves/ValleyWhite/furarms.dds" bytes="1048724" sha256="58d0ae14dfd8c2f400e72f0f709cd32c50433da622db52f804c05f1489ac31ef" />
+      <Texture name="furback.dds" path="textures/DiverseElegantWerewolves/ValleyWhite/furback.dds" bytes="1048724" sha256="58d0ae14dfd8c2f400e72f0f709cd32c50433da622db52f804c05f1489ac31ef" />
+      <Texture name="furbelly.dds" path="textures/DiverseElegantWerewolves/ValleyWhite/furbelly.dds" bytes="1048724" sha256="dd6e8a0083936b4a83323503bd2475e85c0f59d989d9571795dbcdb80c59d8e4" />
+      <Texture name="furchest.dds" path="textures/DiverseElegantWerewolves/ValleyWhite/furchest.dds" bytes="1048724" sha256="58d0ae14dfd8c2f400e72f0f709cd32c50433da622db52f804c05f1489ac31ef" />
+      <Texture name="furface.dds" path="textures/DiverseElegantWerewolves/ValleyWhite/furface.dds" bytes="1048724" sha256="db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811" />
+      <Texture name="furshoulders.dds" path="textures/DiverseElegantWerewolves/ValleyWhite/furshoulders.dds" bytes="1048724" sha256="58d0ae14dfd8c2f400e72f0f709cd32c50433da622db52f804c05f1489ac31ef" />
+      <Texture name="furtail.dds" path="textures/DiverseElegantWerewolves/ValleyWhite/furtail.dds" bytes="1048724" sha256="58d0ae14dfd8c2f400e72f0f709cd32c50433da622db52f804c05f1489ac31ef" />
+      <Texture name="head.dds" path="textures/DiverseElegantWerewolves/ValleyWhite/head.dds" bytes="4194452" sha256="16a84737567217a38d7fee03180a9eac54bb710d84754e117e734799e03155fb" />
+    </Pattern>
+    <Pattern id="white" label="White">
+      <Texture name="body.dds" path="textures/DiverseElegantWerewolves/White/body.dds" bytes="4194452" sha256="616a79488668ec15845988ef481156df4dcdfba933675775828c5108f799268a" />
+      <Texture name="furarms.dds" path="textures/DiverseElegantWerewolves/White/furarms.dds" bytes="1048724" sha256="db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811" />
+      <Texture name="furback.dds" path="textures/DiverseElegantWerewolves/White/furback.dds" bytes="1048724" sha256="db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811" />
+      <Texture name="furbelly.dds" path="textures/DiverseElegantWerewolves/White/furbelly.dds" bytes="1048724" sha256="db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811" />
+      <Texture name="furchest.dds" path="textures/DiverseElegantWerewolves/White/furchest.dds" bytes="1048724" sha256="db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811" />
+      <Texture name="furface.dds" path="textures/DiverseElegantWerewolves/White/furface.dds" bytes="1048724" sha256="db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811" />
+      <Texture name="furshoulders.dds" path="textures/DiverseElegantWerewolves/White/furshoulders.dds" bytes="1048724" sha256="db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811" />
+      <Texture name="furtail.dds" path="textures/DiverseElegantWerewolves/White/furtail.dds" bytes="1048724" sha256="db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811" />
+      <Texture name="head.dds" path="textures/DiverseElegantWerewolves/White/head.dds" bytes="4194452" sha256="c0f1024aa4f36f7f4198d7a05c65015117474db3c1dbb554fe70c602a2225599" />
+    </Pattern>
+  </Patterns>
+</CoatLibrary>

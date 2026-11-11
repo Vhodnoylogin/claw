@@ -27,9 +27,10 @@ FetchContent_Declare(pugixml
     URL https://codeload.github.com/zeux/pugixml/zip/refs/tags/v1.15
     URL_HASH SHA256=0dd4dc16e38bbc1c889d3a59660072450127bac7d19415f3cf5d5d6b25c58b35)
 FetchContent_MakeAvailable(pugixml)
+add_subdirectory(shared)
 add_library(claw-preset-core STATIC src/Preset.cpp shared/MatrixKernel.cpp)
-target_include_directories(claw-preset-core PUBLIC include shared)
-target_link_libraries(claw-preset-core PUBLIC pugixml::pugixml)
+target_include_directories(claw-preset-core PUBLIC include)
+target_link_libraries(claw-preset-core PUBLIC pugixml::pugixml morph-matrix-projection)
 add_executable(claw-preset-tool src/Tool.cpp)
 target_link_libraries(claw-preset-tool PRIVATE claw-preset-core)
 if(MSVC)
@@ -137,6 +138,12 @@ if(CLAW_BUILD_TESTS)
     add_executable(claw-coat-policy-tests "${CLAW_TEST_SOURCE_DIR}/CoatPolicyTests.cpp")
     target_link_libraries(claw-coat-policy-tests PRIVATE claw-preset-core)
     add_test(NAME claw-coat-policy COMMAND claw-coat-policy-tests)
+    add_executable(claw-coat-mapping-tests "${CLAW_TEST_SOURCE_DIR}/CoatMappingTests.cpp")
+    target_link_libraries(claw-coat-mapping-tests PRIVATE claw-preset-core)
+    add_test(NAME claw-coat-mapping COMMAND claw-coat-mapping-tests
+        "${CLAW_REPOSITORY_ROOT}/src/main/resources/appearance/CoatMapping.xml"
+        "${CLAW_REPOSITORY_ROOT}/src/main/resources/appearance/CoatMatrix.xml"
+        "${CLAW_REPOSITORY_ROOT}/src/main/resources/appearance/CoatLibrary.xml")
     add_executable(claw-request-channels-tests "${CLAW_TEST_SOURCE_DIR}/RequestChannelsTests.cpp")
     target_include_directories(claw-request-channels-tests PRIVATE include)
     add_test(NAME claw-request-channels COMMAND claw-request-channels-tests)

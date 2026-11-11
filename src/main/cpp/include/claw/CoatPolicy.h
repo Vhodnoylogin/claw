@@ -44,6 +44,16 @@ inline std::uint64_t coatScore(std::uint64_t seed, std::string_view pool, std::s
     auto hash = coatHashText(14695981039346656037ULL, "CLAW.coat.choice.1");
     return coatHashText(coatHashText(coatHashWord(hash, seed, 8), pool), pattern);
 }
+inline bool coatXmlAttributes(pugi::xml_node node, std::initializer_list<std::string_view> required,
+    std::initializer_list<std::string_view> optional = {}) {
+    std::set<std::string_view> found;
+    for (const auto attr : node.attributes()) {
+        const std::string_view name = attr.name();
+        if (!found.insert(name).second || (std::find(required.begin(), required.end(), name) == required.end() &&
+            std::find(optional.begin(), optional.end(), name) == optional.end())) return false;
+    }
+    return std::all_of(required.begin(), required.end(), [&](auto name) { return found.contains(name); });
+}
 class CoatPolicy final {
 public:
     // No policy file preserves 0.8's nearest real hair + linked tint behavior.
@@ -61,7 +71,7 @@ public:
         if (!doc.load_buffer(xml.data(), xml.size(), pugi::parse_default, pugi::encoding_utf8)) fail("Malformed coat policy XML");
         const auto root = doc.document_element();
         if (std::string_view(root.name()) != "CoatPolicy" || root.next_sibling() ||
-            !attributes(root, {"schemaVersion", "tintMode"}, {"fallbackPool"}) ||
+            !coatXmlAttributes(root, {"schemaVersion", "tintMode"}, {"fallbackPool"}) ||
             std::string_view(root.attribute("schemaVersion").value()) != "1") fail("Unsupported coat policy schema");
         CoatPolicy result; result.legacy_ = false;
         const std::string_view mode = root.attribute("tintMode").value();
@@ -70,16 +80,16 @@ public:
         else fail("Unknown coat tint mode");
         result.fallback_ = root.attribute("fallbackPool").value();
         const auto pools = root.child("Pools");
-        if (!pools || pools.next_sibling() || root.first_child() != pools || !attributes(pools, {})) fail("Expected one coat Pools element");
+        if (!pools || pools.next_sibling() || root.first_child() != pools || !coatXmlAttributes(pools, {})) fail("Expected one coat Pools element");
         std::set<std::string> hairMembers;
         for (const auto node : pools.children()) {
-            if (std::string_view(node.name()) != "Pool" || !attributes(node, {"id", "use"})) fail("Invalid coat pool element");
+            if (std::string_view(node.name()) != "Pool" || !coatXmlAttributes(node, {"id", "use"})) fail("Invalid coat pool element");
             Pool pool; pool.id = node.attribute("id").value();
             const std::string_view use = node.attribute("use").value();
             if (!coatToken(pool.id) || (use != "hair" && use != "fallback")) fail("Invalid coat pool identity/use");
             pool.hair = use == "hair";
             for (const auto member : node.children()) {
-                if (std::string_view(member.name()) != "Pattern" || !attributes(member, {"id"}) || member.first_child()) fail("Invalid coat pool member");
+                if (std::string_view(member.name()) != "Pattern" || !coatXmlAttributes(member, {"id"}) || member.first_child()) fail("Invalid coat pool member");
                 const std::string id = member.attribute("id").value();
                 const auto* pattern = library.find(id);
                 if (!pattern || (pool.hair && !pattern->fur)) fail("Unknown coat member or missing measured hair palette");
@@ -145,16 +155,6 @@ private:
     bool legacy_{true};
     TintMode mode_{TintMode::linked};
     [[noreturn]] static void fail(const char* text) { throw std::invalid_argument(text); }
-    static bool attributes(pugi::xml_node node, std::initializer_list<std::string_view> required,
-        std::initializer_list<std::string_view> optional = {}) {
-        std::set<std::string_view> found;
-        for (const auto attr : node.attributes()) {
-            const std::string_view name = attr.name();
-            if (!found.insert(name).second || (std::find(required.begin(), required.end(), name) == required.end() &&
-                std::find(optional.begin(), optional.end(), name) == optional.end())) return false;
-        }
-        return std::all_of(required.begin(), required.end(), [&](auto name) { return found.contains(name); });
-    }
 };
 struct AutomaticCoatRecord {
     std::uint32_t actor{}, base{}, sex{};

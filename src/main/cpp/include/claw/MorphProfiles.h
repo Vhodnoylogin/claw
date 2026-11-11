@@ -76,20 +76,7 @@ public:
             profile.link.profile = profile.id;
             try {
                 for (const auto rule : node.children()) {
-                    if (rule.type() != pugi::node_element || std::string_view(rule.name()) != "Rule" ||
-                        !ruleAttributes(rule) || rule.first_child())
-                        return fail("Unexpected family rule/attribute/content");
-                    MorphLinkRule edge{rule.attribute("source").value(), rule.attribute("target").value(),
-                        number(rule.attribute("gain").value()), number(rule.attribute("cap").value())};
-                    if (rule.attribute("function")) edge.function = parseMorphFunction(rule.attribute("function").value());
-                    if (edge.function == MorphFunction::power) {
-                        const std::string_view text = rule.attribute("exponent").value();
-                        const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), edge.exponent);
-                        if (text.empty() || end != text.data() + text.size() || error != std::errc{})
-                            throw std::invalid_argument("Invalid exponent");
-                    }
-                    if (edge.constant()) edge.value = number(rule.attribute("value").value());
-                    profile.link.rules.push_back(std::move(edge));
+                    profile.link.rules.push_back(parseRule(rule));
                 }
             } catch (const std::invalid_argument&) { return fail("Invalid family coefficient"); }
             std::string reason;
@@ -127,6 +114,22 @@ public:
     void clear() { profiles_.clear(); defaults_.clear(); error_.clear(); }
     bool valid() const { return error_.empty() && !profiles_.empty(); }
     const std::string& error() const { return error_; }
+    static MorphLinkRule parseRule(pugi::xml_node rule) {
+        if (rule.type() != pugi::node_element || std::string_view(rule.name()) != "Rule" ||
+            !ruleAttributes(rule) || rule.first_child())
+            throw std::invalid_argument("Unexpected rule/attribute/content");
+        MorphLinkRule edge{rule.attribute("source").value(), rule.attribute("target").value(),
+            number(rule.attribute("gain").value()), number(rule.attribute("cap").value())};
+        if (rule.attribute("function")) edge.function = parseMorphFunction(rule.attribute("function").value());
+        if (edge.function == MorphFunction::power) {
+            const std::string_view text = rule.attribute("exponent").value();
+            const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), edge.exponent);
+            if (text.empty() || end != text.data() + text.size() || error != std::errc{})
+                throw std::invalid_argument("Invalid exponent");
+        }
+        if (edge.constant()) edge.value = number(rule.attribute("value").value());
+        return edge;
+    }
 private:
     std::map<std::string, MorphFamilyProfile, std::less<>> profiles_;
     std::map<Sex, std::string> defaults_;

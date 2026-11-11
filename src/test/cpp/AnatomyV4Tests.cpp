@@ -11,6 +11,18 @@ claw::Morphs evaluate(const claw::MorphFamilyProfile& profile, const claw::Morph
         rawWeight, [&](std::string_view source) { const auto it = sources.find(source); return it == sources.end() ? claw_matrix_source_neutral(claw::morphSourceKind(source)) : it->second; });
     return link.compose(profile.sex);
 }
+void requireSourceCoverage(const claw::MorphFamilyProfile& profile,
+                           std::initializer_list<const char*> names, bool bothSigns = false) {
+    const auto neutral = evaluate(profile, {});
+    for (const auto* name : names) {
+        const bool declared = std::any_of(profile.link.rules.begin(), profile.link.rules.end(),
+            [name](const auto& rule) { return rule.source == name && std::abs(rule.gain) > 1.e-6F; });
+        const bool positive = evaluate(profile, {{name, 1.F}}) != neutral;
+        const bool negative = evaluate(profile, {{name, -1.F}}) != neutral;
+        if (!declared || !(positive || negative) || (bothSigns && !(positive && negative)))
+            throw std::runtime_error(profile.id + " inactive human source: " + name);
+    }
+}
 }
 int main(int argc, char** argv) {
     try {
@@ -20,6 +32,14 @@ int main(int argc, char** argv) {
                 "biceps/triceps missing from the public sex catalogs");
         const auto* male = catalog.find("CLAW.HIMBO.5.8.Geometry1", claw::Sex::male);
         require(male, "HIMBO profile missing");
+        // The source-evidenced LP profile outputs as of 2026-11-11 form this
+        // cross-product contract. No installed LP files or machine paths are
+        // required to detect a dropped or clamp-suppressed source here.
+        requireSourceCoverage(*male, {"ArmsBiceps", "ArmsBicepsBack", "ArmsFore", "ArmsDelts", "PecsMass",
+            "TorsoVLine", "TorsoBackObliques", "TorsoBackSize", "TorsoBackDefinition", "LegsThigh",
+            "LegsCalfSize", "LegsGlutes", "TorsoMass", "Chubby", "Lean", "TorsoBellyChub", "LegsChubby",
+            "TorsoWaistSize", "TorsoMassSmooth", "BellySmooth"});
+        requireSourceCoverage(*male, {"TorsoVLine", "TorsoBackObliques", "TorsoBackDefinition", "LegsGlutes"}, true);
         const auto kedr = evaluate(*male, {{"ArmsBiceps", .5F}, {"ArmsBicepsBack", .3F}, {"ArmsBrachio", .4F},
             {"ArmsDelts", .5F}, {"ArmsFore", .4F}, {"Muscle", .2F}, {"TorsoShoulderInc", .2F}});
         const auto grom = evaluate(*male, {{"ArmsSide", .8F}});
@@ -31,6 +51,12 @@ int main(int argc, char** argv) {
                 "actual Grom soft arm input is mislabeled muscle");
         for (const auto* family : {"CLAW.3BA.2.48.Geometry1", "CLAW.CBBE.2.0.3.Geometry1"}) {
             const auto* female = catalog.find(family, claw::Sex::female); require(female, "female profile missing");
+            requireSourceCoverage(*female, {"Arms", "ForearmSize", "MuscleArms", "MusclePecs", "MuscleAbs",
+                "Thighs", "CalfSize", "MuscleLegs", "BigTorso", "MuscleButt", "Butt", "ChubbyArms", "ChubbyLegs",
+                "ChubbyWaist", "ChubbyButt", "Belly", "LegsThin", "RibsProminance"});
+            if (female->sourceFamily == "3BA") requireSourceCoverage(*female, {"MuscleBack_v2", "BackWing_v2"});
+            else requireSourceCoverage(*female, {"Back"});
+            requireSourceCoverage(*female, {"MuscleAbs", "MuscleButt", "Butt", "ChubbyButt", "RibsProminance"}, true);
             const auto mira = evaluate(*female, {{"Arms", -.5F}, {"Back", .2F}, {"ChestWidth", .9F},
                 {"MuscleArms", 1.F}, {"MuscleMoreArms_v2", 1.F}, {"ShoulderWidth", -1.F}});
             const auto miraSoftOnly = evaluate(*female, {{"Arms", -.5F}});
@@ -52,6 +78,13 @@ int main(int argc, char** argv) {
             const auto* bhunp = catalog.find("CLAW.BHUNP.3.34.AdvancedV4", claw::Sex::female);
             require(bhunp && bhunp->sourceFamily == "BHUNP" && bhunp->sourceVersion == "3.34" &&
                     !catalog.find(bhunp->id, claw::Sex::male), "BHUNP resource contract or sex binding lost");
+            requireSourceCoverage(*bhunp, {"Biceps", "Triceps", "Brachioradialis", "ForearmSize", "Deltoid",
+                "MusclePecs", "RectusAbdominis", "RectusOuterDetail", "BackTrapezius", "RectusFemoris",
+                "VastusLateralis", "VastusMedialis", "Hamstrings", "Soleus", "BigTorso", "MuscleButt", "Butt",
+                "BackWing", "ChubbyArms", "ChubbyWaist", "Belly", "LegsThin", "RibsProminance", "ThighThicker"});
+            requireSourceCoverage(*bhunp, {"Brachioradialis", "MusclePecs", "RectusAbdominis", "RectusOuterDetail",
+                "BackTrapezius", "RectusFemoris", "VastusLateralis", "VastusMedialis", "Soleus", "MuscleButt",
+                "Butt", "BackWing", "LegsThin", "RibsProminance", "ThighThicker"}, true);
             const auto neutral = evaluate(*bhunp, {});
             // In the actual BHUNP OSD/TRI, these positive deltas SHRINK. The
             // BodySlide baked invert flag is not a runtime SKEE sign switch.

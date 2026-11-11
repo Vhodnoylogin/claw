@@ -1,0 +1,7 @@
+<CoatMatrix schemaVersion="1">
+  <Rule source="hair.red" target="coat.selector" gain="0.187088" cap="1"/>
+  <Rule source="hair.green" target="coat.selector" gain="0.629376" cap="1"/>
+  <Rule source="hair.blue" target="coat.selector" gain="0.063536" cap="1"/>
+  <Rule source="seed.withHair" target="coat.selector" gain="0.12" cap="1"/>
+  <Rule source="seed.withoutHair" target="coat.selector" gain="1" cap="1"/>
+</CoatMatrix>

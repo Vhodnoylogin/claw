@@ -1,4 +1,4 @@
-Added 34 coat patterns from Elegant and individual coat selection for each werewolf. Human hair colour determines the colour group, while a stable character seed selects the pattern within that group. When no human hair colour is available, selection uses the natural coat pool.
+Added individual coat selection for the ten textures in the optional Elegant Randomized collection. CLAW reads separately installed textures and keeps the equipped skin when the selected set is unavailable. Human hair colour and a stable actor seed drive the choice.
 Automatic choices and manual assignments are preserved through model refresh and save/load.
 Added support for classic UNP Renewal 4.6 using actor weight and available human traits, without BodySlide morphs.
 Fixed how human character scale is taken into account when converting ear, tail and claw proportions.

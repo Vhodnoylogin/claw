@@ -36,6 +36,17 @@ int main(int argc, char** argv) {
         const auto white = pattern("white", " furR=\"1\" furG=\"1\" furB=\"1\"");
         const auto xml = document(white + black);
         const auto catalog = CoatLibrary::parse(xml);
+        const auto vendor = replaced(xml, "textures/actors/character/werewolf/claw/test/white/body.dds",
+            "textures/DiverseElegantWerewolves/White/body.dds");
+        rejects([&] { CoatLibrary::parse(vendor); }, "v1 private namespace bypass");
+        const auto v2 = replaced(vendor, "schemaVersion=\"1\"", "schemaVersion=\"2\"");
+        const auto external = CoatLibrary::parse(v2);
+        require(external.find("test/white")->textures.at("body.dds").path == "textures/DiverseElegantWerewolves/White/body.dds",
+            "v2 changed the installed DDS path");
+        for (const auto invalid : {"textures/../White/body.dds", "textures//White/body.dds", "textures/CON/body.dds",
+            "textures/Bad:File/body.dds", "textures/White\\Other/body.dds", "textures/White/head.dds", "file:///White/body.dds"})
+            rejects([&] { CoatLibrary::parse(replaced(v2, "textures/DiverseElegantWerewolves/White/body.dds", invalid)); },
+                "unsafe or wrong external DDS path accepted");
         require(catalog.names() == std::vector<std::string>{"test/black", "test/white"}, "IDs are not stable sorted keys");
         require(catalog.nearest({.1F, .1F, .1F}) == "test/black" && catalog.nearest({.9F, .9F, .9F}) == "test/white", "Real RGB nearest selector failed");
         require(catalog.nearest({-1, 0, 0}).empty() && CoatLibrary{}.nearest({0, 0, 0}).empty(), "Invalid/absent palette invented a selection");
