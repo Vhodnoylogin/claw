@@ -37,8 +37,8 @@ struct CoatSurfaceObservation {
     std::optional<std::int32_t> materialType, feature;
     std::optional<std::string> diffusePath, diffuseResource;
     std::optional<RGB> tint;
-    std::optional<float> materialAlpha, propertyAlpha;
-    std::optional<std::uint64_t> shaderFlags;
+    std::optional<float> materialAlpha, propertyAlpha, originalPropertyAlpha, actorAlpha;
+    std::optional<std::uint64_t> shaderFlags, originalShaderFlags;
     // -1 unavailable, 0 absent, 1 false boolean, 2 true boolean, 3 other type.
     int noTint{-1};
     bool tracked{}, ownProperty{}, ownMaterial{}, ownGuard{}, ownTextureSet{}, ownDiffuse{}, healthyLease{};
@@ -78,8 +78,11 @@ inline std::string coatAuditRows(const std::vector<CoatSurfaceObservation>& rows
         else result += "null";
         result += ",\"materialAlpha\":" + (row.materialAlpha ? coatAuditNumber(*row.materialAlpha) : "null");
         result += ",\"propertyAlpha\":" + (row.propertyAlpha ? coatAuditNumber(*row.propertyAlpha) : "null");
+        result += ",\"originalPropertyAlpha\":" + (row.originalPropertyAlpha ? coatAuditNumber(*row.originalPropertyAlpha) : "null");
+        result += ",\"actorAlpha\":" + (row.actorAlpha ? coatAuditNumber(*row.actorAlpha) : "null");
         // Decimal string preserves all 64 flag bits in JSON consumers.
         result += ",\"shaderFlags\":" + (row.shaderFlags ? coatAuditQuote(std::to_string(*row.shaderFlags)) : "null");
+        result += ",\"originalShaderFlags\":" + (row.originalShaderFlags ? coatAuditQuote(std::to_string(*row.originalShaderFlags)) : "null");
         result += ",\"noTint\":" + std::to_string(row.noTint) + ",\"tracked\":" + boolean(row.tracked);
         result += ",\"ownProperty\":" + std::string(boolean(row.ownProperty)) + ",\"ownMaterial\":" + boolean(row.ownMaterial);
         result += ",\"ownGuard\":" + std::string(boolean(row.ownGuard)) + ",\"ownTextureSet\":" + boolean(row.ownTextureSet);
