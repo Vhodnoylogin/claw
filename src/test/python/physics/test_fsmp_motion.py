@@ -16,14 +16,20 @@ sys.path.insert(0, str(ROOT))
 import fsmp_motion as fsmp
 
 
-def fixture(extra=False):
-    kinds = ["NiNode", "BSTriShape", "NiStringExtraData"]
+def fixture(extra=False, marker=b""):
+    kinds = ["NiNode", "BSTriShape", "NiStringExtraData", "BSShaderTextureSet"]
     strings = [b"Scene Root", b"BODYTRI", b"existing/path.tri"]
     root = struct.pack("<II", 0, int(extra)) + (struct.pack("<I", 2) if extra else b"") + b"opaque root rest"
-    blocks = [root, b"opaque original geometry skin material bytes", struct.pack("<II", 1, 2)]
+    blocks = [root, b"opaque original geometry skin material bytes" + marker, struct.pack("<II", 1, 2)]
+    type_indices = [0, 1, 2]
+    for name in sorted(fsmp.materials.DIFFUSES):
+        slots = [(fsmp.materials.BASE + name).encode(), b"shared normal map", *([b""] * 7)]
+        blocks.append(struct.pack("<I", 9) + b"".join(struct.pack("<I", len(slot)) + slot for slot in slots))
+        type_indices.append(3)
     prefix = b"Gamebryo File Format, Version 20.2.0.7\n" + struct.pack("<IBIII", 0x14020007, 1, 12, len(blocks), 100) + b"\0\0\0"
     return (prefix + struct.pack("<H", len(kinds)) + b"".join(struct.pack("<I", len(k)) + k.encode() for k in kinds)
-            + struct.pack("<3H", 0, 1, 2) + struct.pack("<3I", *map(len, blocks))
+            + struct.pack("<" + str(len(blocks)) + "H", *type_indices)
+            + struct.pack("<" + str(len(blocks)) + "I", *map(len, blocks))
             + struct.pack("<II", len(strings), max(map(len, strings)))
             + b"".join(struct.pack("<I", len(s)) + s for s in strings) + struct.pack("<I", 0)
             + b"".join(blocks) + struct.pack("<II", 1, 0))
@@ -51,7 +57,7 @@ class FsmpMotionTests(unittest.TestCase):
         resources = {}
         for index, role in enumerate((*fsmp.common.BODY_ROLES, "skeleton")):
             resources[role] = inputs / (role + ".nif")
-            resources[role].write_bytes(fixture(extra=bool(index % 2)))
+            resources[role].write_bytes(fixture(extra=bool(index % 2), marker=role.encode()))
         (baseline / "hdtSMP64.dll").write_bytes(b"synthetic provider presence, not an executable")
         reads = []
 
@@ -148,6 +154,8 @@ class FsmpMotionTests(unittest.TestCase):
                 expected = {"README.txt", *(fsmp.XML_ROOT + "CLAWMotion" + sex + ".xml"
                                              for sex in ("Male", "Female")),
                             *(fsmp.MESH + sex + "bodywerewolf_" + endpoint + ".nif"
+                              for sex in ("male", "female") for endpoint in ("0", "1")),
+                            *(fsmp.MESH + sex + "PlayerWerewolf_" + endpoint + ".nif"
                               for sex in ("male", "female") for endpoint in ("0", "1"))}
                 with zipfile.ZipFile(report["archive"]["path"]) as archive:
                     self.assertEqual(set(archive.namelist()), expected)
@@ -162,7 +170,15 @@ class FsmpMotionTests(unittest.TestCase):
                         member = fsmp.MESH + sex + "bodywerewolf_" + role[-1] + ".nif"
                         payload = archive.read(member)
                         before, after = fsmp.Nif(resources[role].read_bytes()), fsmp.Nif(payload)
-                        self.assertEqual(after.blocks[1:len(before.blocks)], before.blocks[1:])
+                        for index in range(1, len(before.blocks)):
+                            if before.kind(index) == "BSShaderTextureSet":
+                                original = fsmp.materials.texture_slots(before.blocks[index])
+                                adapted = fsmp.materials.texture_slots(after.blocks[index])
+                                prefix, name = original[0].rsplit(b"\\", 1)
+                                self.assertEqual(adapted[0], prefix + b"\\player" + name)
+                                self.assertEqual(adapted[1:], original[1:])
+                            else:
+                                self.assertEqual(after.blocks[index], before.blocks[index])
                         self.assertEqual(after.strings[:len(before.strings)], before.strings)
                         self.assertEqual(after.footer, before.footer)
                         self.assertEqual(written_hook(payload, "BODYTRI"), written_hook(resources[role].read_bytes(), "BODYTRI"))
@@ -176,11 +192,63 @@ class FsmpMotionTests(unittest.TestCase):
                         self.assertEqual(dynamic, nodes)
                         self.assertEqual(set(report["storedWeightCoverage"][role]), nodes)
                         self.assertEqual(reads.count(out / "package" / member), 1)
+                        alias = fsmp.MESH + sex + "PlayerWerewolf_" + role[-1] + ".nif"
+                        self.assertEqual(archive.read(alias), payload)
+                        self.assertEqual(reads.count(out / "package" / alias), 1)
+                        self.assertEqual(set(report["bindings"][role]["paths"]), {member, alias})
+                        self.assertEqual(report["bindings"][role]["playerOnlyMaterials"]["inputSha256"],
+                                         hashlib.sha256(resources[role].read_bytes()).hexdigest())
+                        self.assertTrue(report["bindings"][role]["playerOnlyMaterials"]["changedTextureSets"])
+                    # The opaque endpoint marker proves aliases cannot silently
+                    # reuse a different sex's or weight endpoint's body bytes.
+                    self.assertEqual(len({archive.read(fsmp.MESH + sex + "PlayerWerewolf_" + endpoint + ".nif")
+                                          for sex in ("male", "female") for endpoint in ("0", "1")}), 4)
                 self.assertEqual(json.loads((out / "fsmp-motion-build.json").read_text()), report)
                 self.assertEqual(report["providerBinary"]["sha256"], fsmp.common.pin(baseline / "hdtSMP64.dll")["sha256"])
                 for key in ("runtimeQualified", "gameValidated", "releaseReady", "collisionResponseEnabled"):
                     self.assertFalse(report[key])
                 self.assertFalse((out / "FAILED-unverified-do-not-install").exists())
+
+    def test_already_playeronly_materials_are_retained_in_both_armor_routes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            resources, baseline, api, _, source_fixture = self.builder_fixture(directory)
+            adapted, _ = fsmp.materials.adapt_nif(resources["female1"].read_bytes())
+            resources["female1"].write_bytes(adapted)
+            out = Path(directory) / "candidate"
+            with source_fixture:
+                report = fsmp.build_adapter(out, baseline, resources, None, breast=True, api=api)
+            self.assertEqual(report["bindings"]["female1"]["playerOnlyMaterials"]["changedTextureSets"], [])
+            source_nif = fsmp.Nif(adapted)
+            for name in report["bindings"]["female1"]["paths"]:
+                output = fsmp.Nif((out / "package" / name).read_bytes())
+                self.assertEqual(output.blocks[1:len(source_nif.blocks)], source_nif.blocks[1:])
+
+    def test_player_alias_hook_failure_cannot_report_a_successful_build(self):
+        with tempfile.TemporaryDirectory() as directory:
+            resources, baseline, api, _, source_fixture = self.builder_fixture(directory)
+            original_read = api.NifFile
+
+            def missing_player_hook(path):
+                nif = original_read(path)
+                if "PlayerWerewolf" in Path(path).name:
+                    nif.root.get_extra_data = lambda **unused: None
+                return nif
+
+            out = Path(directory) / "candidate"
+            with source_fixture, self.assertRaisesRegex(ValueError, "Written FSMP root hook failed native readback"):
+                fsmp.build_adapter(out, baseline, resources, None, api=SimpleNamespace(NifFile=missing_player_hook))
+            self.assertTrue((out / "FAILED-unverified-do-not-install").exists())
+            self.assertFalse((out / "fsmp-motion-build.json").exists())
+            self.assertFalse((out / "CLAW Physics - FSMP Motion.zip").exists())
+
+    def test_material_adapter_source_change_is_refused_before_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            resources, baseline, api, _, source_fixture = self.builder_fixture(directory)
+            out = Path(directory) / "candidate"
+            with source_fixture, patch.object(fsmp, "MATERIAL_SOURCE_BYTES", b"different captured source"), \
+                    self.assertRaisesRegex(ValueError, "material adapter source changed since loading"):
+                fsmp.build_adapter(out, baseline, resources, None, api=api)
+            self.assertFalse(out.exists())
 
     def test_fsmp_only_build_still_rejects_present_provider_conflicts_and_invalid_xml(self):
         cases = (

@@ -66,6 +66,21 @@ fail rather than silently substituting synthetic meshes.
 - First-person models, VR body and physics have separate acceptance. None is
   established by these third-person aliases or the old 0.9.0 runs.
 
+## FSMP overlay follow-up
+
+The optional FSMP builder now adapts each explicit sex/weight input to the same
+PlayerOnly base materials before adding its root XML hook. It emits all four
+standard and four PlayerOnly endpoints, so an enabled Coop armor does not bypass
+the hook and the physics overlay cannot restore Main-only diffuse paths.
+Already adapted inputs are retained; BODYTRI, geometry, skin and other material
+slots are unchanged. The report records both adaptation and hook provenance.
+
+Eleven focused FSMP tests and seven shared motion tests pass. Independent offline
+readback checks all eight actual NIFs, including distinct endpoint routing and
+the matching sex XML. This adds no provider binary or texture artwork. Actual
+overlay precedence, Coop armor loading and provider-motion lifecycle still
+require a newly pinned game test; earlier case08 acceptance is unchanged.
+
 Local audit and derived probe evidence remain outside Git under
 `Builds/claw-elegant-playeronly-audit-20261111/`; the independent critique is in
 `Builds/claw-playeronly-critic-20261111/`. The derived probe is explicitly an

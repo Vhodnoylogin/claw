@@ -13,11 +13,26 @@ import motion_adapter as common
 TOOLS = common.ROOT.parent / "build-tools"
 sys.path.insert(0, str(TOOLS))
 from head_split import Nif
+import player_only_materials as materials
+
+MATERIAL_SOURCE = TOOLS / "player_only_materials.py"
+if Path(materials.__file__).resolve() != MATERIAL_SOURCE.resolve():
+    raise ValueError("A different PlayerOnly material adapter is already loaded")
+MATERIAL_SOURCE_BYTES = MATERIAL_SOURCE.read_bytes()
 
 HOOK = "HDT Skinned Mesh Physics Object"
 MESH = "Meshes/Actors/WerewolfBeast/Character Assets/"
 XML_ROOT = "SKSE/Plugins/hdtSkinnedMeshConfigs/CLAW/"
 SOURCE = "https://github.com/DaymareOn/hdtSMP64/blob/e52ad960048c14e637d14fcbd65314ca017fc3b8/src/"
+
+
+def body_paths(role):
+    """Both armor routes use the same explicit sex and weight endpoint."""
+    if role not in common.BODY_ROLES:
+        raise ValueError("Unknown FSMP body endpoint: " + str(role))
+    sex = "female" if role.startswith("female") else "male"
+    return tuple(MESH + sex + route + "_" + role[-1] + ".nif"
+                 for route in ("bodywerewolf", "PlayerWerewolf"))
 
 
 def bind_nif(payload, xml_path):
@@ -116,7 +131,10 @@ def build_adapter(out, provider_snapshot, resources, pynifly, *, breast=False, a
     if api is None:
         api, dependencies = common.load_pynifly(Path(pynifly))
     coverage = common.inspect_resources(api, resources, breast)
+    if MATERIAL_SOURCE.read_bytes() != MATERIAL_SOURCE_BYTES:
+        raise ValueError("PlayerOnly material adapter source changed since loading")
     sources = [common.pin(Path(__file__)), common.pin(Path(common.__file__)), common.pin(TOOLS / "head_split.py"),
+               common.pin(MATERIAL_SOURCE),
                common.pin(common.ROOT / "motion-adapters.md")]
     files = {}
     for sex in ("male", "female"):
@@ -124,13 +142,18 @@ def build_adapter(out, provider_snapshot, resources, pynifly, *, breast=False, a
     bindings = {}
     for role in common.BODY_ROLES:
         sex = "female" if role.startswith("female") else "male"
-        name = sex + "bodywerewolf_" + role[-1] + ".nif"
         xml_path = XML_ROOT + "CLAWMotion" + sex.title() + ".xml"
-        files[MESH + name], bindings[role] = bind_nif(resources[role].read_bytes(), xml_path)
+        adapted, material_report = materials.adapt_nif(resources[role].read_bytes())
+        payload, bindings[role] = bind_nif(adapted, xml_path)
+        bindings[role]["playerOnlyMaterials"] = material_report
+        bindings[role]["paths"] = list(body_paths(role))
+        for name in bindings[role]["paths"]:
+            files[name] = payload
     files["README.txt"] = ("CLAW Physics - FSMP Motion\n\nSeparate optional motion adapter for exact inspected CLAW bodies.\n"
         "Requires a separately installed runtime-matched Faster HDT-SMP provider and the selected CLAW core/XP32.\n"
         "Place after the selected CLAW body mod. Choose this OR CLAW CBPC motion; never both.\n"
-        "Cloned body NIFs contain only a new Scene Root XML hook; all original non-root blocks stay exact.\n"
+        "Standard and PlayerOnly body paths share the matching sex/weight endpoint and Scene Root XML hook.\n"
+        "Base diffuse paths use separately installed Elegant PlayerOnly textures; geometry, skin and BODYTRI stay exact.\n"
         "No TRI, skeleton, provider binary, collider/contact configuration, Papyrus host or global defaultBBPs is bundled.\n"
         "Spring constraints use existing ear/tail nodes; female P1 is " + ("included" if breast else "excluded") + ".\n"
         "Current linked morphs retain the same skin weights; these constants do not refit contacts or rest pivots.\n"
@@ -147,15 +170,16 @@ def build_adapter(out, provider_snapshot, resources, pynifly, *, breast=False, a
         target = package / name
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(payload)
-    # Public native readback independently resolves all four actual root hooks.
+    # Public native readback independently resolves both armor routes at all four endpoints.
     for role in common.BODY_ROLES:
         sex = "female" if role.startswith("female") else "male"
-        path = package / (MESH + sex + "bodywerewolf_" + role[-1] + ".nif")
-        nif = api.NifFile(str(path))
-        hook = nif.root.get_extra_data(blockname="NiStringExtraData", name=HOOK)
-        if hook is None or hook.string_data != bindings[role]["xml"]:
-            raise ValueError("Written FSMP root hook failed native readback")
-        common.inspect_body(nif, common.source.NODES + (common.source.BREAST_NODES if breast and sex == "female" else ()), role)
+        for name in bindings[role]["paths"]:
+            path = package / name
+            nif = api.NifFile(str(path))
+            hook = nif.root.get_extra_data(blockname="NiStringExtraData", name=HOOK)
+            if hook is None or hook.string_data != bindings[role]["xml"]:
+                raise ValueError("Written FSMP root hook failed native readback")
+            common.inspect_body(nif, common.source.NODES + (common.source.BREAST_NODES if breast and sex == "female" else ()), role)
     archive = out / "CLAW Physics - FSMP Motion.zip"
     common.archive(archive, files)
     common.unchanged([*pins.values(), *dependencies, *sources])
