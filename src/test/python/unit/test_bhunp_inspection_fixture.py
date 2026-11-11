@@ -14,7 +14,7 @@ class BHUNPInspectionFixtureTests(unittest.TestCase):
         profile = next(p for p in catalog.findall('Profile') if p.get('family') == 'BHUNP')
         keys = {r.get('source') for r in profile.findall('Rule')
                 if r.get('source') and not r.get('source').startswith('$')}
-        self.assertEqual(len(keys), 47)
+        self.assertEqual(len(keys), 62)
         presets = ET.parse(FIXTURE/'CLAW-BHUNP-Technical.xml').getroot().findall('Preset')
         self.assertEqual(len(presets), 3)
         for preset in presets:
