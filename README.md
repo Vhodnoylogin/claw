@@ -3,9 +3,8 @@
 Human body morphs shape male and female werewolves through editable coefficient
 and function matrices. CLAW 0.9 supports HIMBO, CBBE, CBBE+3BA, BHUNP, classic UNP Renewal and
 separate male/female Vanilla matrices. Available human face and stature inputs
-also influence the head, ears, tail and claws. A complete Elegant coat library
-provides persistent individual patterns selected from human hair colour and a
-stable character seed. Optional OBody integration supplies human preset inputs to
+also influence the head, ears, tail and claws. Users can install ten optional coats from the original Elegant Randomized
+component. CLAW uses the installed base coat when the selected textures are unavailable. Optional OBody integration supplies human preset inputs to
 eligible actors first encountered as werewolves.
 
 Every matrix explicitly reads `$actor.weight`, independently of the already
@@ -14,7 +13,7 @@ family. Native and the matching development Morphbench plugin use the same
 compiled evaluator. Installed-game evidence is recorded separately from source
 features in the [verification record](src/main/docs/verification-20261108.md).
 
-[Download CLAW 0.9.0](https://github.com/Vhodnoylogin/claw/releases/tag/claw/0.9.0)
+[Released downloads](https://github.com/Vhodnoylogin/claw/releases)
 · [Nexus](https://www.nexusmods.com/skyrimspecialedition/mods/194798)
 · [Русский](README.ru.md)
 
@@ -84,9 +83,9 @@ Keep Elegant Werewolf Replacer as the credited base dependency. Install a compat
 runtime-matched SKSE, RaceMenu/SKEE, Address Library and Microsoft Visual C++ x64
 runtime. OBody and its own requirements apply when automatic preset distribution
 or the optional originally-beast source host is used. Dependencies remain separate
-mods; no human bodies, human textures or skeleton are bundled. The complete
-Elegant 2K 2.1 werewolf texture library is included for per-actor coats
-under its original asset conditions; the Elegant Nexus requirement is retained. Existing saved actors
+mods. Install Elegant through your mod manager and let CLAW's meshes win. If upgrading
+from the withdrawn 0.9.0, replace its installed copy completely. Keep the separate
+Elegant installation enabled. Existing saved actors
 keep their stored conversion matrices after an update; a new game adopts the new
 defaults. Reinstalling a family choice alone does not reset existing actors.
 
@@ -99,24 +98,23 @@ record preserves this limit and earlier HIMBO/3BA and born-werewolf evidence.
 CBBE and other runtime boundaries have offline coverage; SE checks do not
 establish AE or VR game acceptance.
 
-The 0.9 runtime adds classic UNP, all 34 Elegant coat patterns, saved automatic
-and explicit coat assignments, live-opacity-safe material ownership and corrected
-human reference-scale capture. Automatic selection uses 32 natural coats; two
-stylised variants require an explicit integration assignment. Unknown human hair
-colour uses a stable natural-pool selection. The default preserves authored
-texture colours. This is texture selection, not arbitrary recolouring.
+In 0.9.0 the named matrix output passes through a map of intervals to
+external materials. The archive contains the mapping and catalog. Every
+texture comes from the author's separately installed Elegant download.
+See the [installation guide](src/main/resources/publication/runtime/README.md)
+for the optional ten-coat MO2 setup. Classic UNP Renewal, the opacity ownership fix and human reference-scale
+capture remain part of this build.
 
 The [5 November record](src/main/docs/verification-20261105.md) establishes a
 complete original-UNP lifecycle. The [6 November record](src/main/docs/verification-20261106.md)
 records mixed-origin coat persistence, material restoration and stature checks.
-The [0.9 release verification](src/main/docs/verification-20261108.md) identifies
+The [withdrawn 0.9.0 verification](src/main/docs/verification-20261108.md) identifies
 the final archive and its exact validation scope. Different runtime builds,
 complete-palette rendering and artistic quality are distinct checks.
 
-Physics is planned for 0.10.0. VR body and morph-responsive flat/VR colliders
-follow it; the adult anatomy supplement follows those. Comparison-plugin UI and
-artistic mesh refinement remain deferred. See the [roadmap](src/main/docs/roadmap.md),
-[release record](src/main/resources/publication/CLAW-0.9.0.md),
+Physics is the next development milestone. Breast work, the VR body and final
+visual review follow in that order. See the [roadmap](src/main/docs/roadmap.md),
+[release notes](src/main/resources/publication/CLAW-0.9.0.md),
 [matrix contract](src/main/docs/matrix-contract.md),
 [coat contract](src/main/docs/coat-library.md) and
 [reusable inspection configuration](src/test/resources/inspection/README.md).

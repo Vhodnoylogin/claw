@@ -123,7 +123,10 @@ Packaging requires completed body/native/plugin/script stages, exact source and
 dependency identities, actual FOMOD selection checks and a minimality audit. Keep
 the working archive and optional `test_` archive under `target/` or a declared
 external release directory. Follow [release-workflow.md](release-workflow.md).
-An archived binary set is not proof of a fresh build.
+The working package reads CoatMatrix.xml, CoatMapping.xml and CoatLibrary.xml from the source tree.
+It rejects DDS files and unreferenced runtime payloads. Elegant is installed
+separately by the player. Reuse of previously compiled body, ESP or PEX outputs
+must be recorded with their source lineage and hashes.
 
 ## Historical build documentation
 

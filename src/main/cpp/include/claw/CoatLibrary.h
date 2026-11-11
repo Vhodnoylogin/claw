@@ -36,6 +36,18 @@ inline bool coatKey(std::string_view value) {
     const auto slash = value.find('/');
     return slash != value.npos && coatToken(value.substr(0, slash)) && coatToken(value.substr(slash + 1));
 }
+inline bool externalCoatPath(std::string_view path, std::string_view basename) {
+    if (!path.starts_with("textures/") || path.size() > 240 || !path.ends_with("/" + std::string(basename))) return false;
+    while (!path.empty()) {
+        const auto next = path.find('/');
+        std::string component(path.substr(0, next));
+        for (auto& c : component) if (c >= 'A' && c <= 'Z') c += 'a' - 'A';
+        if (!coatToken(component)) return false;
+        if (next == path.npos) break;
+        path.remove_prefix(next + 1);
+    }
+    return true;
+}
 inline bool coatDigest(std::string_view value) {
     return value.size() == 64 && std::all_of(value.begin(), value.end(), [](unsigned char c) {
         return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
@@ -106,8 +118,9 @@ public:
         pugi::xml_document doc;
         if (!doc.load_buffer(xml.data(), xml.size(), pugi::parse_default, pugi::encoding_utf8)) fail("Malformed coat XML");
         const auto root = doc.document_element();
+        const std::string_view schema = root.attribute("schemaVersion").value();
         if (std::string_view(root.name()) != "CoatLibrary" || !attributes(root, {"schemaVersion", "id", "sourceArchiveSha256"}) ||
-            std::string_view(root.attribute("schemaVersion").value()) != "1") fail("Unsupported coat schema");
+            (schema != "1" && schema != "2")) fail("Unsupported coat schema");
         unsigned roots{}; for (const auto node : doc.children()) if (node.type() == pugi::node_element) ++roots;
         if (roots != 1) fail("Coat XML requires one root");
         CoatLibrary result; result.id_ = root.attribute("id").value();
@@ -140,7 +153,8 @@ public:
                 const std::string name = texture.attribute("name").value();
                 const std::string path = texture.attribute("path").value();
                 const auto expected = "textures/actors/character/werewolf/claw/" + result.id_ + "/" + pattern.id + "/" + name;
-                if (!textureNames.contains(name) || path != expected || !coatDigest(texture.attribute("sha256").value())) fail("Invalid coat DDS namespace/digest");
+                if (!textureNames.contains(name) || !(schema == "1" ? path == expected : externalCoatPath(path, name)) ||
+                    !coatDigest(texture.attribute("sha256").value())) fail("Invalid coat DDS namespace/digest");
                 std::uint32_t bytes{}; const std::string_view text = texture.attribute("bytes").value();
                 const auto [end, ec] = std::from_chars(text.data(), text.data() + text.size(), bytes);
                 if (text.empty() || ec != std::errc{} || end != text.data() + text.size() || bytes < 128 || bytes > 64 * 1024 * 1024) fail("Invalid coat DDS size");

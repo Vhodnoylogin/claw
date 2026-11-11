@@ -26,7 +26,6 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import subprocess
-import sys
 import xml.etree.ElementTree as ET
 import zipfile
 
@@ -34,6 +33,9 @@ ROOT = Path(__file__).resolve().parents[4]
 NAME = "CLAW - Customizable Lycanthrope Appearance and Weight"
 ARCHIVE_NAME = "CLAW - Customizable Lycanthrope Appearance and Weight.zip"
 VERSION = "0.9.0"
+APPEARANCE_FILES = ("CoatLibrary.xml", "CoatMapping.xml", "CoatMatrix.xml")
+APPEARANCE_PATH = "SKSE/Plugins/CLAW/"
+RUNTIME_README = "src/main/resources/publication/runtime/README.md"
 MESH = "Meshes/Actors/WerewolfBeast/Character Assets"
 ARCHIVES = {".zip", ".7z", ".rar", ".tar", ".gz", ".gzip", ".tgz", ".bz2", ".bzip2",
             ".tbz", ".tbz2", ".xz", ".txz", ".lz", ".lzma", ".zst", ".zstd", ".tzst",
@@ -48,15 +50,10 @@ SOURCE_FILES = {"CMakeLists.txt", "src/main/resources/profiles/MorphLinks.xml",
                 "src/main/python/build-tools/package-source-build.py",
                 "src/main/python/build-tools/build-unified-release.py",
                 "src/main/resources/publication/unified-installer/ModuleConfig.xml",
-                "src/main/resources/publication/unified-installer/info.xml"}
+                "src/main/resources/publication/unified-installer/info.xml", RUNTIME_README}
 HOST_SOURCES = {"src/main/papyrus/obody/CLAWOBodySourceHost.psc",
                 "src/main/papyrus/obody/build.py", "src/main/papyrus/obody/README.md",
                 "src/main/python/physics/wiring.py"}
-COAT_SOURCES = {"src/main/python/build-tools/coat_bundle.py",
-                "src/main/python/build-tools/coat_library.py",
-                "src/main/resources/appearance/CoatPolicy.xml",
-                "src/main/resources/appearance/elegant-2k-2.1.textures.json",
-                "src/main/resources/appearance/elegant-2k-2.1.inventory.json"}
 
 
 def sha(data):
@@ -154,10 +151,11 @@ class Inputs:
                 raise ValueError("Input changed during packaging: " + str(path))
 
 
-def tracked_source(inputs, include_host, include_coats=False):
+def tracked_source(inputs, include_host):
     result = subprocess.run(["git", "-C", str(ROOT), "ls-files", "-z"], capture_output=True, check=True)
     names = [name.decode("utf-8") for name in result.stdout.split(b"\0") if name]
-    required = SOURCE_FILES | (HOST_SOURCES if include_host else set()) | (COAT_SOURCES if include_coats else set())
+    required = SOURCE_FILES | (HOST_SOURCES if include_host else set())
+    required.update("src/main/resources/appearance/" + name for name in APPEARANCE_FILES)
     selected = sorted(name for name in names if name.startswith(SOURCE_PREFIXES) or name in required)
     if not required.issubset(selected) or not any(name.startswith("src/main/cpp/") for name in selected):
         raise ValueError("Current source hierarchy/packager must be tracked (stage src/ before packaging)")
@@ -306,8 +304,7 @@ def installer(template, entries):
     required.clear()
     destinations = {"CLAW.esp"} | {MESH + "/" + sex + "bodywerewolf" + ending
         for sex in ("male", "female") for ending in ("_0.nif", "_1.nif", ".tri")}
-    destinations |= {name.removeprefix("00 Base/") for name in entries
-                     if name.startswith(("00 Base/textures/", "00 Base/SKSE/Plugins/CLAW/Coat"))}
+    destinations.update(APPEARANCE_PATH + name for name in APPEARANCE_FILES)
     for destination in sorted(destinations):
         source = "00 Base/" + destination
         if source not in entries:
@@ -323,7 +320,7 @@ def installer(template, entries):
     steps[0].set("name", "Required bodies and human morph linkage")
     option = steps[0].find("optionalFileGroups/group/plugins/plugin")
     option.set("name", "Required human morph linkage")
-    option.find("description").text = "Carries human body morphs and declared NPC weight inputs into werewolf form. Requires matching SKSE, RaceMenu and Address Library. Select the actual male and female bodies on the following pages."
+    option.find("description").text = "Carries human body morphs and declared NPC weight inputs into werewolf form. Requires matching SKSE, RaceMenu and Address Library. Select the actual male and female bodies on the following pages. Install Elegant Werewolf Replacer separately for the base skin: https://www.nexusmods.com/skyrimspecialedition/mods/93336. Optional Randomized coat installation is described in the archive README."
     descriptor = option.find("typeDescriptor")
     descriptor.clear()
     ET.SubElement(descriptor, "type", name="Required")
@@ -402,14 +399,53 @@ def installer(template, entries):
     return ET.tostring(config, encoding="utf-8", xml_declaration=False)
 
 
+def audit_external_coats(entries):
+    """Permit only references to the ten sets in the official optional download."""
+    prefix = "00 Base/" + APPEARANCE_PATH
+    catalog = ET.fromstring(entries[prefix + "CoatLibrary.xml"])
+    if (catalog.tag != "CoatLibrary" or catalog.get("schemaVersion") != "2" or
+            catalog.get("id") != "randomized" or
+            catalog.get("sourceArchiveSha256") != "0cec26f8b14a1a91aa8ffc0e14ca80989deda1f5a7d2386d11451af5cf52b0a8"):
+        raise ValueError("Expected the official Elegant Randomized external catalog")
+
+    patterns = catalog.findall("Patterns/Pattern")
+    expected_ids = {"black", "brown", "grey", "timber", "timber-dark", "valley-black",
+                    "valley-brown", "valley-grey", "valley-white", "white"}
+    if len(patterns) != len(expected_ids) or {row.get("id") for row in patterns} != expected_ids:
+        raise ValueError("Incomplete external coat catalog")
+    maps = {"body.dds", "head.dds", "furarms.dds", "furback.dds", "furbelly.dds",
+            "furchest.dds", "furface.dds", "furshoulders.dds", "furtail.dds"}
+    for pattern in patterns:
+        folder = pattern.get("id").replace("-", "")
+        if len(pattern) != len(maps) or {row.get("name") for row in pattern} != maps:
+            raise ValueError("Incomplete external coat texture set")
+        for row in pattern:
+            path = "textures/diverseelegantwerewolves/" + folder + "/" + row.get("name")
+            if (row.tag != "Texture" or row.get("path", "").lower() != path or
+                    not re.fullmatch(r"[0-9a-f]{64}", row.get("sha256", "")) or
+                    not row.get("bytes", "").isascii() or not row.get("bytes", "").isdecimal() or
+                    not 128 <= int(row.get("bytes")) <= 64 * 1024 * 1024):
+                raise ValueError("Invalid external coat texture reference")
+
+    mapping = ET.fromstring(entries[prefix + "CoatMapping.xml"])
+    materials = {"randomized/" + name for name in expected_ids}
+    if ({row.get("material") for row in mapping.findall("Range")} != materials or
+            any(row.get("material") not in materials for row in mapping)):
+        raise ValueError("Coat mapping and external catalog do not agree")
+
+
 def selection_audit(entries):
     spec = importlib.util.spec_from_file_location("claw_source_fomod_reader", ROOT / "src/main/python/build-tools/build-unified-release.py")
     reader = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(reader)
     config = ET.fromstring(entries["fomod/ModuleConfig.xml"])
     required = config.find("requiredInstallFiles")
-    extra_base = {name.removeprefix("00 Base/") for name in entries
-                  if name.startswith(("00 Base/textures/", "00 Base/SKSE/Plugins/CLAW/Coat"))}
+    extra_base = {APPEARANCE_PATH + name for name in APPEARANCE_FILES}
+    audit_external_coats(entries)
+    for name, data in entries.items():
+        if (Path(name).suffix.lower() == ".dds" or "textures" in PurePosixPath(name.casefold()).parts
+                or data.startswith(b"DDS ")):
+            raise ValueError("Texture redistribution is not part of this runtime: " + name)
     if required is None or len(required) != 7 + len(extra_base) or any(row.tag != "file" for row in required):
         raise ValueError("Literal serialized FOMOD must contain seven explicit body/base mappings plus all coat resources")
     rows = []
@@ -441,6 +477,10 @@ def selection_audit(entries):
             rows.append({"maleFamily": male, "family": family, "obody": host, "runtimeFiles": len(installed),
                          "files": [{"path": name, "source": source, "sha256": sha(entries[source])}
                                    for name, source in sorted(installed.items())]})
+    used = {item["source"] for row in rows for item in row["files"]}
+    extras = set(entries) - used - {"fomod/ModuleConfig.xml", "fomod/info.xml", "README.md"}
+    if any(not name.startswith("NOTICES/") for name in extras):
+        raise ValueError("Unreferenced installer payload: " + ", ".join(sorted(extras)))
     return rows
 
 
@@ -497,7 +537,7 @@ def runtime_notices(licenses, review):
 
 
 def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
-          commonlib_commit, out, obody_esp=None, obody_pex=None, version=VERSION, source_commit=None, coat_bundle=None):
+          commonlib_commit, out, obody_esp=None, obody_pex=None, version=VERSION, source_commit=None):
     original_output = Path(out).absolute()
     if any(part.exists() and (part.is_symlink() or part.is_junction()) for part in (original_output, *original_output.parents)):
         raise ValueError("Linked output ancestry refused")
@@ -506,7 +546,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     if output.exists() or target not in output.parents:
         raise ValueError("Choose a new output directory below ignored target/")
     if not re.fullmatch(r"[0-9]+(?:\.[0-9]+){2,3}", version):
-        raise ValueError("Use an explicit numeric internal product version")
+        raise ValueError("Use an numeric product version")
     if (obody_esp is None) != (obody_pex is None):
         raise ValueError("OBody host ESP and PEX must be supplied together")
     inputs = Inputs()
@@ -529,59 +569,23 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     for male in MALE_FAMILIES:
         for family in FEMALE_FAMILIES:
             entries["20 Human Family/"+male+"-and-"+family+"/SKSE/Plugins/CLAW/MorphLinks.xml"] = profiles(matrix, family, male)
-    coat_receipt = None
-    if coat_bundle is not None:
-        sys.path.insert(0, str(ROOT / "src/main/python/build-tools"))
-        from coat_bundle import verify as verify_coats
-        for name in COAT_SOURCES:
-            inputs.read(ROOT / name)
-        recorded_receipt = inputs.read(Path(coat_bundle) / "bundle-receipt.json")
-        inputs.read(Path(coat_bundle) / "palette-metrics.json")
-        coat_receipt = verify_coats(coat_bundle)
-        if json.loads(recorded_receipt) != coat_receipt:
-            raise ValueError("Coat bundle receipt changed during verification")
-        for name, pin in coat_receipt["payloads"].items():
-            data = inputs.read(Path(coat_bundle) / safe_name(name))
-            if len(data) != pin["bytes"] or sha(data) != pin["sha256"]:
-                raise ValueError("Coat payload changed after verification: " + name)
-            entries["00 Base/" + name] = data
+    for name in APPEARANCE_FILES:
+        entries["00 Base/" + APPEARANCE_PATH + name] = inputs.read(ROOT / "src/main/resources/appearance" / name)
     template = ROOT / "src/main/resources/publication/unified-installer"
     entries["fomod/ModuleConfig.xml"] = installer(inputs.read(template / "ModuleConfig.xml"), entries)
     info = ET.fromstring(inputs.read(template / "info.xml"))
     info.find("Name").text = NAME
     info.find("Version").text = version
-    info.find("Description").text = "Links human body morphs to werewolf bodies."
     entries["fomod/info.xml"] = ET.tostring(info, encoding="utf-8", xml_declaration=False)
-    own, native_sources, commit, source_selection = tracked_source(inputs, obody_esp is not None, coat_bundle is not None)
+    own, native_sources, commit, source_selection = tracked_source(inputs, obody_esp is not None)
     native_sha = sha(entries["10 Native/SKSE/Plugins/CLAWDistribution.dll"])
     external, licenses, review = companion(inputs, source_companion_dir, native_sha, native_sources, commonlib_commit)
     validate_no_nested_archives(external)
     reference = source_reference(own, source_commit)
     notices, notice_selection = runtime_notices(licenses, review)
     entries.update(notices)
-    entries["README.md"] = ("# " + NAME + "\n\n"
-        "Human body morphs carried into werewolf shape.\n"
-        "Install through FOMOD: choose HIMBO or Vanilla for males and CBBE, 3BA, BHUNP, classic UNP or Vanilla for females.\n"
-        "Installed plugin markers suggest a choice; every body option remains selectable. Choose the body that actually wins your mod conflicts.\n"
-        "The BHUNP matrix targets BHUNP 3.34 Advanced Ver4 with generated body morphs.\n"
-        "The classic UNP matrix targets Renewal 4.6 using NPC weight and available generic traits, without BodySlide morph inputs; select it manually. See the source verification record for installed-game coverage.\n"
-        "Requires Elegant textures, XP32 and matching SKSE/RaceMenu/Address Library. Replacement human bodies are required only for their selected matrix.\n"
-        "Vanilla matrices use NPC weight. OBody integration supplies morph inputs to eligible born wolves using a morph-based matrix.\n\n" +
-        ("Includes all 355 original Elegant 2K 2.1 textures and 34 complete coat patterns. "
-         "Human hair selects a colour group; each actor keeps its own marking choice. "
-         "Wild werewolves receive a stable individual natural coat. A manual choice takes priority. "
-         "CoatPolicy.xml controls allowed patterns and original colours or linked skin/hair tint. "
-         "Elegant remains required and credited. Alternate eye and Lobo textures are bundled under "
-         "separate CLAW paths; they do not override installed eye or companion choices.\n\n"
-         if coat_receipt else "Human skin and hair colours can tint the werewolf's existing materials. "
-         "Complete coat distribution requires the packaged Elegant texture library and coat policy.\n\n") +
-        "Elegant Werewolf Replacer assets by [Wolflady500](https://www.nexusmods.com/profile/Wolflady500) "
-        "and [KaienHash](https://www.nexusmods.com/profile/KaienHash).\n" +
-        ("Additional Elegant asset credits: LilyValley807 (Valley textures), "
-         "XilaMonstrr (texture improvements and glow maps), CinnaMewRolle (mouth textures). "
-         "Original asset terms: https://www.nexusmods.com/skyrimspecialedition/mods/93336\n\n"
-         if coat_receipt else "\n") +
-        "Source code: " + reference["url"] + "\n").encode("utf-8")
+    entries["README.md"] = inputs.read(ROOT / RUNTIME_README).replace(
+        b"@SOURCE_URL@", reference["url"].encode("ascii")).replace(b"@VERSION@", version.encode("ascii"))
     validate_no_nested_archives(entries)
     packed = zip_bytes(entries)
     readback = read_zip(packed)
@@ -601,8 +605,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
                "runtimeInputProvenance": inputs.runtime_roles,
                "historicalArchiveUsedAsSource": False, "iniInstalled": False,
                "configuration": "canonical MorphLinks.xml family defaults; runtime has no INI reader",
-               "coatBundle": {"textures": 355, "patterns": 34, "payloadFiles": 357,
-                              "elegantRequirementRetained": True} if coat_receipt else None,
+               "texturePayloads": 0, "appearanceFiles": list(APPEARANCE_FILES),
                "payloads": {name: {"sha256": sha(data), "bytes": len(data)} for name, data in sorted(entries.items())}}
     validate_no_nested_archives(readback)
     inputs.verify()
@@ -628,7 +631,6 @@ def main(argv=None):
     parser.add_argument("--obody-pex", type=Path)
     parser.add_argument("--version", default=VERSION)
     parser.add_argument("--source-commit", help="Optional exact local commit matching reviewed source; verify public availability before publishing")
-    parser.add_argument("--coat-bundle", type=Path, help="Verified complete Elegant texture bundle (no source/archive files shipped)")
     args = parser.parse_args(argv)
     try:
         print(json.dumps(build(**vars(args)), indent=2))

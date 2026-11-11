@@ -1,6 +1,6 @@
 #pragma once
 #include "claw/ColourMath.h"
-#include "claw/CoatPolicy.h"
+#include "claw/CoatMapping.h"
 #include "claw/MaterialLease.h"
 #include "claw/CoatSurfaceAudit.h"
 #include <RE/Skyrim.h>
@@ -33,8 +33,14 @@ public:
     void setLibrary(CoatLibrary library, std::filesystem::path dataRoot);
     void setPolicy(std::string_view xml);
     void unavailablePolicy(std::string reason);
-    [[nodiscard]] std::vector<std::string> patterns() const { return library_.names(); }
-    [[nodiscard]] bool knowsPattern(std::string_view id) const { return library_.find(id) != nullptr; }
+    void setCoatMapping(CoatMapping mapping);
+    void unavailableCoatMapping(std::string reason);
+    [[nodiscard]] std::string_view coatOutputName() const { return mapping_ ? std::string_view(mapping_->output()) : std::string_view{}; }
+    [[nodiscard]] Colours humanColours(RE::FormID id) const;
+    [[nodiscard]] std::vector<std::string> patterns() const { return mapping_ ? mapping_->names() : library_.names(); }
+    [[nodiscard]] bool knowsPattern(std::string_view id) const {
+        return mapping_ ? !mapping_->material(id).empty() : library_.find(id) != nullptr;
+    }
     bool setPattern(RE::Actor* actor, std::string id);
     void clearPattern(RE::Actor* actor);
     [[nodiscard]] std::string pattern(RE::FormID id) const;
@@ -48,7 +54,7 @@ public:
     bool sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token);
     [[nodiscard]] std::string surfaceAudit(RE::FormID id) const;
     bool applyWolf(RE::Actor* actor, IOverrideInterface* provider,
-        std::uint64_t saveNamespace, std::uint64_t identity);
+        std::uint64_t saveNamespace, std::uint64_t identity, std::optional<float> coatOutput);
     void save(SKSE::SerializationInterface* serial) const;
     bool loadRecord(SKSE::SerializationInterface* serial, std::uint32_t type, std::uint32_t version, std::uint32_t length);
     [[nodiscard]] std::string_view status(RE::FormID id) const;
@@ -85,6 +91,7 @@ private:
         std::string status;
         std::string explicitPattern, appliedPattern, attemptedPattern;
         AutomaticCoatState automatic;
+        std::optional<float> coatOutput;
         TintMode attemptedMode{TintMode::linked};
         CoatSurfaceAuditCache audit;
         RE::NiPointer<RE::NiAVObject> auditRoot; // Turnover/release occurs only in game tasks.
@@ -118,6 +125,7 @@ private:
     std::set<RE::FormID> colourRecords_, patternRecords_, automaticRecords_, rejectedRecords_;
     CoatLibrary library_;
     CoatPolicy policy_;
+    std::optional<CoatMapping> mapping_;
     std::filesystem::path dataRoot_;
     std::map<std::string, PatternAssets, std::less<>> validatedPatterns_;
     std::uint64_t nextAuditRequest_{1}, nextAuditGeneration_{1}; // Never saved or reused on reset.
@@ -174,7 +182,21 @@ inline std::string_view Runtime::status(RE::FormID id) const {
 }
 inline void Runtime::setLibrary(CoatLibrary library, std::filesystem::path dataRoot) {
     for (auto& [id, entry] : entries_) { (void)id; unbind(entry); }
-    library_ = std::move(library); dataRoot_ = std::move(dataRoot); validatedPatterns_.clear(); policy_ = {};
+    library_ = std::move(library); dataRoot_ = std::move(dataRoot); validatedPatterns_.clear(); policy_ = {}; mapping_.reset();
+}
+inline void Runtime::setCoatMapping(CoatMapping mapping) {
+    mapping.checkMaterials(library_);
+    for (auto& [id, entry] : entries_) { (void)id; unbind(entry); entry.coatOutput.reset(); }
+    mapping_ = std::move(mapping);
+}
+inline void Runtime::unavailableCoatMapping(std::string reason) {
+    // An explicitly requested but invalid mapping must leave the model alone.
+    unavailablePolicy(std::move(reason));
+    mapping_.emplace();
+}
+inline Colours Runtime::humanColours(RE::FormID id) const {
+    const auto found = entries_.find(id);
+    return found == entries_.end() ? Colours{} : found->second.colours;
 }
 inline void Runtime::setPolicy(std::string_view xml) {
     auto policy = CoatPolicy::parse(xml, library_);
@@ -201,9 +223,9 @@ inline Runtime::Entry* Runtime::entryFor(RE::Actor* actor) {
     return &entry;
 }
 inline bool Runtime::setPattern(RE::Actor* actor, std::string id) {
-    if (!library_.find(id)) return false;
+    if (!knowsPattern(id)) return false;
     auto* entry = entryFor(actor); if (!entry) return false;
-    validatedPatterns_.erase(id);
+    validatedPatterns_.erase(mapping_ ? std::string(mapping_->material(id)) : id);
     unbind(*entry); entry->explicitPattern = std::move(id); entry->status = "coat selection pending"; return true;
 }
 inline void Runtime::clearPattern(RE::Actor* actor) {
@@ -215,6 +237,7 @@ inline void Runtime::clearPattern(RE::Actor* actor) {
     }
 }
 inline CoatDecision Runtime::decision(const Entry& entry) const {
+    if (mapping_) return mapping_->select(entry.explicitPattern, entry.coatOutput, entry.colours.hasHair);
     return policy_.select(library_, entry.explicitPattern,
         entry.colours.hasHair ? std::optional{entry.colours.hair} : std::nullopt,
         entry.automatic.seed, entry.automatic);
@@ -234,7 +257,7 @@ inline std::string Runtime::patternStatus(RE::FormID id) const {
         selected.origin == CoatOrigin::hairPool ? "automatic hair pool " + selected.pool :
         selected.origin == CoatOrigin::legacyHair ? "automatic legacy hair" :
         selected.origin == CoatOrigin::fallback ? "automatic fallback pool " + selected.pool : "no automatic pattern";
-    return origin + (policy_.tintMode() == TintMode::original ? " [original]: " : " [linked]: ") + entry.status;
+    return origin + (mapping_ || policy_.tintMode() == TintMode::original ? " [original]: " : " [linked]: ") + entry.status;
 }
 inline std::uint64_t Runtime::auditClock() {
     return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -608,8 +631,8 @@ inline void Runtime::reportYieldDifferences(RE::FormID actor, const Entry& entry
             actor, coatAuditQuote(failure.name), difference.field, coatAuditQuote(difference.expected), coatAuditQuote(difference.observed));
 }
 inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
-    std::uint64_t saveNamespace, std::uint64_t identity) {
-    if (!actor || !actor->GetActorBase() || !provider) return false;
+    std::uint64_t saveNamespace, std::uint64_t identity, std::optional<float> coatOutput) {
+    if (!actor || !actor->GetActorBase() || (!mapping_ && !provider)) return false;
     if (!saveNamespace || !identity) return false;
     auto found = entries_.find(actor->formID);
     auto* owned = found == entries_.end() ? entryFor(actor) : &found->second;
@@ -634,13 +657,26 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         entry.audit.invalidate(); entry.auditRoot.reset(); entry.auditGeneration = 0;
     }
     if (!root) { unbind(entry); entry.status = "unloaded"; return false; }
+    entry.coatOutput = coatOutput;
     const auto selectedChoice = decision(entry);
     if (selectedChoice.origin == CoatOrigin::hairPool && !selectedChoice.pattern.empty())
         entry.automatic.hair = {selectedChoice.pool, selectedChoice.pattern};
     if (selectedChoice.origin == CoatOrigin::fallback && !selectedChoice.pattern.empty())
         entry.automatic.fallback = {selectedChoice.pool, selectedChoice.pattern};
     const auto requestedPattern = entry.explicitPattern.empty() ? selectedChoice.pattern : entry.explicitPattern;
-    const auto mode = policy_.tintMode();
+    const auto resource = mapping_ ? mapping_->material(selectedChoice.pattern) : std::string_view(selectedChoice.pattern);
+    if (mapping_ && (resource.empty() || resource == installedCoatMaterial)) {
+        if (!entry.surfaces.empty()) unbind(entry);
+        if (resource == installedCoatMaterial && entry.root.get() == root && entry.attemptedPattern == selectedChoice.pattern)
+            return true;
+        entry.root.reset(root);
+        entry.attemptedPattern = selectedChoice.pattern;
+        entry.appliedPattern.clear(); // Public getter describes an actually bound private material.
+        entry.status = resource.empty() ? selectedChoice.reason :
+            "logical coat " + selectedChoice.pattern + "; installed model material retained";
+        return !resource.empty();
+    }
+    const auto mode = mapping_ ? TintMode::original : policy_.tintMode();
     if (root == entry.root.get() && entry.attemptedPattern == requestedPattern && entry.attemptedMode == mode && !entry.surfaces.empty()) {
         const bool stillInScene = std::all_of(entry.surfaces.begin(), entry.surfaces.end(), [root](const auto& surface) {
             return root->GetObjectByName(surface.geometry->name) == surface.geometry.get();
@@ -691,11 +727,11 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     if (root == entry.root.get() && entry.attemptedPattern == requestedPattern && entry.attemptedMode == mode && entry.surfaces.empty()) return false;
     unbind(entry);
     std::vector<Surface> prepared;
-    const auto* selected = library_.find(selectedChoice.pattern);
+    const auto* selected = library_.find(resource);
     std::string patternFailure = !requestedPattern.empty() && !selected ? "library or pattern unavailable" : "";
     const PatternAssets* assets{};
     if (selected) {
-        assets = &validatePattern(requestedPattern, *selected);
+        assets = &validatePattern(std::string(resource), *selected);
         if (!assets->valid) { selected = nullptr; patternFailure = "DDS missing or header/size mismatch"; }
     }
     // Resource failure is resolved before any live binding. A human retains the

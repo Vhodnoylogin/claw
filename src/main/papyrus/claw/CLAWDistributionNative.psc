@@ -47,16 +47,17 @@ Float Function GetHumanTrait(Actor target, String source) Global Native
 ; Skin/fur sources, private material application, or reason for unavailable colour.
 String Function GetAppearanceStatus(Actor target) Global Native
 
-; 0.8.5 bundles the complete Elegant texture library; original dependency/credits remain.
+; Stable logical coat identifiers offered by the installed adapter.
 String[] Function GetCoatPatterns() Global Native
 ; True means queued only. Read GetAppliedCoatPattern/GetCoatPatternStatus after it.
 Bool Function SetCoatPattern(Actor target, String patternId) Global Native
-; Removes the manual override; configured hair/fallback policy resumes its saved choice.
+; Removes the manual override and resumes the configured automatic selection.
 Bool Function ClearCoatPattern(Actor target) Global Native
 ; Requested manual override, or empty for the automatic/original-material policy.
 String Function GetCoatPattern(Actor target) Global Native
 ; Cached last successful private-material application; empty after unbind/failure.
 String Function GetAppliedCoatPattern(Actor target) Global Native
+; Includes the resolved logical ID when the adapter retains the installed material.
 String Function GetCoatPatternStatus(Actor target) Global Native
 
 ; Explicit read-only main-task sample of the currently loaded beast model.

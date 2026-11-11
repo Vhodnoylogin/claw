@@ -1,18 +1,11 @@
 # CLAW development roadmap
 
-Owner priorities, 8 November 2026. This replaces the earlier 0.8.5 plan and
-historical queue numbering. A source implementation is distinct from an installed
-game result and from artistic acceptance.
+## 0.9.0: core mechanics and external artwork
 
-## 0.9.0: core mechanics and individual coats
-
-- Release classic UNP Renewal 4.6 weight/head/stature conversion alongside the
-  existing HIMBO, CBBE, 3BA, BHUNP and both Vanilla matrices.
-- Include all 34 qualified Elegant coats, deterministic hair-group/seed selection,
-  source-less natural-pool fallback, explicit assignment/reset and persistence.
-- Release the live-opacity material-ownership and human reference-scale fixes.
-- Validate all installer combinations, exact native installation and all coat
-  resources before publication. Keep Elegant credited and required on Nexus.
+Read the ten optional coat sets from Elegant Randomized through the game data
+view. Keep the installed material if the required set is unavailable. The
+CLAW archive contains configurations referencing those external files.
+Check both installations, selections, game materials and save/load.
 
 ## 0.10.0: motion physics
 
@@ -22,7 +15,10 @@ existing XP32 skeleton. Compilation, a void callback and animation-driven node
 changes do not prove physics simulation. Establish actual provider state and
 controlled motion in the game; do not mask uncertainty with qualification flags.
 
-## After 0.10.0: VR body and contact colliders
+## After motion physics: female breast, then VR body and contact colliders
+
+Improve the female breast geometry and its response to human inputs.
+Follow with the VR body and morph-responsive contacts.
 
 Implement first-person VR body dispatch, visibility and synchronization. Then
 complete morph-responsive contact colliders for both flat and VR gameplay:
@@ -38,9 +34,9 @@ it is not part of 0.9.0 or 0.10.0 and is not being implemented in this slice.
 
 ## Deferred
 
-The independent Morphbench comparison-plugin UI/public update, artistic breast
-and musculature refinement, attractive lean/bulky extremes, cosmetic
-self-intersection tuning and new morph authoring remain deferred. Fix functional
+The independent Morphbench comparison-plugin UI/public update remains deferred.
+The final visual review covers musculature, lean/bulky extremes, cosmetic
+self-intersection tuning and new morph authoring. Fix functional
 defects such as missing textures or broken animation as they are found.
 
 No separate neutral _0/_1 authoring task or synthetic age input is implied.

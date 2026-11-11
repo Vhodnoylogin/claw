@@ -1,4 +1,5 @@
 #include "MatrixKernel.h"
+#include "Projection.h"
 
 static_assert(sizeof(CLAWMatrixRule) == 28);
 static_assert(alignof(CLAWMatrixRule) == 4);
@@ -9,29 +10,12 @@ bool finiteDouble(double value) { return value >= -1.7976931348623157e308 && val
 }
 
 extern "C" double claw_matrix_transform(double input, uint32_t function, uint32_t exponent, float value) {
-    switch (function) {
-    case 0: return input;
-    case 1: return input > 0.0 ? input : 0.0;
-    case 2: return input < 0.0 ? -input : 0.0;
-    case 3: {
-        const double t = input < 0.0 ? 0.0 : input > 1.0 ? 1.0 : input;
-        return (t * t) * (3.0 - 2.0 * t);
-    }
-    case 4: {
-        const double absolute = input < 0.0 ? -input : input;
-        const double t = absolute > 1.0 ? 1.0 : absolute;
-        double result = t;
-        for (uint32_t index = 1; index < exponent; ++index) result *= t;
-        return input < 0.0 ? -result : result;
-    }
-    case 5: return value;
-    }
-    return 0.0; // Evaluator rejects unknown function codes before calling.
+    return morph_matrix::transform(input, function, exponent, value);
 }
 
 extern "C" double claw_matrix_contribution(const CLAWMatrixRule* rule) {
     if (!claw_matrix_gain_active(rule->gain)) return 0.0;
-    return claw_matrix_transform(rule->input, rule->function, rule->exponent, rule->value) * static_cast<double>(rule->gain);
+    return morph_matrix::contribution(rule->input, rule->gain, rule->function, rule->exponent, rule->value);
 }
 
 extern "C" float claw_matrix_gain_epsilon(void) { return 1.0e-6F; }
@@ -73,7 +57,7 @@ extern "C" uint32_t claw_matrix_source_value_valid(int32_t kind, float value) {
 extern "C" float claw_matrix_source_neutral(int32_t kind) { return kind == 3 ? 1.F : 0.F; }
 
 extern "C" double claw_matrix_clamp(double value) {
-    return value < 0.0 ? 0.0 : value > 1.0 ? 1.0 : value;
+    return morph_matrix::bounded(value, 0.0, 1.0);
 }
 
 extern "C" int claw_matrix_evaluate(const CLAWMatrixRule* rules, uint32_t count,

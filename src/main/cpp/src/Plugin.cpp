@@ -16,6 +16,7 @@
 #endif
 #include <IPluginInterface.h>  // official pinned external API, never vendored
 #include "claw/Appearance.h"
+#include "claw/CoatMatrix.h"
 #if defined(CLAW_OBODY_API_HEADER)
 #include CLAW_OBODY_API_HEADER // Official public protocol, optional external SDK.
 #endif
@@ -128,6 +129,7 @@ std::atomic<bool> enabled{}, scanPending{};
 const SKSE::TaskInterface* tasks{};
 IBodyMorphInterface* morphs{};
 IOverrideInterface* appearanceOverrides{};
+std::optional<claw::appearance::CoatMatrix> coatMatrix;
 RE::TESRace* beastRace{};
 std::jthread timer;
 struct PhysicsBinding {
@@ -804,7 +806,14 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         invalidatePhysics(actor->GetFormID());
         if (!readback(actor, expected)) { logError(*state, "SKEE own morph readback differs from requested values"); return; }
     }
-    (void)claw::appearance::runtime.applyWolf(actor, appearanceOverrides, saveNamespace, state->identity);
+    auto& appearance = claw::appearance::runtime;
+    std::optional<float> selector;
+    if (coatMatrix) {
+        const auto outputs = coatMatrix->evaluate(appearance.humanColours(actor->formID),
+            claw::appearance::coatSeed(saveNamespace, state->identity));
+        if (const auto it = outputs.find(appearance.coatOutputName()); it != outputs.end()) selector = it->second;
+    }
+    (void)appearance.applyWolf(actor, appearanceOverrides, saveNamespace, state->identity, selector);
     state->sex = desiredSex; state->cache = std::move(expected); state->lastRoot = root; state->lastWeight = weight;
     state->dirty = false; state->status = Status::applied; state->error.clear();
 }
@@ -1303,7 +1312,6 @@ RE::BSFixedString appearanceStatus(RE::StaticFunctionTag*, RE::Actor* actor) {
     std::lock_guard lock(mutex);
     const auto* state = cachedState(actor);
     if (!state || state->quarantined) return {};
-    if (!appearanceOverrides) return RE::BSFixedString("SKEE Override API unavailable");
     return RE::BSFixedString(claw::appearance::runtime.status(actor->formID));
 }
 std::vector<RE::BSFixedString> coatPatterns(RE::StaticFunctionTag*) {
@@ -1731,40 +1739,34 @@ void message(SKSE::MessagingInterface::Message* event) {
             catch (const std::exception& error) { SKSE::log::error("CLAW morph family catalog: {}", error.what()); }
             if (!morphProfiles.valid()) SKSE::log::warn("CLAW morph family catalog: {}", morphProfiles.error());
             const auto dataRoot = dataDirectory();
-            const auto coatPath = dataRoot / claw::appearance::coatLibraryRelativePath;
-            std::error_code coatError;
-            const auto coatBytes = std::filesystem::file_size(coatPath, coatError);
-            claw::appearance::runtime.setLibrary({}, dataRoot);
-            if (!coatError) try {
-                if (coatBytes == 0 || coatBytes > 1024 * 1024) throw std::runtime_error("coat XML exceeds bounded size");
-                std::ifstream input(coatPath, std::ios::binary);
-                std::string xml(static_cast<std::size_t>(coatBytes), '\0');
-                if (!input.read(xml.data(), static_cast<std::streamsize>(xml.size())) || input.peek() != std::char_traits<char>::eof())
-                    throw std::runtime_error("coat XML read/size mismatch");
-                auto library = claw::appearance::CoatLibrary::parse(xml);
-                const auto count = library.names().size();
-                claw::appearance::runtime.setLibrary(std::move(library), dataRoot);
-                SKSE::log::info("CLAW optional coat library contains {} patterns", count);
-            } catch (const std::exception& error) { SKSE::log::warn("CLAW optional coat library unavailable; existing tint retained: {}", error.what()); }
-            const auto policyPath = dataRoot / claw::appearance::coatPolicyRelativePath;
-            std::error_code policyError;
-            const auto policyBytes = std::filesystem::file_size(policyPath, policyError);
-            if (!policyError) try {
-                if (policyBytes == 0 || policyBytes > 65536) throw std::runtime_error("coat policy exceeds bounded size");
-                std::ifstream input(policyPath, std::ios::binary);
-                std::string xml(static_cast<std::size_t>(policyBytes), '\0');
-                if (!input.read(xml.data(), static_cast<std::streamsize>(xml.size())) || input.peek() != std::char_traits<char>::eof())
-                    throw std::runtime_error("coat policy read/size mismatch");
-                claw::appearance::runtime.setPolicy(xml);
-                SKSE::log::info("CLAW coat policy loaded");
+            auto& appearance = claw::appearance::runtime;
+            coatMatrix.reset();
+            try {
+                const auto readXml = [&](const std::filesystem::path& relative) {
+                    const auto path = dataRoot / relative;
+                    const auto size = std::filesystem::file_size(path);
+                    if (!size || size > 65536) throw std::runtime_error("Invalid coat configuration size");
+                    std::ifstream stream(path, std::ios::binary);
+                    std::string text(static_cast<std::size_t>(size), '\\0');
+                    if (!stream.read(text.data(), static_cast<std::streamsize>(size)) ||
+                        stream.peek() != std::char_traits<char>::eof())
+                        throw std::runtime_error("Coat configuration read/size mismatch");
+                    return text;
+                };
+                auto matrix = claw::appearance::CoatMatrix::parse(readXml(claw::appearance::coatMatrixRelativePath));
+                auto mapping = claw::appearance::CoatMapping::parse(readXml(claw::appearance::coatMappingRelativePath));
+                if (!matrix.evaluate({}, 0).contains(mapping.output()))
+                    throw std::runtime_error("Coat mapping requests an absent matrix output");
+                claw::appearance::CoatLibrary materials;
+                if (mapping.usesExternalMaterials())
+                    materials = claw::appearance::CoatLibrary::parse(readXml(claw::appearance::coatLibraryRelativePath));
+                appearance.setLibrary(std::move(materials), dataRoot);
+                appearance.setCoatMapping(std::move(mapping));
+                coatMatrix = std::move(matrix);
+                SKSE::log::info("CLAW coat matrix and range mapping loaded");
             } catch (const std::exception& error) {
-                claw::appearance::runtime.unavailablePolicy(std::string("coat policy unavailable: ") + error.what());
-                SKSE::log::warn("CLAW coat policy unavailable; automatic pattern selection disabled: {}", error.what());
-            } else if (policyError && policyError != std::errc::no_such_file_or_directory) {
-                // Only an absent optional file selects legacy behavior. A
-                // present but unreadable/invalid path cannot widen auto pools.
-                claw::appearance::runtime.unavailablePolicy("coat policy unreadable: " + policyError.message());
-                SKSE::log::warn("CLAW coat policy unreadable; automatic pattern selection disabled: {}", policyError.message());
+                appearance.unavailableCoatMapping(error.what());
+                SKSE::log::warn("CLAW coat adapter unavailable: {}", error.what());
             }
         }
         if (auto* source = RE::ScriptEventSourceHolder::GetSingleton()) {
