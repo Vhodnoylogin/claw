@@ -3,6 +3,7 @@
 #include <pugixml.hpp>
 #include <array>
 #include <charconv>
+#include <cstdint>
 #include <map>
 #include <limits>
 #include <optional>
@@ -80,7 +81,11 @@ inline std::string coatEngineTexturePath(std::string_view path) {
     std::replace(result.begin(), result.end(), '/', '\\');
     return result;
 }
-struct CoatDDSInfo { std::uint32_t width{}, height{}, mipLevels{}; };
+struct CoatDDSInfo {
+    std::uint32_t width{}, height{}, mipLevels{};
+    std::uint32_t headerBytes{128};
+    std::optional<std::uint64_t> bytes;
+};
 inline std::optional<CoatDDSInfo> coatDDSHeader(std::span<const char> data) {
     if (data.size() < 128 || std::string_view(data.data(), 4) != "DDS ") return std::nullopt;
     const auto word = [&](unsigned offset) {
@@ -88,16 +93,66 @@ inline std::optional<CoatDDSInfo> coatDDSHeader(std::span<const char> data) {
         for (unsigned i = 0; i != 4; ++i) value |= std::uint32_t(static_cast<unsigned char>(data[offset + i])) << (i * 8);
         return value;
     };
-    const CoatDDSInfo result{word(16), word(12), std::max(1U, word(28))};
+    CoatDDSInfo result{word(16), word(12), std::max(1U, word(28))};
     if (word(4) != 124 || word(76) != 32 || result.width == 0 || result.height == 0 ||
-        result.width > 16384 || result.height > 16384 || result.mipLevels > 15) return std::nullopt;
+        result.width > 16384 || result.height > 16384 || (word(8) & 0x1007) != 0x1007 ||
+        !(word(108) & 0x1000) || !word(80) ||
+        word(24) > 1 || (word(8) & 0x800000) || (word(112) & (0xFE00 | 0x200000))) return std::nullopt;
+    unsigned maxMips = 1;
+    for (auto edge = std::max(result.width, result.height); edge > 1; edge /= 2) ++maxMips;
+    if (result.mipLevels > maxMips) return std::nullopt;
+    constexpr auto fourCC = [](char a, char b, char c, char d) {
+        return std::uint32_t(a) | (std::uint32_t(b) << 8) | (std::uint32_t(c) << 16) | (std::uint32_t(d) << 24);
+    };
+    std::uint32_t blockBytes{};
+    const auto format = word(84);
+    if ((word(80) & 4) && format == fourCC('D', 'X', '1', '0')) {
+        if (data.size() < 148 || word(132) != 3 || word(140) != 1 || (word(136) & 4)) return std::nullopt;
+        switch (word(128)) {
+            case 71: case 72: case 80: case 81: blockBytes = 8; break; // Typed BC1/BC4.
+            case 74: case 75: case 77: case 78: case 83: case 84:
+            case 95: case 96: case 98: case 99: blockBytes = 16; break; // Typed BC2/3/5/6/7.
+            default: break; // The engine owns support for other pixel formats.
+        }
+        result.headerBytes = 148;
+    } else if (word(80) & 4) {
+        if (format == fourCC('D', 'X', 'T', '1')) blockBytes = 8;
+        else if (format == fourCC('D', 'X', 'T', '3') || format == fourCC('D', 'X', 'T', '5')) blockBytes = 16;
+    }
+    if (!blockBytes) return result;
+    result.bytes = result.headerBytes;
+    auto width = result.width, height = result.height;
+    for (unsigned level = 0; level < result.mipLevels; ++level) {
+        *result.bytes += std::uint64_t((width + 3) / 4) * ((height + 3) / 4) * blockBytes;
+        width = std::max(1U, width / 2); height = std::max(1U, height / 2);
+    }
+    // Bounded dimensions/mips above make the sum safe and permit any supported
+    // resolution, including partial mip chains. No archive-specific size gate.
     return result;
+}
+inline std::optional<CoatDDSInfo> coatDDSMatches(std::uintmax_t bytes, std::span<const char> header) {
+    const auto info = coatDDSHeader(header);
+    return info && bytes > info->headerBytes && (!info->bytes || *info->bytes == bytes) ? info : std::nullopt;
 }
 struct CoatPattern {
     std::string id, label;
     std::optional<RGB> fur;
     std::map<std::string, CoatTexture, std::less<>> textures;
 };
+using CoatDimensions = std::map<std::string, CoatDDSInfo, std::less<>>;
+// Every map must pass before any surface changes. Valid mixed resolutions are
+// supported; catalog byte counts/digests remain source provenance only.
+template<class Observe> std::optional<CoatDimensions> coatPatternDimensions(
+    const CoatPattern& pattern, Observe&& observe) {
+    if (pattern.textures.size() != 9) return std::nullopt;
+    CoatDimensions dimensions;
+    for (const auto& [name, texture] : pattern.textures) {
+        const auto info = observe(texture);
+        if (!info) return std::nullopt;
+        dimensions.emplace(name, *info);
+    }
+    return dimensions;
+}
 // Source and measured palette coordinates are normalized sRGB. Compare in
 // linear RGB, never compare a linear DDS mean with an encoded source directly.
 inline double coatLinear(double value) {

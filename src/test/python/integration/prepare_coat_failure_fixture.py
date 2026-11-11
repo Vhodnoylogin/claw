@@ -36,13 +36,14 @@ def prepare(output: Path) -> dict:
             texture.set('sha256', hashlib.sha256(corrupt).hexdigest())
     truncated = bytearray(128)
     truncated[:4] = b'DDS '
-    for offset, value in ((4, 124), (12, 2048), (16, 2048), (28, 12), (76, 32)):
+    for offset, value in ((4, 124), (8, 0xA1007), (12, 2048), (16, 2048),
+                          (28, 12), (76, 32), (80, 4), (84, 0x35545844), (108, 0x1000)):
         struct.pack_into('<I', truncated, offset, value)
     for texture in patterns['timber-dark']:
         if texture.get('name') == 'furback.dds':
             texture.set('path', prefix + 'truncated/furback.dds')
-            # Keep the original complete-file byte count, so this header-only
-            # synthetic file is rejected before texture loading.
+            # Its valid DXT5 header declares a full mip payload that is absent.
+            # Rejection must come from the actual DDS, not catalog provenance.
     files = {
         'SKSE/Plugins/CLAW/CoatLibrary.xml': ET.tostring(tree, encoding='utf-8'),
         prefix + 'corrupt/furback.dds': corrupt,
