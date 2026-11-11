@@ -305,7 +305,6 @@ inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token, C
         if (length > limit) return std::nullopt;
         return std::string(value, length);
     };
-    const float actorAlpha = actor->GetAlpha();
     std::vector<CoatSurfaceObservation> rows;
     std::vector<RE::NiAVObject*> objects{root.get()};
     std::size_t visited{};
@@ -329,7 +328,6 @@ inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token, C
             return surface.geometry.get() == geometry;
         });
         row.tracked = lease != entry.surfaces.end();
-        row.actorAlpha = actorAlpha;
         if (row.tracked && lease->original) {
             row.originalPropertyAlpha = lease->original->alpha;
             row.originalShaderFlags = lease->original->flags.underlying();

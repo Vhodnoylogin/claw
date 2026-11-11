@@ -37,7 +37,7 @@ struct CoatSurfaceObservation {
     std::optional<std::int32_t> materialType, feature;
     std::optional<std::string> diffusePath, diffuseResource;
     std::optional<RGB> tint;
-    std::optional<float> materialAlpha, propertyAlpha, originalPropertyAlpha, actorAlpha;
+    std::optional<float> materialAlpha, propertyAlpha, originalPropertyAlpha;
     std::optional<std::uint64_t> shaderFlags, originalShaderFlags;
     std::optional<bool> hasFadeNode, originalHasFadeNode, sameFadeNode;
     // -1 unavailable, 0 absent, 1 false boolean, 2 true boolean, 3 other type.
@@ -80,7 +80,6 @@ inline std::string coatAuditRows(const std::vector<CoatSurfaceObservation>& rows
         result += ",\"materialAlpha\":" + (row.materialAlpha ? coatAuditNumber(*row.materialAlpha) : "null");
         result += ",\"propertyAlpha\":" + (row.propertyAlpha ? coatAuditNumber(*row.propertyAlpha) : "null");
         result += ",\"originalPropertyAlpha\":" + (row.originalPropertyAlpha ? coatAuditNumber(*row.originalPropertyAlpha) : "null");
-        result += ",\"actorAlpha\":" + (row.actorAlpha ? coatAuditNumber(*row.actorAlpha) : "null");
         result += ",\"hasFadeNode\":" + (row.hasFadeNode ? std::string(boolean(*row.hasFadeNode)) : "null");
         result += ",\"originalHasFadeNode\":" + (row.originalHasFadeNode ? std::string(boolean(*row.originalHasFadeNode)) : "null");
         result += ",\"sameFadeNode\":" + (row.sameFadeNode ? std::string(boolean(*row.sameFadeNode)) : "null");

@@ -81,7 +81,7 @@ int main() {
         row.diffuseResource = "textures\\bound\\different.dds";
         row.tint = RGB{0.125F, 1.5F, -0.25F}; // Actual values are never clamped to desired RGB.
         row.materialAlpha = .75F; row.propertyAlpha = .5F;
-        row.originalPropertyAlpha = .25F; row.actorAlpha = .4F;
+        row.originalPropertyAlpha = .25F;
         row.originalShaderFlags = std::uint64_t{1} << 35;
         row.hasFadeNode = false; row.originalHasFadeNode = true; row.sameFadeNode = false;
         row.shaderFlags = std::numeric_limits<std::uint64_t>::max(); row.noTint = 2;
@@ -106,8 +106,8 @@ int main() {
             "Texture-set path and bound resource observation were conflated");
         require(first.find("\"tint\":[0.125,1.5,-0.25]") != first.npos && first.find("18446744073709551615") != first.npos,
             "Actual tint or 64-bit flags lost precision or were clamped");
-        require(first.find("\"originalPropertyAlpha\":0.25") != first.npos && first.find("\"actorAlpha\":0.4") != first.npos &&
-            first.find("\"originalShaderFlags\":\"34359738368\"") != first.npos, "Retained donor and actor alpha/flags were conflated");
+        require(first.find("\"originalPropertyAlpha\":0.25") != first.npos &&
+            first.find("\"originalShaderFlags\":\"34359738368\"") != first.npos, "Retained donor alpha and flags were conflated");
         require(first.find("\"hasFadeNode\":false") != first.npos && first.find("\"originalHasFadeNode\":true") != first.npos &&
             first.find("\"sameFadeNode\":false") != first.npos, "Fade association diagnostics invented a shared node");
         require(!cache.read(2100).empty() && cache.read(2101).empty() && cache.read(99).empty(), "Stale or backward-clock audit remained available");
