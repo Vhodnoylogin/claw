@@ -7,6 +7,7 @@ import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from test_fsmp_probe import fixture, compose, transform
 
@@ -20,12 +21,13 @@ finally:
 
 class Session:
     def __init__(self, directory, previous=None, timeout=False, frozen_anchors=False, world_response=False,
-                 fail_head_restore=False):
+                 fail_head_restore=False, sex="male"):
         self.dir = Path(directory)
         self.state = {"checks": [], "id": "synthetic-owned-run"}
-        self.sample = fixture("male", effect=False)["baseline"]
+        self.sex = sex
+        self.sample = fixture(sex, effect=False)["baseline"]
         self.calls = []
-        self.previous = [True]*9 if previous is None else previous
+        self.previous = [True]*len(case.probe.drivers(sex)) if previous is None else previous
         self.timeout = timeout
         self.frozen_anchors = frozen_anchors
         self.world_response = world_response
@@ -43,7 +45,7 @@ class Session:
         self.calls.append((tool, copy.deepcopy(args)))
         if tool == "inspect":
             self.sample["sampleId"] += 1
-            self.sample["producerMonotonicNs"] += 200_000_000
+            self.sample["producerMonotonicNs"] += 100_000_000
             return copy.deepcopy(self.sample)
         if args.get("script") == "NiOverride":
             function, values = args["function"], args["args"]
@@ -71,10 +73,10 @@ class Session:
                     if row["name"] == name:
                         row["world"] = moved
                         row["local"] = compose(self.original_nodes[name]["local"], transform(offset))
-                    elif case.probe.anchors("male").get(row["name"]) == name or (
+                    elif case.probe.anchors(self.sex).get(row["name"]) == name or (
                             name == "Tails" and row["name"] in case.probe.INTERMEDIATES):
                         rest = case.probe.relative(self.original_nodes[row["name"]]["world"], anchor_world)
-                        if self.world_response and row["name"] in case.probe.MALE and all(self.previous):
+                        if self.world_response and row["name"] in case.probe.drivers(self.sex) and all(self.previous):
                             rest["translation"][1] += .03*offset[0]
                         row["world"] = compose(moved, rest)
             return {"returned": None}
@@ -86,11 +88,17 @@ class Session:
             channel = {"SetNodeLocalPosition": "translation", "SetNodeLocalRotationMatrix": "rotationRowMajor", "SetNodeScale": "scale"}[args["function"]]
             row["local"][channel] = copy.deepcopy(value)
             return {"returned": None if channel == "scale" else True}
+        if args.get("function") == "Disable":
+            self.sample["refs"][0]["disabled"] = True
+            self.sample["refs"][0]["loaded3D"] = False
+            return {"called": True, "returned": None, "returnedType": "none"}
+        if args.get("function") == "GetCurrentCrosshairRef":
+            return {"called": True, "returned": None if self.sample["refs"][0]["disabled"] else {"formId": "0xFF001234"}}
         if args.get("function") == "TogglePhysics":
             if self.timeout:
                 raise TimeoutError("synthetic unknown native return")
             names, on = args["args"][1:]
-            indices = [case.probe.drivers("male").index(name) for name in names]
+            indices = [case.probe.drivers(self.sex).index(name) for name in names]
             previous = [self.previous[index] for index in indices]
             for index in indices:
                 self.previous[index] = on
@@ -190,6 +198,100 @@ class OwnedFsmpCaseTests(unittest.TestCase):
             self.assertIn("error", cleanup["anchors"]["NPC Head [Head]"])
             self.assertTrue(cleanup["anchors"]["Tails"]["ownPositionComponentAbsent"])
             self.assertTrue(all(v is None for values in session.anchor_keys.values() for v in values.values()))
+
+    def test_female_trial_qualifies_eleven_and_only_writes_four_kinematic_anchors(self):
+        with tempfile.TemporaryDirectory() as directory:
+            session = Session(directory, world_response=True, sex="female")
+            result = case.run(session, "0xFF001234", "female", stimulus="xml-anchors", sleep=lambda _: None)
+            self.assertEqual(result["status"], "sampled-selective-contrast-observed")
+            self.assertEqual(len(result["selectiveChannels"]), 11)
+            self.assertEqual(session.previous, [True]*11)
+            expected = {"NPC Head [Head]", "Tails", "NPC L PreBreast P1", "NPC R PreBreast P1"}
+            written = set()
+            for tool, args in session.calls:
+                if args.get("script") == "NiOverride":
+                    self.assertEqual(args["args"][1:3], [False, True])
+                    written.add(args["args"][3])
+                elif args.get("script") == "NetImmerse":
+                    self.assertFalse(args["args"][-1])
+                    written.add(args["args"][1])
+            self.assertEqual(written, expected)
+            cleanup = json.loads((Path(directory)/"fsmp-probe/cleanup.json").read_bytes())
+            self.assertEqual(set(cleanup["anchors"]), expected)
+            self.assertFalse(cleanup["errors"])
+            self.assertTrue(all(row["ownPositionComponentAbsent"] for row in cleanup["anchors"].values()))
+
+    def test_female_missing_p1_binding_never_excites_and_restores_only_known_ten(self):
+        with tempfile.TemporaryDirectory() as directory:
+            session = Session(directory, previous=[True]*10 + [False], sex="female")
+            with self.assertRaisesRegex(ValueError, "dynamic-body gate"):
+                case.run(session, "0xFF001234", "female", stimulus="xml-anchors", sleep=lambda _: None)
+            self.assertFalse(any(args.get("script") == "NiOverride" for _, args in session.calls))
+            toggles = [args for _, args in session.calls if args.get("function") == "TogglePhysics"]
+            self.assertEqual(toggles[1]["args"][1], list(case.probe.FEMALE[:10]))
+            self.assertEqual(session.previous, [True]*10 + [False])
+
+    def test_fixture_disposal_requires_disabled_readback_and_null_crosshair(self):
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory)/"fsmp-probe").mkdir()
+            session = Session(directory, sex="female")
+            admitted = copy.deepcopy(session.sample)
+            result = case.dispose_fixture(session, "0xFF001234", "female", admitted)
+            self.assertTrue(result["verifiedDisabledAndCrosshairReleased"])
+            self.assertEqual(len([args for _, args in session.calls if args.get("function") == "Disable"]), 1)
+            self.assertTrue(result["observations"][-1]["world"]["refs"][0]["disabled"])
+            self.assertIsNone(result["observations"][-1]["crosshair"]["returned"])
+
+    def test_fixture_disposal_refuses_changed_actor_before_any_mutation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory)/"fsmp-probe").mkdir()
+            session = Session(directory, sex="female")
+            admitted = copy.deepcopy(session.sample)
+            session.sample["refs"][0]["actor"]["weight"]["rawNPCWeight"] = 51.
+            with self.assertRaisesRegex(ValueError, "changed before disposal"):
+                case.dispose_fixture(session, "0xFF001234", "female", admitted)
+            self.assertFalse(any(args.get("function") == "Disable" for _, args in session.calls))
+
+    def test_fixture_disposal_does_not_treat_missing_crosshair_value_as_null(self):
+        class MissingValue(Session):
+            def tool(self, tool, args, **kwargs):
+                result = super().tool(tool, args, **kwargs)
+                return {"called": True} if args.get("function") == "GetCurrentCrosshairRef" else result
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory)/"fsmp-probe").mkdir()
+            session = MissingValue(directory, sex="female")
+            with self.assertRaisesRegex(ValueError, "Crosshair readback value unavailable"):
+                case.dispose_fixture(session, "0xFF001234", "female", copy.deepcopy(session.sample))
+            self.assertEqual(len([args for _, args in session.calls if args.get("function") == "Disable"]), 1)
+
+    def test_fixture_disposal_requires_bounded_deadline_and_fresh_precondition(self):
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory)/"fsmp-probe").mkdir()
+            session = Session(directory, sex="female")
+            admitted = copy.deepcopy(session.sample)
+            for invalid in (float("inf"), float("nan"), 0, 16, True):
+                with self.assertRaisesRegex(ValueError, "finite 1..15"):
+                    case.dispose_fixture(session, "0xFF001234", "female", admitted, maximum_seconds=invalid)
+            self.assertEqual(session.calls, [])
+            with patch.object(session, "tool", return_value=admitted):
+                with self.assertRaisesRegex(ValueError, "precondition was replayed"):
+                    case.dispose_fixture(session, "0xFF001234", "female", admitted)
+
+    def test_fixture_disposal_does_not_accept_uncertain_disable_despite_effect(self):
+        class UncertainDisable(Session):
+            def tool(self, tool, args, **kwargs):
+                result = super().tool(tool, args, **kwargs)
+                if args.get("function") == "Disable":
+                    result["called"] = False
+                return result
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory)/"fsmp-probe").mkdir()
+            session = UncertainDisable(directory, sex="female")
+            with self.assertRaisesRegex(ValueError, "completion uncertain; do not replay"):
+                case.dispose_fixture(session, "0xFF001234", "female", copy.deepcopy(session.sample))
+            self.assertTrue(session.sample["refs"][0]["disabled"])
+            self.assertEqual(len([args for _, args in session.calls if args.get("function") == "Disable"]), 1)
+            self.assertFalse(any(args.get("function") == "GetCurrentCrosshairRef" for _, args in session.calls))
 
 
 if __name__ == "__main__":

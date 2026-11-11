@@ -4,17 +4,78 @@ The external harness supplies machine paths/profile and invokes this callback
 after the ordinary fixture scenario. This module does not launch or install.
 """
 import json
+import math
 from pathlib import Path
 import time
 
 import fsmp_probe as probe
 
 
+def dispose_fixture(session, reference, sex, admitted, *, maximum_seconds=8, sleep=time.sleep):
+    """Disable only the admitted disposable actor, then verify world/crosshair release."""
+    probe.require(type(maximum_seconds) in (int, float) and math.isfinite(maximum_seconds) and 1 <= maximum_seconds <= 15,
+                  "Owned fixture disposal requires a finite 1..15-second bound")
+    expected = probe.snapshot(admitted, reference, sex)
+    end = time.monotonic() + maximum_seconds
+    output = session.dir / "fsmp-probe" / "fixture-disposal.json"
+    record = {"reference": reference, "intent": None, "observations": []}
+
+    def save():
+        output.write_text(json.dumps(record, indent=2), encoding="utf-8")
+
+    def call(tool, args):
+        remaining = end - time.monotonic()
+        probe.require(remaining > 0, "Owned fixture disposal deadline exhausted")
+        session.phase("fsmp: dispose-fixture", remaining + 1)
+        return session.tool(tool, args, timeout=min(remaining, 5), deadline=end)
+
+    query = {"kind": "world_observer", "refs": [reference], "actors": True,
+             "nodes": [{"ref": reference, "name": name, "firstPerson": False} for name in probe.node_names(sex)]}
+    before = call("inspect", query)
+    current = probe.snapshot(before, reference, sex)
+    record["before"] = before
+    save()
+    probe.require(current["guard"] == expected["guard"], "Owned fixture changed before disposal")
+    probe.require(current["sample"] > expected["sample"] and current["time"] > expected["time"],
+                  "Owned fixture disposal precondition was replayed")
+    record["intent"] = {"script": "ObjectReference", "function": "Disable", "self": {"form": reference}, "args": [False]}
+    save()  # A unique void-call intent; no mutation replay after an uncertain result.
+    record["receipt"] = call("papyrus", {"action": "call", **record["intent"], "timeoutMs": 5000})
+    save()
+    receipt = record["receipt"]
+    probe.require(receipt.get("called") is True and receipt.get("returnedType") == "none" and
+                  "returned" in receipt and receipt["returned"] is None and not receipt.get("error"),
+                  "Owned fixture Disable completion uncertain; do not replay")
+    last_sample, last_time = current["sample"], current["time"]
+    while time.monotonic() < end:
+        raw = call("inspect", {"kind": "world_observer", "refs": [reference], "actors": True})
+        rows = raw.get("refs", [])
+        probe.require(raw.get("ok") is True and raw.get("quality") == "complete" and len(rows) == 1 and
+                      raw.get("sessionId") == before["sessionId"] and raw.get("loadGeneration") == before["loadGeneration"] and
+                      raw.get("sampleId", 0) > last_sample and raw.get("producerMonotonicNs", 0) > last_time,
+                      "Owned fixture disposal observation lost continuity")
+        row = rows[0]
+        probe.require(row.get("identity") == before["refs"][0]["identity"] and
+                      row.get("baseForm") == before["refs"][0]["baseForm"] and row.get("deleted") is False,
+                      "Owned fixture identity changed during disposal")
+        last_sample, last_time = raw["sampleId"], raw["producerMonotonicNs"]
+        crosshair = call("papyrus", {"action": "call", "script": "Game", "function": "GetCurrentCrosshairRef", "args": []})
+        record["observations"].append({"world": raw, "crosshair": crosshair})
+        save()
+        probe.require(crosshair.get("called") is True and "returned" in crosshair, "Crosshair readback value unavailable")
+        if row.get("disabled") is True and crosshair["returned"] is None:
+            record["verifiedDisabledAndCrosshairReleased"] = True
+            save()
+            return record
+        sleep(.1)
+    raise ValueError("Owned fixture disabled/null-crosshair readback not observed")
+
+
 def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", sleep=time.sleep):
     probe.require(type(maximum_seconds) in (int, float) and 30 <= maximum_seconds <= 180,
                   "FSMP callback requires a finite 30..180-second bound")
-    probe.require(stimulus in ("reference", "xml-anchors") and (stimulus != "xml-anchors" or sex == "male"),
-                  "Direct mass-zero anchor trial is currently male-only")
+    probe.require(stimulus in ("reference", "xml-anchors"), "Unknown excitation contract")
+    probe.drivers(sex)  # Validate the explicit sex before any observation or write.
     end = time.monotonic() + maximum_seconds
     output = session.dir / "fsmp-probe"
     output.mkdir(exist_ok=False)
@@ -108,7 +169,7 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
                                       "args": args, "timeoutMs": 8000})["returned"]
 
     def transform_args(name):
-        return [{"form": reference}, False, False, name]
+        return [{"form": reference}, False, sex == "female", name]
 
     def apply_anchors(offset):
         for name, original in state["anchorOriginals"].items():

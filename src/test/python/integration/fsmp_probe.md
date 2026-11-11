@@ -61,7 +61,7 @@ For direct-anchor score input, set `stimulus: "xml-anchors"` and retain raw
 `stimulusBaseline` plus `anchorCalibration.moved` and `.reset` snapshots between
 reenable receipt and first active sample. The scorer preserves the same strict
 receipt order, world/actor/root continuity, cadence and selective-response limits.
-Female P1 direct excitation remains outside this male-only trial.
+That historical male-only trial did not cover female P1 excitation.
 
 ## Retained reference-trajectory protocol
 
@@ -171,3 +171,23 @@ They establish scorer discrimination only. Positive runtime output is named
 `sampled-selective-contrast-observed`; `solverQualified`, `contactQualified` and
 `physicsPhaseObserved` remain false. This does not qualify contact, appearance,
 transformation/reload coverage or released physics support.
+
+## Direct kinematic-anchor case
+
+The owned callback also accepts `stimulus="xml-anchors"` for both sexes. It
+uses the explicit NiOverride `isFemale` argument, and writes only the mass-zero
+Head/Tails anchors plus female left/right PreBreast P1 anchors from the XML.
+All nine or eleven dynamic nodes must pass the fresh native gate first. The
+same fixed 0.85-second, 25-point trajectory is declared before each trial; the
+scorer retains its original cadence and contrast limits.
+
+Each anchor needs an initially empty transform-key set, a run-specific key,
+actual world-displacement calibration, component removal and original local
+transform readback. Every captured anchor receives an independent cleanup
+attempt. An empty SKEE key container may remain in the disposable world after
+its position components are removed; no save is made. Female coverage requires
+an actual female actor and all eleven bindings, never a relabelled male trial.
+After all motion and anchor cleanup checks, a disposable fixture may be disabled
+once behind the original actor/root guard. Require fresh disabled-state readback
+and a null current-crosshair reference before the existing owner shutdown. Keep
+any case-owned crash observer attached through fixture disposal and process exit.
