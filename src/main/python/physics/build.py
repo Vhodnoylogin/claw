@@ -43,6 +43,13 @@ BREAST_ANCESTORS = ("NPC L PreBreast P1", "NPC R PreBreast P1", "Breast P1", "CM
                     "NPC Spine [Spn0]", "CME UBody [UBody]", "CME Body [Body]", "NPC COM [COM ]",
                     "NPC Root [Root]", "NPC", "skeleton.nif")
 BREAST_ALIASES = ("CLAW_BreastL", "CLAW_BreastR")
+# Exact CBPC 1.7.3/SSE 1.7.104 image + matching PDB establish this special
+# dispatcher, not a general exemption for a node named Pelvis. See the role
+# evidence in src/test/docs/cbpc-pelvis-role-2026-11-11.md.
+CBPC_WRITE_ROLES = {
+    ("4996c85ee00e051a903c15746e8686a2357b70c9b27957f8ef3026dbc62d5387", "NPC Pelvis [Pelv]"):
+        ("NPC L Pussy02", "NPC R Pussy02", "VaginaB1", "Clitoral1")
+}
 ORDINARY_BREAST_NODES = tuple(f"NPC {side} {part}" for side in ("L", "R") for part in ("Breast", "Breast01")) + tuple(
     f"{side} Breast0{part}" for side in ("L", "R") for part in (1, 2, 3))
 SCRIPTS = ("CLAWPhysicsActor.psc", "CLAWPhysicsHost.psc", "CLAWPhysicsLoadRelay.psc", "CLAWPhysicsControl.psc", "CLAWPhysicsNative.psc")
@@ -497,6 +504,7 @@ def audit_provider(directory, *, require_cbpc_master=True):
     supplied CBPC/SMP bytes are still inspected for conflicts and uncertainty.
     """
     inputs = provider_inputs(directory)
+    cbpc_sha = next((row["sha256"] for _, _, row in inputs if row["path"].lower() == "cbp.dll"), None)
     report = {"schemaVersion":1, "snapshot":str(directory.resolve()),
               "status":"static-audit-only", "runtimeQualified":False,
               "files":[row for _, _, row in inputs], "mappings":[],
@@ -539,8 +547,12 @@ def audit_provider(directory, *, require_cbpc_master=True):
                     node = fields[0]
                     alias = fields[1] if len(fields) > 1 else ""
                     if node in all_nodes or alias in all_aliases:
-                        report["mappings"].append({"path":record["path"], "line":line_number,
-                            "node":node, "alias":alias, "condition":fields[2] if len(fields) > 2 else ""})
+                        mapping = {"path":record["path"], "line":line_number,
+                            "node":node, "alias":alias, "condition":fields[2] if len(fields) > 2 else ""}
+                        writes = CBPC_WRITE_ROLES.get((cbpc_sha, node)) if len(fields) == 1 else None
+                        if writes:
+                            mapping.update(writeNodes=list(writes), readOnlyAnchor=node, providerSha256=cbpc_sha)
+                        report["mappings"].append(mapping)
             elif name.startswith("cbpconfig") and line and not line.startswith("#"):
                 token = line.split()[0]
                 alias = token.split(".", 1)[0]
@@ -558,7 +570,7 @@ def audit_provider(directory, *, require_cbpc_master=True):
 
 def provider_conflicts(report, nodes, aliases):
     return ([{"kind":"CBPC mapping", **row} for row in report["mappings"]
-             if row["node"] in nodes or row["alias"] in aliases] +
+             if set(row.get("writeNodes", (row["node"],))).intersection(nodes) or row["alias"] in aliases] +
             [{"kind":"private alias parameter", **row} for row in report["privateAliasDefinitions"] if row["alias"] in aliases] +
             [{"kind":"potential SMP reference", **row} for row in report["smpReferences"] if row["node"] in nodes])
 

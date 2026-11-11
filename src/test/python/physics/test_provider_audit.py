@@ -79,6 +79,55 @@ class ProviderAuditTests(unittest.TestCase):
                 for breast in (False, True):
                     with self.assertRaises(ValueError): build.require_provider_clear(audit, breast=breast)
 
+    def test_known_bare_pelvis_records_real_write_targets_without_claiming_runtime(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            # Synthetic image contract tests inventory/parser integration only;
+            # the production image/PDB evidence is recorded separately.
+            image = b"synthetic role-contract fixture"
+            (root / "cbp.dll").write_bytes(image)
+            sha = hashlib.sha256(image).hexdigest()
+            writes = ("NPC L Pussy02", "NPC R Pussy02", "VaginaB1", "Clitoral1")
+            with patch.dict(build.CBPC_WRITE_ROLES, {(sha, "NPC Pelvis [Pelv]"): writes}):
+                audit = self.snapshot(root, "NPC Pelvis [Pelv] # stock anchor\n")
+            for breast in (False, True): build.require_provider_clear(audit, breast=breast)
+            row, = audit["mappings"]
+            self.assertEqual(row["node"], row["readOnlyAnchor"])
+            self.assertEqual(row["writeNodes"], list(writes))
+            self.assertEqual(row["providerSha256"], sha)
+            self.assertFalse(audit["runtimeQualified"])
+            # A future protected graph containing any child must still conflict.
+            for node in writes:
+                self.assertEqual(build.provider_conflicts(audit, (node,), ())[0]["node"], row["node"])
+            (root / "cbp.dll").write_bytes(image + b"changed")
+            with self.assertRaisesRegex(ValueError, "changed after audit"):
+                build.verify_provider_unchanged(audit)
+
+    def test_pelvis_role_requires_exact_image_and_bare_row_and_preserves_other_conflicts(self):
+        image = b"synthetic role-contract fixture"
+        sha = hashlib.sha256(image).hexdigest()
+        role = {(sha, "NPC Pelvis [Pelv]"): ("NPC L Pussy02", "NPC R Pussy02", "VaginaB1", "Clitoral1")}
+        for provider in (None, image + b"different", image):
+            for row in ("NPC Pelvis [Pelv]", "NPC Pelvis [Pelv]=", "NPC Pelvis [Pelv]==",
+                        "NPC Pelvis [Pelv]=Other", "NPC Pelvis [Pelv]=CLAW_Tail"):
+                with self.subTest(provider=provider, row=row), tempfile.TemporaryDirectory() as folder:
+                    root = Path(folder)
+                    if provider is not None: (root / "cbp.dll").write_bytes(provider)
+                    with patch.dict(build.CBPC_WRITE_ROLES, role):
+                        audit = self.snapshot(root, row + "\n")
+                    allowed = provider == image and row == "NPC Pelvis [Pelv]"
+                    if allowed:
+                        build.require_provider_clear(audit, breast=True)
+                    else:
+                        with self.assertRaises(ValueError): build.require_provider_clear(audit)
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder); (root / "cbp.dll").write_bytes(image)
+            with patch.dict(build.CBPC_WRITE_ROLES, role):
+                audit = self.snapshot(root, "NPC Pelvis [Pelv]\nTailBone01=Other\nDifferent=CLAW_EarL\n")
+            self.assertEqual(len(audit["mappings"]), 3)
+            self.assertEqual(len(audit["earTailConflicts"]), 2)
+            with self.assertRaises(ValueError): build.require_provider_clear(audit, breast=True)
+
     def test_dynamic_smp_ear_tail_ancestors_block_with_or_without_breast_motion(self):
         for node in build.EAR_TAIL_ANCESTORS:
             with self.subTest(node=node), tempfile.TemporaryDirectory() as folder:

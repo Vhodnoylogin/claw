@@ -43,6 +43,12 @@ report records resources, stored-weight coverage, source/dependency pins, provid
 inventory and archive/file hashes. Inputs are rechecked after packaging; an
 interrupted or changed-input build retains `FAILED-unverified-do-not-install`.
 
+For the exact reviewed CBPC1.7.3/SSE1.7.104 image, a bare stock Pelvis row is a
+read anchor for four different child write targets. The audit retains that row
+and checks its actual write set; unknown images and aliased rows remain potential
+Pelvis writers. See the [binary role evidence](../../../test/docs/cbpc-pelvis-role-2026-11-11.md).
+The full loaded graph still needs separate ancestry qualification before a run.
+
 Ear/tail ownership includes the exact non-driver ancestor union read from the
 pinned XP32 skeleton: Head/Neck/Spine, Tails/Pelvis, CME wrappers and shared roots.
 This applies with or without P1 motion. Explicit system-level FSMP bones with one
@@ -67,7 +73,9 @@ connect existing driver nodes across unchanged CME wrappers. Ear/tail identity
 `frameInB` uses actual loaded rest transforms. The two single-body P1 joints use
 identity `frameInA`, attaching at the kinematic PreBreast origin instead of the
 dynamic body's center. The pinned skeleton has a one-unit P1 lever; this pivot
-change is a mechanical candidate and still needs game acceptance.
+change is mechanical. Its isolated female11-driver nominal response passed
+case08; complete motion
+release acceptance still requires the [remaining lifecycle checks](../../../test/docs/physics-0.10-lifecycle-plan.md).
 Translation limits are +/-0.15 per axis;
 Euler limits are +/-0.01 radians. These are original small-motion trials.
 
