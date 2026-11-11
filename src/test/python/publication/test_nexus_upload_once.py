@@ -199,6 +199,7 @@ class OfflineTests(unittest.TestCase):
         with patch.object(helper, "Api", side_effect=AssertionError("credential read forbidden")):
             value = runner.checked_pin(pin)
         self.assertEqual(value["requirements"]["groups"], 8)
+        self.assertEqual(value["archive"]["bytes"], 14420086)
 
     def test_workflow_pin_matches_the_lf_bytes_delivered_by_git(self):
         import hashlib
@@ -207,7 +208,6 @@ class OfflineTests(unittest.TestCase):
         workflow = (runner.ROOT / ".github/workflows/nexus-090-once.yml").read_text(encoding="utf-8")
         reviewed = re.search(r"--reviewed-pin-sha256 ([a-f0-9]{64})", workflow).group(1)
         self.assertEqual(reviewed, hashlib.sha256(pin.read_bytes().replace(b"\r\n", b"\n")).hexdigest())
-        self.assertEqual(value["archive"]["bytes"], 14420086)
 
     def test_signed_storage_rejects_user_info_and_plain_http_before_transport(self):
         urls = ["https://:@reviewed.example/part", "https://:password@reviewed.example/part",
