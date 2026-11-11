@@ -26,6 +26,15 @@ NODES = ("NPC EarL [EarL]Bone01", "NPC EarL [EarL]Bone02",
          "NPC EarR [EarR]Bone01", "NPC EarR [EarR]Bone02",
          "TailBone01", "TailBone02", "TailBone03", "TailBone04", "TailBone05")
 ALIASES = ("CLAW_EarL", "CLAW_EarR", "CLAW_Tail")
+# Non-driver ancestor union read from the pinned b64b614d XP32 donor's actual
+# parent links. Simulation on an anchor/intermediary also moves its descendants.
+EAR_TAIL_ANCESTORS = (
+    "NPC Head [Head]", "CME Neck [Neck]", "NPC Neck [Neck]", "CME Spine2 [Spn2]",
+    "NPC Spine2 [Spn2]", "CME Spine1 [Spn1]", "NPC Spine1 [Spn1]", "CME Spine [Spn0]",
+    "NPC Spine [Spn0]", "CME UBody [UBody]", "CME Body [Body]", "NPC COM [COM ]",
+    "NPC Root [Root]", "NPC", "skeleton.nif", "Tails", "CME Pelvis [Pelv]",
+    "NPC Pelvis [Pelv]", "CME LBody [LBody]", "CME TailBone01", "CME TailBone02",
+    "CME TailBone03", "CME TailBone04")
 BREAST_NODES = ("NPC L Breast P1", "NPC R Breast P1")
 # Exact ancestor union in the pinned b64b614d XP32 donor. A configured simulation
 # on these nodes can move P1 by inheritance; ordinary animation is not scanned.
@@ -449,6 +458,36 @@ def provider_inputs(directory):
     return paths
 
 
+def static_smp_bones(tree):
+    """Recognize explicit zero-mass system bones, not guessed template defaults.
+
+    FSMP reads system-level bone declarations and child mass elements. Attribute
+    lookalikes, omitted/template mass, conflicting duplicates and use before an
+    explicit declaration stay potential writers. Constraints/shapes can create
+    undeclared bones with defaults, so a later zero mass does not qualify them.
+    """
+    declarations, used, implicit_mesh_bones = {}, set(), False
+    for bone in tree if tree.tag == "system" else ():
+        if bone.tag in ("per-vertex-shape", "per-triangle-shape"):
+            implicit_mesh_bones = True
+        if bone.tag != "bone":
+            for element in bone.iter():
+                if element.tag in ("generic-constraint", "stiffspring-constraint", "conetwist-constraint"):
+                    used.update(element.get(attribute, "") for attribute in ("bodyA", "bodyB"))
+            continue
+        name = bone.get("name", "")
+        if not name or name != name.strip():
+            continue
+        mass = bone.findall("mass")
+        try:
+            value = float(mass[0].text) if len(mass) == 1 else float("nan")
+        except (TypeError, ValueError):
+            value = float("nan")
+        declarations.setdefault(name, []).append(not implicit_mesh_bones and name not in used
+                                                  and math.isfinite(value) and value == 0)
+    return {name for name, values in declarations.items() if all(values)}
+
+
 def audit_provider(directory, *, require_cbpc_master=True):
     """Inventory supplied winning bytes, preserving all declarations and conditions.
 
@@ -461,9 +500,9 @@ def audit_provider(directory, *, require_cbpc_master=True):
     report = {"schemaVersion":1, "snapshot":str(directory.resolve()),
               "status":"static-audit-only", "runtimeQualified":False,
               "files":[row for _, _, row in inputs], "mappings":[],
-              "privateAliasDefinitions":[], "smpReferences":[], "uncertainties":[],
+              "privateAliasDefinitions":[], "smpReferences":[], "smpStaticReferences":[], "uncertainties":[],
               "scope":"Explicit SKSE/Plugins snapshot only; no VFS/archive, NIF extra-data, loaded-module, generated-binding or native-index proof"}
-    all_nodes = set(NODES + BREAST_NODES + BREAST_ANCESTORS + ORDINARY_BREAST_NODES)
+    all_nodes = set(NODES + EAR_TAIL_ANCESTORS + BREAST_NODES + BREAST_ANCESTORS + ORDINARY_BREAST_NODES)
     all_aliases = set(ALIASES + BREAST_ALIASES)
     masters = 0
     for path, payload, record in inputs:
@@ -471,11 +510,13 @@ def audit_provider(directory, *, require_cbpc_master=True):
         if path.suffix.lower() == ".xml":
             try:
                 tree = ET.fromstring(payload, parser=ET.XMLParser(target=NoDoctypeTreeBuilder()))
+                static = static_smp_bones(tree)
                 for element in tree.iter():
                     for attribute, value in [("#text", element.text or ""), *element.attrib.items()]:
                         if value.strip() in all_nodes:
-                            report["smpReferences"].append({"path":record["path"], "element":element.tag,
-                                                           "attribute":attribute, "node":value.strip()})
+                            key = "smpStaticReferences" if value.strip() in static else "smpReferences"
+                            report[key].append({"path":record["path"], "element":element.tag,
+                                                "attribute":attribute, "node":value.strip()})
             except (ValueError, ET.ParseError) as error:
                 report["uncertainties"].append({"path":record["path"], "error":str(error)})
             continue
@@ -508,7 +549,7 @@ def audit_provider(directory, *, require_cbpc_master=True):
                                                               "alias":alias, "parameter":token})
     if require_cbpc_master and not masters:
         report["uncertainties"].append({"error":"Provider snapshot contains no master config"})
-    report["earTailConflicts"] = provider_conflicts(report, NODES, ALIASES)
+    report["earTailConflicts"] = provider_conflicts(report, NODES + EAR_TAIL_ANCESTORS, ALIASES)
     report["breastConflicts"] = provider_conflicts(report, BREAST_NODES + BREAST_ANCESTORS, BREAST_ALIASES)
     report["ordinaryBreastMappings"] = [row for row in report["mappings"] if row["node"] in ORDINARY_BREAST_NODES]
     report["ordinaryBreastMeaning"] = "These are separate XP32 branches; ordinary breast mappings alone establish neither P1 ownership nor P1 motion"

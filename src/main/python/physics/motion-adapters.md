@@ -43,6 +43,15 @@ report records resources, stored-weight coverage, source/dependency pins, provid
 inventory and archive/file hashes. Inputs are rechecked after packaging; an
 interrupted or changed-input build retains `FAILED-unverified-do-not-install`.
 
+Ear/tail ownership includes the exact non-driver ancestor union read from the
+pinned XP32 skeleton: Head/Neck/Spine, Tails/Pelvis, CME wrappers and shared roots.
+This applies with or without P1 motion. Explicit system-level FSMP bones with one
+finite zero-mass child element remain kinematic anchors, including their constraint
+references; their references are retained separately in the audit. Omitted,
+template-only, conflicting or implicitly created-before-declaration bones remain
+potential writers; the audit does not guess mesh-driven or template defaults.
+Ordinary animation files are not scanned as physics configuration.
+
 Linked morphs already deform the same skinned vertices that receive node motion.
 They do not require a second conversion or a morph-family-specific motion DLL.
 This adapter does not observe coefficients, change stiffness, move rest-node
