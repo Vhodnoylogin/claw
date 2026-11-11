@@ -149,7 +149,7 @@ class OwnedAnchors:
                     scene.require(scene.max_delta(scene.numbers(value, 3), offset) <= 1e-6, "Own anchor key storage mismatch")
         return commands
 
-    def collect_phase(self, phase, spec, baseline, *, sleep=time.sleep):
+    def collect_phase(self, phase, spec, baseline, *, sleep=time.sleep, clock=time.perf_counter):
         rows = self.state["pulses"][phase] = {}
         for name in self.names:
             row = rows[name] = {"commands": {}, "samples": []}
@@ -164,12 +164,14 @@ class OwnedAnchors:
             row["returned"] = self.observe(phase + "-pulse-returned-" + name)
             pulse.anchor_excitation(scene.snapshot(row["returned"], self.reference, self.sex), baseline, self.sex, name, [0., 0., 0.])
             self.persist()
-            started, completed = time.monotonic(), None
+            # Windows Python 3.12 monotonic uses the coarse GetTickCount64.
+            # QPC schedules samples; lifecycle deadlines retain their own clock.
+            started, completed = clock(), None
             for index in range(spec["samples"]):
                 at = next_sample_time(started, index, spec["samplePeriodSeconds"], spec["minGapSeconds"], completed)
-                sleep(max(0., at - time.monotonic()))
+                sleep(max(0., at - clock()))
                 row["samples"].append(self.observe(phase + "-pulse-sample-" + name + "-" + str(index)))
-                completed = time.monotonic()
+                completed = clock()
                 self.persist()
         return rows
 
