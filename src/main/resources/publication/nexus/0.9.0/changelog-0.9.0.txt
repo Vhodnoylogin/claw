@@ -1,11 +1,11 @@
-Added individual coat selection for the ten textures in the optional Elegant Randomized collection. CLAW reads separately installed textures and keeps the equipped skin when the selected set is unavailable. Human hair colour and a stable actor seed drive the choice.
+Added individual coat selection for the ten textures in the optional Elegant Randomized collection. CLAW reads separately installed textures and keeps the installed base coat when the selected set is unavailable. Human hair colour and a stable actor seed drive the choice.
 Automatic choices and manual assignments are preserved through model refresh and save/load.
 Added support for classic UNP Renewal 4.6 using actor weight and available human traits, without BodySlide morphs.
 Fixed how human character scale is taken into account when converting ear, tail and claw proportions.
-Fixed preservation of individual coat materials when model transparency changes.
+Fixed actor transparency on individual coat materials. All managed coat surfaces now follow actor opacity and retain their assigned coat through morph refreshes.
 Fixed preservation of a later mod's coat material when CLAW recalculates body morphs on the same model.
 Added initial low-strength links for previously unmapped Living Physique outputs in HIMBO, CBBE, 3BA and BHUNP matrices.
 Improved preservation of human source parameters; processing does not activate after an unsuccessful save load.
 Added body-mod links and an explanation of the OBody option to the installer.
-Added texture-only Elegant Randomized installation instructions and fallback guidance for missing or incomplete optional coats.
+Documented normal Elegant Randomized FOMOD installation, CLAW's model priority and fallback for missing or incomplete optional coats.
 Added an Elegant Randomized compatibility rule so its official FOMOD can supply all ten textures while CLAW retains its morphable meshes.
