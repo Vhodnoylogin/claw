@@ -11,7 +11,7 @@ Every matrix explicitly reads `$actor.weight`, independently of the already
 effective RaceMenu morph values. The installer selects one male and one female
 family. Native and the matching development Morphbench plugin use the same
 compiled evaluator. Installed-game evidence is recorded separately from source
-features in the [verification record](src/main/docs/verification-20261108.md).
+features in the [current verification record](src/test/docs/release-0.9.0-2026-11-11.md).
 
 [Released downloads](https://github.com/Vhodnoylogin/claw/releases)
 · [Nexus](https://www.nexusmods.com/skyrimspecialedition/mods/194798)
@@ -89,7 +89,12 @@ Elegant installation enabled. Existing saved actors
 keep their stored conversion matrices after an update; a new game adopts the new
 defaults. Reinstalling a family choice alone does not reset existing actors.
 
-One CommonLib DLL targets SE, AE and VR. The 0.8 technical game checks on Skyrim
+One CommonLib DLL targets SE, AE and VR. The current 0.9.0 acceptance includes
+199 game checks covering all ten actual coat bindings, missing/damaged optional
+textures, engine transparency, save/load and joint Living Physique source
+preservation with exact native/Morphbench results. See the
+[dated verification](src/test/docs/release-0.9.0-2026-11-11.md) for the tested
+runtime and scope. The earlier 0.8 technical game checks on Skyrim
 SE 1.7.104 / SKSE 2.3.1 cover both Vanilla sexes through transformation, model
 refresh, save/load and human return. The separate BHUNP/HIMBO run also passed
 all mechanical phases and its real 47-key BHUNP source proof, then ended
