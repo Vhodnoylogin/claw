@@ -27,9 +27,10 @@ FetchContent_Declare(pugixml
     URL https://codeload.github.com/zeux/pugixml/zip/refs/tags/v1.15
     URL_HASH SHA256=0dd4dc16e38bbc1c889d3a59660072450127bac7d19415f3cf5d5d6b25c58b35)
 FetchContent_MakeAvailable(pugixml)
+add_subdirectory(shared)
 add_library(claw-preset-core STATIC src/Preset.cpp shared/MatrixKernel.cpp)
-target_include_directories(claw-preset-core PUBLIC include shared)
-target_link_libraries(claw-preset-core PUBLIC pugixml::pugixml)
+target_include_directories(claw-preset-core PUBLIC include)
+target_link_libraries(claw-preset-core PUBLIC pugixml::pugixml morph-matrix-projection)
 add_executable(claw-preset-tool src/Tool.cpp)
 target_link_libraries(claw-preset-tool PRIVATE claw-preset-core)
 if(MSVC)

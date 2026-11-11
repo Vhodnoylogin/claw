@@ -36,6 +36,8 @@ VERSION = "0.9.0"
 APPEARANCE_FILES = ("CoatLibrary.xml", "CoatMapping.xml", "CoatMatrix.xml")
 APPEARANCE_PATH = "SKSE/Plugins/CLAW/"
 RUNTIME_README = "src/main/resources/publication/runtime/README.md"
+MODEL_SWAP_OVERRIDE = "RandomElegantWerewolves_MS.json"
+MODEL_SWAP_SOURCE = "src/main/resources/compatibility/" + MODEL_SWAP_OVERRIDE
 MESH = "Meshes/Actors/WerewolfBeast/Character Assets"
 ARCHIVES = {".zip", ".7z", ".rar", ".tar", ".gz", ".gzip", ".tgz", ".bz2", ".bzip2",
             ".tbz", ".tbz2", ".xz", ".txz", ".lz", ".lzma", ".zst", ".zstd", ".tzst",
@@ -50,7 +52,7 @@ SOURCE_FILES = {"CMakeLists.txt", "src/main/resources/profiles/MorphLinks.xml",
                 "src/main/python/build-tools/package-source-build.py",
                 "src/main/python/build-tools/build-unified-release.py",
                 "src/main/resources/publication/unified-installer/ModuleConfig.xml",
-                "src/main/resources/publication/unified-installer/info.xml", RUNTIME_README}
+                "src/main/resources/publication/unified-installer/info.xml", RUNTIME_README, MODEL_SWAP_SOURCE}
 HOST_SOURCES = {"src/main/papyrus/obody/CLAWOBodySourceHost.psc",
                 "src/main/papyrus/obody/build.py", "src/main/papyrus/obody/README.md",
                 "src/main/python/physics/wiring.py"}
@@ -302,7 +304,7 @@ def installer(template, entries):
     config.find("moduleName").text = NAME
     required = config.find("requiredInstallFiles")
     required.clear()
-    destinations = {"CLAW.esp"} | {MESH + "/" + sex + "bodywerewolf" + ending
+    destinations = {"CLAW.esp", MODEL_SWAP_OVERRIDE} | {MESH + "/" + sex + "bodywerewolf" + ending
         for sex in ("male", "female") for ending in ("_0.nif", "_1.nif", ".tri")}
     destinations.update(APPEARANCE_PATH + name for name in APPEARANCE_FILES)
     for destination in sorted(destinations):
@@ -440,7 +442,9 @@ def selection_audit(entries):
     spec.loader.exec_module(reader)
     config = ET.fromstring(entries["fomod/ModuleConfig.xml"])
     required = config.find("requiredInstallFiles")
-    extra_base = {APPEARANCE_PATH + name for name in APPEARANCE_FILES}
+    extra_base = {APPEARANCE_PATH + name for name in APPEARANCE_FILES} | {MODEL_SWAP_OVERRIDE}
+    if json.loads(entries["00 Base/" + MODEL_SWAP_OVERRIDE]) != []:
+        raise ValueError("Elegant model-swap compatibility override must be an empty JSON array")
     audit_external_coats(entries)
     for name, data in entries.items():
         if (Path(name).suffix.lower() == ".dds" or "textures" in PurePosixPath(name.casefold()).parts
@@ -571,6 +575,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
             entries["20 Human Family/"+male+"-and-"+family+"/SKSE/Plugins/CLAW/MorphLinks.xml"] = profiles(matrix, family, male)
     for name in APPEARANCE_FILES:
         entries["00 Base/" + APPEARANCE_PATH + name] = inputs.read(ROOT / "src/main/resources/appearance" / name)
+    entries["00 Base/" + MODEL_SWAP_OVERRIDE] = inputs.read(ROOT / MODEL_SWAP_SOURCE)
     template = ROOT / "src/main/resources/publication/unified-installer"
     entries["fomod/ModuleConfig.xml"] = installer(inputs.read(template / "ModuleConfig.xml"), entries)
     info = ET.fromstring(inputs.read(template / "info.xml"))

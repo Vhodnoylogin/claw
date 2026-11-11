@@ -697,8 +697,7 @@ bool readback(RE::Actor* actor, const claw::Morphs& expected) {
     catch (const std::exception&) { return false; }
 }
 
-bool clearOwn(RE::Actor* actor) {
-    claw::appearance::runtime.restore(actor);
+bool clearOwnMorphs(RE::Actor* actor) {
     // Snapshot first, then mutate only this exact key. Removed/custom names do
     // not depend on whichever matrix or compiled public list is installed now.
     try {
@@ -760,7 +759,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         try { hasOwnValue |= !ownMorphSnapshot(actor).empty(); }
         catch (const std::exception&) { hasOwnValue = true; }
         if (force || state->dirty || hasOwnValue || state->lastRoot != root) {
-            if (!clearOwn(actor)) { logError(*state, "own-key cleanup readback failed"); return; }
+            if (!clearOwnMorphs(actor)) { logError(*state, "own-key cleanup readback failed"); return; }
             morphs->ApplyBodyMorphs(skeeReference(actor), false);
             invalidatePhysics(actor->GetFormID());
         }
@@ -795,7 +794,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     const bool matching = readback(actor, expected);
     if (force || state->dirty || state->lastRoot != root || (!linked && state->lastWeight != weight) || !matching) {
         state->status = Status::pending;
-        if (!clearOwn(actor)) { logError(*state, "own-key preparation readback failed"); return; }
+        if (!clearOwnMorphs(actor)) { logError(*state, "own-key preparation readback failed"); return; }
         // Recheck race/model immediately before writes; all operations stay on this main-thread task.
         if (!currentOwner(actor) || actor->GetRace() != beastRace || !actor->Is3DLoaded() || !actor->Get3D()) {
             state->dirty = true; state->status = Status::pending; return;

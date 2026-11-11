@@ -178,6 +178,27 @@ historical state format has not. Source/weight
 observations are diagnostic persistence data, not permission to skip current
 provider or NPC reads.
 
+## Provisional Living Physique source coverage
+
+The HIMBO, CBBE, 3BA and BHUNP matrices include every named output in the
+source-evidenced Living Physique profiles reviewed on 11 November 2026. The
+previously omitted 29 family-specific sources receive small positive/negative
+links with gain `0.02`. BHUNP `LegsThin` distributes that per-sign budget between
+thigh and calf targets at `0.01` each. Existing target caps bound the combined
+result. The native source-coverage regression probes each input independently
+at neutral actor weight and checks that both signs of each new input produce
+an actual output change after clamping.
+
+Individual thigh and calf muscles feed the existing girth/lean pairs. Forearm,
+pectoral and back sources feed the closest whole-arm, chest, shoulder or back
+volume fields. Glute sources provisionally feed thigh volume; abdominal and
+rib-detail sources feed coarse torso volume, narrowing or leanness. These are
+minimal authored relationships. Their low coefficients establish participation
+while dedicated regional geometry and aesthetic calibration remain later work.
+The coefficients represent slider influence and carry no percentage-of-volume
+or anatomical-fidelity claim. Living Physique keeps its body-family-specific
+source selection and geometry safeguards.
+
 ## Release checks still required
 
 Build and inspect both runtime variants, compile the Papyrus declarations, then

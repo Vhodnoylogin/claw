@@ -11,7 +11,26 @@ texture paths, so integrations can retain prior logical identifiers.
 The optional artwork is installed from Elegant's own Randomized component.
 The adapter keeps the installed model material when the selected resources
 are unavailable. No texture image is included in CLAW. The [installer guide](../resources/publication/runtime/README.md)
-covers an MO2 texture-only installation that preserves CLAW's meshes.
+covers the official Randomized FOMOD installation in MO2 or Vortex. CLAW's
+authored `RandomElegantWerewolves_MS.json` is an empty JSON array at the Data
+root and must win that file conflict. Model Swapper's documented array format
+then registers zero substitutions for this file, retaining CLAW's morphable
+meshes. Disable the addon's `CoopPlayerOnlyWerewolf.esp` while retaining its
+texture files. An optional MO2 texture-only manual selection is also documented.
+
+Each selected material is validated as one complete set before any geometry is
+rebound. Missing files, wrong byte lengths and invalid DDS dimensions reject that
+set and retain the installed base material in the shipped original-colour mode.
+The coat status records `DDS missing or header/size mismatch`. The base Elegant
+textures remain required because the retained NIF materials reference them.
+Successful and failed asset validation are cached for the session. Restart after
+repairing the installation, or explicitly reassign the logical coat through the
+API to invalidate that material's validation cache.
+
+Ordinary morph cleanup preserves the appearance lease and its same-model yield
+to a later writer. Race, unload, model and explicit suppression transitions own
+appearance restoration separately. An unrelated body recomposition therefore
+retains a texture set assigned by another mod to the current model.
 
 Earlier catalog and palette tools document the withdrawn release. See its
 [historical contract](https://github.com/Vhodnoylogin/claw/blob/a7076f51333372a349239a4fe68285f50d089572/src/main/docs/coat-library.md)
