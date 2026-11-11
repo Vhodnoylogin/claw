@@ -43,6 +43,10 @@ python -m unittest discover -s src/test/python/vr -p 'test_*.py'
 Keep observed counts and optional-resource skips in the report; default source
 success does not mean all resources, native libraries or game behavior were tested.
 
+The transport-free [FSMP binding/excitation probe](python/integration/fsmp_probe.md)
+prepares owned-run packets and scores retained anchor-relative world transforms.
+Its synthetic discrimination tests do not establish working in-game physics.
+
 ## Prepare resource integration
 
 The actual body tests use generated `legacy/` and `repaired/` stages, each with
