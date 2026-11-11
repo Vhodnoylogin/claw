@@ -25,3 +25,7 @@ session.jsonl
 *.7z
 *.bsa
 *.ba2
+
+# Spriggit uses plugin-named folders for authored record overrides.
+!/src/main/resources/plugins/**/
+!/src/test/resources/plugins/**/
