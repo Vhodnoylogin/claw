@@ -15,17 +15,35 @@ covers the official Randomized FOMOD installation in MO2 or Vortex. CLAW's
 authored `RandomElegantWerewolves_MS.json` is an empty JSON array at the Data
 root and must win that file conflict. Model Swapper's documented array format
 then registers zero substitutions for this file, retaining CLAW's morphable
-meshes. Disable the addon's `CoopPlayerOnlyWerewolf.esp` while retaining its
-texture files. An optional MO2 texture-only manual selection is also documented.
+meshes. The PlayerOnly-compatible package also installs the same morphable body
+at Elegant's player model paths, with its player-prefixed base diffuse names.
+This permits the ordinary PlayerOnly installation without requiring a separate
+texture-only extraction. Actual route and provider acceptance are recorded in
+the dated verification rather than inferred from these resource aliases.
 
 Each selected material is validated as one complete set before any geometry is
-rebound. Missing files, wrong byte lengths and invalid DDS dimensions reject that
+rebound. Missing files, incomplete DDS payloads and invalid DDS metadata reject that
 set and retain the installed base material in the shipped original-colour mode.
 The coat status records `DDS missing or header/size mismatch`. The base Elegant
 textures remain required because the retained NIF materials reference them.
 Successful and failed asset validation are cached for the session. Restart after
 repairing the installation, or explicitly reassign the logical coat through the
 API to invalidate that material's validation cache.
+
+Texture paths select the assets. Catalog `bytes` and `sha256` retain source
+provenance; they do not restrict installed resolution or verify content at runtime.
+The adapter reads the actual DDS header. For legacy DXT1/3/5 and typed DX10
+BC1 through BC7 it verifies the complete declared mip payload. Other pixel
+layouts are delegated to the engine, rather than rejected by a format allowlist.
+Both single-mip and partial/full mip chains are valid. Metadata must describe
+one 2D image, dimensions up to 16384 and no cube, volume or array. Each
+engine-loaded diffuse must have a renderer resource view and report the expected
+dimensions and a single array element.
+Thus the same configured paths work with Elegant 2K, 4K or valid mixed
+resolutions; no per-resolution catalog or saved-coat migration is necessary.
+Known-format structural checks detect truncation; other layouts rely on the
+engine decoder. Neither detects arbitrary same-length pixel corruption.
+Artwork remains an external dependency.
 
 Ordinary morph cleanup preserves the appearance lease and its same-model yield
 to a later writer. Race, unload, model and explicit suppression transitions own

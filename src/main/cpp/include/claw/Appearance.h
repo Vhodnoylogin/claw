@@ -391,17 +391,18 @@ inline const Runtime::PatternAssets& Runtime::validatePattern(const std::string&
     auto& result = found->second;
     if (!inserted) return result;
     if (dataRoot_.empty()) return result;
-    for (const auto& [name, texture] : pattern.textures) {
+    const auto dimensions = coatPatternDimensions(pattern, [&](const CoatTexture& texture) -> std::optional<CoatDDSInfo> {
         const auto path = dataRoot_ / std::filesystem::path(texture.path);
         std::error_code ec;
-        if (std::filesystem::file_size(path, ec) != texture.bytes || ec) return result;
-        std::ifstream input(path, std::ios::binary); std::array<char, 128> header{};
-        if (!input.read(header.data(), header.size())) return result;
-        const auto info = coatDDSHeader(header);
-        if (!info) return result;
-        result.dimensions.emplace(name, *info);
-    }
-    result.valid = result.dimensions.size() == 9;
+        const auto bytes = std::filesystem::file_size(path, ec);
+        if (ec) return std::nullopt;
+        std::ifstream input(path, std::ios::binary); std::array<char, 148> header{};
+        input.read(header.data(), header.size());
+        return coatDDSMatches(bytes, std::span(header).first(static_cast<std::size_t>(input.gcount())));
+    });
+    if (!dimensions) return result;
+    result.dimensions = *dimensions;
+    result.valid = true;
     return result;
 }
 inline bool Runtime::preparePattern(RE::BSShaderProperty* property, const CoatTexture& texture, const CoatDDSInfo& expected, std::string& reason) const {
@@ -418,6 +419,8 @@ inline bool Runtime::preparePattern(RE::BSShaderProperty* property, const CoatTe
         const auto* type = loaded->GetRTTI();
         return fail("loaded texture RTTI=" + std::string(type ? type->GetName() : "<none>") + "; NiSourceTexture cast failed");
     }
+    if (!source->rendererTexture || !source->rendererTexture->resourceView)
+        return fail("engine texture has no renderer resource view");
     std::uint32_t width{}, height{}, levels{}, arraySize{};
     source->GetTextureDimensionsAndMipInfo(&width, &height, &levels, &arraySize);
     if (width != expected.width || height != expected.height || levels == 0 || arraySize != 1) {

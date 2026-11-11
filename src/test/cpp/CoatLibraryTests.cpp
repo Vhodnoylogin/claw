@@ -84,14 +84,63 @@ int main(int argc, char** argv) {
         rejects([&] { writeCoatSelection({0, choice.base, 0, choice.pattern}); }, "Unowned CCPT identity accepted");
         rejects([&] { writeCoatSelection({choice.actor, choice.base, 0, "test/../x"}); }, "Invalid saved choice accepted");
 
-        std::array<char, 128> header{}; std::copy_n("DDS ", 4, header.data());
+        std::array<char, 148> header{}; std::copy_n("DDS ", 4, header.data());
         const auto word = [&](unsigned pos, std::uint32_t value) { for (unsigned i = 0; i != 4; ++i) header[pos + i] = static_cast<char>((value >> (8 * i)) & 255); };
-        word(4, 124); word(76, 32); word(12, 2048); word(16, 2048); word(28, 12);
+        word(4, 124); word(8, 0xA1007); word(76, 32); word(80, 4); word(84, 0x30315844);
+        word(108, 0x1000); word(128, 98); word(132, 3); word(140, 1);
+        word(12, 2048); word(16, 2048); word(28, 12);
         const auto dimensions = coatDDSHeader(header);
-        require(dimensions && dimensions->width == 2048 && dimensions->height == 2048 && dimensions->mipLevels == 12, "Real DDS dimension fields not parsed");
+        require(dimensions && dimensions->width == 2048 && dimensions->height == 2048 &&
+            dimensions->mipLevels == 12 && dimensions->bytes == 5592580, "Real DDS mip payload not calculated");
         word(16, 0); require(!coatDDSHeader(header), "Zero DDS dimension accepted");
         word(16, 32768); require(!coatDDSHeader(header), "Excessive DDS dimension accepted");
         word(16, 2048); word(76, 0); require(!coatDDSHeader(header), "Malformed DDS pixel format accepted");
+        word(76, 32); word(28, 1);
+        require(coatDDSMatches(4194452, header).has_value(), "Actual 2K single-mip BC7 size refused");
+        word(16, 4096); word(12, 4096); word(28, 13);
+        require(coatDDSMatches(22369796, header).has_value(), "Actual 4K full-mip BC7 size refused");
+        require(!coatDDSMatches(22369795, header) && !coatDDSMatches(22369797, header), "Truncated or trailing DDS payload accepted");
+        require(!coatDDSHeader(std::span(header).first(128)), "Truncated DX10 header accepted");
+        for (const auto [offset, invalid] : std::array<std::pair<unsigned, unsigned>, 9>{{
+            {28, 14}, {24, 2}, {112, 0x200}, {112, 0x400}, {112, 0x200000},
+            {132, 4}, {136, 4}, {140, 2}, {80, 0}}}) {
+            const auto valid = header;
+            word(offset, invalid);
+            require(!coatDDSHeader(header), "Unsupported DDS format, mip chain or resource shape accepted");
+            header = valid;
+        }
+        // A future valid resolution and non-square blocks require no catalog or
+        // native name changes; partial chains do not imply a full-chain length.
+        word(16, 8192); word(12, 4096); word(28, 1);
+        require(coatDDSMatches(33554580, header).has_value(), "Valid unlisted resolution refused");
+        word(84, 0x31545844); word(16, 7); word(12, 5); word(28, 3);
+        require(coatDDSMatches(176, std::span(header).first(128)).has_value(), "Legacy DXT1 block rounding failed");
+        word(84, 0x33545844);
+        require(coatDDSMatches(224, std::span(header).first(128)).has_value(), "Legacy DXT3 block sizing failed");
+        word(84, 0x35545844);
+        require(coatDDSMatches(224, std::span(header).first(128)).has_value(), "Legacy DXT5 block sizing failed");
+        const auto compressed = header;
+        word(80, 0x41); word(84, 0); word(88, 32);
+        word(92, 0xFF); word(96, 0xFF00); word(100, 0xFF0000); word(104, 0xFF000000);
+        const auto rgba = coatDDSMatches(296, std::span(header).first(128));
+        require(rgba && !rgba->bytes && rgba->headerBytes == 128, "Valid non-BC layout was not delegated to the engine");
+        require(!coatDDSMatches(128, std::span(header).first(128)), "Header-only opaque DDS admitted");
+        header = compressed;
+        word(84, 0x30315844); word(128, 28);
+        const auto dx10rgba = coatDDSMatches(316, header);
+        require(dx10rgba && !dx10rgba->bytes && dx10rgba->headerBytes == 148, "Other DX10 pixel format was arbitrarily rejected");
+        header = compressed;
+        // Existing catalog metadata intentionally does not determine runtime
+        // file size; the actual file header determines it.
+        unsigned observed{};
+        const auto complete = coatPatternDimensions(*catalog.find("test/white"), [&](const CoatTexture&) {
+            ++observed; return coatDDSMatches(224, std::span(header).first(128));
+        });
+        require(complete && complete->size() == 9 && observed == 9, "Complete structural preflight failed");
+        const auto partial = coatPatternDimensions(*catalog.find("test/white"), [&](const CoatTexture& texture) {
+            return coatDDSMatches(texture.path.ends_with("head.dds") ? 223 : 224, std::span(header).first(128));
+        });
+        require(!partial, "One damaged map admitted a partial coat");
 
         if (argc > 1) {
             std::ifstream input(argv[1], std::ios::binary); require(bool(input), "Real local XML unavailable");
