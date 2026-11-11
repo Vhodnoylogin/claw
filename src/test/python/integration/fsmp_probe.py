@@ -51,11 +51,27 @@ def numbers(values, length):
     return [float(v) for v in values]
 
 
-def form(value):
+def _reference_form(value):
     require(isinstance(value, str) and value.lower().startswith("0x"), "Explicit hex actor form required")
     number = int(value, 16)
-    require(0 < number <= 0xffffffff and number != 0x14, "Use an owned NPC, never the player")
+    require(0 < number <= 0xffffffff, "Nonzero actor form required")
     return f"0x{number:08X}"
+
+
+def form(value):
+    reference = _reference_form(value)
+    require(reference != "0x00000014", "Use an owned NPC, never the player")
+    return reference
+
+
+def actor_reference(value, actor_role="disposable-npc"):
+    """Player control requires an explicit owned-world opt-in; NPC stays default."""
+    require(actor_role in ("disposable-npc", "owned-player"), "Unknown owned actor role")
+    if actor_role == "disposable-npc":
+        return form(value)
+    reference = _reference_form(value)
+    require(reference == "0x00000014", "Owned-player role requires the player reference")
+    return reference
 
 
 def transform(value):
@@ -142,7 +158,7 @@ def prepare(reference, sex, origin):
                 "Missing/nonadvancing samples or local animation activity mean unconfirmed, never solver proof."]}
 
 
-def snapshot(raw, reference, sex):
+def snapshot(raw, reference, sex, *, actor_role="disposable-npc"):
     """Read actual SE observer rows without inventing producer frames or phases."""
     require(raw.get("ok") is True and raw.get("quality") == "complete" and raw.get("schemaVersion") == 1,
             "Incomplete observer snapshot")
@@ -156,7 +172,7 @@ def snapshot(raw, reference, sex):
     require(ref.get("status") == "available" and ref.get("loaded3D") is True and
             ref.get("deleted") is False and ref.get("disabled") is False, "Actor not available")
     identity, root, actor = ref["identity"], ref["rootIdentity"], ref["actor"]
-    require(form(identity["form"]) == reference and identity["loadGeneration"] == raw["loadGeneration"] and
+    require(actor_reference(identity["form"], actor_role) == reference and identity["loadGeneration"] == raw["loadGeneration"] and
             type(identity["runtimeHandle"]) is int and identity["runtimeHandle"] > 0, "Wrong actor incarnation")
     require(root.get("firstPerson") is False and root.get("identityBasis") ==
             "sampled_pointer_and_handle_changes_no_object_retention" and
@@ -175,7 +191,7 @@ def snapshot(raw, reference, sex):
     for row in rows:
         name = row["name"]
         require(name in node_names(sex) and name not in nodes and row.get("status") == "available"
-                and row.get("firstPerson") is False and form(row["form"]) == reference and
+                and row.get("firstPerson") is False and actor_reference(row["form"], actor_role) == reference and
                 row["identity"] == identity and row["rootIdentity"] == root, "Wrong/missing node/root identity")
         nodes[name] = {key: transform(row[key]) for key in ("world", "local")}
     return {"guard": {"session": raw["sessionId"], "generation": raw["loadGeneration"],

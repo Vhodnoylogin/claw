@@ -33,9 +33,10 @@ def families(sex):
     return result
 
 
-def prepare(reference, sex, origin):
-    reference, origin = probe.form(reference), probe.numbers(origin, 3)
+def prepare(reference, sex, origin, *, actor_role="disposable-npc"):
+    reference, origin = probe.actor_reference(reference, actor_role), probe.numbers(origin, 3)
     return {"schemaVersion": 1, "reference": reference, "sex": sex, "origin": origin,
+            "actorRole": actor_role,
             "protocol": protocol(), "families": {anchor: list(nodes) for anchor, nodes in families(sex).items()},
             "baselineQuery": {"tool": "inspect", "args": {"kind": "world_observer", "refs": [reference],
                 "actors": True, "nodes": [{"ref": reference, "name": name, "firstPerson": False}
@@ -96,7 +97,8 @@ def score(document):
     spec = protocol()
     probe.require(document.get("protocol") == spec and document.get("stimulus") == "xml-anchor-pulse",
                   "Pulse protocol was absent or changed")
-    reference, sex = probe.form(document["reference"]), document["sex"]
+    actor_role = document.get("actorRole", "disposable-npc")
+    reference, sex = probe.actor_reference(document["reference"], actor_role), document["sex"]
     groups = families(sex)
     keys = [document["anchorOriginals"][anchor]["key"] for anchor in groups]
     probe.require(all(type(key) is str and key.startswith("CLAW.FSMPProbe.") and len(key) > len("CLAW.FSMPProbe.")
@@ -104,12 +106,12 @@ def score(document):
     probe.require(all(document["anchorOriginals"][anchor].get("keysBefore") == [] for anchor in groups),
                   "Fresh pulse anchors require explicit initially empty key sets")
     gate = probe.binding_gate(sex, document["receipts"])
-    baseline = probe.snapshot(document["baseline"], reference, sex)
+    baseline = probe.snapshot(document["baseline"], reference, sex, actor_role=actor_role)
     previous = baseline
 
     def consume(raw):
         nonlocal previous
-        value = probe.snapshot(raw, reference, sex)
+        value = probe.snapshot(raw, reference, sex, actor_role=actor_role)
         probe.require(value["guard"] == baseline["guard"], "Actor/root/source continuity lost")
         probe.require(value["sample"] > previous["sample"] and value["time"] > previous["time"],
                       "Replayed/nonadvancing pulse observation")

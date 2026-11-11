@@ -6,6 +6,7 @@ guarded observation, native transport, finite wait and durable journal boundary.
 import copy
 import json
 import math
+import re
 import time
 
 import fsmp_probe as scene
@@ -17,13 +18,24 @@ def next_sample_time(start, index, period, minimum_gap, last_completed=None):
     return target if last_completed is None else max(target, last_completed + minimum_gap)
 
 
-def dispose_fixture(session, reference, sex, admitted, *, maximum_seconds=8, sleep=time.sleep, output_subdir="fsmp-probe"):
+def evidence_subdir(kind, segment=None):
+    scene.require(kind in ("fsmp-probe", "cbpc-probe"), "Unknown owned probe evidence kind")
+    if segment is None:
+        return kind
+    scene.require(type(segment) is str and re.fullmatch(r"[a-z][a-z0-9-]{0,47}", segment) is not None,
+                  "Invalid finite probe segment identifier")
+    return kind + "/" + segment
+
+
+def dispose_fixture(session, reference, sex, admitted, *, maximum_seconds=8, sleep=time.sleep,
+                    output_subdir="fsmp-probe", segment=None):
     """Disable only the admitted disposable actor, then verify world/crosshair release."""
+    scene.form(reference)  # Hard player refusal before any file, transport or Disable.
     scene.require(type(maximum_seconds) in (int, float) and math.isfinite(maximum_seconds) and 1 <= maximum_seconds <= 15,
                   "Owned fixture disposal requires a finite 1..15-second bound")
     expected = scene.snapshot(admitted, reference, sex)
     end = time.monotonic() + maximum_seconds
-    scene.require(output_subdir in ("fsmp-probe", "cbpc-probe"), "Unknown owned fixture evidence directory")
+    output_subdir = evidence_subdir(output_subdir, segment)
     output = session.dir / output_subdir / "fixture-disposal.json"
     record = {"reference": reference, "intent": None, "observations": []}
 
@@ -82,14 +94,19 @@ def dispose_fixture(session, reference, sex, admitted, *, maximum_seconds=8, sle
 
 
 class OwnedAnchors:
-    def __init__(self, reference, sex, key, state, *, observe, receipt, wait, persist, strict=False):
-        self.reference, self.sex = scene.form(reference), sex
+    def __init__(self, reference, sex, key, state, *, observe, receipt, wait, persist, strict=False,
+                 actor_role="disposable-npc"):
+        self.reference, self.sex = scene.actor_reference(reference, actor_role), sex
+        self.actor_role = actor_role
         self.names = tuple(dict.fromkeys(scene.anchors(sex).values()))
         scene.require(type(key) is str and key.startswith("CLAW.FSMPProbe.") and len(key) > len("CLAW.FSMPProbe."),
                       "Explicit run-owned anchor key required")
         self.key, self.state, self.strict = key, state, strict
         self.observe, self.receipt, self.wait, self.persist = observe, receipt, wait, persist
         self.originals = state.setdefault("anchorOriginals", {})
+
+    def _snapshot(self, raw):
+        return scene.snapshot(raw, self.reference, self.sex, actor_role=self.actor_role)
 
     def _args(self, name):
         scene.require(name in self.names, "Only declared mass-zero anchors may be written")
@@ -126,7 +143,7 @@ class OwnedAnchors:
 
     def capture(self):
         for name in self.names:
-            current = scene.snapshot(self.observe("anchor-original-" + name), self.reference, self.sex)
+            current = self._snapshot(self.observe("anchor-original-" + name))
             keys = self._read("anchor-original-keys-" + name, "NiOverride", "GetNodeTransformKeys", self._args(name))
             scene.require(keys == [], "Fresh anchor has external transform keys; do not recompose them")
             exists = self._read("anchor-own-key-absent-" + name, "NiOverride", "HasNodeTransformPosition", self._args(name) + [self.key])
@@ -154,15 +171,15 @@ class OwnedAnchors:
         for name in self.names:
             row = rows[name] = {"commands": {}, "samples": []}
             row["beforePulse"] = self.observe(phase + "-before-pulse-" + name)
-            pulse.anchor_excitation(scene.snapshot(row["beforePulse"], self.reference, self.sex), baseline, self.sex, name, [0., 0., 0.])
+            pulse.anchor_excitation(self._snapshot(row["beforePulse"]), baseline, self.sex, name, [0., 0., 0.])
             row["commands"]["moved"] = self.apply(pulse.offset(name), (name,))
             row["moved"] = self.observe(phase + "-pulse-moved-" + name)
-            pulse.anchor_excitation(scene.snapshot(row["moved"], self.reference, self.sex), baseline, self.sex, name, pulse.offset(name))
+            pulse.anchor_excitation(self._snapshot(row["moved"]), baseline, self.sex, name, pulse.offset(name))
             self.persist()
             sleep(spec["holdSeconds"])
             row["commands"]["returned"] = self.apply([0., 0., 0.], (name,))
             row["returned"] = self.observe(phase + "-pulse-returned-" + name)
-            pulse.anchor_excitation(scene.snapshot(row["returned"], self.reference, self.sex), baseline, self.sex, name, [0., 0., 0.])
+            pulse.anchor_excitation(self._snapshot(row["returned"]), baseline, self.sex, name, [0., 0., 0.])
             self.persist()
             # Windows Python 3.12 monotonic uses the coarse GetTickCount64.
             # QPC schedules samples; lifecycle deadlines retain their own clock.
@@ -197,7 +214,7 @@ class OwnedAnchors:
                     if kind == "bool":
                         scene.require(result["returned"] is True, "Anchor local restore not accepted")
                 self.wait(.2, "cleanup-anchor-wait-" + name)
-                current = scene.snapshot(self.observe("cleanup-anchor-readback-" + name), self.reference, self.sex)
+                current = self._snapshot(self.observe("cleanup-anchor-readback-" + name))
                 for channel, floor in scene.FLOORS.items():
                     scene.require(scene.max_delta(current["nodes"][name]["local"][channel], original["local"][channel]) <= max(floor, .001),
                                   "Original anchor local transform not restored")

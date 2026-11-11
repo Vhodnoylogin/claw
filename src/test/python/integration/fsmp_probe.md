@@ -216,3 +216,24 @@ needs selective on/off/on evidence; no solver phase or contact is claimed.
 The protocol parameters are written before the trial. Historical continuous
 cases and protocol/1 retain their original reports, source pins and limits;
 they are not relabelled or retroactively accepted by protocol/2.
+
+## Owned player and evidence segments
+
+NPC-only remains the default. A caller inside its already owned disposable game
+may explicitly request `actor_role="owned-player"` for reference `0x14` and
+`stimulus="xml-anchor-pulse"`. The snapshot, pulse scorer and anchor helper carry
+that role through the same identity, root, epoch, native-completion, cadence and
+quiet-control checks. It does not authorize input into another game or relax the
+motion criteria. Fixture disposal always refuses the player before transport.
+
+An optional `segment` is a lowercase identifier of at most 48 characters. Its
+artifacts go below `fsmp-probe/<segment>/`; an existing segment is never entered
+or overwritten. Every callback captures a fresh baseline and performs its own
+cleanup. This is evidence separation, not a lifecycle orchestrator or permission
+to reuse old roots/Toggle receipts across a transformation or load.
+
+Initially empty anchor-key sets remain mandatory. The installed SKEE API exposes
+component removal and broad all-transform removal, but no exact key-container
+removal. A verified empty container from an earlier callback is not silently
+waived. Prefer one full pulse segment per bounded lifecycle case while that
+constraint remains; no broad transform clear is used to make a probe pass.

@@ -8,22 +8,30 @@ import time
 
 import fsmp_probe as probe
 import fsmp_pulse as pulse
-from owned_anchors import OwnedAnchors, next_sample_time, dispose_fixture
+from owned_anchors import OwnedAnchors, next_sample_time, dispose_fixture, evidence_subdir
 
 
-def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", sleep=time.sleep):
+def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", sleep=time.sleep,
+        actor_role="disposable-npc", segment=None):
     probe.require(type(maximum_seconds) in (int, float) and 30 <= maximum_seconds <= 180,
                   "FSMP callback requires a finite 30..180-second bound")
     probe.require(stimulus in ("reference", "xml-anchors", "xml-anchor-pulse"), "Unknown excitation contract")
+    reference = probe.actor_reference(reference, actor_role)
+    probe.require(actor_role != "owned-player" or stimulus == "xml-anchor-pulse",
+                  "Owned-player probe requires the declared anchor-pulse protocol")
     probe.drivers(sex)  # Validate the explicit sex before any observation or write.
     is_anchor = stimulus != "reference"
     is_pulse = stimulus == "xml-anchor-pulse"
     end = time.monotonic() + maximum_seconds
-    output = session.dir / "fsmp-probe"
+    subdir = evidence_subdir("fsmp-probe", segment)
+    output = session.dir / subdir
+    if segment is not None:
+        output.parent.mkdir(exist_ok=True)
     output.mkdir(exist_ok=False)
     observations = output / "observations"
     observations.mkdir()
-    state = {"reference": reference, "sex": sex, "receipts": {}, "windows": {},
+    state = {"reference": reference, "sex": sex, "actorRole": actor_role, "segment": segment,
+             "receipts": {}, "windows": {},
              "original": None, "current": None, "uncertain": False, "intent": None,
              "stimulus": stimulus, "anchorOriginals": {}}
     state["declaredPointPeriodSeconds"] = .85 if stimulus == "xml-anchors" else None
@@ -54,7 +62,7 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
         if full:
             (output / "state.json").write_text(json.dumps(state, indent=2), encoding="utf-8")
         session.state["fsmpProbe"] = {"directory": str(output), "intent": journal["intent"],
-                                      "uncertain": state["uncertain"]}
+                                      "uncertain": state["uncertain"], "segment": segment, "actorRole": actor_role}
         session.save()
 
     def call(name, tool, args):
@@ -69,7 +77,7 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
     def observe(name):
         nonlocal previous
         raw = call(name, "inspect", query)
-        value = probe.snapshot(raw, reference, sex)
+        value = snapshot(raw)
         if baseline is not None:
             probe.require(value["guard"] == baseline["guard"], "Owned FSMP actor/root continuity lost")
         if previous is not None:
@@ -79,6 +87,9 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
         (observations / (str(value["sample"]) + "-" + name + ".json")).write_text(
             json.dumps(raw, indent=2), encoding="utf-8")
         return raw
+
+    def snapshot(raw):
+        return probe.snapshot(raw, reference, sex, actor_role=actor_role)
 
     def toggle(action, on, names=None):
         names = list(names or probe.drivers(sex))
@@ -123,15 +134,17 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
         return call(name, "papyrus", {"action": "call", "script": script, "function": function,
                                       "args": args, "timeoutMs": 8000})
 
-    anchors = OwnedAnchors(reference, sex, "CLAW.FSMPProbe." + session.state["id"], state,
+    key = "CLAW.FSMPProbe." + session.state["id"] + ("." + segment if segment else "")
+    anchors = OwnedAnchors(reference, sex, key, state, actor_role=actor_role,
                            observe=observe, receipt=pap_receipt, wait=wait, persist=save, strict=is_pulse)
     apply_anchors = anchors.apply
 
     try:
         raw = observe("baseline")
-        baseline = probe.snapshot(raw, reference, sex)
+        baseline = snapshot(raw)
         state["baseline"] = raw
-        plan = (pulse.prepare if is_pulse else probe.prepare)(reference, sex, baseline["position"])
+        plan = (pulse.prepare(reference, sex, baseline["position"], actor_role=actor_role) if is_pulse
+                else probe.prepare(reference, sex, baseline["position"]))
         (output / "plan.json").write_text(json.dumps(plan, indent=2), encoding="utf-8")
         save()
         expected = len(probe.drivers(sex))
@@ -143,7 +156,7 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
             apply_anchors([0., 0., 0.])
             wait(2., "anchor-prime-settle")
             raw = observe("stimulus-baseline")
-            stimulus_baseline = probe.snapshot(raw, reference, sex)
+            stimulus_baseline = snapshot(raw)
             state["stimulusBaseline"] = raw
             save()
             if not is_pulse:
@@ -154,7 +167,7 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
                     raw = observe("anchor-calibration-readback-" + tag)
                     state["anchorCalibration"][tag] = raw
                     save()
-                    probe.anchor_excitation(probe.snapshot(raw, reference, sex), stimulus_baseline, sex, offset)
+                    probe.anchor_excitation(snapshot(raw), stimulus_baseline, sex, offset)
         for phase in probe.PHASES:
             if phase == "stopped":
                 probe.require(toggle("second-off", False) == [True]*expected, "Second off state mismatch")
@@ -181,14 +194,15 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
                 state["windows"][phase].append(raw)
                 state["intent"] = None
                 save()
-                observed = probe.snapshot(raw, reference, sex)
+                observed = snapshot(raw)
                 if stimulus == "xml-anchors":
                     probe.anchor_excitation(observed, stimulus_baseline, sex, probe.anchor_offset(index))
                 else:
                     probe.reference_excitation(observed, baseline, point["expectedPosition"])
         diagnostic = (pulse.score if is_pulse else probe.score)(state)
         (output / "diagnostic.json").write_text(json.dumps(diagnostic, indent=2), encoding="utf-8")
-        session.state["checks"].append({"name": "fsmp-previous-state-protocol", "result": "passed",
+        session.state["checks"].append({"name": "fsmp-previous-state-protocol" + (":" + segment if segment else ""),
+                                         "reference": reference, "actorRole": actor_role, "result": "passed",
                                          "observation": diagnostic})
         session.save()
         return diagnostic
@@ -220,7 +234,7 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
                 call("cleanup-position", "papyrus", {"action": "call", "script": "ObjectReference", "function": "SetPosition",
                     "self": {"form": reference}, "args": baseline["position"], "timeoutMs": 8000})
                 wait(.2, "cleanup-position-wait")
-                actual = probe.snapshot(observe("cleanup-position-readback"), reference, sex)["position"]
+                actual = snapshot(observe("cleanup-position-readback"))["position"]
                 probe.require(probe.max_delta(actual, baseline["position"]) <= .025, "Original position restore not observed")
                 cleanup["position"] = "observed-original-origin"
         except Exception as error:
