@@ -114,3 +114,9 @@ edited through the file's **Edit changelog** action and its eleven entries match
 the source text exactly; no duplicate version was appended. The temporary
 upload credential was removed and its absence verified after the one-use
 GitHub Actions transfer.
+
+The consumed one-use upload workflow, runner, fixed-version pins and its focused
+tests were then retired from the active source tree. Their exact reviewed source
+remains in Git commit`cee8067c554679b10b185143d7049fa92ef41bea`, matching
+[transfer run43071471051](https://github.com/Vhodnoylogin/claw/actions/runs/43071471051).
+No remaining runtime, build or test code imports those temporary helpers.
