@@ -1,5 +1,30 @@
 # Human appearance to individual coat tint
 
+## Current original-colour coat path
+
+Discrete coats retain their original colours through a private engine-created
+Default lighting material, without a FaceGenRGBTint or HairTint multiplier. A
+neutral RGB multiplier is insufficient: actor appearance refresh can overwrite
+either tint feature independently of the NO_TINT marker. PlayerOnly4K case03
+observed exactly that after load: all twelve White texture resources stayed
+bound, but human skin RGB replaced neutral tint and the lease correctly yielded.
+
+The original-colour path clears only the three Face/HairTint/FaceGenRGBTint
+feature flags. It retains donor base members, private texture/property isolation,
+the fade node, finite property alpha and all cooperative ownership checks. Its
+audit reports Default feature0 and no RGB tint. Skin-only material-alpha updates
+target FaceGen shaders and do not apply to this path; ordinary property fades
+and general material-alpha traversal remain distinct. A fresh game regression
+must verify actual load and fade behaviour before acceptance.
+
+The legacy opt-in linked-tint path below remains separate, including its neutral
+fallback when a source colour is unavailable. Its NO_TINT marker protects the
+inspected SKEE recursive path, not every engine or third-party colour writer.
+The historical 0.8.5 bundled-artwork candidate described below was withdrawn;
+current runtime archives reference separately installed Elegant artwork.
+
+## Earlier linked-tint implementation and evidence
+
 Development feature, 1 November 2026; not yet published. The exact engine-factory
 build has passed the SE lifecycle and private-material health checks described
 in [the verification record](verification-20261101.md). Independent rendered

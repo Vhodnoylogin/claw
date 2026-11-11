@@ -64,7 +64,7 @@ private:
     struct Surface {
         RE::NiPointer<RE::BSGeometry> geometry;
         RE::NiPointer<RE::BSShaderProperty> original, own;
-        std::uint32_t expectedTint{};
+        std::optional<std::uint32_t> expectedTint;
         bool tinted{};
         // Retain initialized identities: a later replacement cannot recycle an
         // old pointer into a false match while this surface lease is active.
@@ -101,8 +101,8 @@ private:
     };
     template<class F> static void visit(RE::NiAVObject* object, F&& f);
     static void unbind(Entry& entry);
-    static std::string_view prepareTintMaterial(RE::BSShaderProperty* copy,
-        const RE::BSShaderProperty* original, std::uint32_t tint);
+    static std::string_view prepareMaterial(RE::BSShaderProperty* copy,
+        const RE::BSShaderProperty* original, std::optional<std::uint32_t> tint);
     static bool protectPrivateTint(RE::BSShaderProperty* copy, const RE::BSShaderProperty* original);
     static bool healthyPrivateTint(const Surface& surface);
     static bool inspectPrivateTint(const Surface& surface, std::vector<MaterialLeaseDifference>* differences);
@@ -391,17 +391,18 @@ inline const Runtime::PatternAssets& Runtime::validatePattern(const std::string&
     auto& result = found->second;
     if (!inserted) return result;
     if (dataRoot_.empty()) return result;
-    for (const auto& [name, texture] : pattern.textures) {
+    const auto dimensions = coatPatternDimensions(pattern, [&](const CoatTexture& texture) -> std::optional<CoatDDSInfo> {
         const auto path = dataRoot_ / std::filesystem::path(texture.path);
         std::error_code ec;
-        if (std::filesystem::file_size(path, ec) != texture.bytes || ec) return result;
-        std::ifstream input(path, std::ios::binary); std::array<char, 128> header{};
-        if (!input.read(header.data(), header.size())) return result;
-        const auto info = coatDDSHeader(header);
-        if (!info) return result;
-        result.dimensions.emplace(name, *info);
-    }
-    result.valid = result.dimensions.size() == 9;
+        const auto bytes = std::filesystem::file_size(path, ec);
+        if (ec) return std::nullopt;
+        std::ifstream input(path, std::ios::binary); std::array<char, 148> header{};
+        input.read(header.data(), header.size());
+        return coatDDSMatches(bytes, std::span(header).first(static_cast<std::size_t>(input.gcount())));
+    });
+    if (!dimensions) return result;
+    result.dimensions = *dimensions;
+    result.valid = true;
     return result;
 }
 inline bool Runtime::preparePattern(RE::BSShaderProperty* property, const CoatTexture& texture, const CoatDDSInfo& expected, std::string& reason) const {
@@ -418,6 +419,8 @@ inline bool Runtime::preparePattern(RE::BSShaderProperty* property, const CoatTe
         const auto* type = loaded->GetRTTI();
         return fail("loaded texture RTTI=" + std::string(type ? type->GetName() : "<none>") + "; NiSourceTexture cast failed");
     }
+    if (!source->rendererTexture || !source->rendererTexture->resourceView)
+        return fail("engine texture has no renderer resource view");
     std::uint32_t width{}, height{}, levels{}, arraySize{};
     source->GetTextureDimensionsAndMipInfo(&width, &height, &levels, &arraySize);
     if (width != expected.width || height != expected.height || levels == 0 || arraySize != 1) {
@@ -486,11 +489,15 @@ inline void Runtime::captureHuman(RE::Actor* actor) {
     entry.handle = actor->GetHandle(); entry.loaded = false;
     entry.status = ambiguous ? "record-hair-fallback: ambiguous rendered hair" : "human colours captured";
 }
-inline std::string_view Runtime::prepareTintMaterial(RE::BSShaderProperty* copy,
-    const RE::BSShaderProperty* original, std::uint32_t tint) {
+inline std::string_view Runtime::prepareMaterial(RE::BSShaderProperty* copy,
+    const RE::BSShaderProperty* original, std::optional<std::uint32_t> tint) {
     using Base = RE::BSLightingShaderMaterialBase;
     using Feature = RE::BSShaderMaterial::Feature;
-    const auto feature = original->material->GetFeature() == Feature::kHairTint ? Feature::kHairTint : Feature::kFaceGenRGBTint;
+    // Original coat colours need no tint material. The engine updates all
+    // FaceGenRGBTint/HairTint materials during actor appearance refresh, even
+    // when NO_TINT is present. A neutral tint is therefore not an untinted coat.
+    const auto feature = !tint ? Feature::kDefault :
+        original->material->GetFeature() == Feature::kHairTint ? Feature::kHairTint : Feature::kFaceGenRGBTint;
     auto* manager = RE::MemoryManager::GetSingleton();
     auto* heap = manager ? manager->GetThreadScrapHeap() : nullptr;
     if (!heap) return "material scratch heap unavailable";
@@ -504,13 +511,15 @@ inline std::string_view Runtime::prepareTintMaterial(RE::BSShaderProperty* copy,
     std::unique_ptr<Base, decltype(release)> temporary{Base::CreateMaterial(feature), release};
     if (!temporary || temporary->GetFeature() != feature) return "engine tint material unavailable";
     temporary->CopyBaseMembers(static_cast<Base*>(original->material));
-    const auto rgb = unpack(tint);
+    copy->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kFace, false);
+    copy->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kHairTint, feature == Feature::kHairTint);
+    copy->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kFaceGenRGBTint, feature == Feature::kFaceGenRGBTint);
     if (feature == Feature::kHairTint) {
+        const auto rgb = unpack(*tint);
         static_cast<RE::BSLightingShaderMaterialHairTint*>(temporary.get())->tintColor = {rgb[0], rgb[1], rgb[2]};
-    } else {
+    } else if (feature == Feature::kFaceGenRGBTint) {
+        const auto rgb = unpack(*tint);
         static_cast<RE::BSLightingShaderMaterialFacegenTint*>(temporary.get())->tintColor = {rgb[0], rgb[1], rgb[2]};
-        copy->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kFace, false);
-        copy->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kFaceGenRGBTint, true);
     }
     // true requests an independent engine-owned copy. Only the temporary is
     // destroyed through the matching captured scratch heap at this scope exit.
@@ -552,6 +561,10 @@ inline bool Runtime::inspectPrivateTint(const Surface& surface, std::vector<Mate
     if (surface.tinted && guardData != surface.guard.get())
         return fail("guardIdentity", reinterpret_cast<std::uintptr_t>(surface.guard.get()),
             reinterpret_cast<std::uintptr_t>(guardData));
+    if (material->GetType() != RE::BSShaderMaterial::Type::kLighting)
+        return fail("materialType", "lighting", static_cast<std::int32_t>(material->GetType()));
+    if (!surface.initializedFeature || static_cast<std::int32_t>(material->GetFeature()) != *surface.initializedFeature)
+        return fail("feature", surface.initializedFeature.value_or(-1), static_cast<std::int32_t>(material->GetFeature()));
     if (surface.tinted) {
         if (!surface.materialLease) return fail("materialLease", "initialized retained witness", "unavailable");
         const auto current = materialLeaseState(*surface.own);
@@ -563,7 +576,9 @@ inline bool Runtime::inspectPrivateTint(const Surface& surface, std::vector<Mate
     const auto* guard = netimmerse_cast<RE::NiBooleanExtraData*>(guardData);
     if (!guard || !guard->data) return fail("noTint", "true boolean", guard ? "false boolean" : "missing/nonboolean");
     const auto actual = observedTint(material);
-    if (!actual) return fail("feature", surface.initializedFeature.value_or(-1), static_cast<std::int32_t>(material->GetFeature()));
+    if (surface.expectedTint ? !actual : material->GetFeature() != RE::BSShaderMaterial::Feature::kDefault)
+        return fail("feature", surface.expectedTint ? "tint material" : "original-colour default material",
+            static_cast<std::int32_t>(material->GetFeature()));
     if (surface.tinted && static_cast<const RE::BSLightingShaderMaterialBase*>(material)->textureSet.get() != surface.textureSet.get())
         return fail("textureSetIdentity", reinterpret_cast<std::uintptr_t>(surface.textureSet.get()),
             reinterpret_cast<std::uintptr_t>(static_cast<const RE::BSLightingShaderMaterialBase*>(material)->textureSet.get()));
@@ -585,10 +600,10 @@ inline bool Runtime::inspectPrivateTint(const Surface& surface, std::vector<Mate
             }
         }
     }
-    if (!matchesPackedTint(*actual, surface.expectedTint)) {
+    if (surface.expectedTint && !matchesPackedTint(*actual, *surface.expectedTint)) {
         if (differences) for (unsigned i = 0; i < 3; ++i)
             differences->push_back({"tint[" + std::to_string(i) + ']',
-                materialLeaseDiagnosticValue(surface.initializedTint ? (*surface.initializedTint)[i] : unpack(surface.expectedTint)[i]),
+                materialLeaseDiagnosticValue(surface.initializedTint ? (*surface.initializedTint)[i] : unpack(*surface.expectedTint)[i]),
                 materialLeaseDiagnosticValue((*actual)[i])});
         return false;
     }
@@ -798,9 +813,11 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         };
         if (!copy) return isolationFailure("property clone unavailable");
         if (copy.get() == original) return isolationFailure("property clone aliases source");
-        // Neutral material multiplication does not make a human source available.
-        const auto tint = hasColour ? pack(coatTint(skin ? entry.colours.skin : entry.colours.hair, !skin)) : 0xFFFFFFU;
-        if (const auto failure = prepareTintMaterial(copy.get(), original, tint); !failure.empty()) return isolationFailure(failure);
+        // Keep the legacy linked mode's neutral fallback when a colour is
+        // unavailable; original/discrete coats deliberately have no tint.
+        const std::optional<std::uint32_t> tint = mode == TintMode::original ? std::nullopt :
+            std::optional{hasColour ? pack(coatTint(skin ? entry.colours.skin : entry.colours.hair, !skin)) : 0xFFFFFFU};
+        if (const auto failure = prepareMaterial(copy.get(), original, tint); !failure.empty()) return isolationFailure(failure);
         std::string textureFailure;
         if (selected && !preparePattern(copy.get(), selected->textures.at(std::string(surfaceSpec.texture)), assets->dimensions.at(std::string(surfaceSpec.texture)), textureFailure)) {
             const auto& path = selected->textures.at(std::string(surfaceSpec.texture)).path;
@@ -813,6 +830,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
             tint});
         auto& staged = prepared.back();
         auto* material = static_cast<RE::BSLightingShaderMaterialBase*>(copy->material);
+        staged.initializedFeature = static_cast<std::int32_t>(material->GetFeature());
         staged.patterned = selected != nullptr; staged.diffuseTexture = material->diffuseTexture;
         if (selected) {
             staged.textureSet = material->textureSet;
@@ -849,7 +867,6 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         // Snapshot initialized public state, never pre-initialization scratch
         // values. Retained references make compared pointer identities stable.
         surface.materialLease = materialLeaseState(*surface.own);
-        surface.initializedFeature = static_cast<std::int32_t>(surface.own->material->GetFeature());
         surface.initializedTint = observedTint(surface.own->material);
         surface.tinted = true;
     }

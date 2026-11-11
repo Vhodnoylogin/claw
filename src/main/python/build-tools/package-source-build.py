@@ -50,6 +50,7 @@ SOURCE_PREFIXES = ("src/main/cpp/", "src/test/cpp/", "src/main/papyrus/claw/")
 SOURCE_FILES = {"CMakeLists.txt", "src/main/resources/profiles/MorphLinks.xml",
                 "src/main/papyrus/claw/CLAWDistributionNative.psc",
                 "src/main/python/build-tools/package-source-build.py",
+                "src/main/python/build-tools/player_only_materials.py",
                 "src/main/python/build-tools/build-unified-release.py",
                 "src/main/resources/publication/unified-installer/ModuleConfig.xml",
                 "src/main/resources/publication/unified-installer/info.xml", RUNTIME_README, MODEL_SWAP_SOURCE}
@@ -306,9 +307,11 @@ def installer(template, entries):
     required.clear()
     destinations = {"CLAW.esp", MODEL_SWAP_OVERRIDE} | {MESH + "/" + sex + "bodywerewolf" + ending
         for sex in ("male", "female") for ending in ("_0.nif", "_1.nif", ".tri")}
+    destinations.update(MESH + "/" + sex + "PlayerWerewolf" + ending
+        for sex in ("male", "female") for ending in ("_0.nif", "_1.nif"))
     destinations.update(APPEARANCE_PATH + name for name in APPEARANCE_FILES)
     for destination in sorted(destinations):
-        source = "00 Base/" + destination
+        source = "00 Base/" + destination.replace("PlayerWerewolf", "bodywerewolf")
         if source not in entries:
             source = source.replace("bodywerewolf_1.nif", "bodywerewolf_0.nif")
         ET.SubElement(required, "file", source=source, destination=destination)
@@ -322,7 +325,7 @@ def installer(template, entries):
     steps[0].set("name", "Required bodies and human morph linkage")
     option = steps[0].find("optionalFileGroups/group/plugins/plugin")
     option.set("name", "Required human morph linkage")
-    option.find("description").text = "Carries human body morphs and declared NPC weight inputs into werewolf form. Requires matching SKSE, RaceMenu and Address Library. Select the actual male and female bodies on the following pages. Install Elegant Werewolf Replacer separately for the base skin: https://www.nexusmods.com/skyrimspecialedition/mods/93336. Optional Randomized coat installation is described in the archive README."
+    option.find("description").text = "Carries human body morphs and declared NPC weight inputs into werewolf form. Requires matching SKSE, RaceMenu and Address Library. Select the actual male and female bodies on the following pages. Install Elegant Werewolf Player Only FOMOD separately for the base skin: https://www.nexusmods.com/skyrimspecialedition/mods/93336. Optional Randomized coat installation is described in the archive README."
     descriptor = option.find("typeDescriptor")
     descriptor.clear()
     ET.SubElement(descriptor, "type", name="Required")
@@ -443,6 +446,8 @@ def selection_audit(entries):
     config = ET.fromstring(entries["fomod/ModuleConfig.xml"])
     required = config.find("requiredInstallFiles")
     extra_base = {APPEARANCE_PATH + name for name in APPEARANCE_FILES} | {MODEL_SWAP_OVERRIDE}
+    player_models = {MESH + "/" + sex + "PlayerWerewolf" + ending
+        for sex in ("male", "female") for ending in ("_0.nif", "_1.nif")}
     if json.loads(entries["00 Base/" + MODEL_SWAP_OVERRIDE]) != []:
         raise ValueError("Elegant model-swap compatibility override must be an empty JSON array")
     audit_external_coats(entries)
@@ -450,8 +455,8 @@ def selection_audit(entries):
         if (Path(name).suffix.lower() == ".dds" or "textures" in PurePosixPath(name.casefold()).parts
                 or data.startswith(b"DDS ")):
             raise ValueError("Texture redistribution is not part of this runtime: " + name)
-    if required is None or len(required) != 7 + len(extra_base) or any(row.tag != "file" for row in required):
-        raise ValueError("Literal serialized FOMOD must contain seven explicit body/base mappings plus all coat resources")
+    if required is None or len(required) != 7 + len(extra_base) + len(player_models) or any(row.tag != "file" for row in required):
+        raise ValueError("Literal serialized FOMOD must contain body/base mappings, four PlayerOnly model aliases and all coat resources")
     rows = []
     for male, family in ((male, female) for male in MALE_FAMILIES for female in FEMALE_FAMILIES):
         for host in (False, True):
@@ -468,9 +473,13 @@ def selection_audit(entries):
                 if source not in entries or destination in installed:
                     raise ValueError("Missing source or duplicate required destination")
                 installed[destination] = source
-            expected = reader.BASE_RUNTIME | reader.NATIVE_RUNTIME | {reader.FAMILY_DEST} | extra_base | (reader.HOST_RUNTIME if host else set())
-            if set(installed) != expected or len(installed) != (12 if host else 10) + len(extra_base):
+            expected = reader.BASE_RUNTIME | reader.NATIVE_RUNTIME | {reader.FAMILY_DEST} | extra_base | player_models | (reader.HOST_RUNTIME if host else set())
+            if set(installed) != expected or len(installed) != (12 if host else 10) + len(extra_base) + len(player_models):
                 raise ValueError("Nonminimal/incomplete selected runtime")
+            for alias in player_models:
+                standard = alias.replace("PlayerWerewolf", "bodywerewolf")
+                if installed[alias] != installed[standard]:
+                    raise ValueError("PlayerOnly alias differs from its matching CLAW body source")
             matrix = ET.fromstring(entries[installed[reader.FAMILY_DEST]])
             selected = {(row.get("sex"), row.get("family")) for row in matrix.findall("Profile")}
             defaults = matrix.find("Defaults")
@@ -554,6 +563,12 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     if (obody_esp is None) != (obody_pex is None):
         raise ValueError("OBody host ESP and PEX must be supplied together")
     inputs = Inputs()
+    inputs.read(ROOT / "src/main/python/build-tools/player_only_materials.py")
+    material_spec = importlib.util.spec_from_file_location("claw_player_only_materials",
+        ROOT / "src/main/python/build-tools/player_only_materials.py")
+    materials = importlib.util.module_from_spec(material_spec)
+    material_spec.loader.exec_module(materials)
+    material_adaptations = {}
     entries = {"00 Base/CLAW.esp": inputs.runtime(game_esp, b"TES4", "game ESP"),
                "10 Native/SKSE/Plugins/CLAWDistribution.dll": inputs.runtime(native_dll, b"MZ", "native DLL"),
                "10 Native/Scripts/CLAWDistributionNative.pex": inputs.runtime(native_pex, b"\xfa\x57\xc0\xde", "native PEX")}
@@ -562,6 +577,8 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
         for ending in ("_0.nif", "_1.nif", ".tri"):
             name = sex + "bodywerewolf" + ending
             body[ending] = inputs.runtime(Path(bodies_dir) / name, b"PIRT" if ending == ".tri" else b"Gamebryo", name)
+            if ending != ".tri":
+                body[ending], material_adaptations[name] = materials.adapt_nif(body[ending])
         for ending, data in body.items():
             if ending == "_1.nif" and data == body["_0.nif"]:
                 continue
@@ -608,6 +625,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
                "sourceSelection": source_selection,
                "runtimeInputsCompiledByThisCommand": False, "gameOrManagerExecuted": False,
                "runtimeInputProvenance": inputs.runtime_roles,
+               "playerOnlyMaterialAdaptations": material_adaptations,
                "historicalArchiveUsedAsSource": False, "iniInstalled": False,
                "configuration": "canonical MorphLinks.xml family defaults; runtime has no INI reader",
                "texturePayloads": 0, "appearanceFiles": list(APPEARANCE_FILES),
