@@ -63,8 +63,12 @@ motion-only archive cannot enable that host or its snapshot authority.
 Select `--provider fsmp` for the separate FSMP alternative in `fsmp_motion.py`.
 It emits original XML with nine or eleven dynamic bones, kinematic anchors,
 restoring linear/angular springs and no collision shapes. Tail constraints
-connect existing driver nodes across unchanged CME wrappers. Identity `frameInB`
-uses actual loaded rest transforms. Translation limits are +/-0.15 per axis;
+connect existing driver nodes across unchanged CME wrappers. Ear/tail identity
+`frameInB` uses actual loaded rest transforms. The two single-body P1 joints use
+identity `frameInA`, attaching at the kinematic PreBreast origin instead of the
+dynamic body's center. The pinned skeleton has a one-unit P1 lever; this pivot
+change is a mechanical candidate and still needs game acceptance.
+Translation limits are +/-0.15 per axis;
 Euler limits are +/-0.01 radians. These are original small-motion trials.
 
 FSMP needs a mesh binding. The adapter appends one `NiStringExtraData` block named

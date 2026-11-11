@@ -47,7 +47,8 @@ class Session:
         result = self._tool(tool, args, **kwargs)
         if tool == "papyrus":
             result.setdefault("called", True)
-            result.setdefault("returnedType", "bool[]" if args.get("function") == "TogglePhysics" else "none")
+            result.setdefault("returnedType", "bool[]" if args.get("function") == "TogglePhysics" else
+                              "bool" if type(result.get("returned")) is bool else "none")
         return result
 
     def _tool(self, tool, args, **kwargs):
@@ -273,6 +274,58 @@ class OwnedFsmpCaseTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Crosshair readback value unavailable"):
                 case.dispose_fixture(session, "0xFF001234", "female", copy.deepcopy(session.sample))
             self.assertEqual(len([args for _, args in session.calls if args.get("function") == "Disable"]), 1)
+
+    def test_fixture_disposal_rejects_error_null_and_missing_null_type(self):
+        for invalid in ({"called": True, "returnedType": "none", "returned": None, "error": "unavailable"},
+                        {"called": True, "returned": None}):
+            class InvalidNull(Session):
+                def tool(self, tool, args, **kwargs):
+                    result = super().tool(tool, args, **kwargs)
+                    return invalid if args.get("function") == "GetCurrentCrosshairRef" else result
+            with self.subTest(invalid=invalid), tempfile.TemporaryDirectory() as directory:
+                (Path(directory)/"fsmp-probe").mkdir()
+                session = InvalidNull(directory, sex="female")
+                with self.assertRaisesRegex(ValueError, "Crosshair"):
+                    case.dispose_fixture(session, "0xFF001234", "female", copy.deepcopy(session.sample))
+                self.assertEqual(len([args for _, args in session.calls if args.get("function") == "Disable"]), 1)
+
+    def test_fixture_disposal_waits_for_non_null_reference_to_release(self):
+        class DelayedNull(Session):
+            crosshairs = 0
+            def tool(self, tool, args, **kwargs):
+                result = super().tool(tool, args, **kwargs)
+                if args.get("function") == "GetCurrentCrosshairRef":
+                    self.crosshairs += 1
+                    if self.crosshairs == 1:
+                        return {"called": True, "returnedType": "objectreference", "returned": {"formId": "0xFF001234"}}
+                return result
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory)/"fsmp-probe").mkdir()
+            session = DelayedNull(directory, sex="female")
+            result = case.dispose_fixture(session, "0xFF001234", "female", copy.deepcopy(session.sample), sleep=lambda _: None)
+            self.assertTrue(result["verifiedDisabledAndCrosshairReleased"])
+            self.assertEqual(len(result["observations"]), 2)
+            self.assertEqual(len([args for _, args in session.calls if args.get("function") == "Disable"]), 1)
+
+    def test_pulse_uncertain_wait_does_not_reach_motion_or_replay_wait(self):
+        class UnknownWait(Session):
+            waits = 0
+            def tool(self, tool, args, **kwargs):
+                result = super().tool(tool, args, **kwargs)
+                if args.get("script") == "Utility" and args.get("function") == "Wait":
+                    self.waits += 1
+                    if self.waits == 1:
+                        return {"called": False, "returnedType": "none", "returned": None}
+                return result
+        with tempfile.TemporaryDirectory() as directory:
+            session = UnknownWait(directory)
+            with self.assertRaisesRegex(ValueError, "settle completion uncertain"):
+                case.run(session, "0xFF001234", "male", stimulus="xml-anchor-pulse", sleep=lambda _: None)
+            state = json.loads((Path(directory)/"fsmp-probe/state.json").read_bytes())
+            self.assertEqual(state["pulses"], {})
+            self.assertTrue(all(v is None for keys in session.anchor_keys.values() for v in keys.values()))
+            prime = [args for _, args in session.calls if args.get("function") == "Wait" and args.get("args") == [2.]]
+            self.assertEqual(len(prime), 1)
 
     def test_fixture_disposal_requires_bounded_deadline_and_fresh_precondition(self):
         with tempfile.TemporaryDirectory() as directory:

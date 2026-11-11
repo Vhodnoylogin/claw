@@ -34,8 +34,8 @@ def fixture(sex="female", missing=(), periods=None, holds=None):
         raw.update(sampleId=sample, producerMonotonicNs=time)
         by_name = {row["name"]: row for row in raw["nodes"]}
         if moved:
-            by_name[moved]["world"] = compose(by_name[moved]["world"], transform(pulse.offset()))
-            by_name[moved]["local"] = compose(by_name[moved]["local"], transform(pulse.offset()))
+            by_name[moved]["world"] = compose(by_name[moved]["world"], transform(pulse.offset(moved)))
+            by_name[moved]["local"] = compose(by_name[moved]["local"], transform(pulse.offset(moved)))
         for node in nodes:
             if phase != "stopped" and node not in missing:
                 # World-only translation with a finite decaying impulse. The
@@ -71,7 +71,7 @@ def fixture(sex="female", missing=(), periods=None, holds=None):
                 "beforePulse": observe(), "moved": observe(moved=anchor),
                 "returned": observe((holds or {}).get(phase, .2)),
                 "samples": [observe((periods or {}).get(phase, .1), phase=phase, index=i, nodes=nodes) for i in range(25)],
-                "commands": {"moved": commands(anchor, pulse.offset()), "returned": commands(anchor, [0., 0., 0.])}}
+                "commands": {"moved": commands(anchor, pulse.offset(anchor)), "returned": commands(anchor, [0., 0., 0.])}}
     return document
 
 
@@ -84,6 +84,28 @@ def node(raw, name):
 
 
 class FsmpPulseTests(unittest.TestCase):
+    def test_protocol_two_keeps_p1_pulse_below_the_authored_linear_stop(self):
+        self.assertEqual(pulse.protocol()["id"], "claw-fsmp-anchor-pulse/2")
+        self.assertEqual(pulse.offset(), [.5, 0., 0.])
+        self.assertEqual(pulse.offset("NPC Head [Head]"), [.5, 0., 0.])
+        self.assertEqual(pulse.offset("Tails"), [.5, 0., 0.])
+        for anchor in ("NPC L PreBreast P1", "NPC R PreBreast P1"):
+            self.assertEqual(pulse.offset(anchor), [.1, 0., 0.])
+            self.assertLess(abs(pulse.offset(anchor)[0]), .15)
+        with self.assertRaisesRegex(ValueError, "Unknown pulse family"):
+            pulse.offset("foreign-node")
+
+    def test_protocol_one_or_large_p1_pulse_cannot_be_relabelled_as_two(self):
+        document = fixture()
+        document["protocol"]["id"] = "claw-fsmp-anchor-pulse/1"
+        with self.assertRaisesRegex(ValueError, "protocol was absent or changed"):
+            pulse.score(document)
+        document = fixture()
+        row = document["pulses"]["active"]["NPC L PreBreast P1"]
+        row["commands"]["moved"][0]["args"][-1] = [.5, 0., 0.]
+        with self.assertRaisesRegex(ValueError, "write completion/arguments"):
+            pulse.score(document)
+
     def test_all_requested_drivers_require_zero_return_contrast_including_translation_only_p1(self):
         for sex, count in (("male", 9), ("female", 11)):
             result = pulse.score(fixture(sex))

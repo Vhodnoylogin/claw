@@ -196,10 +196,15 @@ any case-owned crash observer attached through fixture disposal and process exit
 
 `stimulus="xml-anchor-pulse"` selects the independent `fsmp_pulse` protocol.
 It retains the native eleven/nine-body gate and scoped key lifecycle, but pulses
-one kinematic family at a time. A calibrated +0.5-unit X offset is held for the
-declared interval, then the same anchor must visibly return to its zero baseline
+one kinematic family at a time. Protocol/2 uses +0.5-unit X offsets for Head/Tails
+and +0.1 for each PreBreast anchor, below the P1 joint's 0.15-unit travel limit.
+The calibrated offset is held for the declared interval, then the same anchor must visibly return to its zero baseline
 before 25 read-only observations at a declared 0.1-second period. The observer
 records the actual hold and producer-clock sampling intervals.
+Read dispatch retains the nominal schedule but cannot catch up faster than the
+minimum gap after the previous read completes. Actual producer-clock limits
+still decide acceptance. Shared `owned_anchors.py` owns scoped key operations,
+cleanup and pulse collection; provider-native control semantics stay separate.
 
 The scorer compares each driver's world transform relative to its stationary
 anchor and the pre-pulse zero baseline. Both active windows need changing residual
@@ -209,4 +214,5 @@ driver may qualify through translation without rotation. Every requested driver
 needs selective on/off/on evidence; no solver phase or contact is claimed.
 
 The protocol parameters are written before the trial. Historical continuous
-cases retain their original reports and limits and are never rescored as pulses.
+cases and protocol/1 retain their original reports, source pins and limits;
+they are not relabelled or retroactively accepted by protocol/2.

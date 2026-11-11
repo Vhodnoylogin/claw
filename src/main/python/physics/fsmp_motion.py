@@ -75,9 +75,10 @@ def render_xml(breast=False):
                                 ("gravity-factor", "0"), ("wind-factor", "0")):
                 ET.SubElement(bone, name).text = value
             constraint = ET.SubElement(root, "generic-constraint", bodyA=parent, bodyB=node)
-            # FrameInB identity is resolved against the actual loaded rest
-            # transforms by calcFrame; intermediary CME nodes remain untouched.
-            ET.SubElement(constraint, "frameInB")
+            # A single P1 body needs its attachment at the PreBreast pivot,
+            # rather than at its own center of mass. Chain links retain their
+            # original frames; intermediary CME nodes remain untouched.
+            ET.SubElement(constraint, "frameInA" if node in common.source.BREAST_NODES else "frameInB")
             for name, value in (("linearLowerLimit", "-.15"), ("linearUpperLimit", ".15"),
                                 ("angularLowerLimit", "-.01"), ("angularUpperLimit", ".01"),
                                 ("linearStiffness", "1"), ("angularStiffness", ".5"),

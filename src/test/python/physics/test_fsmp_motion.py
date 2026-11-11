@@ -121,6 +121,22 @@ class FsmpMotionTests(unittest.TestCase):
                 self.assertEqual(set(element.find("angularUpperLimit").attrib.values()), {".01"})
                 self.assertGreater(float(element.find("angularStiffness").attrib["x"]), 0)
 
+    def test_only_p1_joint_frames_change_from_the_pinned_runtime_xml(self):
+        male = fsmp.render_xml(False)
+        female = fsmp.render_xml(True)
+        self.assertEqual(hashlib.sha256(male).hexdigest(), "b42bfa436a4e53baa48ff2249d4659718603798dabdb1e6b9427dc37efa0ea34")
+        self.assertEqual(female.count(b"<frameInA />"), 2)
+        self.assertEqual(hashlib.sha256(female.replace(b"<frameInA />", b"<frameInB />")).hexdigest(),
+                         "1e68bc9a8cb3551b8c7e855742add251d34dc2ad262f1a3ea6e0f0cf17478717")
+        constraints = ET.fromstring(female).findall("generic-constraint")
+        for constraint in constraints:
+            breast = constraint.attrib["bodyB"] in fsmp.common.source.BREAST_NODES
+            self.assertEqual(constraint.find("frameInA") is not None, breast)
+            self.assertEqual(constraint.find("frameInB") is not None, not breast)
+            if breast:
+                side = "L" if " L " in constraint.attrib["bodyB"] else "R"
+                self.assertEqual(constraint.attrib["bodyA"], "NPC " + side + " PreBreast P1")
+
     def test_complete_builder_binds_all_endpoints_and_archives_only_motion_resources(self):
         for breast in (False, True):
             with self.subTest(breast=breast), tempfile.TemporaryDirectory() as directory:

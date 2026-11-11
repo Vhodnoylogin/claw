@@ -15,6 +15,46 @@ writes are CBPC outputs; independent torso/CME controls must remain quiet.
 Void calls leave binding state unknown. This scorer has offline counterexample
 coverage; no actual CBPC pulse run or release acceptance is implied.
 
+## Owned pulse transport
+
+`cbpc_owned_case.run(session, reference, sex)` executes the pulse case only
+inside an already owned bounded Session. The caller must qualify a fresh
+born-beast fixture, actual resources, provider ownership and live function
+signatures before invoking it. The callback checks current/base race, sex,
+incarnation, root and advancing raw observations. It calls only node-scoped
+`CBPCPluginScript.StartPhysics(actor, node)` / `StopPhysics(actor, node)`;
+both require exact completed void receipts. An uncertain Start/Stop stops the
+case without replay, global reload or compensating provider calls. Original
+state and binding remain unknown even when all pulse channels respond.
+
+`owned_anchors.py` is shared with the FSMP callback. It encapsulates run-key
+capture, individually guarded/journaled anchor mutations, zero-return read-only
+sampling and original local-transform restoration. Only mass-zero Head/Tails
+and female PreBreast P1 anchors are written. The pulse module declares each
+family's offset before execution; P1 uses the smaller `.1` offset, ears/tail `.5`.
+The FSMP callback retains its separate previous-state bool-array protocol.
+
+Keep all test-source dependencies in the run's hash inventory:
+`cbpc_owned_case.py`, `cbpc_probe.py`, `cbpc_pulse.py`, `owned_anchors.py`,
+`fsmp_probe.py` and `fsmp_pulse.py`. The callback records small intent journals
+and immutable raw observations under `cbpc-probe/`, then writes full `state.json`
+and separate `cleanup.json` at case end. These are development test sources;
+no gameplay archive or runtime provider is changed by their import.
+
+The owning harness must call `cbpc_owned_case.dispose_fixture(...)` from its
+own finalization path using the retained admitted baseline, including after a
+failed case. This disables only that still-guarded disposable actor and verifies
+actual disabled state plus explicit null crosshair. It restores no guessed CBPC
+state. Keep ordinary Session shutdown/process observation afterward. A human-base
+or replacement actor is never qualified by changing the supplied sex/race label.
+
+```powershell
+python -m unittest discover -s src/test/python/physics -p test_cbpc_owned_case.py
+python -m unittest discover -s src/test/python/physics -p test_cbpc_pulse.py
+```
+
+## Retained moving-anchor probe
+
 Use a fresh owned **born-beast** NPC with verified sex/race, current mesh and skin
 influences, matching skeleton and sole CBPC motion ownership. Keep it 3D-loaded,
 within the effective CBPC bounce range and under the existing bounded Session's

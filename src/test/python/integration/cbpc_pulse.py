@@ -114,12 +114,12 @@ def score(document):
         windows[phase], timings[phase], holds[phase] = {}, {}, {}
         for anchor in groups:
             row = rows[anchor]
-            for stage, displacement in (("moved", pulse.offset()), ("returned", [0., 0., 0.])):
+            for stage, displacement in (("moved", pulse.offset(anchor)), ("returned", [0., 0., 0.])):
                 pulse._commands(row["commands"][stage], reference, sex, anchor, originals[anchor]["key"], displacement)
             before = consume(row["beforePulse"])
             controls(before)
             moved = consume(row["moved"])
-            pulse.anchor_excitation(moved, primed, sex, anchor, pulse.offset())
+            pulse.anchor_excitation(moved, primed, sex, anchor, pulse.offset(anchor))
             controls(moved, moving=anchor)
             returned = consume(row["returned"])
             pulse.anchor_excitation(returned, primed, sex, anchor, [0., 0., 0.])

@@ -48,8 +48,8 @@ def fixture(sex="female", missing=(), periods=None):
         def world(name):
             if name not in cache:
                 if name in anchors:
-                    cache[name] = compose(anchors[name], transform(probe.pulse.offset() if name == moved else [0., 0., 0.]))
-                    rows[name]["local"] = transform(probe.pulse.offset() if name == moved else [0., 0., 0.])
+                    cache[name] = compose(anchors[name], transform(probe.pulse.offset(name) if name == moved else [0., 0., 0.]))
+                    rows[name]["local"] = transform(probe.pulse.offset(name) if name == moved else [0., 0., 0.])
                 elif name in parents:
                     cache[name] = compose(world(parents[name]), rows[name]["local"])
                 else:
@@ -81,7 +81,7 @@ def fixture(sex="female", missing=(), periods=None):
         document["pulses"][phase] = {}
         for anchor in groups:
             document["pulses"][phase][anchor] = {"beforePulse": observe(), "moved": observe(moved=anchor),
-                "returned": observe(.2), "commands": {"moved": commands(anchor, probe.pulse.offset()),
+                "returned": observe(.2), "commands": {"moved": commands(anchor, probe.pulse.offset(anchor)),
                 "returned": commands(anchor, [0., 0., 0.])}, "samples": [
                     observe((periods or {}).get(phase, .1), phase=phase, family=anchor, point=i) for i in range(25)]}
     return document

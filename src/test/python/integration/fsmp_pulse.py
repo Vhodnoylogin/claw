@@ -13,15 +13,17 @@ import fsmp_probe as probe
 
 
 def protocol():
-    return {"id": "claw-fsmp-anchor-pulse/1", "offset": [.5, 0., 0.],
+    return {"id": "claw-fsmp-anchor-pulse/2", "offset": [.5, 0., 0.], "p1Offset": [.1, 0., 0.],
             "holdSeconds": .12, "maxHoldSeconds": .6, "holdComparabilityFraction": .25,
             "samples": 25, "samplePeriodSeconds": .1, "minGapSeconds": .04,
             "maxGapSeconds": .2, "minSpanSeconds": 2.1, "cadenceComparabilityFraction": .25,
             "minimumSignalFloors": 4, "maximumOffRatio": .25, "requireReadOnlyVariation": True}
 
 
-def offset():
-    return protocol()["offset"]
+def offset(anchor=None):
+    if anchor is not None:
+        probe.require(anchor in families("female"), "Unknown pulse family")
+    return protocol()["p1Offset" if anchor in ("NPC L PreBreast P1", "NPC R PreBreast P1") else "offset"]
 
 
 def families(sex):
@@ -163,12 +165,12 @@ def score(document):
         for anchor in groups:
             pulse = rows[anchor]
             key = document["anchorOriginals"][anchor]["key"]
-            _commands(pulse["commands"]["moved"], reference, sex, anchor, key, offset())
+            _commands(pulse["commands"]["moved"], reference, sex, anchor, key, offset(anchor))
             _commands(pulse["commands"]["returned"], reference, sex, anchor, key, [0., 0., 0.])
             before = consume(pulse["beforePulse"])
             controls(before)
             moved = consume(pulse["moved"])
-            anchor_excitation(moved, primed, sex, anchor, offset())
+            anchor_excitation(moved, primed, sex, anchor, offset(anchor))
             controls(moved, moving=anchor)
             returned = consume(pulse["returned"])
             anchor_excitation(returned, primed, sex, anchor, [0., 0., 0.])
