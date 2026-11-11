@@ -28,7 +28,7 @@ jobs:
         run: >-
           python3 src/main/python/publication/run_nexus_upload_once.py
           --pin src/main/resources/publication/nexus/0.9.0/verified-package.json
-          --reviewed-pin-sha256 42c0c2a46d6fd29d6446f772dac9c342e8e453194407985b2234b7b478494a69
+          --reviewed-pin-sha256 bab33dfef50a1975a2fb5437722315c8e203fb6c27d2c80b8aca48804514dfdc
           --apply
       - name: Retain sanitized one-use receipts
         if: always()
