@@ -33,17 +33,27 @@ class Session:
         self.world_response = world_response
         self.fail_head_restore = fail_head_restore
         self.anchor_keys = {}
+        self.current_phase = None
+        self.inspect_keys = []
         self.original_nodes = {n["name"]: copy.deepcopy(n) for n in self.sample["nodes"]}
 
     def save(self):
         pass
 
     def phase(self, *args):
-        pass
+        self.current_phase = args[0]
 
     def tool(self, tool, args, **kwargs):
+        result = self._tool(tool, args, **kwargs)
+        if tool == "papyrus":
+            result.setdefault("called", True)
+            result.setdefault("returnedType", "bool[]" if args.get("function") == "TogglePhysics" else "none")
+        return result
+
+    def _tool(self, tool, args, **kwargs):
         self.calls.append((tool, copy.deepcopy(args)))
         if tool == "inspect":
+            self.inspect_keys.append((self.current_phase, copy.deepcopy(self.anchor_keys)))
             self.sample["sampleId"] += 1
             self.sample["producerMonotonicNs"] += 100_000_000
             return copy.deepcopy(self.sample)
@@ -292,6 +302,48 @@ class OwnedFsmpCaseTests(unittest.TestCase):
             self.assertTrue(session.sample["refs"][0]["disabled"])
             self.assertEqual(len([args for _, args in session.calls if args.get("function") == "Disable"]), 1)
             self.assertFalse(any(args.get("function") == "GetCurrentCrosshairRef" for _, args in session.calls))
+
+    def test_pulse_samples_only_after_each_family_has_returned_to_zero(self):
+        with tempfile.TemporaryDirectory() as directory:
+            session = Session(directory, sex="female")
+            result = case.run(session, "0xFF001234", "female", stimulus="xml-anchor-pulse", sleep=lambda _: None)
+            self.assertEqual(result["status"], "unconfirmed")
+            self.assertEqual(len(result["missingDrivers"]), 11)
+            samples = [keys for phase, keys in session.inspect_keys if "-pulse-sample-" in phase]
+            self.assertEqual(len(samples), 3*4*25)
+            self.assertTrue(all(value == [0., 0., 0.] for keys in samples for values in keys.values() for value in values.values()))
+            self.assertTrue(all(v is None for values in session.anchor_keys.values() for v in values.values()))
+            state = json.loads((Path(directory)/"fsmp-probe/state.json").read_bytes())
+            self.assertEqual(state["windows"], {})
+            self.assertEqual(len(state["pulses"]["active"]), 4)
+
+    def test_pulse_uncertain_body_receipt_is_not_replayed_or_excited(self):
+        class UncertainBody(Session):
+            def tool(self, tool, args, **kwargs):
+                result = super().tool(tool, args, **kwargs)
+                if args.get("function") == "TogglePhysics":
+                    result["called"] = False
+                return result
+        with tempfile.TemporaryDirectory() as directory:
+            session = UncertainBody(directory, sex="female")
+            with self.assertRaisesRegex(ValueError, "body-state completion uncertain"):
+                case.run(session, "0xFF001234", "female", stimulus="xml-anchor-pulse", sleep=lambda _: None)
+            self.assertEqual(len([args for _, args in session.calls if args.get("function") == "TogglePhysics"]), 1)
+            self.assertFalse(any(args.get("script") == "NiOverride" for _, args in session.calls))
+
+    def test_pulse_uncertain_anchor_write_never_reaches_sampling(self):
+        class UncertainWrite(Session):
+            def tool(self, tool, args, **kwargs):
+                result = super().tool(tool, args, **kwargs)
+                if args.get("function") == "AddNodeTransformPosition":
+                    result["called"] = False
+                return result
+        with tempfile.TemporaryDirectory() as directory:
+            session = UncertainWrite(directory, sex="female")
+            with self.assertRaisesRegex(ValueError, "pulse write completion uncertain"):
+                case.run(session, "0xFF001234", "female", stimulus="xml-anchor-pulse", sleep=lambda _: None)
+            self.assertFalse(any("-pulse-sample-" in phase for phase, _ in session.inspect_keys))
+            self.assertTrue(all(v is None for values in session.anchor_keys.values() for v in values.values()))
 
 
 if __name__ == "__main__":

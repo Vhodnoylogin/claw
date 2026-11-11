@@ -9,6 +9,7 @@ from pathlib import Path
 import time
 
 import fsmp_probe as probe
+import fsmp_pulse as pulse
 
 
 def dispose_fixture(session, reference, sex, admitted, *, maximum_seconds=8, sleep=time.sleep):
@@ -74,8 +75,10 @@ def dispose_fixture(session, reference, sex, admitted, *, maximum_seconds=8, sle
 def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", sleep=time.sleep):
     probe.require(type(maximum_seconds) in (int, float) and 30 <= maximum_seconds <= 180,
                   "FSMP callback requires a finite 30..180-second bound")
-    probe.require(stimulus in ("reference", "xml-anchors"), "Unknown excitation contract")
+    probe.require(stimulus in ("reference", "xml-anchors", "xml-anchor-pulse"), "Unknown excitation contract")
     probe.drivers(sex)  # Validate the explicit sex before any observation or write.
+    is_anchor = stimulus != "reference"
+    is_pulse = stimulus == "xml-anchor-pulse"
     end = time.monotonic() + maximum_seconds
     output = session.dir / "fsmp-probe"
     output.mkdir(exist_ok=False)
@@ -85,6 +88,8 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
              "original": None, "current": None, "uncertain": False, "intent": None,
              "stimulus": stimulus, "anchorOriginals": {}}
     state["declaredPointPeriodSeconds"] = .85 if stimulus == "xml-anchors" else None
+    if is_pulse:
+        state.update(protocol=pulse.protocol(), pulses={})
     baseline = previous = None
     cleaning = False
 
@@ -93,8 +98,13 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
         # journal stays small instead of reserializing every previous window on
         # every key operation, which changed the actual stimulus cadence.
         journal = {key: value for key, value in state.items() if key not in (
-            "windows", "baseline", "stimulusBaseline", "anchorCalibration", "receipts", "intent")}
+            "windows", "pulses", "baseline", "stimulusBaseline", "anchorCalibration", "receipts", "intent")}
         journal["windows"] = {phase: [row["sampleId"] for row in rows] for phase, rows in state["windows"].items()}
+        if is_pulse:
+            journal["pulses"] = {phase: {name: {
+                **{side: row[side]["sampleId"] for side in ("beforePulse", "moved", "returned") if side in row},
+                "samples": [sample["sampleId"] for sample in row.get("samples", [])], "commands": row.get("commands", {})}
+                for name, row in families.items()} for phase, families in state["pulses"].items()}
         journal["receipts"] = {action: {key: value for key, value in receipt.items() if key not in ("before", "after")}
                                | {side + "Sample": receipt[side]["sampleId"] for side in ("before", "after")}
                                for action, receipt in state["receipts"].items()}
@@ -140,6 +150,10 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
         try:
             result = call(action, "papyrus", {"action": "call", "script": "DynamicHDT", "function": "TogglePhysics",
                 "args": [{"form": reference}, names, on], "timeoutMs": 8000})
+            if is_pulse:
+                probe.require(result.get("called") is True and result.get("returnedType") == "bool[]" and
+                              "returned" in result and not result.get("error"),
+                              "Native pulse body-state completion uncertain; do not replay")
             bits = probe.bool_vector(result["returned"], len(names))
             state["intent"]["nativeResult"] = result
             save()
@@ -164,38 +178,53 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
         call(name, "papyrus", {"action": "call", "script": "Utility", "function": "Wait",
                                "args": [float(seconds)], "timeoutMs": 8000})
 
-    def pap(name, script, function, args):
+    def pap_receipt(name, script, function, args):
         return call(name, "papyrus", {"action": "call", "script": script, "function": function,
-                                      "args": args, "timeoutMs": 8000})["returned"]
+                                      "args": args, "timeoutMs": 8000})
+
+    def pap(name, script, function, args):
+        return pap_receipt(name, script, function, args)["returned"]
 
     def transform_args(name):
         return [{"form": reference}, False, sex == "female", name]
 
-    def apply_anchors(offset):
-        for name, original in state["anchorOriginals"].items():
+    def apply_anchors(offset, names=None):
+        commands = []
+        for name in names or state["anchorOriginals"]:
+            original = state["anchorOriginals"][name]
             observe("anchor-write-guard-" + name)
             args = transform_args(name) + [original["key"]]
             state["intent"] = {"action": "anchor-own-key", "node": name, "key": original["key"], "offset": offset}
             save()
-            pap("anchor-write-" + name, "NiOverride", "AddNodeTransformPosition", args + [offset])
-            value = pap("anchor-storage-" + name, "NiOverride", "GetNodeTransformPosition", args)
-            probe.require(probe.max_delta(probe.numbers(value, 3), offset) <= 1e-6, "Own anchor key storage mismatch")
-            pap("anchor-apply-" + name, "NiOverride", "UpdateNodeTransform", transform_args(name))
+            for function, call_args in (("AddNodeTransformPosition", args + [offset]),
+                                        ("UpdateNodeTransform", transform_args(name))):
+                receipt = pap_receipt("anchor-" + function + "-" + name, "NiOverride", function, call_args)
+                state["intent"]["nativeResult"] = receipt
+                save()
+                if is_pulse:
+                    probe.require(receipt.get("called") is True and receipt.get("returnedType") == "none" and
+                                  "returned" in receipt and receipt["returned"] is None and not receipt.get("error"),
+                                  "Anchor pulse write completion uncertain; do not replay")
+                commands.append({"script": "NiOverride", "function": function, "args": call_args, "nativeResult": receipt})
+                if function == "AddNodeTransformPosition":
+                    value = pap("anchor-storage-" + name, "NiOverride", "GetNodeTransformPosition", args)
+                    probe.require(probe.max_delta(probe.numbers(value, 3), offset) <= 1e-6, "Own anchor key storage mismatch")
             state["intent"] = None
             save()
+        return commands
 
     try:
         raw = observe("baseline")
         baseline = probe.snapshot(raw, reference, sex)
         state["baseline"] = raw
-        plan = probe.prepare(reference, sex, baseline["position"])
+        plan = (pulse.prepare if is_pulse else probe.prepare)(reference, sex, baseline["position"])
         (output / "plan.json").write_text(json.dumps(plan, indent=2), encoding="utf-8")
         save()
         expected = len(probe.drivers(sex))
         probe.require(toggle("first-off", False) == [True]*expected, "Fresh dynamic-body gate failed; no excitation")
         probe.require(toggle("reenable", True) == [False]*expected, "Reenable state mismatch")
         stimulus_baseline = baseline
-        if stimulus == "xml-anchors":
+        if is_anchor:
             key = "CLAW.FSMPProbe." + session.state["id"]
             for name in dict.fromkeys(probe.anchors(sex).values()):
                 current = probe.snapshot(observe("anchor-original-" + name), reference, sex)
@@ -212,20 +241,43 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
             stimulus_baseline = probe.snapshot(raw, reference, sex)
             state["stimulusBaseline"] = raw
             save()
-            state["anchorCalibration"] = {}
-            for tag, offset in (("moved", [.25, 0., 0.]), ("reset", [0., 0., 0.])):
-                apply_anchors(offset)
-                wait(.2, "anchor-calibration-" + tag)
-                raw = observe("anchor-calibration-readback-" + tag)
-                state["anchorCalibration"][tag] = raw
-                save()
-                probe.anchor_excitation(probe.snapshot(raw, reference, sex), stimulus_baseline, sex, offset)
+            if not is_pulse:
+                state["anchorCalibration"] = {}
+                for tag, offset in (("moved", [.25, 0., 0.]), ("reset", [0., 0., 0.])):
+                    apply_anchors(offset)
+                    wait(.2, "anchor-calibration-" + tag)
+                    raw = observe("anchor-calibration-readback-" + tag)
+                    state["anchorCalibration"][tag] = raw
+                    save()
+                    probe.anchor_excitation(probe.snapshot(raw, reference, sex), stimulus_baseline, sex, offset)
         for phase in probe.PHASES:
             if phase == "stopped":
                 probe.require(toggle("second-off", False) == [True]*expected, "Second off state mismatch")
             elif phase == "restarted":
                 probe.require(toggle("restore", True) == [False]*expected, "Restore state mismatch")
             wait(2., phase + "-settle")
+            if is_pulse:
+                state["pulses"][phase] = {}
+                for anchor in pulse.families(sex):
+                    row = {"commands": {}, "samples": []}
+                    state["pulses"][phase][anchor] = row
+                    row["beforePulse"] = observe(phase + "-before-pulse-" + anchor)
+                    pulse.anchor_excitation(probe.snapshot(row["beforePulse"], reference, sex), stimulus_baseline, sex, anchor, [0., 0., 0.])
+                    row["commands"]["moved"] = apply_anchors(pulse.offset(), (anchor,))
+                    row["moved"] = observe(phase + "-pulse-moved-" + anchor)
+                    pulse.anchor_excitation(probe.snapshot(row["moved"], reference, sex), stimulus_baseline, sex, anchor, pulse.offset())
+                    save()
+                    sleep(state["protocol"]["holdSeconds"])
+                    row["commands"]["returned"] = apply_anchors([0., 0., 0.], (anchor,))
+                    row["returned"] = observe(phase + "-pulse-returned-" + anchor)
+                    pulse.anchor_excitation(probe.snapshot(row["returned"], reference, sex), stimulus_baseline, sex, anchor, [0., 0., 0.])
+                    save()
+                    sample_start = time.monotonic()
+                    for index in range(state["protocol"]["samples"]):
+                        sleep(max(0., sample_start + index*state["protocol"]["samplePeriodSeconds"] - time.monotonic()))
+                        row["samples"].append(observe(phase + "-pulse-sample-" + anchor + "-" + str(index)))
+                        save()
+                continue
             state["windows"][phase] = []
             phase_start = time.monotonic()
             for index, point in enumerate(plan["windows"][phase]):
@@ -248,7 +300,7 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
                     probe.anchor_excitation(observed, stimulus_baseline, sex, probe.anchor_offset(index))
                 else:
                     probe.reference_excitation(observed, baseline, point["expectedPosition"])
-        diagnostic = probe.score(state)
+        diagnostic = (pulse.score if is_pulse else probe.score)(state)
         (output / "diagnostic.json").write_text(json.dumps(diagnostic, indent=2), encoding="utf-8")
         session.state["checks"].append({"name": "fsmp-previous-state-protocol", "result": "passed",
                                          "observation": diagnostic})
@@ -260,7 +312,7 @@ def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference", s
     finally:
         cleaning = True
         cleanup = {"physics": "no-known-restore-needed", "position": "not-admitted"}
-        if stimulus == "xml-anchors":
+        if is_anchor:
             cleanup["position"] = "not-mutated-by-anchor-probe"
         errors = []
         try:

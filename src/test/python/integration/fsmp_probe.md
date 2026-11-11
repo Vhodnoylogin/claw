@@ -191,3 +191,22 @@ After all motion and anchor cleanup checks, a disposable fixture may be disabled
 once behind the original actor/root guard. Require fresh disabled-state readback
 and a null current-crosshair reference before the existing owner shutdown. Keep
 any case-owned crash observer attached through fixture disposal and process exit.
+
+## Separate anchor-pulse protocol
+
+`stimulus="xml-anchor-pulse"` selects the independent `fsmp_pulse` protocol.
+It retains the native eleven/nine-body gate and scoped key lifecycle, but pulses
+one kinematic family at a time. A calibrated +0.5-unit X offset is held for the
+declared interval, then the same anchor must visibly return to its zero baseline
+before 25 read-only observations at a declared 0.1-second period. The observer
+records the actual hold and producer-clock sampling intervals.
+
+The scorer compares each driver's world transform relative to its stationary
+anchor and the pre-pulse zero baseline. Both active windows need changing residual
+motion; a constant displaced pose, inherited anchor movement, animation, failed
+native completion, stale epochs and insufficient cadence cannot qualify. A P1
+driver may qualify through translation without rotation. Every requested driver
+needs selective on/off/on evidence; no solver phase or contact is claimed.
+
+The protocol parameters are written before the trial. Historical continuous
+cases retain their original reports and limits and are never rescored as pulses.
