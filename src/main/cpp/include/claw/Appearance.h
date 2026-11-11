@@ -552,10 +552,6 @@ inline bool Runtime::inspectPrivateTint(const Surface& surface, std::vector<Mate
         return fail("materialIsolation", "private material distinct from donor", "aliases donor material");
     if (!std::isfinite(surface.own->alpha)) return fail("propertyAlpha", "finite live fade", surface.own->alpha);
     const auto* material = surface.own->material;
-    if (material->GetType() != RE::BSShaderMaterial::Type::kLighting)
-        return fail("materialType", "lighting", static_cast<std::int32_t>(material->GetType()));
-    if (!surface.initializedFeature || static_cast<std::int32_t>(material->GetFeature()) != *surface.initializedFeature)
-        return fail("feature", surface.initializedFeature.value_or(-1), static_cast<std::int32_t>(material->GetFeature()));
     const auto* guardData = surface.own->GetExtraData("NO_TINT");
     // Preserve identity-first validation: diagnostics never dereference an old
     // replaced witness or reclassify its current owner's material as our lease.
@@ -565,6 +561,10 @@ inline bool Runtime::inspectPrivateTint(const Surface& surface, std::vector<Mate
     if (surface.tinted && guardData != surface.guard.get())
         return fail("guardIdentity", reinterpret_cast<std::uintptr_t>(surface.guard.get()),
             reinterpret_cast<std::uintptr_t>(guardData));
+    if (material->GetType() != RE::BSShaderMaterial::Type::kLighting)
+        return fail("materialType", "lighting", static_cast<std::int32_t>(material->GetType()));
+    if (!surface.initializedFeature || static_cast<std::int32_t>(material->GetFeature()) != *surface.initializedFeature)
+        return fail("feature", surface.initializedFeature.value_or(-1), static_cast<std::int32_t>(material->GetFeature()));
     if (surface.tinted) {
         if (!surface.materialLease) return fail("materialLease", "initialized retained witness", "unavailable");
         const auto current = materialLeaseState(*surface.own);
