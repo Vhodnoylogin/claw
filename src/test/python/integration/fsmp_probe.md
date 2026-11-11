@@ -1,5 +1,50 @@
 # Owned FSMP binding and excitation probe
 
+## Preferred male trial: direct mass-zero anchors
+
+`fsmp_owned_case.run(session, reference, "male", stimulus="xml-anchors")`
+is a provider-specific callback within the existing owned Session lifecycle.
+Machine paths, profile selection and launch remain in an external harness. It
+does not create a testing host or change the maintained executor/provider.
+
+The first real November 11 trial established all nine dynamic bodies and exact
+four previous-state transitions, but actor AI-off left model/anchor transforms
+stationary while SetPosition changed only the logical reference. That stimulus
+was rejected; its failed report remains unchanged. The callback now rejects
+that mismatch at the first observed point rather than after three windows.
+
+The successor keeps AI off and writes **only** the two XML mass-zero anchors,
+`NPC Head [Head]` and `Tails`, through public NiOverride position transforms. It
+requires initially empty transform keys and uses `CLAW.FSMPProbe.<owned-run-id>`.
+GetNodeTransformPosition proves storage; same-task World Observer readback
+separately proves actual world movement. Dynamic driver transforms are never
+written. Native function signatures are inspected before use.
+
+SKEE UpdateNodeTransform recomposes a cached rest transform, including rotation
+and scale. Therefore the callback captures the original full local/world
+transforms before priming a zero key, then records a separate stimulus baseline.
+Before any motion window it checks an actual +0.25 offset and return to zero.
+Only if that calibration succeeds do identical ±0.5-key-offset on/off/on windows
+begin. Expected movement is measured by inverse primed anchor world transform
+times current anchor world transform, so rotation and scale are accounted for.
+The actor/root must remain stationary; anchors may translate by exactly the
+declared stimulus. All other local/CME and torso/root controls remain quiet.
+
+Cleanup removes only the owned position component, verifies it absent, restores
+the captured full local anchor transforms through the public NetImmerse position,
+rotation-matrix and scale setters, and reads those originals back. Foreign keys
+are never removed or recomposed. The public component-removal API may retain an
+empty key container; no transform data or saved-game change is claimed to remain.
+Unknown native physics completion still forbids a guessed all-on restoration.
+
+For direct-anchor score input, set `stimulus: "xml-anchors"` and retain raw
+`stimulusBaseline` plus `anchorCalibration.moved` and `.reset` snapshots between
+reenable receipt and first active sample. The scorer preserves the same strict
+receipt order, world/actor/root continuity, cadence and selective-response limits.
+Female P1 direct excitation remains outside this male-only trial.
+
+## Retained reference-trajectory protocol
+
 `fsmp_probe.py` is a transport-free test source, not an installer, runner or
 provider. It prepares ordinary DevBench tool packets and scores retained actual
 World Observer snapshots. It never launches a game, calls a tool, edits MO2,

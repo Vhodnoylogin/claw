@@ -194,12 +194,38 @@ def max_delta(a, b):
     return max(abs(x - y) for x, y in zip(a, b))
 
 
+def reference_excitation(observed, baseline, expected):
+    require(max_delta(observed["position"], expected) <= .025, "Excitation readback mismatch")
+    reference_delta = [x-y for x, y in zip(observed["position"], baseline["position"])]
+    root_delta = [x-y for x, y in zip(observed["root"]["translation"], baseline["root"]["translation"])]
+    require(max_delta(reference_delta, root_delta) <= .025, "Reference moved without matching model root")
+
+
+def anchor_offset(index):
+    return [float(.5*math.sin(2*math.pi*index/12)) if index != 24 else 0., 0., 0.]
+
+
+def anchor_excitation(observed, baseline, sex, offset):
+    """Read actual keyed-anchor displacement; stored SKEE values alone do not qualify."""
+    require(max_delta(observed["position"], baseline["position"]) <= .025 and
+            max_delta(observed["root"]["translation"], baseline["root"]["translation"]) <= .025,
+            "Actor/root moved during direct anchor stimulus")
+    for name in dict.fromkeys(anchors(sex).values()):
+        delta = relative(observed["nodes"][name]["world"], baseline["nodes"][name]["world"])
+        require(max_delta(delta["translation"], offset) <= .003,
+                "Mass-zero anchor world displacement missing/wrong: " + name)
+        require(max_delta(delta["rotationRowMajor"], [1.,0.,0.,0.,1.,0.,0.,0.,1.]) <= 1e-5 and
+                abs(delta["scale"] - 1.) <= 1e-5, "Anchor rotated/scaled during keyed position stimulus")
+
+
 def score(document):
     reference, sex = form(document["reference"]), document["sex"]
     gate = binding_gate(sex, document["receipts"])
     baseline = snapshot(document["baseline"], reference, sex)
     plan = prepare(reference, sex, baseline["position"])
     windows, previous = {}, baseline
+    stimulus = document.get("stimulus", "reference")
+    require(stimulus in ("reference", "xml-anchors"), "Unknown excitation contract")
     receipt_rows = []
 
     def consume(raw):
@@ -219,6 +245,13 @@ def score(document):
 
     transition("first-off")
     transition("reenable")
+    stimulus_baseline = consume(document["stimulusBaseline"]) if stimulus == "xml-anchors" else baseline
+    calibration_rows = []
+    if stimulus == "xml-anchors":
+        for name, offset in (("moved", [.25, 0., 0.]), ("reset", [0., 0., 0.])):
+            value = consume(document["anchorCalibration"][name])
+            anchor_excitation(value, stimulus_baseline, sex, offset)
+            calibration_rows.append(value)
     for phase in PHASES:
         if phase == "stopped":
             transition("second-off")
@@ -227,22 +260,24 @@ def score(document):
         rows = document["windows"][phase]
         require(type(rows) is list and len(rows) == 25, "Exactly 25 real samples per excitation window required")
         windows[phase] = []
-        for raw, command in zip(rows, plan["windows"][phase]):
+        for index, (raw, command) in enumerate(zip(rows, plan["windows"][phase])):
             observed = consume(raw)
-            require(max_delta(observed["position"], command["expectedPosition"]) <= .025, "Excitation readback mismatch")
-            reference_delta = [x-y for x, y in zip(observed["position"], baseline["position"])]
-            root_delta = [x-y for x, y in zip(observed["root"]["translation"], baseline["root"]["translation"])]
-            require(max_delta(reference_delta, root_delta) <= .025, "Reference moved without matching model root")
+            if stimulus == "xml-anchors":
+                anchor_excitation(observed, stimulus_baseline, sex, anchor_offset(index))
+            else:
+                reference_excitation(observed, baseline, command["expectedPosition"])
             require(max_delta(observed["angles"], baseline["angles"]) <= 1e-5 and
                     max_delta(observed["root"]["rotationRowMajor"], baseline["root"]["rotationRowMajor"]) <= 1e-5 and
                     abs(observed["root"]["scale"] - baseline["root"]["scale"]) <= 1e-5, "Root rotated/scaled")
-            require(all(abs(observed["nodes"][name][space]["scale"] - baseline["nodes"][name][space]["scale"]) <= 1e-5
+            require(all(abs(observed["nodes"][name][space]["scale"] - stimulus_baseline["nodes"][name][space]["scale"]) <= 1e-5
                         for name in node_names(sex) for space in ("world", "local")), "Node/anchor scale changed")
             windows[phase].append(observed)
         gaps = [(b["time"] - a["time"])/1e9 for a, b in zip(windows[phase], windows[phase][1:])]
         require(min(gaps) >= .1 and max(gaps) <= 1 and sum(gaps) >= 4, "Insufficient real observation cadence/span")
     result = {**gate, "status": "unconfirmed", "physicsPhaseObserved": False, "channels": {},
-              "selectiveChannels": [], "localAnimationQuiet": True, "anchorsRootRelativeQuiet": True,
+              "stimulus": stimulus, "anchorExcitationQualified": stimulus == "xml-anchors",
+              "selectiveChannels": [], "localAnimationQuiet": True, "controlParentsQuiet": True,
+              "anchorsRootRelativeQuiet": True if stimulus == "reference" else None,
               "excitationTimingComparable": True,
               "cadence": {phase: {"samples": len(rows), "spanSeconds": (rows[-1]["time"]-rows[0]["time"])/1e9}
                           for phase, rows in windows.items()},
@@ -253,16 +288,21 @@ def score(document):
                   for phase, rows in windows.items()}
     for gaps in zip(*phase_gaps.values()):
         result["excitationTimingComparable"] &= max(gaps) - min(gaps) <= max(.05, .25*min(gaps))
-    all_rows = [baseline, *receipt_rows] + [row for phase in PHASES for row in windows[phase]]
+    all_rows = [baseline, stimulus_baseline, *calibration_rows, *receipt_rows] + [row for phase in PHASES for row in windows[phase]]
     # Animation controls cannot be replaced by stationary actor coordinates.
     for name in node_names(sex):
+        if stimulus == "xml-anchors" and name in anchors(sex).values():
+            continue  # These two mass-zero anchor positions are the declared input.
         for key, floor in FLOORS.items():
             values = [row["nodes"][name]["local"][key] for row in all_rows]
             result["localAnimationQuiet"] &= all(max_delta(value, values[0]) <= floor for value in values)
-    for name in dict.fromkeys((*anchors(sex).values(), *CONTROL)):
+    static_controls = CONTROL if stimulus == "xml-anchors" else (*anchors(sex).values(), *CONTROL)
+    for name in dict.fromkeys(static_controls):
         values = [relative(row["nodes"][name]["world"], row["root"]) for row in all_rows]
         for key, floor in FLOORS.items():
-            result["anchorsRootRelativeQuiet"] &= all(max_delta(value[key], values[0][key]) <= floor for value in values)
+            result["controlParentsQuiet"] &= all(max_delta(value[key], values[0][key]) <= floor for value in values)
+    if stimulus == "reference":
+        result["anchorsRootRelativeQuiet"] = result["controlParentsQuiet"]
     for name, anchor in anchors(sex).items():
         result["channels"][name] = {"anchor": anchor, "worldRelative": {}, "local": {}}
         for key, floor in FLOORS.items():
@@ -274,7 +314,7 @@ def score(document):
             active = min(stats["active"], stats["restarted"])
             if active > 4*floor and stats["stopped"] <= max(floor, .25*active):
                 result["selectiveChannels"].append({"node": name, "channel": key})
-    if (result["selectiveChannels"] and result["localAnimationQuiet"] and result["anchorsRootRelativeQuiet"]
+    if (result["selectiveChannels"] and result["localAnimationQuiet"] and result["controlParentsQuiet"]
             and result["excitationTimingComparable"]):
         result["status"] = "sampled-selective-contrast-observed"
     return result

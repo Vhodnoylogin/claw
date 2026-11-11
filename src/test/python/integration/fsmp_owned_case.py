@@ -10,14 +10,17 @@ import time
 import fsmp_probe as probe
 
 
-def run(session, reference, sex, *, maximum_seconds=160):
+def run(session, reference, sex, *, maximum_seconds=160, stimulus="reference"):
     probe.require(type(maximum_seconds) in (int, float) and 30 <= maximum_seconds <= 180,
                   "FSMP callback requires a finite 30..180-second bound")
+    probe.require(stimulus in ("reference", "xml-anchors") and (stimulus != "xml-anchors" or sex == "male"),
+                  "Direct mass-zero anchor trial is currently male-only")
     end = time.monotonic() + maximum_seconds
     output = session.dir / "fsmp-probe"
     output.mkdir(exist_ok=False)
     state = {"reference": reference, "sex": sex, "receipts": {}, "windows": {},
-             "original": None, "current": None, "uncertain": False, "intent": None}
+             "original": None, "current": None, "uncertain": False, "intent": None,
+             "stimulus": stimulus, "anchorOriginals": {}}
     baseline = previous = None
     cleaning = False
 
@@ -81,6 +84,26 @@ def run(session, reference, sex, *, maximum_seconds=160):
         call(name, "papyrus", {"action": "call", "script": "Utility", "function": "Wait",
                                "args": [float(seconds)], "timeoutMs": 8000})
 
+    def pap(name, script, function, args):
+        return call(name, "papyrus", {"action": "call", "script": script, "function": function,
+                                      "args": args, "timeoutMs": 8000})["returned"]
+
+    def transform_args(name):
+        return [{"form": reference}, False, False, name]
+
+    def apply_anchors(offset):
+        for name, original in state["anchorOriginals"].items():
+            observe("anchor-write-guard-" + name)
+            args = transform_args(name) + [original["key"]]
+            state["intent"] = {"action": "anchor-own-key", "node": name, "key": original["key"], "offset": offset}
+            save()
+            pap("anchor-write-" + name, "NiOverride", "AddNodeTransformPosition", args + [offset])
+            value = pap("anchor-storage-" + name, "NiOverride", "GetNodeTransformPosition", args)
+            probe.require(probe.max_delta(probe.numbers(value, 3), offset) <= 1e-6, "Own anchor key storage mismatch")
+            pap("anchor-apply-" + name, "NiOverride", "UpdateNodeTransform", transform_args(name))
+            state["intent"] = None
+            save()
+
     try:
         raw = observe("baseline")
         baseline = probe.snapshot(raw, reference, sex)
@@ -91,6 +114,32 @@ def run(session, reference, sex, *, maximum_seconds=160):
         expected = len(probe.drivers(sex))
         probe.require(toggle("first-off", False) == [True]*expected, "Fresh dynamic-body gate failed; no excitation")
         probe.require(toggle("reenable", True) == [False]*expected, "Reenable state mismatch")
+        stimulus_baseline = baseline
+        if stimulus == "xml-anchors":
+            key = "CLAW.FSMPProbe." + session.state["id"]
+            for name in dict.fromkeys(probe.anchors(sex).values()):
+                current = probe.snapshot(observe("anchor-original-" + name), reference, sex)
+                keys = pap("anchor-original-keys-" + name, "NiOverride", "GetNodeTransformKeys", transform_args(name))
+                probe.require(keys == [], "Fresh anchor has external transform keys; do not recompose them")
+                exists = pap("anchor-own-key-absent-" + name, "NiOverride", "HasNodeTransformPosition", transform_args(name) + [key])
+                probe.require(exists is False, "Own anchor key already exists")
+                state["anchorOriginals"][name] = {"key": key, "keysBefore": keys,
+                    "local": current["nodes"][name]["local"], "world": current["nodes"][name]["world"]}
+                save()
+            apply_anchors([0., 0., 0.])
+            wait(2., "anchor-prime-settle")
+            raw = observe("stimulus-baseline")
+            stimulus_baseline = probe.snapshot(raw, reference, sex)
+            state["stimulusBaseline"] = raw
+            save()
+            state["anchorCalibration"] = {}
+            for tag, offset in (("moved", [.25, 0., 0.]), ("reset", [0., 0., 0.])):
+                apply_anchors(offset)
+                wait(.2, "anchor-calibration-" + tag)
+                raw = observe("anchor-calibration-readback-" + tag)
+                state["anchorCalibration"][tag] = raw
+                save()
+                probe.anchor_excitation(probe.snapshot(raw, reference, sex), stimulus_baseline, sex, offset)
         for phase in probe.PHASES:
             if phase == "stopped":
                 probe.require(toggle("second-off", False) == [True]*expected, "Second off state mismatch")
@@ -100,16 +149,22 @@ def run(session, reference, sex, *, maximum_seconds=160):
             state["windows"][phase] = []
             for index, point in enumerate(plan["windows"][phase]):
                 observe(phase + "-guard-" + str(index))
-                state["intent"] = {"action": "position", "expectedPosition": point["expectedPosition"]}
-                save()
-                call(phase + "-position-" + str(index), "papyrus", point["steps"][0]["args"])
+                if stimulus == "xml-anchors":
+                    apply_anchors(probe.anchor_offset(index))
+                else:
+                    state["intent"] = {"action": "position", "expectedPosition": point["expectedPosition"]}
+                    save()
+                    call(phase + "-position-" + str(index), "papyrus", point["steps"][0]["args"])
                 wait(.2, phase + "-wait-" + str(index))
                 raw = observe(phase + "-sample-" + str(index))
-                actual = probe.snapshot(raw, reference, sex)["position"]
-                probe.require(probe.max_delta(actual, point["expectedPosition"]) <= .025, "Position readback mismatch")
                 state["windows"][phase].append(raw)
                 state["intent"] = None
                 save()
+                observed = probe.snapshot(raw, reference, sex)
+                if stimulus == "xml-anchors":
+                    probe.anchor_excitation(observed, stimulus_baseline, sex, probe.anchor_offset(index))
+                else:
+                    probe.reference_excitation(observed, baseline, point["expectedPosition"])
         diagnostic = probe.score(state)
         (output / "diagnostic.json").write_text(json.dumps(diagnostic, indent=2), encoding="utf-8")
         session.state["checks"].append({"name": "fsmp-previous-state-protocol", "result": "passed",
@@ -119,6 +174,8 @@ def run(session, reference, sex, *, maximum_seconds=160):
     finally:
         cleaning = True
         cleanup = {"physics": "no-known-restore-needed", "position": "not-admitted"}
+        if stimulus == "xml-anchors":
+            cleanup["position"] = "not-mutated-by-anchor-probe"
         try:
             if baseline is not None and not state["uncertain"] and state["original"] is not None and state["current"] is not None:
                 names = [name for name, old, now in zip(probe.drivers(sex), state["original"], state["current"]) if old and not now]
@@ -127,7 +184,39 @@ def run(session, reference, sex, *, maximum_seconds=160):
                     cleanup["physics"] = "originally-true-only-restored"
             elif state["uncertain"]:
                 cleanup["physics"] = "unknown-no-replay; owned game teardown required"
-            if baseline is not None and end - time.monotonic() > 5:
+            if state["anchorOriginals"]:
+                cleanup["anchors"] = {}
+                for name, original in state["anchorOriginals"].items():
+                    observe("cleanup-anchor-guard-" + name)
+                    args = transform_args(name) + [original["key"]]
+                    keys = pap("cleanup-anchor-keys-" + name, "NiOverride", "GetNodeTransformKeys", transform_args(name))
+                    probe.require(set(keys) <= {original["key"]}, "New foreign anchor key; do not overwrite its transform")
+                    if pap("cleanup-anchor-has-" + name, "NiOverride", "HasNodeTransformPosition", args):
+                        probe.require(pap("cleanup-anchor-remove-" + name, "NiOverride", "RemoveNodeTransformPosition", args) is True,
+                                      "Own anchor position component removal failed")
+                        pap("cleanup-anchor-apply-" + name, "NiOverride", "UpdateNodeTransform", transform_args(name))
+                    # SKEE recomposes a cached rest pose. Restore the captured
+                    # posed local transform, not that cached pose, after removing
+                    # only our position component. No dynamic driver is written.
+                    ni = [{"form": reference}, name]
+                    for function, value in (("SetNodeLocalPosition", original["local"]["translation"]),
+                                            ("SetNodeLocalRotationMatrix", original["local"]["rotationRowMajor"]),
+                                            ("SetNodeScale", original["local"]["scale"])):
+                        returned = pap("cleanup-" + function + "-" + name, "NetImmerse", function, ni + [value, False])
+                        if function != "SetNodeScale":
+                            probe.require(returned is True, "Anchor local restore not accepted")
+                    wait(.2, "cleanup-anchor-wait-" + name)
+                    current = probe.snapshot(observe("cleanup-anchor-readback-" + name), reference, sex)
+                    for channel, floor in probe.FLOORS.items():
+                        probe.require(probe.max_delta(current["nodes"][name]["local"][channel], original["local"][channel]) <= max(floor, .001),
+                                      "Original anchor local transform not restored")
+                    probe.require(abs(current["nodes"][name]["local"]["scale"] - original["local"]["scale"]) <= 1e-5,
+                                  "Original anchor scale not restored")
+                    probe.require(pap("cleanup-anchor-absent-" + name, "NiOverride", "HasNodeTransformPosition", args) is False,
+                                  "Own anchor position data remains")
+                    cleanup["anchors"][name] = {"ownPositionComponentAbsent": True, "originalLocalReadback": current["nodes"][name]["local"],
+                                               "emptyKeyContainerMayRemain": True}
+            if baseline is not None and stimulus == "reference" and end - time.monotonic() > 5:
                 observe("cleanup-position-guard")
                 call("cleanup-position", "papyrus", {"action": "call", "script": "ObjectReference", "function": "SetPosition",
                     "self": {"form": reference}, "args": baseline["position"], "timeoutMs": 8000})

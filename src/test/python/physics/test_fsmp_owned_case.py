@@ -1,13 +1,14 @@
 """Case orchestration negatives; synthetic Session, no game or transport."""
 import copy
 import importlib.util
+import json
 from pathlib import Path
 import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
 
-from test_fsmp_probe import fixture
+from test_fsmp_probe import fixture, compose, transform
 
 INTEGRATION = Path(__file__).resolve().parents[1] / "integration"
 sys.path.insert(0, str(INTEGRATION))
@@ -18,13 +19,17 @@ finally:
 
 
 class Session:
-    def __init__(self, directory, previous=None, timeout=False):
+    def __init__(self, directory, previous=None, timeout=False, frozen_anchors=False, world_response=False):
         self.dir = Path(directory)
-        self.state = {"checks": []}
+        self.state = {"checks": [], "id": "synthetic-owned-run"}
         self.sample = fixture("male", effect=False)["baseline"]
         self.calls = []
         self.previous = [True]*9 if previous is None else previous
         self.timeout = timeout
+        self.frozen_anchors = frozen_anchors
+        self.world_response = world_response
+        self.anchor_keys = {}
+        self.original_nodes = {n["name"]: copy.deepcopy(n) for n in self.sample["nodes"]}
 
     def save(self):
         pass
@@ -38,6 +43,41 @@ class Session:
             self.sample["sampleId"] += 1
             self.sample["producerMonotonicNs"] += 200_000_000
             return copy.deepcopy(self.sample)
+        if args.get("script") == "NiOverride":
+            function, values = args["function"], args["args"]
+            name = values[3]
+            if function == "GetNodeTransformKeys":
+                return {"returned": list(self.anchor_keys.get(name, {}))}
+            key = values[4] if len(values) > 4 else None
+            if function == "HasNodeTransformPosition":
+                return {"returned": key in self.anchor_keys.get(name, {})}
+            if function == "AddNodeTransformPosition":
+                self.anchor_keys.setdefault(name, {})[key] = values[5][:]
+            elif function == "GetNodeTransformPosition":
+                return {"returned": self.anchor_keys[name][key][:]}
+            elif function == "RemoveNodeTransformPosition":
+                return {"returned": self.anchor_keys[name].pop(key, None) is not None}
+            elif function == "UpdateNodeTransform" and not self.frozen_anchors:
+                offset = next(iter(self.anchor_keys.get(name, {}).values()), [0.,0.,0.])
+                anchor_world = self.original_nodes[name]["world"]
+                moved = compose(anchor_world, transform(offset))
+                for row in self.sample["nodes"]:
+                    if row["name"] == name:
+                        row["world"] = moved
+                        row["local"] = compose(self.original_nodes[name]["local"], transform(offset))
+                    elif case.probe.anchors("male").get(row["name"]) == name or (
+                            name == "Tails" and row["name"] in case.probe.INTERMEDIATES):
+                        rest = case.probe.relative(self.original_nodes[row["name"]]["world"], anchor_world)
+                        if self.world_response and row["name"] in case.probe.MALE and all(self.previous):
+                            rest["translation"][1] += .03*offset[0]
+                        row["world"] = compose(moved, rest)
+            return {"returned": None}
+        if args.get("script") == "NetImmerse":
+            name, value = args["args"][1:3]
+            row = next(row for row in self.sample["nodes"] if row["name"] == name)
+            channel = {"SetNodeLocalPosition": "translation", "SetNodeLocalRotationMatrix": "rotationRowMajor", "SetNodeScale": "scale"}[args["function"]]
+            row["local"][channel] = copy.deepcopy(value)
+            return {"returned": None if channel == "scale" else True}
         if args.get("function") == "TogglePhysics":
             if self.timeout:
                 raise TimeoutError("synthetic unknown native return")
@@ -52,8 +92,8 @@ class Session:
             delta = [x-y for x,y in zip(args["args"],old)]
             self.sample["refs"][0]["position"] = args["args"][:]
             transforms = [self.sample["refs"][0]["sceneTransform"]] + [row["world"] for row in self.sample["nodes"]]
-            for transform in transforms:
-                transform["translation"] = [x+y for x,y in zip(transform["translation"], delta)]
+            for node_transform in transforms:
+                node_transform["translation"] = [x+y for x,y in zip(node_transform["translation"], delta)]
         return {"called": True, "returned": None}
 
 
@@ -97,6 +137,39 @@ class OwnedFsmpCaseTests(unittest.TestCase):
             self.assertFalse(result["solverQualified"])
             self.assertEqual(session.previous, [True]*9)
             self.assertEqual(session.sample["refs"][0]["position"], [100., 200., 0.])
+
+    def test_owned_anchor_keys_are_cleaned_without_writing_dynamic_bones(self):
+        with tempfile.TemporaryDirectory() as directory:
+            session = Session(directory)
+            result = case.run(session, "0xFF001234", "male", stimulus="xml-anchors")
+            self.assertEqual(result["status"], "unconfirmed")
+            self.assertTrue(result["anchorExcitationQualified"])
+            self.assertEqual(session.previous, [True]*9)
+            self.assertTrue(all(not values for values in session.anchor_keys.values()))
+            writes = [args for tool,args in session.calls if args.get("script") in ("NiOverride", "NetImmerse")
+                      and args.get("function", "").startswith(("Add", "Remove", "Update", "Set"))]
+            self.assertTrue(writes)
+            for args in writes:
+                node = args["args"][3] if args["script"] == "NiOverride" else args["args"][1]
+                self.assertIn(node, ("NPC Head [Head]", "Tails"))
+
+    def test_stored_key_without_real_anchor_movement_stops_early(self):
+        with tempfile.TemporaryDirectory() as directory:
+            session = Session(directory, frozen_anchors=True)
+            with self.assertRaisesRegex(ValueError, "anchor world displacement"):
+                case.run(session, "0xFF001234", "male", stimulus="xml-anchors")
+            state = json.loads((Path(directory)/"fsmp-probe/state.json").read_bytes())
+            self.assertEqual(state["windows"], {})
+            self.assertTrue(all(not values for values in session.anchor_keys.values()))
+
+    def test_direct_anchor_world_response_is_discriminated_without_local_writes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            session = Session(directory, world_response=True)
+            result = case.run(session, "0xFF001234", "male", stimulus="xml-anchors")
+            self.assertEqual(result["status"], "sampled-selective-contrast-observed")
+            self.assertTrue(result["localAnimationQuiet"])
+            self.assertTrue(result["controlParentsQuiet"])
+            self.assertFalse(result["solverQualified"])
 
 
 if __name__ == "__main__":
