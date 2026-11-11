@@ -12,7 +12,7 @@ struct Alpha {
     operator float() const { return value; }
     Alpha& operator=(float next) { if (!refuseWrite) value = next; return *this; }
 };
-struct Property { Alpha alpha; const int* material{}; };
+struct Property { Alpha alpha; const int* material{}; const int* fadeNode{}; };
 }
 int main() {
     using namespace claw::appearance;
@@ -95,15 +95,36 @@ int main() {
         const auto own = std::make_shared<Property>(Property{{1.F}, &ownMaterial});
         const auto donor = std::make_shared<Property>(Property{{0.25F}, &donorMaterial});
         const auto foreign = std::make_shared<Property>(Property{{0.65F}, &foreignMaterial});
+        int donorFade{}, otherFade{};
+        donor->fadeNode = &donorFade;
         Ptr current = own; unsigned clones{}, setups{};
+        require(initializePrivateMaterial(current, own, donor, .25F, [&](const Ptr& copy) {
+            require(copy->fadeNode == &donorFade, "Engine initializer did not receive the donor fade association");
+            copy->fadeNode = nullptr; copy->alpha = .5F; return true;
+        }) && current == own && own->fadeNode == &donorFade && own->alpha == .25F &&
+            donor->fadeNode == &donorFade && donor->alpha == .25F,
+            "Engine setup reset the private fade association/alpha or changed the shared donor");
+        own->alpha = 1.F;
+        current = own;
+        require(!initializePrivateMaterial(current, own, donor, .25F, [&](const Ptr&) {
+            current = foreign; return true;
+        }) && current == foreign && foreign->alpha == .65F && foreign->fadeNode == nullptr,
+            "Private setup overwrote a later geometry-property writer");
+        current = own;
+        require(!initializePrivateMaterial(current, own, donor, .25F, [&](const Ptr& copy) {
+            copy->material = &foreignMaterial; copy->fadeNode = &otherFade; copy->alpha = .5F; return true;
+        }) && current == own && own->material == &foreignMaterial && own->fadeNode == &otherFade && own->alpha == .5F,
+            "Private setup overwrote a later material writer");
+        own->material = &ownMaterial; own->alpha = 1.F; own->fadeNode = &donorFade;
+        current = own;
         const auto clone = [&](const Ptr& source) {
             ++clones; auto copy = std::make_shared<Property>(*source); copy->material = &cloneMaterial; return copy;
         };
         require(restoreMaterialWithAlpha(current, own, donor, clone, [&](const Ptr& copy) {
             ++setups; require(current == copy, "Setup ran before the donor clone was bound");
-            copy->alpha = 0.5F; return true;
+            copy->fadeNode = nullptr; copy->alpha = 0.5F; return true;
         }), "Isolated donor rollback failed");
-        require(current != donor && current != own && current->material == &cloneMaterial && current->alpha == 1.F &&
+        require(current != donor && current != own && current->material == &cloneMaterial && current->alpha == 1.F && current->fadeNode == &donorFade &&
             donor->alpha == 0.25F && donor->material == &donorMaterial && own->alpha == 1.F && clones == 1 && setups == 1,
             "Rollback lost live alpha, mutated a shared donor, or skipped private material isolation");
         current = own;

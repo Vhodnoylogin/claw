@@ -1,7 +1,18 @@
 [size=4][color=#D0B17A][b]Individual coats[/b][/color][/size]
-Your installed [url=https://www.nexusmods.com/skyrimspecialedition/mods/93336]Elegant Werewolf Replacer[/url] supplies the default coat. For more variety, CLAW can use ten coats from Elegant’s optional Randomized textures. Human hair colour and a stable character seed determine a coat; a wolf with no known human hair colour uses its seed. If the selected textures are unavailable, the wolf keeps the skin already on its model.
+Your installed [url=https://www.nexusmods.com/skyrimspecialedition/mods/93336]Elegant Werewolf Replacer[/url] supplies the default coat. CLAW can use ten additional coats from the author's separately installed Randomized textures. Human hair colour and a stable character seed determine the coat, while a wolf with no known human colour uses its seed.
 
-[b]Optional setup in Mod Organizer 2[/b]
-Install the main Elegant replacer normally. Download [url=https://www.nexusmods.com/skyrimspecialedition/mods/93336?tab=files]Elegant Werewolf Player Only FOMOD 2K (file 798407)[/url] as a separate download. In MO2, choose [b]Manual[/b]. Expand [b]Randomized[/b], set its [b]Data[/b] folder as the data directory, and select only [b]textures[/b]. Install as a separate mod and enable it. This exposes the ten coats to CLAW while keeping its morphable meshes. The optional ESP and model-swap rules are unnecessary for this setup.
 
-If updating from the withdrawn 0.9.0 archive, remove the old CLAW installation before installing the replacement. Keep the original Elegant installation enabled.
+[b]Elegant base textures[/b]
+Install Elegant normally through your mod manager and choose a base coat. Keep it enabled and let CLAW's matching werewolf NIF and TRI files win conflicts. The base Elegant installation supplies the fallback coat and shared texture maps.
+
+[b]Optional individual coats in MO2 or Vortex[/b]
+Download [url=https://www.nexusmods.com/skyrimspecialedition/mods/93336?tab=files]Elegant Werewolf Player Only FOMOD 2K (file 798407)[/url] separately. Install it normally through its FOMOD and select [b]Randomized[/b] on its texture page. Keep the mod enabled, then disable [b]CoopPlayerOnlyWerewolf.esp[/b] in your manager's Plugins list. CLAW supplies the player and NPC werewolf body.
+
+Let CLAW win conflicts for its matching werewolf NIF/TRI files and the Data-root [font=Courier New]RandomElegantWerewolves_MS.json[/font]. In MO2 place CLAW after the addon in the left pane. In Vortex set the corresponding conflict rule so CLAW loads after it, then deploy. CLAW's own empty Model Swapper rule at this filename prevents whole-model substitution while the author's original texture files remain available.
+
+The Data tree must contain [font=Courier New]textures/DiverseElegantWerewolves/[/font] with ten coat folders, including Black/body.dds and Timber/body.dds. MO2 users can alternatively choose [b]Manual[/b], set [b]Randomized/Data[/b] as the data directory and install only its [b]textures[/b] folder as a separate mod.
+
+[b]Missing optional textures[/b]
+If a selected Randomized coat is missing, incomplete or fails DDS validation, CLAW retains the installed base coat and continues body, head, ear, tail and claw conversion. A partial coat is rejected before its materials are bound. Correct the optional texture installation and restart the game to revalidate it. If the base Elegant textures are also missing, reinstall Elegant, since the fallback material itself uses those files.
+
+When updating CLAW, replace its installed mod so obsolete files are removed. Keep the separate Elegant installations enabled.

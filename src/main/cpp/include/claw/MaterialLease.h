@@ -36,6 +36,31 @@ inline bool mayRestoreMaterial(const MaterialLeaseState& accepted, const Materia
     return accepted == content;
 }
 
+// Engine cloning deliberately omits the runtime fade-node association. Keep
+// the donor's association on its same-geometry private replacement, so future
+// fades remain renderer-driven. Initialize may reset fields or yield the slot;
+// never write through a replaced property/material, and never edit the donor.
+template<class Pointer, class Initialize>
+bool initializePrivateMaterial(Pointer& current, const Pointer& replacement,
+    const Pointer& donor, float alpha, Initialize&& initialize) {
+    if (!current || !replacement || !donor || current.get() != replacement.get() ||
+        replacement.get() == donor.get() || !replacement->material ||
+        replacement->material == donor->material || !std::isfinite(alpha)) return false;
+    const auto material = replacement->material;
+    const auto fadeNode = donor->fadeNode;
+    const auto stillPrivate = [&] {
+        return current.get() == replacement.get() && replacement->material == material &&
+            replacement->material && replacement->material != donor->material;
+    };
+    replacement->fadeNode = fadeNode;
+    replacement->alpha = alpha;
+    const bool initialized = std::forward<Initialize>(initialize)(replacement);
+    if (!initialized || !stillPrivate()) return false;
+    replacement->fadeNode = fadeNode;
+    replacement->alpha = alpha;
+    return stillPrivate() && replacement->fadeNode == fadeNode && replacement->alpha == alpha;
+}
+
 // The caller has checked the complete owned content/guard/tint lease. Keep the
 // animated alpha without ever writing a retained, potentially shared donor.
 // Clone must provide a private donor-material copy; Initialize runs the engine's
@@ -62,14 +87,8 @@ bool restoreMaterialWithAlpha(Pointer& current, const Pointer& owned, const Poin
         if (stillPrivate()) current = owned;
         return false;
     };
-    const bool initialized = std::forward<Initialize>(initialize)(replacement);
-    if (!stillPrivate()) return false;
-    if (!initialized) return failed();
-    // FinishSetupGeometry can recalculate fade. Carry the observed live value
-    // after it completes, on this private property only.
-    replacement->alpha = alpha;
-    if (!stillPrivate()) return false;
-    if (replacement->alpha != alpha) return failed();
+    if (!initializePrivateMaterial(current, replacement, donor, alpha, std::forward<Initialize>(initialize)))
+        return stillPrivate() ? failed() : false;
     return true;
 }
 

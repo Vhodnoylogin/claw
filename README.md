@@ -102,7 +102,10 @@ In 0.9.0 the named matrix output passes through a map of intervals to
 external materials. The archive contains the mapping and catalog. Every
 texture comes from the author's separately installed Elegant download.
 See the [installation guide](src/main/resources/publication/runtime/README.md)
-for the optional ten-coat MO2 setup. Classic UNP Renewal, the opacity ownership fix and human reference-scale
+for the optional ten-coat MO2 setup and validation/fallback behaviour. Missing or
+incomplete optional coats retain the separately installed Elegant base material.
+Minimal provisional links also cover the previously unused Living Physique outputs;
+their artistic calibration remains deferred. Classic UNP Renewal, the opacity ownership fix and human reference-scale
 capture remain part of this build.
 
 The [5 November record](src/main/docs/verification-20261105.md) establishes a

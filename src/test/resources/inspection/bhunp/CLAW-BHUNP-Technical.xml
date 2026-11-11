@@ -95,6 +95,36 @@
     <SetSlider name="UNPC Low" size="big" value="0" />
     <SetSlider name="Waist" size="small" value="30" />
     <SetSlider name="Waist" size="big" value="30" />
+    <SetSlider name="BackTrapezius" size="small" value="0" />
+    <SetSlider name="BackTrapezius" size="big" value="0" />
+    <SetSlider name="BackWing" size="small" value="0" />
+    <SetSlider name="BackWing" size="big" value="0" />
+    <SetSlider name="Brachioradialis" size="small" value="0" />
+    <SetSlider name="Brachioradialis" size="big" value="0" />
+    <SetSlider name="Butt" size="small" value="0" />
+    <SetSlider name="Butt" size="big" value="0" />
+    <SetSlider name="LegsThin" size="small" value="0" />
+    <SetSlider name="LegsThin" size="big" value="0" />
+    <SetSlider name="MuscleButt" size="small" value="0" />
+    <SetSlider name="MuscleButt" size="big" value="0" />
+    <SetSlider name="MusclePecs" size="small" value="0" />
+    <SetSlider name="MusclePecs" size="big" value="0" />
+    <SetSlider name="RectusAbdominis" size="small" value="0" />
+    <SetSlider name="RectusAbdominis" size="big" value="0" />
+    <SetSlider name="RectusFemoris" size="small" value="0" />
+    <SetSlider name="RectusFemoris" size="big" value="0" />
+    <SetSlider name="RectusOuterDetail" size="small" value="0" />
+    <SetSlider name="RectusOuterDetail" size="big" value="0" />
+    <SetSlider name="RibsProminance" size="small" value="0" />
+    <SetSlider name="RibsProminance" size="big" value="0" />
+    <SetSlider name="Soleus" size="small" value="0" />
+    <SetSlider name="Soleus" size="big" value="0" />
+    <SetSlider name="ThighThicker" size="small" value="0" />
+    <SetSlider name="ThighThicker" size="big" value="0" />
+    <SetSlider name="VastusLateralis" size="small" value="0" />
+    <SetSlider name="VastusLateralis" size="big" value="0" />
+    <SetSlider name="VastusMedialis" size="small" value="0" />
+    <SetSlider name="VastusMedialis" size="big" value="0" />
   </Preset>
   <Preset name="CLAW BHUNP Technical - Female Muscular" set="BHUNP 3BBB Advanced Ver2 Nevernude">
     <Group name="BHUNP 3BBB Advanced" />
@@ -192,6 +222,36 @@
     <SetSlider name="UNPC Low" size="big" value="0" />
     <SetSlider name="Waist" size="small" value="0" />
     <SetSlider name="Waist" size="big" value="0" />
+    <SetSlider name="BackTrapezius" size="small" value="0" />
+    <SetSlider name="BackTrapezius" size="big" value="0" />
+    <SetSlider name="BackWing" size="small" value="0" />
+    <SetSlider name="BackWing" size="big" value="0" />
+    <SetSlider name="Brachioradialis" size="small" value="0" />
+    <SetSlider name="Brachioradialis" size="big" value="0" />
+    <SetSlider name="Butt" size="small" value="0" />
+    <SetSlider name="Butt" size="big" value="0" />
+    <SetSlider name="LegsThin" size="small" value="0" />
+    <SetSlider name="LegsThin" size="big" value="0" />
+    <SetSlider name="MuscleButt" size="small" value="0" />
+    <SetSlider name="MuscleButt" size="big" value="0" />
+    <SetSlider name="MusclePecs" size="small" value="0" />
+    <SetSlider name="MusclePecs" size="big" value="0" />
+    <SetSlider name="RectusAbdominis" size="small" value="0" />
+    <SetSlider name="RectusAbdominis" size="big" value="0" />
+    <SetSlider name="RectusFemoris" size="small" value="0" />
+    <SetSlider name="RectusFemoris" size="big" value="0" />
+    <SetSlider name="RectusOuterDetail" size="small" value="0" />
+    <SetSlider name="RectusOuterDetail" size="big" value="0" />
+    <SetSlider name="RibsProminance" size="small" value="0" />
+    <SetSlider name="RibsProminance" size="big" value="0" />
+    <SetSlider name="Soleus" size="small" value="0" />
+    <SetSlider name="Soleus" size="big" value="0" />
+    <SetSlider name="ThighThicker" size="small" value="0" />
+    <SetSlider name="ThighThicker" size="big" value="0" />
+    <SetSlider name="VastusLateralis" size="small" value="0" />
+    <SetSlider name="VastusLateralis" size="big" value="0" />
+    <SetSlider name="VastusMedialis" size="small" value="0" />
+    <SetSlider name="VastusMedialis" size="big" value="0" />
   </Preset>
   <Preset name="CLAW BHUNP Technical - Female Heavy" set="BHUNP 3BBB Advanced Ver2 Nevernude">
     <Group name="BHUNP 3BBB Advanced" />
@@ -289,5 +349,35 @@
     <SetSlider name="UNPC Low" size="big" value="0" />
     <SetSlider name="Waist" size="small" value="0" />
     <SetSlider name="Waist" size="big" value="0" />
+    <SetSlider name="BackTrapezius" size="small" value="0" />
+    <SetSlider name="BackTrapezius" size="big" value="0" />
+    <SetSlider name="BackWing" size="small" value="0" />
+    <SetSlider name="BackWing" size="big" value="0" />
+    <SetSlider name="Brachioradialis" size="small" value="0" />
+    <SetSlider name="Brachioradialis" size="big" value="0" />
+    <SetSlider name="Butt" size="small" value="0" />
+    <SetSlider name="Butt" size="big" value="0" />
+    <SetSlider name="LegsThin" size="small" value="0" />
+    <SetSlider name="LegsThin" size="big" value="0" />
+    <SetSlider name="MuscleButt" size="small" value="0" />
+    <SetSlider name="MuscleButt" size="big" value="0" />
+    <SetSlider name="MusclePecs" size="small" value="0" />
+    <SetSlider name="MusclePecs" size="big" value="0" />
+    <SetSlider name="RectusAbdominis" size="small" value="0" />
+    <SetSlider name="RectusAbdominis" size="big" value="0" />
+    <SetSlider name="RectusFemoris" size="small" value="0" />
+    <SetSlider name="RectusFemoris" size="big" value="0" />
+    <SetSlider name="RectusOuterDetail" size="small" value="0" />
+    <SetSlider name="RectusOuterDetail" size="big" value="0" />
+    <SetSlider name="RibsProminance" size="small" value="0" />
+    <SetSlider name="RibsProminance" size="big" value="0" />
+    <SetSlider name="Soleus" size="small" value="0" />
+    <SetSlider name="Soleus" size="big" value="0" />
+    <SetSlider name="ThighThicker" size="small" value="0" />
+    <SetSlider name="ThighThicker" size="big" value="0" />
+    <SetSlider name="VastusLateralis" size="small" value="0" />
+    <SetSlider name="VastusLateralis" size="big" value="0" />
+    <SetSlider name="VastusMedialis" size="small" value="0" />
+    <SetSlider name="VastusMedialis" size="big" value="0" />
   </Preset>
 </SliderPresets>

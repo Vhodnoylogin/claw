@@ -49,6 +49,7 @@ class SourcePackageTests(unittest.TestCase):
             relative = "src/main/resources/appearance/" + name
             self.write(relative, (ROOT / relative).read_bytes())
         self.write(package.RUNTIME_README, (ROOT / package.RUNTIME_README).read_bytes())
+        self.write(package.MODEL_SWAP_SOURCE, (ROOT / package.MODEL_SWAP_SOURCE).read_bytes())
         self.write("README.md", b"Synthetic package contract fixture; no real native source closure claim.\n")
         for name in ("src/main/papyrus/claw/CLAWDistributionNative.psc",
                      "src/main/papyrus/obody/CLAWOBodySourceHost.psc",
@@ -128,7 +129,7 @@ class SourcePackageTests(unittest.TestCase):
 
     def test_full_package_has_literal_minimal_twenty_selections_and_no_development_payload(self):
         result = package.build(**self.arguments())
-        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [13, 15]*10)
+        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [14, 16]*10)
         self.assertEqual({(row['maleFamily'], row['family'], row['obody']) for row in result['selections']},
                          {(male, female, host) for male in package.MALE_FAMILIES
                           for female in package.FEMALE_FAMILIES for host in (False, True)})
@@ -150,6 +151,7 @@ class SourcePackageTests(unittest.TestCase):
         self.assertIn("NOTICES/CommonLib.txt", files)
         self.assertFalse(any(name.startswith("NOTICES/NOTICES/") for name in files))
         self.assertIn(b"https://github.com/Vhodnoylogin/claw", files["README.md"])
+        self.assertEqual(json.loads(files["00 Base/" + package.MODEL_SWAP_OVERRIDE]), [])
         self.assertNotIn(b"cmake -", files["README.md"])
         self.assertIsNone(result["sourceCommit"])
         self.assertFalse(result["sourceReference"]["publicAvailabilityChecked"])
@@ -189,6 +191,16 @@ class SourcePackageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'canonical seven'):
             package.profiles(ET.tostring(missing), 'UNP')
 
+    def test_model_swapper_override_rejects_rules_and_nonarray_payloads(self):
+        result = package.build(**self.arguments())
+        files = package.read_zip(Path(result["archive"]).read_bytes())
+        for payload in (b'{}', b'null', b'[{"OriginalModel":"wolf.nif","Variants":[]}]'):
+            with self.subTest(payload=payload):
+                changed = dict(files)
+                changed["00 Base/" + package.MODEL_SWAP_OVERRIDE] = payload
+                with self.assertRaisesRegex(ValueError, 'empty JSON array'):
+                    package.selection_audit(changed)
+
     def test_packaged_fomod_survives_vortex_string_stream_encoding(self):
         # Nexus-Mods/fomod-installer XmlScriptType.StringStream at
         # af3c8355b2e22f1c7c4272c8eb3cb928ccb5f8c1 removes only a
@@ -210,11 +222,11 @@ class SourcePackageTests(unittest.TestCase):
                 direct = ET.fromstring(files[name])
                 processed = ET.fromstring(vortex_stream(files[name]))
                 self.assertEqual(ET.tostring(direct), ET.tostring(processed))
-        self.assertEqual([row['runtimeFiles'] for row in result['selections']], [13, 15]*10)
+        self.assertEqual([row['runtimeFiles'] for row in result['selections']], [14, 16]*10)
 
     def test_absent_optional_host_has_no_broken_host_choice(self):
         result = package.build(**self.arguments(host=False))
-        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [13]*10)
+        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [14]*10)
         files = package.read_zip(Path(result["archive"]).read_bytes())
         self.assertNotIn(b'folder source="30 OBody Source"', files["fomod/ModuleConfig.xml"])
         self.assertFalse(any(name.startswith("30 OBody Source/") for name in files))

@@ -45,3 +45,8 @@ against the shared native evaluator using the same actor's measured source keys,
 weight and available typed traits. Native offline checks and this source fixture
 do not themselves establish an installed-game result. Finish through the game
 menu and verify full restoration before accepting a run.
+
+The current 62-source matrix adds fifteen low-strength inputs. They are explicitly
+zeroed at both weight endpoints in these presets, preserving their existing
+source shape while supplying a complete current input vector. Separate unit
+basis probes exercise every added relationship.

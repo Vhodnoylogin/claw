@@ -328,9 +328,18 @@ inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token, C
             return surface.geometry.get() == geometry;
         });
         row.tracked = lease != entry.surfaces.end();
+        if (row.tracked && lease->original) {
+            row.originalPropertyAlpha = lease->original->alpha;
+            row.originalShaderFlags = lease->original->flags.underlying();
+        }
         auto* property = geometry->GetGeometryRuntimeData().shaderProperty.get();
         if (property) {
             row.propertyAlpha = property->alpha; row.shaderFlags = property->flags.underlying();
+            row.hasFadeNode = property->fadeNode != nullptr;
+            if (row.tracked && lease->original) {
+                row.originalHasFadeNode = lease->original->fadeNode != nullptr;
+                row.sameFadeNode = property->fadeNode == lease->original->fadeNode;
+            }
             const auto* extra = property->GetExtraData("NO_TINT");
             const auto* boolean = netimmerse_cast<RE::NiBooleanExtraData*>(extra);
             row.noTint = boolean ? (boolean->data ? 2 : 1) : extra ? 3 : 0;
@@ -825,7 +834,9 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         // CommonLib's virtual FinishSetupGeometry calls the engine shader
         // initializer on this property; unlike a private relocation it uses the
         // active runtime's own vtable on SE/AE/VR.
-        if (!surface.own->FinishSetupGeometry(surface.geometry.get()) || !healthyPrivateTint(surface)) {
+        auto& current = surface.geometry->GetGeometryRuntimeData().shaderProperty;
+        if (!initializePrivateMaterial(current, surface.own, surface.original, surface.original->alpha,
+                [&](const auto& copy) { return copy->FinishSetupGeometry(surface.geometry.get()); }) || !healthyPrivateTint(surface)) {
             unbind(entry); entry.status = "private tint initialization failed"; return false;
         }
         surface.material.reset(surface.own->material);
