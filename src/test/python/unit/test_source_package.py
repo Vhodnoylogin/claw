@@ -5,6 +5,7 @@ import itertools
 import json
 from pathlib import Path
 import re
+import struct
 import subprocess
 import sys
 import tempfile
@@ -24,6 +25,23 @@ READER_SPEC.loader.exec_module(reader)
 PIN = "1" * 40
 
 
+def material_fixture(marker=b''):
+    """Synthetic block-directory fixture; contains no game geometry or artwork."""
+    names = ('body', 'head', 'eyes', 'furarms', 'furback', 'furbelly', 'furchest',
+             'furface', 'furshoulders', 'furtail')
+    def sized(value):
+        return struct.pack('<I', len(value)) + value
+    blocks = [struct.pack('<I', 9) + sized(
+        b'textures\\actors\\character\\werewolf\\elegant\\' + name.encode() + b'.dds')
+        + sized(b'shared-normal' + marker) + sized(b'') * 7 for name in names]
+    return (b'Gamebryo File Format, Version 20.2.0.7\n'
+            + struct.pack('<IBIII', 0x14020007, 1, 12, len(blocks), 100) + b'\0\0\0'
+            + struct.pack('<H', 1) + sized(b'BSShaderTextureSet')
+            + struct.pack('<10H', *([0] * 10))
+            + struct.pack('<10I', *map(len, blocks)) + struct.pack('<III', 0, 0, 0)
+            + b''.join(blocks) + struct.pack('<II', 1, 0))
+
+
 class SourcePackageTests(unittest.TestCase):
     def setUp(self):
         temporary = ROOT / "target/test-source-package"
@@ -37,7 +55,7 @@ class SourcePackageTests(unittest.TestCase):
         self.write(".gitignore", b"/target/\n")
         self.write("CMakeLists.txt", b"# synthetic native source fixture\n")
         self.write("src/main/cpp/src/Plugin.cpp", b"// synthetic code, not the supplied DLL implementation\n")
-        for name in ("package-source-build.py", "build-unified-release.py"):
+        for name in ("package-source-build.py", "build-unified-release.py", "player_only_materials.py"):
             self.write("src/main/python/build-tools/" + name,
                        (ROOT / "src/main/python/build-tools" / name).read_bytes())
         for name in ("ModuleConfig.xml", "info.xml"):
@@ -66,7 +84,7 @@ class SourcePackageTests(unittest.TestCase):
         for sex in ("male", "female"):
             for ending in ("_0.nif", "_1.nif", ".tri"):
                 self.write("target/bodies/" + sex + "bodywerewolf" + ending,
-                           (b"PIRT" if ending == ".tri" else b"Gamebryo") + sex.encode() + b"x" * 100)
+                           b"PIRT" + sex.encode() + b"x" * 100 if ending == ".tri" else material_fixture())
         self.closure = self.root / "target/source-companion"
         self.manifest = {"schemaVersion": 1, "kind": "claw-native-source-companion",
             "review": {"status": "source-closure-reviewed", "reviewId": "synthetic-contract-fixture-only",
@@ -129,7 +147,7 @@ class SourcePackageTests(unittest.TestCase):
 
     def test_full_package_has_literal_minimal_twenty_selections_and_no_development_payload(self):
         result = package.build(**self.arguments())
-        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [14, 16]*10)
+        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [18, 20]*10)
         self.assertEqual({(row['maleFamily'], row['family'], row['obody']) for row in result['selections']},
                          {(male, female, host) for male in package.MALE_FAMILIES
                           for female in package.FEMALE_FAMILIES for host in (False, True)})
@@ -222,11 +240,11 @@ class SourcePackageTests(unittest.TestCase):
                 direct = ET.fromstring(files[name])
                 processed = ET.fromstring(vortex_stream(files[name]))
                 self.assertEqual(ET.tostring(direct), ET.tostring(processed))
-        self.assertEqual([row['runtimeFiles'] for row in result['selections']], [14, 16]*10)
+        self.assertEqual([row['runtimeFiles'] for row in result['selections']], [18, 20]*10)
 
     def test_absent_optional_host_has_no_broken_host_choice(self):
         result = package.build(**self.arguments(host=False))
-        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [14]*10)
+        self.assertEqual([row["runtimeFiles"] for row in result["selections"]], [18]*10)
         files = package.read_zip(Path(result["archive"]).read_bytes())
         self.assertNotIn(b'folder source="30 OBody Source"', files["fomod/ModuleConfig.xml"])
         self.assertFalse(any(name.startswith("30 OBody Source/") for name in files))
@@ -382,13 +400,17 @@ class SourcePackageTests(unittest.TestCase):
         self.assertGreater(sum(row["bytes"] for row in result["sourceSelection"]["omittedTrackedSource"].values()), 0)
 
     def test_different_weight_endpoints_are_preserved_not_silently_deduplicated(self):
-        high = self.write("target/bodies/femalebodywerewolf_1.nif", b"Gamebryo larger high endpoint" + b"y" * 100)
+        high = self.write("target/bodies/femalebodywerewolf_1.nif", material_fixture(b'different-high'))
         result = package.build(**self.arguments())
         files = package.read_zip(Path(result["archive"]).read_bytes())
         self.assertEqual(sum(name.endswith(".nif") for name in files), 3)
         for row in result["selections"]:
             item = next(item for item in row["files"] if item["path"].endswith("femalebodywerewolf_1.nif"))
-            self.assertEqual(files[item["source"]], high.read_bytes())
+            self.assertIn(b'shared-normaldifferent-high', files[item["source"]])
+            low = next(item for item in row["files"] if item["path"].endswith("femalebodywerewolf_0.nif"))
+            self.assertNotEqual(files[item["source"]], files[low["source"]])
+            alias = next(item for item in row["files"] if item["path"].endswith("femalePlayerWerewolf_1.nif"))
+            self.assertEqual(alias['source'], item['source'])
 
     def test_nested_archives_are_rejected_by_name_and_content_without_renaming(self):
         for name in ("source.zip", "source.7z", "source.rar", "source.tar.gz", "source.whl", "source.nupkg"):
@@ -455,7 +477,7 @@ class SourcePackageTests(unittest.TestCase):
         required = xml.find("requiredInstallFiles")
         required.remove(required[-1])
         files["fomod/ModuleConfig.xml"] = ET.tostring(xml)
-        with self.assertRaisesRegex(ValueError, "seven explicit"):
+        with self.assertRaisesRegex(ValueError, "four PlayerOnly model aliases"):
             package.selection_audit(package.read_zip(package.zip_bytes(files)))
 
 
