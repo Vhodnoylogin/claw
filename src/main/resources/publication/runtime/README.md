@@ -2,6 +2,9 @@
 
 Version @VERSION@
 
+Local review candidate. This core archive does not include motion-physics
+resources. Motion physics and visual appearance are pending release acceptance.
+
 Human body shape, weight and facial traits influence your werewolf form.
 
 ## Installation

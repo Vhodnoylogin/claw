@@ -40,6 +40,10 @@ meshes are source inputs with recorded provenance; generated NIF/TRI, ESP, PEX,
 DLL and ZIP files belong in `target/` and GitHub Release assets. Older release
 commits and tags retain their historical layout; history has not been rewritten.
 
+CLAW owns the [shared libraries](src/main/cpp/shared/README.md) used by CLAW,
+Living Physique and their Morphbench tools. Consumers pin and compile these
+sources from this repository.
+
 The optional [CLAW Morphbench comparison plugin](https://github.com/Vhodnoylogin/claw-morphbench-plugin)
 is maintained in its independent source repository and is not a gameplay
 requirement. The earlier 0.3 release targets CLAW 0.7 matrices; an updated tool

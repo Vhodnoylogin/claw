@@ -32,7 +32,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[4]
 NAME = "CLAW - Customizable Lycanthrope Appearance and Weight"
 ARCHIVE_NAME = "CLAW - Customizable Lycanthrope Appearance and Weight.zip"
-VERSION = "0.9.0"
+VERSION = "0.10.0"
 APPEARANCE_FILES = ("CoatLibrary.xml", "CoatMapping.xml", "CoatMatrix.xml")
 APPEARANCE_PATH = "SKSE/Plugins/CLAW/"
 RUNTIME_README = "src/main/resources/publication/runtime/README.md"
