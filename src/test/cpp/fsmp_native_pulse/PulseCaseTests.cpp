@@ -1,4 +1,5 @@
 #include "PulseCase.h"
+#include "AdapterDiagnostics.h"
 #include "claw/WorldStartPolicy.h"
 #include <functional>
 #include <future>
@@ -318,9 +319,27 @@ void encodedWorldStartMessages() {
     require(successes==2&&ready,"successful world admission restored only by final encoded success");
 }
 
+void adapterReporting() {
+    require(classifyWorkerExit(false,true,false,100,200)==WorkerExit::queueFatal,"queue-fatal exit before deadline is not expiration");
+    require(classifyWorkerExit(false,false,true,100,200)==WorkerExit::workerFatal,"worker failure is not expiration");
+    require(classifyWorkerExit(false,false,false,199,200)==WorkerExit::running,"unreached worker deadline cannot expire");
+    require(classifyWorkerExit(false,false,false,200,200)==WorkerExit::deadline,"only an observed real worker deadline expires");
+    require(classifyWorkerExit(true,true,false,201,200)==WorkerExit::terminal,"published terminal report wins over loop cutoff");
+    AdapterDiagnostics diagnostics;
+    const auto first=diagnostics.entered(Work::prepare,10,10,100,true,7);
+    const auto wrong=diagnostics.entered(Work::confirm,10,20,110,true,7);
+    diagnostics.fatal(FatalOrigin::callbackThreadMismatch,wrong);
+    diagnostics.fatal(FatalOrigin::workerException,{});
+    CallbackWitness saved{}; FatalWitness fatal{};
+    require(diagnostics.callback(0,saved)&&saved.sequence==1&&saved.actualThread==10&&saved.qpc==100,"first callback POD survives later entry");
+    require(diagnostics.callback(1,saved)&&saved.sequence==2&&saved.expectedThread==10&&saved.actualThread==20&&saved.work==Work::confirm,"mismatched callback retains both OS IDs and work before engine access");
+    require(diagnostics.fatal(fatal)&&fatal.origin==FatalOrigin::callbackThreadMismatch&&fatal.context.sequence==wrong.sequence,"first fatal origin is immutable across later worker failure");
+    require(!diagnostics.callback(AdapterDiagnostics::capacity,saved)&&first.generation==7,"diagnostic history is bounded POD only");
+}
+
 }
 int main() {
-    try { normal(); admission(); guards(); propagation(); timingAndCancel(); exceptions(); additionalBoundaries(); completionBeforeWait(); generationAndRigidMath(); completionAfterPredicate(); fatalAtBoundary(); descendantWorldsAreRecordsOnly(); encodedWorldStartMessages(); }
+    try { normal(); admission(); guards(); propagation(); timingAndCancel(); exceptions(); additionalBoundaries(); completionBeforeWait(); generationAndRigidMath(); completionAfterPredicate(); fatalAtBoundary(); descendantWorldsAreRecordsOnly(); encodedWorldStartMessages(); adapterReporting(); }
     catch (const std::exception& e) { std::cerr<<"FAILED after "<<checks<<" checks: "<<e.what()<<'\n'; return 1; }
     std::cout<<checks<<" finite-controller checks passed; no engine or plugin loaded\n";
 }

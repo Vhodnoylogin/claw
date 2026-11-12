@@ -1,5 +1,6 @@
 // TEST ONLY. Consumes external MIT DevBench glue and the pinned CommonLib SDK.
 #include "PulseCase.h"
+#include "AdapterDiagnostics.h"
 #include "claw/WorldStartPolicy.h"
 #include "DevBenchAPI.h"
 #include <Windows.h>
@@ -202,7 +203,23 @@ bool flushNew(const std::filesystem::path& path,const Json& value) {
     return good&&closed; // Never overwrite/delete an old or partially written intent/result.
 }
 
-enum class Work { prepare,confirm,start,step,retire };
+const char* workName(Work work) {
+    constexpr const char* names[]{"prepare","confirm","start","step","retire","none"};
+    return names[static_cast<unsigned>(work)];
+}
+const char* fatalName(FatalOrigin origin) {
+    constexpr const char* names[]{"none","callbackThreadMismatch","addTaskException","callbackException","workerException","resultWriteFailure","workerStartFailure"};
+    return names[static_cast<unsigned>(origin)];
+}
+CallbackWitness diagnosticContext(Work work=Work::none) noexcept {
+    LARGE_INTEGER now{}; const bool available=QueryPerformanceCounter(&now)!=0;
+    return {0,generation.load(),work,0,GetCurrentThreadId(),now.QuadPart,available};
+}
+Json callbackWitness(const CallbackWitness& value) {
+    return {{"sequence",value.sequence},{"work",workName(value.work)},{"generation",value.generation},
+        {"expectedFirstCallbackOSThreadId",value.expectedThread},{"actualOSThreadId",value.actualThread},
+        {"qpc",value.qpc},{"qpcAvailable",value.qpcAvailable}};
+}
 struct Runtime final:RE::BSTEventSink<RE::TESObjectLoadedEvent>,RE::BSTEventSink<RE::TESSwitchRaceCompleteEvent>,RE::BSTEventSink<SKSE::NiNodeUpdateEvent> {
     Parameters parameters{}; // Written once on listener, immutable after claimed-release.
     Case controller{}; // Game thread only; terminal/prepare publication exposes POD records to worker.
@@ -212,7 +229,8 @@ struct Runtime final:RE::BSTEventSink<RE::TESObjectLoadedEvent>,RE::BSTEventSink
     Report terminalReport{}; // POD-only copy published after game-thread engine retirement.
     std::string instance;
     Tick frequency{};
-    DWORD gameThread{};
+    std::atomic<DWORD> gameThread{};
+    AdapterDiagnostics diagnostics{};
     std::mutex admissionMutex,waitMutex;
     std::condition_variable wake;
     std::atomic<bool> enabled{false},claimed{false},pending{false},startRequested{false},cancelRequested{false};
@@ -223,6 +241,21 @@ struct Runtime final:RE::BSTEventSink<RE::TESObjectLoadedEvent>,RE::BSTEventSink
     std::atomic<Tick> due{never};
     std::atomic<std::size_t> samples{},recordCount{};
     std::atomic<std::uint64_t> statusSequence{};
+    void adapterFatal(FatalOrigin origin,Work work=Work::none) {
+        auto context=diagnosticContext(work); context.expectedThread=gameThread.load();
+        diagnostics.fatal(origin,context);
+    }
+    Json diagnosticStatus() const {
+        Json rows=Json::array(); CallbackWitness value{};
+        for (std::size_t i=0;i<AdapterDiagnostics::capacity;++i)
+            if (diagnostics.callback(i,value)) rows.push_back(callbackWitness(value));
+        FatalWitness fatal{}; const bool hasFatal=diagnostics.fatal(fatal);
+        const auto reserved=diagnostics.reserved();
+        return {{"expectedFirstCallbackOSThreadId",gameThread.load()},{"callbackEntries",rows},
+            {"callbackEntriesReserved",reserved},{"callbackEntriesDropped",reserved>AdapterDiagnostics::capacity?reserved-AdapterDiagnostics::capacity:0},
+            {"fatalOriginPublished",hasFatal},{"fatalOrigin",hasFatal?fatalName(fatal.origin):"none"},
+            {"fatalContext",hasFatal?callbackWitness(fatal.context):Json(nullptr)}};
+    }
     void publish() {
         statusSequence.fetch_add(1);
         failure.store(controller.view().failure); unknown.store(controller.view().unknown); samples.store(controller.view().sampleCount);
@@ -231,8 +264,14 @@ struct Runtime final:RE::BSTEventSink<RE::TESObjectLoadedEvent>,RE::BSTEventSink
     }
     void main(Work work,bool intentOK=false) noexcept {
         const auto thread=GetCurrentThreadId();
-        if (!gameThread) gameThread=thread;
-        if (gameThread!=thread) { queueUnknown.store(true); pending.store(false); wake.notify_one(); return; }
+        DWORD expected=0; gameThread.compare_exchange_strong(expected,thread);
+        const auto boundThread=expected?expected:thread;
+        const auto context=diagnosticContext(work);
+        const auto entry=diagnostics.entered(work,boundThread,thread,context.qpc,context.qpcAvailable,context.generation);
+        if (boundThread!=thread) {
+            diagnostics.fatal(FatalOrigin::callbackThreadMismatch,entry);
+            queueUnknown.store(true); pending.store(false); wake.notify_one(); return;
+        }
         try {
             if (queueUnknown.load()||workerFailed.load()) controller.quarantine(Failure::exception);
             else if (work==Work::prepare&&workerExpired.load()) controller.quarantine(Failure::deadline);
@@ -260,7 +299,7 @@ struct Runtime final:RE::BSTEventSink<RE::TESObjectLoadedEvent>,RE::BSTEventSink
                 if (work==Work::start&&!cancelRequested.load()&&!workerExpired.load()) controller.start(*scene);
                 else controller.step(*scene,cancelRequested.load()||workerExpired.load());
             }
-        } catch (...) { controller.quarantine(Failure::exception); }
+        } catch (...) { diagnostics.fatal(FatalOrigin::callbackException,entry); controller.quarantine(Failure::exception); }
         // No engine-owned value reaches a worker or static exit destructor. Even quarantine retires
         // retained old roots on this game thread without writing them. If this callback never arrives,
         // the leaked process-lifetime context intentionally retains unresolved objects until process exit.
@@ -278,7 +317,7 @@ struct Runtime final:RE::BSTEventSink<RE::TESObjectLoadedEvent>,RE::BSTEventSink
         bool expected=false;
         if (!pending.compare_exchange_strong(expected,true)) return false;
         try { SKSE::GetTaskInterface()->AddTask([this,work,intentOK]{main(work,intentOK);}); }
-        catch (...) { queueUnknown.store(true); wake.notify_one(); } // Void AddTask has no completion token: no retry.
+        catch (...) { adapterFatal(FatalOrigin::addTaskException,work); queueUnknown.store(true); wake.notify_one(); } // Void AddTask has no completion token: no retry.
         return !queueUnknown.load();
     }
     Json intent() const {
@@ -311,8 +350,14 @@ struct Runtime final:RE::BSTEventSink<RE::TESObjectLoadedEvent>,RE::BSTEventSink
             {"intentFlushedBeforeMutation",intentFlushed.load()},{"intentPath",utf8(parameters.intentPath)},
             {"holdTicks",terminalReport.holdTicks},{"sampleCount",terminalReport.sampleCount},{"records",rows},
             {"queueUnknown",queueUnknown.load()},{"workerFailed",workerFailed.load()},
+            {"adapterDiagnostics",diagnosticStatus()},
             {"mechanicalCompletionValid",terminalReport.state==State::completeClean&&!queueUnknown.load()&&!workerFailed.load()},
             {"engineObjectsRetiredOnGameThread",true},{"physicsAcceptance",false},{"noReplay",true}});
+    }
+    void archiveTerminal() {
+        const bool good=result(); resultFlushed.store(good);
+        if (!good) adapterFatal(FatalOrigin::resultWriteFailure);
+        workerFailed.store(!good);
     }
     void run() noexcept {
         bool preparePosted=false,confirmPosted=false,startConsumed=false;
@@ -320,7 +365,7 @@ struct Runtime final:RE::BSTEventSink<RE::TESObjectLoadedEvent>,RE::BSTEventSink
         const WorkerWake signals{terminal,pending,queueUnknown,cancelRequested,startRequested,generation,parameters.epoch};
         try {
             while (qpc()<workerDeadline&&!queueUnknown.load()) {
-                if (signals.completed()) { const bool good=result(); resultFlushed.store(good); workerFailed.store(!good); return; }
+                if (signals.completed()) { archiveTerminal(); return; }
                 if (pending.load(std::memory_order_acquire)) {
                     std::unique_lock lock(waitMutex); waitWorker(wake,lock,std::chrono::milliseconds(100),[&]{return signals.callback();}); continue;
                 }
@@ -348,12 +393,14 @@ struct Runtime final:RE::BSTEventSink<RE::TESObjectLoadedEvent>,RE::BSTEventSink
             }
             // Completion can publish after the loop condition observes its cutoff. Persist it
             // before declaring expiration; the acquire pairs with terminal POD publication.
-            if (signals.completed()) { const bool good=result(); resultFlushed.store(good); workerFailed.store(!good); return; }
-            workerExpired.store(true);
-            if (signals.completed()) { const bool good=result(); resultFlushed.store(good); workerFailed.store(!good); return; }
+            if (signals.completed()) { archiveTerminal(); return; }
+            const auto exit=classifyWorkerExit(false,queueUnknown.load(),workerFailed.load(),qpc(),workerDeadline);
+            if (exit==WorkerExit::deadline) workerExpired.store(true);
+            if (signals.completed()) { archiveTerminal(); return; }
             // At most one task remains. A late callback may ONLY guarded-clean up.
             if (!pending.load()&&!terminal.load()) (void)post(Work::retire);
         } catch (...) {
+            adapterFatal(FatalOrigin::workerException);
             workerFailed.store(true);
             if (!pending.load()&&!terminal.load()) (void)post(Work::retire); // Known idle: quarantine/release on game thread only.
         }
@@ -371,6 +418,7 @@ struct Runtime final:RE::BSTEventSink<RE::TESObjectLoadedEvent>,RE::BSTEventSink
                 {"samples",samples.load()},{"records",recordCount.load()},{"nextDueQpc",due.load()},{"qpcFrequency",frequency},
                 {"intentFlushed",intentFlushed.load()},{"resultFlushed",resultFlushed.load()},
                 {"workerExpired",workerExpired.load()},{"queueUnknown",queueUnknown.load()},{"workerFailed",workerFailed.load()},
+                {"adapterDiagnostics",diagnosticStatus()},
                 {"completedClean",state==State::completeClean&&resultFlushed.load()&&!queueUnknown.load()&&!workerExpired.load()&&!workerFailed.load()},
                 {"physicsAcceptance",false},{"intentPath",utf8(parameters.intentPath)},{"resultPath",utf8(parameters.resultPath)}};
             if (before==statusSequence.load()) return out;
@@ -440,7 +488,7 @@ Json dispatch(Runtime& r,const Json& args) {
         if (!worldReady.load()) throw std::runtime_error("loaded new game required; no save/load during case");
         r.parameters=std::move(p); r.claimed.store(true,std::memory_order_release);
         try { std::thread([context=&r]{context->run();}).detach(); }
-        catch (...) { r.workerFailed.store(true); throw; }
+        catch (...) { r.adapterFatal(FatalOrigin::workerStartFailure); r.workerFailed.store(true); throw; }
     } else {
         if (args.size()!=2) throw std::runtime_error("exact action/operation fields required");
         if (!r.claimed.load(std::memory_order_acquire)||operation!=r.parameters.operation) return {{"ok",false},{"error","unknown operation"}};

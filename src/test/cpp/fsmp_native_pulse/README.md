@@ -136,6 +136,26 @@ This does not promise guards within engine implementation, third-party threads,
 internal child writes, or solver phases. Native faults can terminate the process;
 C++ exception handling cannot manufacture a completion receipt after a crash.
 
+The prospective adapter diagnostics retain at most 64 immutable POD callback-entry
+witnesses: callback sequence, work kind, expected first-callback and actual OS
+thread IDs, producer QPC availability/tick, and observed generation. Each entry
+is release-published before the affinity comparison and any controller/Scene
+access; listener/worker readers acquire that individual entry. A dropped-entry
+count makes the fixed capacity explicit. The first fatal origin and its POD
+context are published once and never replaced by a later worker failure.
+Callback contexts describe callback entry, not a claimed engine/solver phase or
+the exact instant of a later exception. JSON encoding stays off the callback.
+This is not an atomic snapshot of all concurrently publishing diagnostic rows.
+
+The same first-callback OS-thread affinity guard remains mandatory; its binding
+is now atomic so an unexpected delegate thread and a listener can record it
+without a data race. That first ID is an observed local expectation, not proof
+that SKSE guarantees a fixed OS thread or that an arbitrary callback is safe.
+No epoch, ownership, call-entry or quarantine guard is relaxed. A queue-fatal
+worker exit is not deadline expiration: workerExpired is set only when the
+worker actually observes its deadline without an already observed fatal exit.
+Existing known-idle retirement and unknown queued-outcome rules are unchanged.
+
 SKSE pre-load/save/new/post-load, the owned actor's object-load/race-switch and
 node-update events invalidate generation. Save/load during the case is forbidden
 by the outer packet; these event interlocks observe transitions rather than
