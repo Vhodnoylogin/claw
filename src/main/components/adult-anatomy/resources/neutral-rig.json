@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "status": "offline-neutral-candidate-not-game-qualified",
+  "inputs": {
+    "malebodywerewolf_0.nif": "6a7fa9e262a8a329dd3dc41a725edbf8c9da0a577176ed8c04dbae9924c45210",
+    "malebodywerewolf_1.nif": "6a7fa9e262a8a329dd3dc41a725edbf8c9da0a577176ed8c04dbae9924c45210",
+    "malebodywerewolf.tri": "3ff00f50493664ec68bbbfbe4843bd64f268df9a5659e6a6bd4baea14ae085fc",
+    "skeleton.nif": "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0"
+  },
+  "shape": "genitals",
+  "vertices": 886,
+  "tubeVertices": 442,
+  "ballVerticesEach": 222,
+  "root": "NPC Pelvis [Pelv]",
+  "anchor": "WWD 1",
+  "drivers": ["WWD 2", "WWLB 1", "WWRB 1"],
+  "requiredNodes": ["CME Pelvis [Pelv]", "WWD 1", "WWD 2", "WWLB 1", "WWRB 1"],
+  "tube": {"anchoredThroughY": 1.0, "mobileFromY": 5.0, "maximum": 0.35},
+  "ballsMaximum": 0.35,
+  "motion": {"mass": 0.02, "linearLimit": 0.05, "angularLimitRadians": 0.01, "damping": 0.8},
+  "xml": "SKSE/Plugins/hdtSkinnedMeshConfigs/CLAW/CLAWNeutralAnatomy.xml",
+  "nodeTolerance": 0.0002,
+  "weightTolerance": 0.001
+}
