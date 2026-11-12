@@ -16,8 +16,8 @@ int main(int argc, char** argv) {
         if (!profile) { std::cerr << "Unknown matrix profile\n"; return 2; }
         if (command == "matrix-info") {
             if (argc != 4) return 2;
-            std::map<std::string, std::int32_t> sources;
-            std::set<std::string> targets;
+            std::map<std::string, std::int32_t, claw::MorphNameLess> sources;
+            std::set<std::string, claw::MorphNameLess> targets;
             for (const auto& rule : profile->link.rules) if (rule.active()) {
                 targets.emplace(rule.target);
                 if (!rule.constant()) sources.emplace(rule.source, claw::morphSourceKind(rule.source));

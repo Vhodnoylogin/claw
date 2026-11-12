@@ -277,6 +277,18 @@ int main() {
             require(claw::interpolate(*preset, 0).at("CLAWArmGirth") == 0, "omitted small endpoint was not zero");
             require(std::abs(claw::interpolate(*preset, 25).at("CLAWArmGirth") - .2F) < 1e-6, "sparse interpolation wrong");
         }},
+        {"provider morph identity joins endpoint spelling", [] {
+            claw::Catalog catalog;
+            const auto lowerBig = "<SetSlider name=\"clawarmgirth\" size=\"big\" value=\"80\"/>";
+            require(catalog.loadXml(xml(small + lowerBig), "fixture"), "differently cased endpoint pair rejected");
+            const auto* preset = catalog.find("Example", claw::Sex::male);
+            require(preset && preset->sliders.size() == 1 && preset->sliders.begin()->first == "CLAWArmGirth",
+                    "provider endpoint identity or authored spelling changed");
+            const auto values = claw::interpolate(*preset, 50);
+            require(std::abs(values.at("CLAWARMGIRTH") - .5F) < 1e-6 && values.find("clawarmgirth")->first == "CLAWArmGirth",
+                    "case-insensitive endpoint interpolation changed");
+            require(!catalog.loadXml(xml(big + lowerBig), "duplicate"), "duplicate provider endpoint accepted");
+        }},
         {"typed neutral presets and full owned-key readback", [] {
             claw::Catalog catalog;
             require(catalog.loadXml(xml("", "Neutral male"), "male"), "neutral male rejected");

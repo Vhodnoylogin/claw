@@ -26,9 +26,12 @@ Source and target names preserve their authored spelling. Provider-bound names
 are printable ASCII of at most 160 bytes without surrounding whitespace/control
 characters. SKEE's `SKEEFixedString` uses `hash_lower`/`_stricmp` identity, so active
 names differing only in ASCII case cannot represent independent game controls.
-The adapters use deterministic A-Z to a-z identity, reject case-only source or
-target aliases, and keep repeated identical spellings for valid many-to-many
-edges. No process-locale case conversion is used. Linked
+The adapters use deterministic A-Z to a-z identity for lookups, source capture,
+target aggregation and validation. Differently cased references may name the same
+source or target in valid many-to-many edges. Duplicate source/target identity
+pairs and inconsistent caps remain errors. Output dictionaries preserve the first
+authored spelling while their C++ morph lookups are case-insensitive. No
+process-locale case conversion is used. Linked
 targets have no body-prefix or compiled sex/name allowlist; actual model TRI
 availability must be checked by the resource consumer. The generated native XML
 format retains its existing printable ASCII/entity-free restrictions. Legacy
@@ -87,7 +90,7 @@ attributes are additive, for example:
 <Rule source="" target="CLAWTorsoChestSize" gain="1" cap="1" function="constant" value="0.4" />
 ```
 
-## Explicit actor weight and the six default matrices
+## Explicit actor weight and the seven default matrices
 
 `$actor.weight` is the sole built-in actor input. It is represented as an ordinary
 source column in the matrix. The game adapter reads the current NPC base weight
@@ -107,7 +110,7 @@ Scalar-only matrices neither request OBody generation nor depend on human TRI
 availability. Mixed matrices still let OBody supply their ordinary morph inputs.
 
 The canonical file contains HIMBO male, CBBE female, 3BA female, BHUNP female,
-Vanilla male and Vanilla female matrices. Every matrix explicitly includes weight. Installation
+UNP female, Vanilla male and Vanilla female matrices. Every matrix explicitly includes weight. Installation
 selects exactly one male and one female matrix independently; no random matrix
 distribution or runtime mesh-name guess is involved. Existing saved assignments
 remain authoritative until explicitly rebound to a selected default.

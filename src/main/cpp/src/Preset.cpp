@@ -10,6 +10,7 @@
 #include <optional>
 #include <set>
 #include <stdexcept>
+#include <utility>
 
 namespace claw {
 namespace {
@@ -122,7 +123,8 @@ std::vector<std::string_view> recognizedMorphs(Sex sex) {
 
 bool recognizedMorph(std::string_view name, Sex sex) {
     const auto names = recognizedMorphs(sex);
-    return std::find(names.begin(), names.end(), name) != names.end();
+    const MorphNameLess less;
+    return std::any_of(names.begin(), names.end(), [&](auto candidate) { return !less(candidate, name) && !less(name, candidate); });
 }
 
 bool Catalog::fail(std::string source, std::string reason) {
@@ -165,7 +167,7 @@ bool Catalog::loadXml(std::string_view xml, std::string source) {
             else throw std::invalid_argument("set must be CLAW Male or CLAW Female");
             if (!validName(preset.name)) throw std::invalid_argument("preset name must be trimmed, nonempty, at most 160 UTF-8 bytes and without controls");
             if (presets_.contains(preset.name)) throw std::invalid_argument("duplicate preset name: " + preset.name);
-            std::set<std::pair<std::string, bool>> seen;
+            std::map<std::string, std::array<bool, 2>, MorphNameLess> seen;
             for (const auto slider : node.children()) {
                 if (slider.type() != pugi::node_element) throw std::invalid_argument("unexpected text in Preset");
                 const std::string_view element = slider.name();
@@ -181,7 +183,7 @@ bool Catalog::loadXml(std::string_view xml, std::string source) {
                 const std::string_view size = slider.attribute("size").value();
                 if (size != "small" && size != "big") throw std::invalid_argument("size must be small or big");
                 const bool high = size == "big";
-                if (!seen.emplace(morph, high).second) throw std::invalid_argument("duplicate slider endpoint: " + morph);
+                if (std::exchange(seen[morph][high], true)) throw std::invalid_argument("duplicate slider endpoint: " + morph);
                 auto& endpoint = preset.sliders[morph];
                 (high ? endpoint.high : endpoint.low) = percentage(slider.attribute("value").value());
                 if (slider.first_child()) throw std::invalid_argument("SetSlider must have no children");

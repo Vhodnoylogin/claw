@@ -37,9 +37,11 @@ struct MorphLinkRule {
     }
 };
 // The engine adapters decide which names are available. Outputs never mutate the input snapshot.
-inline Morphs evaluateNamed(std::span<const MorphLinkRule> rules, const Morphs& sourceValues) {
-    Morphs result;
-    std::map<std::string, std::uint32_t> targets;
+template<class NameCompare>
+inline std::map<std::string, float, NameCompare> evaluateNamed(std::span<const MorphLinkRule> rules,
+    const std::map<std::string, float, NameCompare>& sourceValues) {
+    std::map<std::string, float, NameCompare> result;
+    std::map<std::string, std::uint32_t, NameCompare> targets;
     for (const auto& rule : rules) if (rule.active()) targets.emplace(rule.target, 0);
     std::uint32_t next{};
     for (auto& [name, index] : targets) index = next++;
