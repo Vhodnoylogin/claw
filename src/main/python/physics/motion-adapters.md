@@ -73,17 +73,24 @@ connect existing driver nodes across unchanged CME wrappers. Ear/tail identity
 `frameInB` uses actual loaded rest transforms. The two single-body P1 joints use
 identity `frameInA`, attaching at the kinematic PreBreast origin instead of the
 dynamic body's center. The pinned skeleton has a one-unit P1 lever; this pivot
-change is mechanical. Its isolated female11-driver nominal response passed
-case08; complete motion
+change is mechanical. Its earlier isolated female11-driver nominal response passed
+case08. The [current-resource qualification](../../../test/docs/physics-qualification-20261112.md)
+also records female11 and authored male9 sampled response after observed
+Disable/unloaded/Enable root recreation, with the actual pulse fenced to the
+replacement graph. These cases do not establish human-origin transformation,
+cell unload, player routing, contacts or synchronized solver/render phases. Complete motion
 release acceptance still requires the [remaining lifecycle checks](../../../test/docs/physics-0.10-lifecycle-plan.md).
 Translation limits are +/-0.15 per axis;
 Euler limits are +/-0.01 radians. These are original small-motion trials.
 
-FSMP needs a mesh binding. The adapter appends one `NiStringExtraData` block named
-`HDT Skinned Mesh Physics Object` and one Scene Root reference to each of four
-cloned selected body NIFs. Existing block IDs, strings, roots and every non-root
-block remain byte exact. Public native readback resolves all four written hooks
-and stored driver influences. An existing binding is refused. No global
+FSMP needs a mesh binding. Four selected sex/weight inputs produce eight standard
+and PlayerOnly body destinations. It rewrites the declared base diffuse paths
+to separately installed Elegant PlayerOnly textures, then adds one
+`NiStringExtraData` named `HDT Skinned Mesh Physics Object` and one Scene Root
+reference to each endpoint. Geometry, UVs, normals, skin weights and BODYTRI remain
+unchanged; material-path adaptation and the XML hook are the intended edits.
+Public native readback resolves all eight hooks and stored driver influences.
+An existing binding is refused. No global
 `defaultBBPs.xml`, skeleton, TRI, provider binary, contact model or host is
 included. Install this separate binding patch after the exact selected core
 body. Its matching TRI and a separately installed runtime-matched provider are
