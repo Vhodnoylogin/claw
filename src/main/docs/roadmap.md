@@ -26,11 +26,20 @@ coarse useful flat-game contacts and detailed hand-consistent VR contacts.
 Static Morphbench placement and numerical fitting support development but do not
 replace actual engine collision and headset tests.
 
+The VR body is a component in this same repository at
+`src/main/components/vr-body/`, with tests under
+`src/test/components/vr-body/`. Move the existing experimental VR sources and
+their build/import/package references together when that phase starts; no new
+product repository is needed.
+
 ## After the VR body and colliders: separate adult supplement
 
 Plan a separate optional adult werewolf anatomy supplement, including penile
 anatomy and its integration. It follows working VR body and contact mechanics;
 it is not part of 0.9.0 or 0.10.0 and is not being implemented in this slice.
+Its component directory is `src/main/components/adult-anatomy/`, with tests under
+`src/test/components/adult-anatomy/`, in this same CLAW repository. Keep it
+optional and isolated from the base runtime package.
 
 ## Deferred
 

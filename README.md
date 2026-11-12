@@ -40,6 +40,12 @@ meshes are source inputs with recorded provenance; generated NIF/TRI, ESP, PEX,
 DLL and ZIP files belong in `target/` and GitHub Release assets. Older release
 commits and tags retain their historical layout; history has not been rewritten.
 
+The planned optional [VR body](src/main/components/vr-body/README.md) and
+[adult anatomy supplement](src/main/components/adult-anatomy/README.md) remain
+separate component directories within this repository. Their implementation
+order is recorded in the roadmap; these directories do not imply completed
+features or additional runtime downloads.
+
 The optional [CLAW Morphbench comparison plugin](https://github.com/Vhodnoylogin/claw-morphbench-plugin)
 is maintained in its independent source repository and is not a gameplay
 requirement. The earlier 0.3 release targets CLAW 0.7 matrices; an updated tool
