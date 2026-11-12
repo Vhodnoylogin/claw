@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 project(SharedProjectionTests LANGUAGES CXX)
 enable_testing()
-add_executable(shared-projection-tests ProjectionTests.cpp)
+add_executable(shared-projection-tests ProjectionTests.cpp FreestandingSmoke.cpp)
 target_compile_features(shared-projection-tests PRIVATE cxx_std_20)
 target_include_directories(shared-projection-tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../../../main/cpp/shared")
 if(MSVC)
