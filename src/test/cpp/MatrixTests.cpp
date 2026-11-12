@@ -264,12 +264,31 @@ int main() {
             require(values.at("CLAWTailLength") == 0, "legacy neutral metadata changed");
             require(link.sourceConflict({{"CLAWCustomHuman", 0.F}}) == "CLAWCustomHuman", "old zero-valued own source collision missed");
             require(link.sourceConflict({{"clawcustomhuman", .5F}}) == "CLAWCustomHuman", "provider case alias bypassed old-output conflict");
-            require(!catalog.loadXml(document("<Rule source=\"Human\" target=\"Ear.Size\" gain=\"1\" cap=\"1\"/>"
-                                              "<Rule source=\"Other\" target=\"ear.size\" gain=\"1\" cap=\"1\"/>")) &&
-                    catalog.error().find("case-ambiguous") != std::string::npos, "case-only target aliases were accepted");
+            require(catalog.loadXml(document("<Rule source=\"Human\" target=\"Ear.Size\" gain=\"1\" cap=\"1\"/>"
+                                             "<Rule source=\"Other\" target=\"ear.size\" gain=\"1\" cap=\"1\"/>")),
+                    "one provider target could not combine differently cased references");
+            auto mixedTarget = catalog.find("Matrix", claw::Sex::male)->link;
+            mixedTarget.capture([](std::string_view source) { return source == "Human" ? .25F : .5F; });
+            const auto combined = mixedTarget.compose(claw::Sex::male);
+            require(combined.at("EAR.SIZE") == .75F && combined.find("ear.size")->first == "Ear.Size",
+                    "provider target identity or first authored spelling changed");
+            require(catalog.loadXml(document("<Rule source=\"Human\" target=\"Ear\" gain=\"1\" cap=\"1\"/>"
+                                             "<Rule source=\"human\" target=\"Tail\" gain=\"1\" cap=\"1\"/>")),
+                    "one provider source could not feed differently cased references");
+            auto mixedSource = catalog.find("Matrix", claw::Sex::male)->link;
+            unsigned reads{};
+            mixedSource.capture([&](std::string_view) { ++reads; return .25F; });
+            require(reads == 1 && mixedSource.sourceValues.size() == 1 && mixedSource.sourceValues.at("HUMAN") == .25F,
+                    "provider source was captured more than once");
+            const auto distributed = mixedSource.compose(claw::Sex::male);
+            require(distributed.at("ear") == .25F && distributed.at("TAIL") == .25F,
+                    "provider source identity changed numerical results");
             require(!catalog.loadXml(document("<Rule source=\"Human\" target=\"Ear\" gain=\"1\" cap=\"1\"/>"
-                                              "<Rule source=\"human\" target=\"Tail\" gain=\"1\" cap=\"1\"/>")),
-                    "case-only source aliases were accepted");
+                                              "<Rule source=\"HUMAN\" target=\"eAr\" gain=\"1\" cap=\"1\"/>")) &&
+                    catalog.error().find("duplicate") != std::string::npos, "duplicate provider edge accepted");
+            require(!catalog.loadXml(document("<Rule source=\"Human\" target=\"Ear\" gain=\"1\" cap=\"1\"/>"
+                                              "<Rule source=\"Other\" target=\"EAR\" gain=\"1\" cap=\"0.5\"/>")) &&
+                    catalog.error().find("caps") != std::string::npos, "provider target accepted inconsistent caps");
             require(!catalog.loadXml(document("<Rule source=\"Human\" target=\"human\" gain=\"1\" cap=\"1\"/>")),
                     "folded source/output alias bypassed feedback rejection");
             require(claw::morphNameIdentifier("Custom.FUR-Size") && !claw::morphNameIdentifier("\xD0\x92\xD0\xBE\xD0\xBB\xD0\xBA"),
@@ -281,7 +300,7 @@ int main() {
             claw::MorphLink caseVariant{"Case", {{"Human", "clawarmgirth", 1, 1}}, {}, false};
             caseVariant.capture([](std::string_view) { return .5F; });
             const auto variantValues = caseVariant.compose(claw::Sex::male);
-            require(!variantValues.contains("CLAWArmGirth") && variantValues.at("clawarmgirth") == .5F &&
+            require(variantValues.at("CLAWArmGirth") == .5F && variantValues.find("CLAWArmGirth")->first == "clawarmgirth" &&
                     claw::validMorphCache(variantValues, claw::Sex::male, true), "active spelling collided with legacy neutral metadata");
         }
         {
@@ -352,8 +371,13 @@ int main() {
             require(!claw::validMorphCache({{"Arbitrary.Wolf", .5F}}, claw::Sex::male, false), "legacy independent cache validation broadened");
             require(!claw::validMorphCache({{"Arbitrary.Wolf", std::numeric_limits<float>::infinity()}}, claw::Sex::male, true),
                     "nonfinite saved generic cache accepted");
-            require(!claw::validMorphCache({{"Ear", .5F}, {"ear", .2F}}, claw::Sex::male, true),
-                    "provider-ambiguous saved cache accepted");
+            claw::Morphs cached{{"Ear", .5F}};
+            require(!cached.emplace("ear", .2F).second && claw::validMorphCache(cached, claw::Sex::male, true),
+                    "saved morph map admitted a second provider identity");
+            bool duplicateRejected{};
+            try { claw::observeOwnMorph(cached, "EAR", "CLAW.Distribution", .2F, "CLAW.Distribution"); }
+            catch (const std::runtime_error&) { duplicateRejected = true; }
+            require(duplicateRejected && cached.at("ear") == .5F, "duplicate provider snapshot silently overwrote a value");
         }
         {
             std::map<std::string, std::map<std::string, float>> provider{
@@ -386,8 +410,12 @@ int main() {
             claw::Morphs foldedOwn;
             claw::observeOwnMorph(foldedOwn, "eAr", "cLaW.Distribution", .4F, "CLAW.Distribution");
             require(claw::verifyOwnedMorphs({{"Ear", .4F}}, foldedOwn, .0001F), "SKEE-interned spelling broke own-key readback");
-            require(!claw::verifyOwnedMorphs({{"Ear", .4F}, {"ear", .4F}}, foldedOwn, .0001F),
-                    "case-ambiguous expected ownership was accepted");
+            claw::Morphs expectedOwn{{"Ear", .4F}};
+            require(!expectedOwn.emplace("ear", .4F).second && expectedOwn.size() == 1 &&
+                    claw::verifyOwnedMorphs(expectedOwn, foldedOwn, .0001F), "one provider identity became two outputs");
+            expectedOwn["EAR"] = .7F;
+            require(expectedOwn.size() == 1 && expectedOwn.at("ear") == .7F && expectedOwn.begin()->first == "Ear",
+                    "case-insensitive provider update changed identity or authored spelling");
         }
         std::cout << "Matrix functions, generic targets, shared gain omission, exact-key ownership, v5 roundtrip and old migration passed\n";
         return 0;

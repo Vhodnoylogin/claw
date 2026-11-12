@@ -44,6 +44,11 @@ int main(int argc, char** argv) {
         std::ifstream matrixFile(argv[2], std::ios::binary);
         require(matrixFile.good(), "shipped coat matrix unreadable");
         const auto matrix = CoatMatrix::parse(std::string((std::istreambuf_iterator<char>(matrixFile)), {}));
+        require(!matrix.evaluate({}, 0).contains("COAT.SELECTOR"), "morph identity policy leaked into numeric coat channels");
+        bool unknownChannel{};
+        try { (void)CoatMatrix::parse(R"(<CoatMatrix schemaVersion="1"><Rule source="HAIR.RED" target="coat.selector" gain="1" cap="1"/></CoatMatrix>)"); }
+        catch (const std::invalid_argument&) { unknownChannel = true; }
+        require(unknownChannel, "case-insensitive morph binding changed reserved coat inputs");
         const auto evaluate = [&](const Colours& input, std::uint64_t seed) {
             return matrix.evaluate(input, seed).at("coat.selector");
         };

@@ -17,12 +17,29 @@ struct Endpoints {
     float low{};
     float high{};
 };
-using Morphs = std::map<std::string, float, std::less<>>;
+// Provider-bound names follow SKEE identity; keep the first authored spelling.
+// This belongs to the morph adapter, not the semantic-neutral numerical kernel.
+struct MorphNameLess {
+    using is_transparent = void;
+    static constexpr unsigned char fold(unsigned char value) noexcept {
+        return value >= 'A' && value <= 'Z' ? static_cast<unsigned char>(value + ('a' - 'A')) : value;
+    }
+    bool operator()(std::string_view left, std::string_view right) const noexcept {
+        const auto count = left.size() < right.size() ? left.size() : right.size();
+        for (std::size_t index = 0; index < count; ++index) {
+            const auto a = fold(static_cast<unsigned char>(left[index]));
+            const auto b = fold(static_cast<unsigned char>(right[index]));
+            if (a != b) return a < b;
+        }
+        return left.size() < right.size();
+    }
+};
+using Morphs = std::map<std::string, float, MorphNameLess>;
 
 struct Preset {
     std::string name;
     Sex sex{};
-    std::map<std::string, Endpoints, std::less<>> sliders;
+    std::map<std::string, Endpoints, MorphNameLess> sliders;
     std::string source;
 };
 

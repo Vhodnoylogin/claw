@@ -6,7 +6,9 @@
 namespace claw::appearance {
 inline constexpr auto coatMatrixRelativePath = "SKSE/Plugins/CLAW/CoatMatrix.xml";
 
-inline Morphs coatInputs(const Colours& colours, std::uint64_t seed) {
+// These are mathematical channels, not SKEE morph identifiers.
+using CoatValues = std::map<std::string, float, std::less<>>;
+inline CoatValues coatInputs(const Colours& colours, std::uint64_t seed) {
     const float unitSeed = static_cast<float>(seed >> 40) / 16777215.F;
     return {
         {"hair.red", colours.hasHair ? colours.hair[0] : 0.F},
@@ -49,7 +51,7 @@ public:
         return result;
     }
 
-    Morphs evaluate(const Colours& colours, std::uint64_t seed) const {
+    CoatValues evaluate(const Colours& colours, std::uint64_t seed) const {
         return evaluateNamed(rules_, coatInputs(colours, seed));
     }
 

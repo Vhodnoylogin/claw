@@ -21,7 +21,7 @@ inline std::string morphProviderIdentity(std::string_view value) {
     // SKEE interns names case-insensitively. Restrict bound names to ASCII and
     // fold deterministically; never use process-locale-dependent tolower.
     std::string result(value);
-    for (auto& ch : result) if (ch >= 'A' && ch <= 'Z') ch = static_cast<char>(ch + ('a' - 'A'));
+    for (auto& ch : result) ch = static_cast<char>(MorphNameLess::fold(static_cast<unsigned char>(ch)));
     return result;
 }
 inline std::int32_t morphSourceKind(std::string_view name) {
@@ -64,20 +64,17 @@ struct MorphLink {
         if (!enabled()) return rules.empty() && sourceValues.empty() && !captured ? "" : "disabled morph link contains state";
         if (!morphLinkIdentifier(profile) || rules.size() > CLAW_MATRIX_MAX_RULES) return "invalid profile identifier or excessive rules";
         std::set<std::pair<std::string, std::string>> pairs;
-        std::map<std::string, float> caps;
+        std::map<std::string, float, MorphNameLess> caps;
         (void)sex; // The model's available names, not a compiled sex whitelist, determine geometry support.
-        std::set<std::string> sources;
+        std::set<std::string, MorphNameLess> sources;
         std::map<std::string, std::string> sourceIdentities, outputIdentities;
         for (const auto& rule : rules) {
             if (!morphRuleWellFormed(rule)) return "invalid morph rule identifier, finite parameter or function";
             if (!rule.active()) continue;
-            const auto [output, newOutput] = outputIdentities.emplace(morphProviderIdentity(rule.target), rule.target);
-            if (!newOutput && output->second != rule.target) return "case-ambiguous wolf target: " + rule.target;
-            if (!rule.constant()) {
-                const auto [source, newSource] = sourceIdentities.emplace(morphProviderIdentity(rule.source), rule.source);
-                if (!newSource && source->second != rule.source) return "case-ambiguous human source: " + rule.source;
-            }
-            if (!pairs.emplace(rule.source, rule.target).second) return "duplicate active source/target edge";
+            outputIdentities.emplace(morphProviderIdentity(rule.target), rule.target);
+            if (!rule.constant()) sourceIdentities.emplace(morphProviderIdentity(rule.source), rule.source);
+            if (!pairs.emplace(morphProviderIdentity(rule.source), morphProviderIdentity(rule.target)).second)
+                return "duplicate active source/target edge";
             const auto [it, inserted] = caps.emplace(rule.target, rule.cap);
             if (!inserted && it->second != rule.cap) return "inconsistent active target caps";
             if (!rule.constant()) sources.emplace(rule.source);
@@ -101,7 +98,7 @@ struct MorphLink {
         if (rules.size() > CLAW_MATRIX_MAX_RULES) return fail("excessive morph link rules");
         if (!captured && !sourceValues.empty()) return fail("uncaptured morph link contains source values");
         MorphLink staged = *this;
-        std::set<std::string> declared, activeSources;
+        std::set<std::string, MorphNameLess> declared, activeSources;
         for (const auto& rule : rules) {
             if (!morphRuleWellFormed(rule)) return fail("invalid morph rule identifier, finite parameter or function");
             if (!rule.constant()) {
