@@ -1,0 +1,61 @@
+FormKey: 032AE7:Skyrim.esm
+EditorID: QASmoke
+Name:
+  TargetLanguage: English
+  Value: "'Ç"
+Flags:
+- IsInteriorCell
+Lighting:
+  AmbientColor: '#00202621'
+  DirectionalColor: '#00000000'
+  FogNearColor: '#00172116'
+  FogFar: 4500
+  DirectionalFade: 1
+  FogPower: 0.6
+  AmbientColors:
+    DirectionalXPlus: '#00232622'
+    DirectionalXMinus: '#001C261F'
+    DirectionalYPlus: '#00202721'
+    DirectionalYMinus: '#00202421'
+    DirectionalZPlus: '#000F120E'
+    DirectionalZMinus: '#00303933'
+    Specular: '#00172116'
+    Scale: 1
+  FogFarColor: '#00172116'
+  FogMax: 1
+  Inherits:
+  - AmbientColor
+  - DirectionalColor
+  - FogColor
+  - FogNear
+  - FogFar
+  - ClipDistance
+WaterHeight: -2.1474836E+09
+ImageSpace: 013B32:Skyrim.esm
+Persistent:
+- MutagenObjectType: PlacedNpc
+  FormKey: 000900:test_CLAW - Male Physics Probe.esp
+  MajorRecordFlagsRaw: 3072
+  EditorID: CLAWPhysicsProbeARef
+  SkyrimMajorRecordFlags:
+  - 0x400
+  - InitiallyDisabled
+  Base: 000800:test_CLAW - Male Physics Probe.esp
+  Placement:
+    Position: -554, 1893, 6650
+  MajorFlags:
+  - Persistent
+  - InitiallyDisabled
+- MutagenObjectType: PlacedNpc
+  FormKey: 000901:test_CLAW - Male Physics Probe.esp
+  MajorRecordFlagsRaw: 3072
+  EditorID: CLAWPhysicsProbeBRef
+  SkyrimMajorRecordFlags:
+  - 0x400
+  - InitiallyDisabled
+  Base: 000801:test_CLAW - Male Physics Probe.esp
+  Placement:
+    Position: -224, 1893, 6650
+  MajorFlags:
+  - Persistent
+  - InitiallyDisabled

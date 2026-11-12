@@ -1,4 +1,4 @@
-# Female born-werewolf physics probe
+# Born-werewolf physics probes
 
 `src/test/resources/plugins/test_CLAW - Physics Probe/` contains authored
 Spriggit YAML for a disposable physics test plugin. Generated ESP files belong
@@ -52,17 +52,33 @@ The second build is byte-identical. Raw ACBS/RNAM, ACHR flags/NAME/DATA, cell
 ancestry, master list and absence of human head/face/tint subrecords were checked
 independently of the YAML serializer.
 
+## Male counterpart
+
+`src/test/resources/plugins/test_CLAW - Male Physics Probe/` contains the separate
+male fixture. It retains the same local base/reference IDs, Werewolf race and
+persistent initially-disabled placements. The male bases omit the Female flag
+and use weight50; no human head, face, tint or worn-skin fields are introduced.
+The same Spriggit commands above apply with the distinct male plugin name.
+
+The 12 November producer and independent record/readback checks are retained in
+`Builds/claw-fsmp-male-fixture-20261112/`. The generated ESP is1,367bytes, SHA256
+`f0d9cf8fd575facb737401d6115886c68a70455038202fdab0c6afdf571c899b`;
+its readback round trip is byte-identical. Only authored YAML and required
+Spriggit metadata are tracked here. See the [dated qualification record](physics-qualification-20261112.md)
+for actual female11/male9 sampled motion after observed root recreation.
+
 ## Runtime boundary
 
-This fixture has not been installed or tested in game. Resolve local IDs through
-`test_CLAW - Physics Probe.esp` at the actual load order; do not hard-code a
+Source/readback qualification and each game's acceptance remain separate.
+Resolve local IDs through the selected fixture plugin at the actual load order;
+do not hard-code a
 runtime load-order prefix. Before enabling either reference, inspect its exact
 reference/base/plugin identity and initially-disabled state. Use the native
 world observer for this check: the general actor domain requires an enabled
 incarnation. Place the actors at explicit qualified scene coordinates, then
-enable and verify loaded female werewolf models before physics measurements.
+enable and verify loaded werewolf models with the authored sex before measurements.
 
-The operator must select the actual CLAW female body and physics resources in
+The operator must select the actual sex-matched CLAW body and physics resources in
 the separate task profile, capture their exact hashes and distinguish solver
 motion from imposed skeleton motion. YAML/readback success establishes record
 wiring, not FSMP motion, collision, body rendering or game acceptance.

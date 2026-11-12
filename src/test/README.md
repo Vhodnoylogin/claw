@@ -46,6 +46,10 @@ success does not mean all resources, native libraries or game behavior were test
 The transport-free [FSMP binding/excitation probe](python/integration/fsmp_probe.md)
 prepares owned-run packets and scores retained anchor-relative world transforms.
 Its synthetic discrimination tests do not establish working in-game physics.
+The [12 November qualification record](docs/physics-qualification-20261112.md)
+keeps accepted female/male root-recreation cases separate from failed timing
+cases and passive CBPC binding diagnostics. The [authored probe fixtures](docs/physics-probe-fixture.md)
+include separate born-female and born-male actors; compiled plugins stay outside Git.
 
 ## Prepare resource integration
 
