@@ -48,6 +48,17 @@ The final visual review covers musculature, lean/bulky extremes, cosmetic
 self-intersection tuning and new morph authoring. Fix functional
 defects such as missing textures or broken animation as they are found.
 
+### Hair-to-coat hue calibration
+
+The owner classifies closer hair/coat hue correspondence as deferred aesthetic
+work. The current matrix primarily maps hair lightness, with a stable seed
+varying the discrete result; grey hair can therefore select a brown coat.
+Improve the correspondence for grey, blond and warm/red hair during the visual
+phase, using the existing input/matrix/mapping boundaries. Assess real human/wolf
+pairs under the same neutral bright lighting. This refinement does not block
+the current technical build or documentary screenshots; do not manually assign
+coats or retune the matrix merely to manufacture matching examples.
+
 ### Visual reference library
 
 Use the different female werewolf body shapes supplied in the Elegant archives
