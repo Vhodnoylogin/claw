@@ -72,7 +72,7 @@ def packet(reference, script, function, args):
 
 def run(session, reference, sex, *, admitted, subject_pins, stock_expected,
         sleep=time.sleep, monotonic=time.monotonic, clock=time.perf_counter,
-        cancelled=lambda: False):
+        cancelled=lambda: False, declared_protocol=None):
     """Collect the separate nominal protocol; never launch or install anything.
 
     `admitted` is the outer case's fresh disposable-fixture observation. The outer
@@ -87,7 +87,7 @@ def run(session, reference, sex, *, admitted, subject_pins, stock_expected,
     expected = scene.snapshot(admitted, reference, sex)
     verify_sources(subject_pins, stock_expected)
     scene.require(stock_expected["query"].get("refs") == [reference], "Pinned stock query is for another fixture")
-    spec, plan = nominal.protocol(), controls.prepare(reference, sex)
+    spec, plan = nominal.selected_protocol(declared_protocol), controls.prepare(reference, sex)
     end = monotonic() + spec["maximumSeconds"]
     output = session.dir / "cbpc-nominal"
     output.mkdir(exist_ok=False)
@@ -277,9 +277,17 @@ def run(session, reference, sex, *, admitted, subject_pins, stock_expected,
             receipt["after"] = observe(function + "-after")
             state["setupReceipts"].append(receipt)
         save()
-        points = nominal.trajectory(baseline["position"])
+        points = nominal.trajectory(baseline["position"], spec)
         for phase, action in zip(nominal.PHASES, ("start", "stop", "restart")):
             transition(action)
+            if phase == "active" and spec.get("disableAIAfterNormalStart"):
+                # Normal loaded/AI-on start opportunity is not a binding inventory.
+                wait_until(clock() + spec["settleSeconds"])
+                before = observe("normal-start-before-ai-freeze")
+                freeze = mutate("measurement-ai-off", packet(reference, "Actor", "EnableAI", [False]), before)
+                freeze["after"] = observe("measurement-ai-off-after")
+                state["aiFreezeReceipt"] = freeze
+                save()
             wait_until(clock() + spec["settleSeconds"])
             rows, receipts = [], []
             state["windows"][phase], state["positionReceipts"][phase] = rows, receipts
@@ -327,7 +335,7 @@ def run(session, reference, sex, *, admitted, subject_pins, stock_expected,
         raise primary
     if cleanup_error is not None:
         raise cleanup_error
-    diagnostic = nominal.score(state, subject_pins)
+    diagnostic = nominal.score(state, subject_pins, declared_protocol=spec)
     appended_check = None
     try:
         (output / "diagnostic.json").write_text(json.dumps(diagnostic, indent=2), encoding="utf-8")

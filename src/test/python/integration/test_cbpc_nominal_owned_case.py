@@ -97,7 +97,7 @@ def mutations(session):
 
 
 class TransportTests(unittest.TestCase):
-    def execute(self, session, clock):
+    def execute(self, session, clock, *, declared_protocol=None):
         # Stock-role logic already has its own source/actual-root tests. Only its
         # admission is stubbed here; this suite deliberately tests callback flow.
         with patch.object(owned.role, "qualify", return_value={"testOnly": "admission stub"}), \
@@ -105,7 +105,8 @@ class TransportTests(unittest.TestCase):
                  "missingDrivers": [], "runtimeQualified": False, "testOnly": "transport; no physics scoring"}):
             return owned.run(session, REF, "female", admitted=copy.deepcopy(RECORDED),
                 subject_pins=PINS, stock_expected=STOCK, sleep=clock.sleep,
-                clock=clock.read, monotonic=clock.read, cancelled=lambda: clock.cancelled)
+                clock=clock.read, monotonic=clock.read, cancelled=lambda: clock.cancelled,
+                declared_protocol=declared_protocol)
 
     def test_recorded_native_contracts_and_changed_signature(self):
         for script, raw in CONTRACTS.items():
@@ -372,6 +373,39 @@ class TransportTests(unittest.TestCase):
             state=json.loads((Path(directory)/"cbpc-nominal/state.json").read_bytes())
             self.assertTrue(state["quarantined"])
             self.assertEqual(state["terminalError"]["type"],"OSError")
+
+
+    def test_normal_ai_on_start_precedes_single_ai_off_and_75_actor_positions(self):
+        spec=owned.nominal.protocol(ai_disabled=True)
+        with tempfile.TemporaryDirectory() as directory:
+            clock=Clock();session=Session(directory,clock)
+            self.execute(session,clock,declared_protocol=spec)
+            state=json.loads((Path(directory)/"cbpc-nominal/state.json").read_bytes())
+            self.assertEqual(state["protocol"],spec)
+            calls=mutations(session)
+            self.assertEqual([r["args"] for r in calls if r["function"]=="EnableAI"],[[True],[False]])
+            freeze=next(i for i,r in enumerate(calls) if r["function"]=="EnableAI" and r["args"]==[False])
+            self.assertEqual(sum(r["function"]=="StartPhysics" for r in calls[:freeze]),11)
+            self.assertFalse(any(r["function"]=="SetPosition" for r in calls[:freeze]))
+            self.assertFalse(any(r["script"] in ("NiOverride","NetImmerse","DynamicHDT") for r in calls))
+            self.assertEqual(sum(len(rows) for rows in state["positionReceipts"].values()),75)
+            x=[r["request"]["args"][0] for r in state["positionReceipts"]["active"]]
+            self.assertAlmostEqual(max(x)-min(x),40.)
+
+    def test_unknown_ai_off_quarantines_and_forbids_cleanup_or_any_later_tool(self):
+        failure=[]
+        def fault(session,tool,args):
+            if tool=="papyrus" and args.get("function")=="EnableAI" and args["args"]==[False]:
+                failure.append(len(session.calls))
+                raise asyncio.CancelledError("synthetic interrupted AI-off completion")
+        with tempfile.TemporaryDirectory() as directory:
+            clock=Clock();session=Session(directory,clock,fault)
+            with self.assertRaises(asyncio.CancelledError):
+                self.execute(session,clock,declared_protocol=owned.nominal.protocol(ai_disabled=True))
+            self.assertEqual(len(session.calls),failure[0])
+            state=json.loads((Path(directory)/"cbpc-nominal/state.json").read_bytes())
+            self.assertTrue(state["quarantined"] and state["uncertain"])
+            self.assertEqual(state["intent"]["request"]["args"],[False])
 
 
 if __name__ == "__main__":

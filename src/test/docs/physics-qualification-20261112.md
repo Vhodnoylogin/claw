@@ -15,6 +15,15 @@ The tested product is minimal source `efd5ad82e3d62de75e672b2294807beb6e1d7320`,
 
 The passive copied logs establish initial binding for this fresh actor: all11 intended nodes received new position-cache entries for base0D000800 and each produced987 actor-specific generic update records with nonzero Diff. Before-prefix records contain no target-actor entries. Exact prefix, source identity and per-node ledger are retained in `Builds/claw-cbpc-binding-analysis-20261112/`. This excludes missing construction/configuration for this admission. The generic Diff log precedes final transform stores, so it does not establish writes surviving animation or reaching rendered skin; CBPC motion remains unqualified.
 
+The next prepared CBPC experiment has the separate fixed ID
+`claw-cbpc-ai-off-translation-proposal/1`. It preserves the existing default
+protocol and scoring thresholds, then disables AI only after the declared normal
+start/settle and drives the whole actor with a repeated 20-unit X trajectory.
+It does not write dynamic bones. Source tests establish only protocol behavior:
+fresh normal binding, continued provider updates with AI off and actual
+actor/root/anchor world motion still require a separately pinned game preflight.
+No previous failure is rescored and no new runtime acceptance is claimed here.
+
 Each case directory retains `postrun-verification.json` and `runtime/runs/<run>/` evidence. A2 raw pulse `state.json`, `diagnostic.json`, `cleanup.json` and `fixture-disposal.json` are under `fsmp-probe/after-reenable/`; lifecycle receipts are under `fsmp-lifecycle-A2/`. A/B failures, their original deadlines and CBPC05 raw failures must not be replaced by later exploratory calculations. The supported whole-life watcher remains 300s, with45s exit reserve; pulse admission100+45s and disposal admission8+45s remain unchanged. Observation is a single main-thread task with physics/render unsynchronized.
 
 The new `src/test/resources/plugins/test_CLAW - Male Physics Probe/` is authored test source:seven YAML files plus required `spriggit-meta.json`, derived from the existing female born-Werewolf fixture. It declares distinct male NPC800/801, Werewolf raceCDD84, weight50, no human head/face/tint/worn-skin fields, and persistent initially-disabled references900/901. Spriggit0.41 official readback and byte-identical roundtrip produce external ESP1367bytes/SHA `f0d9cf8fd575facb737401d6115886c68a70455038202fdab0c6afdf571c899b`; source/tool/record proofs are in `Builds/claw-fsmp-male-fixture-20261112`. Generated ESP/readback/binaries remain outside Git. Build with the same deserialize/serialize/deserialize commands documented in `physics-probe-fixture.md`, using the distinct male plugin name and an external output directory.

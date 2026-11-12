@@ -15,13 +15,29 @@ PHASES = ("active", "stopped", "restarted")
 QUIET = ("NPC Root [Root]", *scene.INTERMEDIATES)
 
 
-def protocol():
-    return {"id": "claw-cbpc-animated-nominal-proposal/1", "samples": 25, "maximumSeconds": 160.,
+def protocol(*, ai_disabled=False):
+    require(type(ai_disabled) is bool, "Explicit AI protocol boolean required")
+    result = {"id": "claw-cbpc-animated-nominal-proposal/1", "samples": 25, "maximumSeconds": 160.,
             "periodSeconds": .85, "maximumJitterSeconds": .15, "settleSeconds": 2.,
             "motionComparabilityFraction": .25, "amplitude": .5,
             "signalFloors": 4., "maximumOffRatio": .25,
             "float32UncertaintyMultiplier": 8.,
             "baseTranslationFloor": 1e-4, "baseRotationFloor": 1e-5}
+    if ai_disabled:
+        result.update(id="claw-cbpc-ai-off-translation-proposal/1", amplitude=20.,
+                      aiEnabled=False, disableAIAfterNormalStart=True)
+    return result
+
+
+def selected_protocol(declared=None):
+    """Two immutable declared experiments; legacy remains the default."""
+    if declared is None:
+        return protocol()
+    for expected in (protocol(), protocol(ai_disabled=True)):
+        if (type(declared) is dict and declared.keys() == expected.keys() and
+                all(type(declared[k]) is type(v) and declared[k] == v for k,v in expected.items())):
+            return expected
+    raise ValueError("Unknown or modified nominal protocol")
 
 
 def require(value, message):
@@ -29,8 +45,9 @@ def require(value, message):
         raise ValueError(message)
 
 
-def trajectory(origin):
-    rows = [[origin[0] + .5*math.sin(2*math.pi*i/12), origin[1], origin[2]] for i in range(25)]
+def trajectory(origin, declared_protocol=None):
+    spec = selected_protocol(declared_protocol)
+    rows = [[origin[0] + spec["amplitude"]*math.sin(2*math.pi*i/12), origin[1], origin[2]] for i in range(spec["samples"])]
     rows[-1] = list(origin)
     return rows
 
@@ -85,8 +102,8 @@ def motion_index(rows, name, channel):
     return math.sqrt(statistics.mean(terms))
 
 
-def score(document, expected_subject_pins):
-    spec=protocol()
+def score(document, expected_subject_pins, *, declared_protocol=None):
+    spec=selected_protocol(declared_protocol)
     require(document.get("schemaVersion")==1 and document.get("protocol")==spec, "Changed nominal contract")
     require(document.get("subjectPins")==expected_subject_pins and bool(expected_subject_pins), "Subject source/provider pins differ")
     require(document.get("skeletonSha256")==hierarchy.XP32_SHA256, "Wrong XP32 skeleton")
@@ -136,20 +153,29 @@ def score(document, expected_subject_pins):
         require(len(receipts)==len(plan["calls"][action]), "Missing driver control receipt")
         for receipt,request in zip(receipts,plan["calls"][action]):
             consume(receipt["before"]);controls.completed(receipt,request);consume(receipt["after"])
+        if phase=="active" and spec.get("disableAIAfterNormalStart"):
+            freeze=document["aiFreezeReceipt"]
+            normal_start_after=previous["time"]
+            freeze_before=consume(freeze["before"])
+            require((freeze_before["time"]-normal_start_after)/1e9>=spec["settleSeconds"],
+                    "Normal AI-on settle before AI-off not observed")
+            controls.completed(freeze,{"action":"call","script":"Actor","function":"EnableAI",
+                "self":{"form":reference},"args":[False],"timeoutMs":8000})
+            consume(freeze["after"])
         raw=document["windows"][phase]
         require(len(raw)==25, "Exactly25 samples required")
         require((raw[0]["producerMonotonicNs"]-previous["time"])/1e9>=spec["settleSeconds"], "Phase settle not observed")
         moves=document["positionReceipts"][phase]
         require(type(moves) is list and len(moves)==len(raw), "Missing actor-position receipts")
         rows=[]
-        for receipt,item,wanted in zip(moves,raw,trajectory(origin)):
+        for receipt,item,wanted in zip(moves,raw,trajectory(origin,spec)):
             consume(receipt["before"])
             controls.completed(receipt,{"action":"call","script":"ObjectReference","function":"SetPosition",
                 "self":{"form":reference},"args":wanted,"timeoutMs":8000})
             require(receipt.get("after")==item, "Window is not the position receipt readback")
             rows.append(consume(item))
         windows[phase]=rows
-        for row,wanted in zip(rows,trajectory(origin)):
+        for row,wanted in zip(rows,trajectory(origin,spec)):
             require(scene.max_delta(row["position"],wanted)<=.025, "Actual trajectory differs from declaration")
         gaps=[(b["time"]-a["time"])/1e9 for a,b in zip(rows,rows[1:])]
         require(all(abs(g-.85)<=.15 for g in gaps), "Nominal sample cadence outside declaration")

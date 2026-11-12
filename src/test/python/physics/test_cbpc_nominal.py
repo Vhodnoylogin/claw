@@ -20,7 +20,8 @@ def f32(x):return struct.unpack('<f',struct.pack('<f',x))[0]
 def tx(position):return {'translation':list(map(f32,position)),'rotationRowMajor':I[:],'scale':1.}
 
 
-def fixture(*,noise_off=0.,weak_node=None,off_pose=0.):
+def fixture(*,noise_off=0.,weak_node=None,off_pose=0.,declared_protocol=None):
+    spec=nominal.selected_protocol(declared_protocol)
     sex='female';names=nominal.scene.node_names(sex)
     parents={n:p[0] for n,p in nominal.hierarchy.parent_paths(sex).items()}
     tree={'NPC Head [Head]':'NPC Spine2 [Spn2]','Tails':'NPC Pelvis [Pelv]',
@@ -58,7 +59,7 @@ def fixture(*,noise_off=0.,weak_node=None,off_pose=0.):
                 'sessionId':'synthetic-only','loadGeneration':1,'sampleId':sample,'producerMonotonicNs':now,
                 'observerVersion':'synthetic','refs':[ref],'nodes':rows}
     origin=[0.,0.,7000.]
-    d={'schemaVersion':1,'protocol':nominal.protocol(),'subjectPins':PINS.copy(),
+    d={'schemaVersion':1,'protocol':spec,'subjectPins':PINS.copy(),
        'skeletonSha256':nominal.hierarchy.XP32_SHA256,'reference':REF,'sex':sex,
        'expectedParents':parents,'baseline':raw(origin),'setupReceipts':[],'receipts':{},'positionReceipts':{},'windows':{}}
     for function in ('EnableAI','SetRestrained'):
@@ -68,9 +69,14 @@ def fixture(*,noise_off=0.,weak_node=None,off_pose=0.):
     for phase,action in zip(nominal.PHASES,('start','stop','restart')):
         d['receipts'][action]=[{'request':request,'nativeResult':{'called':True,'returnedType':'none','returned':None},
                                 'before':raw(origin),'after':raw(origin)} for request in plan['calls'][action]]
+        if phase=='active' and spec.get('disableAIAfterNormalStart'):
+            d['aiFreezeReceipt']={'request':{'action':'call','script':'Actor','function':'EnableAI',
+                'self':{'form':REF},'args':[False],'timeoutMs':8000},
+                'nativeResult':{'called':True,'returnedType':'none','returned':None},
+                'before':raw(origin,dt=spec['settleSeconds']),'after':raw(origin)}
         amplitude=noise_off if phase=='stopped' else .2
         d['windows'][phase]=[];d['positionReceipts'][phase]=[]
-        for i,pos in enumerate(nominal.trajectory(origin)):
+        for i,pos in enumerate(nominal.trajectory(origin,spec)):
             before=raw(pos)
             after=raw(pos,amplitude,i,2. if i==0 else .83,off_pose if phase=='stopped' else 0.)
             d['windows'][phase].append(after)
@@ -198,5 +204,87 @@ class NominalTests(unittest.TestCase):
         self.assertGreater(nominal.relative_floor(a,b,'translation'),1e-4)
         self.assertGreaterEqual(nominal.local_floor(tx([0.,0.,0.]),'translation'),1e-4)
         self.assertAlmostEqual(nominal.ulp32(7000.),2**-11)
+
+AI_OFF_PROTOCOL=nominal.protocol(ai_disabled=True)
+
+class AiOffProtocolTests(unittest.TestCase):
+
+    def test_legacy_default_protocol_trajectory_and_score_are_unchanged(self):
+        expected = {'id': 'claw-cbpc-animated-nominal-proposal/1', 'samples': 25, 'maximumSeconds': 160.0, 'periodSeconds': 0.85, 'maximumJitterSeconds': 0.15, 'settleSeconds': 2.0, 'motionComparabilityFraction': 0.25, 'amplitude': 0.5, 'signalFloors': 4.0, 'maximumOffRatio': 0.25, 'float32UncertaintyMultiplier': 8.0, 'baseTranslationFloor': 0.0001, 'baseRotationFloor': 1e-05}
+        self.assertEqual(nominal.protocol(), expected)
+        origin = [1.0, 2.0, 7000.0]
+        points = nominal.trajectory(origin)
+        self.assertEqual(len(points), 25)
+        self.assertEqual(points[0], origin)
+        self.assertEqual(points[-1], origin)
+        self.assertAlmostEqual(points[3][0], 1.5)
+        self.assertAlmostEqual(points[9][0], 0.5)
+        result = nominal.score(fixture(), PINS)
+        self.assertEqual(result['status'], 'sampled-provider-selective-motion')
+        self.assertEqual(result['missingDrivers'], [])
+        self.assertEqual(len(result['channels']), 11)
+        self.assertFalse(result['bindingInventoryObserved'])
+        self.assertFalse(result['runtimeQualified'])
+
+    def test_new_protocol_needs_explicit_expectation_and_does_not_mutate_defaults(self):
+        old = nominal.protocol()
+        doc = fixture(declared_protocol=AI_OFF_PROTOCOL)
+        with self.assertRaisesRegex(ValueError, 'Changed nominal contract'):
+            nominal.score(doc, PINS)
+        result = nominal.score(doc, PINS, declared_protocol=AI_OFF_PROTOCOL)
+        self.assertEqual(result['status'], 'sampled-provider-selective-motion')
+        self.assertEqual(result['missingDrivers'], [])
+        self.assertEqual(nominal.protocol(), old)
+        self.assertEqual(AI_OFF_PROTOCOL['amplitude'], 20.0)
+
+    def test_only_canonical_new_protocol_is_accepted(self):
+        for field, value in [('amplitude', 0.5), ('aiEnabled', 0), ('periodSeconds', 0.8), ('maximumOffRatio', 1.0), ('samples', 24)]:
+            with self.subTest(field=field):
+                wrong = copy.deepcopy(AI_OFF_PROTOCOL)
+                wrong[field] = value
+                with self.assertRaisesRegex(ValueError, 'Unknown or modified'):
+                    nominal.selected_protocol(wrong)
+        changed = nominal.selected_protocol(AI_OFF_PROTOCOL)
+        changed['amplitude'] = 1.0
+        self.assertEqual(nominal.protocol(ai_disabled=True), AI_OFF_PROTOCOL)
+
+    def test_ai_off_receipt_after_normal_start_is_required(self):
+        for fault in ('missing', 'wrong-request', 'uncertain'):
+            doc = fixture(declared_protocol=AI_OFF_PROTOCOL)
+            if fault == 'missing':
+                del doc['aiFreezeReceipt']
+            elif fault == 'wrong-request':
+                doc['aiFreezeReceipt']['request']['args'] = [True]
+            else:
+                doc['aiFreezeReceipt']['nativeResult']['isError'] = True
+            with self.subTest(fault=fault), self.assertRaises((ValueError, KeyError)):
+                nominal.score(doc, PINS, declared_protocol=AI_OFF_PROTOCOL)
+
+    def test_ai_off_coordinate_ack_with_frozen_scene_root_is_not_input(self):
+        doc = fixture(declared_protocol=AI_OFF_PROTOCOL)
+        for rows in doc['windows'].values():
+            for raw in rows:
+                raw['refs'][0]['sceneTransform']['translation'] = doc['baseline']['refs'][0]['sceneTransform']['translation'][:]
+        with self.assertRaisesRegex(ValueError, 'Reference and root trajectories disagree'):
+            nominal.score(doc, PINS, declared_protocol=AI_OFF_PROTOCOL)
+
+    def test_freeze_observation_cannot_precede_normal_start_receipts(self):
+        doc = fixture(declared_protocol=AI_OFF_PROTOCOL)
+        doc['aiFreezeReceipt']['before'] = copy.deepcopy(doc['baseline'])
+        with self.assertRaisesRegex(ValueError, 'Nonadvancing observation'):
+            nominal.score(doc, PINS, declared_protocol=AI_OFF_PROTOCOL)
+
+    def test_new_normal_start_requires_full_declared_settle_before_ai_off(self):
+        doc = fixture(declared_protocol=AI_OFF_PROTOCOL)
+        after = doc['receipts']['start'][-1]['after']['producerMonotonicNs']
+        doc['aiFreezeReceipt']['before']['producerMonotonicNs'] = after + 1999999999
+        with self.assertRaisesRegex(ValueError, 'Normal AI-on settle before AI-off not observed'):
+            nominal.score(doc, PINS, declared_protocol=AI_OFF_PROTOCOL)
+
+    def test_stopped_animation_is_still_a_failure_at_the_same_thresholds(self):
+        doc = fixture(noise_off=0.2, declared_protocol=AI_OFF_PROTOCOL)
+        result = nominal.score(doc, PINS, declared_protocol=AI_OFF_PROTOCOL)
+        self.assertEqual(result['status'], 'unconfirmed')
+        self.assertEqual(len(result['missingDrivers']), 11)
 
 if __name__=='__main__':unittest.main()
