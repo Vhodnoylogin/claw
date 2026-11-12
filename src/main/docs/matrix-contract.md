@@ -44,9 +44,15 @@ that currently exists under CLAW's exact output key; clear that prior assignment
 before explicitly rebinding. Other valid human source prefixes are accepted.
 An empty/all-omitted profile remains an enabled, neutral linked profile and reads
 no human sources; it never falls back to an independent beast preset.
-The one implementation is `src/main/cpp/shared/MatrixKernel.cpp`, compiled into
-the native DLL and into the plugin's WebAssembly module. JavaScript validates and
-marshals profiles; it does not provide an alternative numeric implementation.
+The ABI adapter is `src/main/cpp/shared/MatrixKernel.cpp`, compiled into the
+native DLL and the plugin's WebAssembly module. It delegates the complete
+projection to the same numerical evaluator in `Projection.h` that Living
+Physique uses. The evaluator knows only indexed numeric inputs, sparse edges,
+functions and output bounds; names and their application meaning remain outside
+it. Named dictionaries bind to indices at the boundary and recover their authored
+output names afterward. Numeric precision, reduction and coefficient cutoff are
+explicit settings, not branches selected by a mod or body name. JavaScript
+validates and marshals profiles; it does not provide an alternative evaluator.
 The independently maintained [Morphbench plugin](https://github.com/Vhodnoylogin/claw-morphbench-plugin)
 uses an explicit pinned dependency on CLAW's kernel source rather than keeping a
 second implementation or a permanent plugin subtree in this repository.

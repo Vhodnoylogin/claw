@@ -1,0 +1,11 @@
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const path = process.argv[2];
+assert.ok(path, 'pass the compiled FreestandingSmoke.wasm path');
+const moduleBytes = fs.readFileSync(path);
+const moduleObject = new WebAssembly.Module(moduleBytes);
+assert.deepEqual(WebAssembly.Module.imports(moduleObject), []);
+const instance = new WebAssembly.Instance(moduleObject, {});
+assert.equal(instance.exports.projection_smoke(-0.5), 0);
+assert.equal(instance.exports.projection_smoke(NaN), 1);
+console.log(JSON.stringify({ imports: 0, finiteSmoke: 0, nonfiniteGuard: 1, bytes: moduleBytes.length }));
