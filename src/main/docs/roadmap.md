@@ -15,14 +15,23 @@ existing XP32 skeleton. Compilation, a void callback and animation-driven node
 changes do not prove physics simulation. Establish actual provider state and
 controlled motion in the game; do not mask uncertainty with qualification flags.
 
-## After motion physics: female breast, then VR body and contact colliders
+## Active development sequence — owner update, 12 November
 
-Improve the female breast geometry and its response to human inputs.
-Follow with the VR body and morph-responsive contacts.
+Finish shared mathematics and the first checked Living Physique RC, then the
+CLAW physics/Morphbench configuration work and offline qualification. Prepare
+VR body/contact and optional anatomy candidates before one ordered game batch:
+SE technical checks, physics, Living Physique and anatomy; then VR test-tool
+self-test, VR body and VR contacts. Build local packages and unpublished drafts
+only for their verified scopes; comparison screenshots follow these checks.
+This sequence supersedes waiting for a separate VR/contact release to begin
+anatomy work. It does not count unrun or blocked checks as successful.
+
+## VR body and contact colliders
 
 Implement first-person VR body dispatch, visibility and synchronization. Then
 complete morph-responsive contact colliders for both flat and VR gameplay:
-coarse useful flat-game contacts and detailed hand-consistent VR contacts.
+coarse useful flat-game contacts with fewer colliders and detailed hand-consistent
+VR contacts with mandatory ear and tail coverage.
 Static Morphbench placement and numerical fitting support development but do not
 replace actual engine collision and headset tests.
 
@@ -35,8 +44,9 @@ product repository is needed.
 ## After the VR body and colliders: separate adult supplement
 
 Plan a separate optional adult werewolf anatomy supplement, including penile
-anatomy and its integration. It follows working VR body and contact mechanics;
-it is not part of 0.9.0 or 0.10.0 and is not being implemented in this slice.
+anatomy and its physics integration. The current owner-authorized offline slice
+includes this candidate after the VR body/contact preparation. It remains a
+separate optional component, with no accepted implementation or release implied.
 Its component directory is `src/main/components/adult-anatomy/`, with tests under
 `src/test/components/adult-anatomy/`, in this same CLAW repository. Keep it
 optional and isolated from the base runtime package.
@@ -44,7 +54,7 @@ optional and isolated from the base runtime package.
 ## Deferred
 
 The independent Morphbench comparison-plugin UI/public update remains deferred.
-The final visual review covers musculature, lean/bulky extremes, cosmetic
+The final visual review covers female breast refinement, musculature, lean/bulky extremes, cosmetic
 self-intersection tuning and new morph authoring. Fix functional
 defects such as missing textures or broken animation as they are found.
 

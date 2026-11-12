@@ -5,7 +5,9 @@ component-specific C++, authoring tools and resources here; put corresponding
 tests and fixtures under `src/test/components/vr-body/`. Build outputs stay in
 ignored `target/` or the external workspace build directory.
 
-This component is planned after motion physics and female breast work. Existing
+The 12 November owner plan includes this candidate after offline qualification
+of shared mathematics and motion-physics/tool changes. Female breast aesthetics
+remain deferred. Existing
 prototypes still live in the earlier C++/Python/resource locations; migrate them
 with their imports, build/package paths and tests when this phase begins. This
 directory does not establish a working or released VR body.
