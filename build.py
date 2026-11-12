@@ -17,7 +17,8 @@ def main(argv=None):
     if args.action == 'test':
         if extra: parser.error('test takes no additional arguments')
         commands = [[sys.executable, '-m', 'unittest', 'discover', '-s', str(ROOT / folder)]
-                    for folder in ('src/test/python/unit', 'src/test/python/physics', 'src/test/python/vr')]
+                    for folder in ('src/test/python/unit', 'src/test/python/physics', 'src/test/python/vr',
+                                   'src/test/components/contact-profiles')]
     elif args.action == 'test-integration':
         if extra: parser.error('test-integration takes no additional arguments; see src/test/README.md for input locations')
         commands = [[sys.executable, '-m', 'unittest', 'discover', '-s', str(ROOT / 'src/test/python/integration')],

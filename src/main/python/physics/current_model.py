@@ -20,6 +20,17 @@ CONTACT_EVALUATOR = "deform-rest-LBS-support-then-symmetric-triangle-contact-min
 DEFAULT_PADDING = 1e-4
 
 COARSE_PROFILE = "coarse-whole-body-v1"
+FLAT_PROFILE = "flat-coarse-whole-body-v1"
+VR_PROFILE = "vr-detailed-whole-body-v1"
+VR_CONTACT_PROFILE = "vr-detailed-whole-body-contact-v1"
+WHOLE_BODY_PROFILES = (COARSE_PROFILE, FLAT_PROFILE, VR_PROFILE, VR_CONTACT_PROFILE)
+
+
+def support_contact_passes(profile):
+    """Only the explicitly separate VR trial uses three contact-fit passes."""
+    if profile not in WHOLE_BODY_PROFILES:
+        raise ValueError("Unknown fitted support profile")
+    return 3 if profile == VR_CONTACT_PROFILE else 0
 
 
 def identity_fields(model):
@@ -58,11 +69,13 @@ def support_regions(value, *, measured=False):
 def support_declaration(model):
     """Check a self-pinned measured declaration consumed by the generic host."""
     if "supportProfile" not in model:return None
-    if model["supportProfile"]!=COARSE_PROFILE:raise ValueError("Unknown fitted support profile")
+    if model["supportProfile"] not in WHOLE_BODY_PROFILES:raise ValueError("Unknown fitted support profile")
     value=model.get("supportDeclaration")
     if not isinstance(value,dict) or set(value)!={"regions","skinShapes","skeletonSha256"}:
         raise ValueError("Missing explicit fitted support declaration")
     regions=support_regions(value["regions"],measured=True)
+    if model["supportProfile"] == FLAT_PROFILE and sum(row["count"] for row in regions) > 56:
+        raise ValueError("Flat coarse support exceeds its 56-slot bound")
     shapes=value["skinShapes"]
     if (not isinstance(shapes,list) or not shapes
             or not all(isinstance(name,str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,128}",name) for name in shapes)
@@ -73,8 +86,9 @@ def support_declaration(model):
     if (not isinstance(digest,str) or not re.fullmatch(r"[0-9a-f]{64}",digest)
             or not any(row.get("sha256")==digest for row in model.get("sourceInputs",[]) if isinstance(row,dict))):
         raise ValueError("Measured skeleton is not pinned as a source input")
-    if model.get("contactPasses",0)!=0:
-        raise ValueError("Coarse support requires its enclosing evaluator")
+    if model.get("contactPasses",0)!=support_contact_passes(model["supportProfile"]):
+        raise ValueError("Coarse support requires its enclosing evaluator" if model["supportProfile"] != VR_CONTACT_PROFILE
+                         else "Explicit VR contact support requires exactly three fit passes")
     return {row["node"]:row for row in regions}
 
 

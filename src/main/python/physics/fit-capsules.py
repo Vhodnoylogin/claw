@@ -138,12 +138,23 @@ def triangle_regions(shape, skeleton, records, nodes=NODES, *, whole_body=False)
     return result
 
 
-def write_cpp_model(report,path):
+def write_cpp_model(report,path, *, function_name="CompiledModel"):
     """Emit the exact schema3 evidence as a compiled immutable native model."""
+    if function_name not in ("CompiledModel", "CompiledFlatContactModel", "CompiledVRContactModel"):
+        raise ValueError("Unsupported compiled model binding")
     contact_passes, padding = _settings_module.evaluator_settings(report)
+    static_storage = function_name != "CompiledModel" or report.get('supportProfile') in (
+        _settings_module.FLAT_PROFILE, _settings_module.VR_PROFILE, _settings_module.VR_CONTACT_PROFILE)
     def vector(points):return '{'+','.join('{'+','.join(format(float(v),'.17g') for v in p)+'}' for p in points)+'}'
+    def assign_vectors(target, points):
+        if not static_storage:
+            return target+'='+vector(points)+';'
+        # Coarse regions can contain large supports. Keep initializer storage
+        # static rather than requiring large temporary arrays on the task stack.
+        return ('{ static const Vec3 data[]='+vector(points)+'; '+target+
+                '.assign(data,data+'+str(len(points))+'); }')
     lines=['#pragma once','#include "claw/PhysicsFit.h"','namespace claw::physics {',
-           'inline const Model& CompiledModel(bool isFemale) {']
+           'inline const Model& '+function_name+'(bool isFemale) {']
     for sex in ('male','female'):
         lines.append('static const Model '+sex+' = [] { Model m;')
         lines.append('m.identity='+json.dumps(report['modelIdentity'])+';')
@@ -158,15 +169,25 @@ def write_cpp_model(report,path):
             if slot.get(sex) is None:
                 lines.append('{ Slot s; s.node='+json.dumps(slot['node'])+'; s.active=false; m.slots.push_back(std::move(s)); }');continue
             model=report['regions'][sex+'/'+slot['node']]; ids=slot[sex]['partitionIndices']
-            lines.append('{ Slot s; s.node='+json.dumps(slot['node'])+'; s.points='+vector(np.asarray(model['points'])[ids])+';')
-            if 'weightDeltas' in model:lines.append('s.weightDeltas='+vector(np.asarray(model['weightDeltas'])[ids])+';')
+            lines.append('{ Slot s; s.node='+json.dumps(slot['node'])+'; '+assign_vectors('s.points',np.asarray(model['points'])[ids]))
+            if 'weightDeltas' in model:lines.append(assign_vectors('s.weightDeltas',np.asarray(model['weightDeltas'])[ids]))
             for name,delta in model['deltas'].items():
                 values=np.asarray(delta)[ids]
-                if np.max(abs(values))>1e-12:lines.append('s.fields.push_back({'+str(report['morphs'].index(name))+','+vector(values)+'});')
+                if np.max(abs(values))>1e-12:
+                    if not static_storage:
+                        lines.append('s.fields.push_back({'+str(report['morphs'].index(name))+','+vector(values)+'});')
+                    else:
+                        lines.append('{ Field f; f.morph='+str(report['morphs'].index(name))+'; '+
+                                     assign_vectors('f.deltas',values)+' s.fields.push_back(std::move(f)); }')
             if report.get('contactPasses',0):
                 mapping={int(v):i for i,v in enumerate(ids)}
                 faces=[[mapping[int(v)] for v in model['faces'][i]] for i in slot[sex]['triangleIndices']]
-                lines.append('s.triangles={'+','.join('{'+','.join(str(v) for v in face)+'}' for face in faces)+'};')
+                triangles='{'+','.join('{'+','.join(str(v) for v in face)+'}' for face in faces)+'}'
+                if not static_storage:
+                    lines.append('s.triangles='+triangles+';')
+                else:
+                    lines.append('{ static const std::array<std::size_t,3> data[]='+triangles+
+                                 '; s.triangles.assign(data,data+'+str(len(faces))+'); }')
             if 'axisHints' in model:
                 lines.append('s.prescribedAxis=true; s.axis='+vector([model['axisHints'][slot['partition']]])[1:-1]+';')
                 for name,values in model.get('axisDeltas',{}).items():
@@ -527,13 +548,17 @@ def partition_overrides(value, declared_regions=None):
 
 def build_current(args,api,records_by_sex,skeleton,snapshots,out):
     import contact_fit as contact
-    whole_body=getattr(args,'support_profile','regional')==_settings_module.COARSE_PROFILE
+    whole_body=getattr(args,'support_profile','regional') in _settings_module.WHOLE_BODY_PROFILES
     if whole_body:
         declaration=measured_support_regions(args.support_regions,skeleton)
         contact_nodes=tuple(row['node'] for row in declaration)
         count_map={row['node']:row['count'] for row in declaration}
         masks={row['node']:row['sexMask'] for row in declaration}
-        if args.current_counts or args.contact_passes or args.solid_tail:raise ValueError('Coarse profile uses its explicit counts and enclosing current-vector fits only')
+        if (args.current_counts or args.solid_tail
+                or args.contact_passes != _settings_module.support_contact_passes(args.support_profile)):
+            raise ValueError('Explicit VR contact trial requires its declared counts and exactly three passes'
+                             if args.support_profile == _settings_module.VR_CONTACT_PROFILE else
+                             'Coarse profile uses its explicit counts and enclosing current-vector fits only')
         counts=tuple(row['count'] for row in declaration if row['sexMask']=='both')
         p1_counts=tuple(count_map.get(node,0) for node in P1_NODES)
     else:
@@ -569,12 +594,14 @@ def build_current(args,api,records_by_sex,skeleton,snapshots,out):
         'requireDistinctWeightEndpoints':args.require_distinct_weight_endpoints}
     if overrides:report['configuration']['partitionOverrides']=overrides
     if whole_body:
-        report.update(supportProfile=_settings_module.COARSE_PROFILE,
+        report.update(supportProfile=args.support_profile,
             supportDeclaration={'regions':declaration,'skinShapes':args.skin_shapes.split(','),
                 'skeletonSha256':hashlib.sha256(snapshots[args.skeleton.resolve()]).hexdigest()},supportCoverage=[],
             status='offline-coarse-whole-body-current-vector-envelope',
             ownership='Every body/head/claw triangle assigned once by mean normalized influence of nearest selected XP32 ancestors; minority female P1 support retains priority',
             excluded='alpha fur/blend layers, eyes, mouth interior, secondary pelvic mesh, animation/pose/actor or bone scale, engine/provider/contact')
+        if args.support_profile != _settings_module.COARSE_PROFILE:
+            report['status']='offline-declared-whole-body-current-vector-envelope'
         report['configuration'].pop('requestedEarTailCounts')
         report['configuration']['requestedSupportRegions']=args.support_regions
     if args.contact_passes:
@@ -733,7 +760,7 @@ def main(argv=None):
     parser.add_argument("--bundles", action="store_true", help="Explicit 32-slot fitted bundle candidate; never changes the legacy eight-slot model")
     parser.add_argument("--current-vector",action="store_true",help="Schema3 exact current-vector refit; separate native model, not affine Papyrus input")
     parser.add_argument("--current-counts",help="Nine comma-separated requested triangle group counts; total <=128")
-    parser.add_argument("--support-profile",default='regional',choices=['regional',_settings_module.COARSE_PROFILE],help='Explicit opt-in coarse whole-body skin/claw support; legacy regional defaults remain unchanged')
+    parser.add_argument("--support-profile",default='regional',choices=['regional',*_settings_module.WHOLE_BODY_PROFILES],help='Explicit opt-in declared whole-body skin/claw support; legacy regional defaults remain unchanged')
     parser.set_defaults(support_regions=None)
     parser.add_argument("--partition-method",default='compact',choices=['auto','compact','compact-extreme','strips-0','strips-1','strips-2'])
     parser.add_argument("--solid-tail",action='store_true',help='Partition the connected tail into solid axial sections before node assignment')
@@ -765,10 +792,10 @@ def main(argv=None):
                 option='--'+attribute.replace('_','-')
                 if key in recipe and not any(value==option or value.startswith(option+'=') for value in provided):setattr(args,attribute,convert(recipe[key]))
             args.partition_overrides=partition_overrides(recipe.get('partitionOverrides',{}),
-                args.support_regions if args.support_profile==_settings_module.COARSE_PROFILE else None)
+                args.support_regions if args.support_profile in _settings_module.WHOLE_BODY_PROFILES else None)
             if args.contact_passes not in range(9) or args.fixture_set not in ('full','compact') or args.partition_method not in ('compact','compact-extreme','auto','strips-0','strips-1','strips-2'):raise ValueError('Unsupported contact recipe options')
         if args.partition_overrides and not args.current_vector:raise ValueError('Region partition overrides require a current-vector model')
-        if args.support_profile not in ('regional',_settings_module.COARSE_PROFILE):raise ValueError('Unknown contact support profile')
+        if args.support_profile not in ('regional',*_settings_module.WHOLE_BODY_PROFILES):raise ValueError('Unknown contact support profile')
         if args.support_profile!= 'regional' and not args.current_vector:raise ValueError('Coarse support requires a current-vector model')
         if args.require_distinct_weight_endpoints:
             for sex in ('male','female'):
@@ -791,7 +818,7 @@ def main(argv=None):
             raise ValueError('Evaluator settings changed since their code was loaded')
         out=safe_output(args.out, paths)
         skeleton=api.NifFile(str(args.skeleton))
-        if args.support_profile==_settings_module.COARSE_PROFILE:
+        if args.support_profile in _settings_module.WHOLE_BODY_PROFILES:
             measured_support_regions(args.support_regions,skeleton)
         elif any(n not in skeleton.nodes for n in NODES): raise ValueError("Missing XP32 ear/tail nodes")
         if args.current_vector:

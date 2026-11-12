@@ -145,6 +145,16 @@ IOverrideInterface* appearanceOverrides{};
 std::optional<claw::appearance::CoatMatrix> coatMatrix;
 RE::TESRace* beastRace{};
 std::jthread timer;
+#if defined(CLAW_PHYSICS_MODEL_HEADER)
+const claw::physics::Model& compiledPhysicsModel(bool female) {
+#if defined(CLAW_PHYSICS_RUNTIME_PROFILES)
+    return claw::physics::CompiledModel(female, REL::Module::IsVR()
+        ? claw::physics::ContactRuntimeEdition::vr : claw::physics::ContactRuntimeEdition::flat);
+#else
+    return claw::physics::CompiledModel(female);
+#endif
+}
+#endif
 struct PhysicsBinding {
     RE::ActorHandle actor;
     RE::Actor* pointer{};
@@ -612,7 +622,7 @@ void startPhysicsWorker() {
             std::vector<claw::physics::Capsule> capsules;
             std::string error;
             try {
-                capsules = claw::physics::Evaluate(claw::physics::CompiledModel(job.female),
+                capsules = claw::physics::Evaluate(compiledPhysicsModel(job.female),
                     std::vector<double>(job.values.begin(), job.values.end()), static_cast<double>(job.weight));
             } catch (const std::exception& failure) { error = failure.what(); }
             if (stop.stop_requested()) return;
@@ -1717,7 +1727,7 @@ bool registerPhysics(RE::Actor* actor, std::int32_t generation,
         if (sex != RE::SEX::kMale && sex != RE::SEX::kFemale) { state.physicsAuthority.reject(claw::PhysicsRejection::identity); finish(); return; }
         if (!morphs) { state.physicsAuthority.reject(claw::PhysicsRejection::provider); finish(); return; }
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
-        const auto& compiled = claw::physics::CompiledModel(sex == RE::SEX::kFemale);
+        const auto& compiled = compiledPhysicsModel(sex == RE::SEX::kFemale);
         if (compiled.identity != model || compiled.morphs != ordered) {
             SKSE::log::warn("CLAW physics host/model identity or ordered morph names differ from compiled fit");
             state.physicsAuthority.reject(claw::PhysicsRejection::model); finish(); return;
@@ -1894,7 +1904,7 @@ std::vector<float> physicsCapsule(RE::StaticFunctionTag*, RE::Actor* actor, std:
     const auto* binding = physicsSnapshot(actor, generation, snapshot);
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
     if (binding && slot >= 0 && static_cast<std::size_t>(slot) < binding->capsules.size() &&
-        claw::physics::CompiledModel(binding->female).slots[slot].active) {
+        compiledPhysicsModel(binding->female).slots[slot].active) {
         const auto& cap = binding->capsules[slot];
         return {static_cast<float>(cap.p1[0]), static_cast<float>(cap.p1[1]), static_cast<float>(cap.p1[2]),
             static_cast<float>(cap.p2[0]), static_cast<float>(cap.p2[1]), static_cast<float>(cap.p2[2]), static_cast<float>(cap.radius)};
@@ -1906,7 +1916,7 @@ std::vector<float> physicsCapsule(RE::StaticFunctionTag*, RE::Actor* actor, std:
 }
 RE::BSFixedString physicsModel(RE::StaticFunctionTag*) {
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
-    return RE::BSFixedString(claw::physics::CompiledModel(false).identity);
+    return RE::BSFixedString(compiledPhysicsModel(false).identity);
 #else
     return {};
 #endif

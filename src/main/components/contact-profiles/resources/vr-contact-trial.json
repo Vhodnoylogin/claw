@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "baseRecipe": "vr-detailed.json",
+  "name": "CLAW separate VR whole-body three-pass contact-fit trial",
+  "supportProfile": "vr-detailed-whole-body-contact-v1",
+  "contactPasses": 3,
+  "fixtureSet": "compact",
+  "scope": "One finite four-vector/return trial using the same128 whole-body allocation and existing symmetric sampled triangle minimax/RMS evaluator. No continuous tight-fit, dynamic solver, provider, HIGGS/PLANCK or game contact acceptance. Full two-way and undercoverage metrics remain required."
+}
