@@ -280,9 +280,10 @@ class OwnedAnchors:
             pulse.anchor_excitation(self._snapshot(row["beforePulse"]), baseline, self.sex, name, [0., 0., 0.])
             row["commands"]["moved"] = self.apply(pulse.offset(name), (name,))
             row["moved"] = self._observe(phase + "-pulse-moved-" + name)
+            hold_deadline = clock() + spec["holdSeconds"]
             pulse.anchor_excitation(self._snapshot(row["moved"]), baseline, self.sex, name, pulse.offset(name))
             self.persist()
-            sleep(spec["holdSeconds"])
+            sleep(max(0., hold_deadline - clock()))
             row["commands"]["returned"] = self.apply([0., 0., 0.], (name,))
             row["returned"] = self._observe(phase + "-pulse-returned-" + name)
             pulse.anchor_excitation(self._snapshot(row["returned"]), baseline, self.sex, name, [0., 0., 0.])

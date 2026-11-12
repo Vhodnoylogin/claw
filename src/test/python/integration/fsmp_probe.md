@@ -201,6 +201,11 @@ and +0.1 for each PreBreast anchor, below the P1 joint's 0.15-unit travel limit.
 The calibrated offset is held for the declared interval, then the same anchor must visibly return to its zero baseline
 before 25 read-only observations at a declared 0.1-second period. The observer
 records the actual hold and producer-clock sampling intervals.
+The host's QPC minimum-wait deadline starts after the moved readback returns.
+Its validation and durable checkpoint consume that wait; only the remaining
+time is slept. Slow work adds no second wait or deadline rebase. All guards and
+write checkpoints remain, and actual producer-clock hold bounds and phase
+comparability still decide acceptance.
 Read dispatch retains the nominal schedule but cannot catch up faster than the
 minimum gap after the previous read completes. Actual producer-clock limits
 still decide acceptance. Shared `owned_anchors.py` owns scoped key operations,
