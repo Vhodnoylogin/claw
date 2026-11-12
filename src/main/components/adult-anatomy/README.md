@@ -22,8 +22,31 @@ joint limits; this is not a simulation or proof of engine culling behavior.
 `src/test/components/adult-anatomy/test_neutral.py` checks the actual resources
 through the native NIF reader and Morphbench facade. `visibility_probe.py` is a
 separate Blender body-occlusion proxy. Neither establishes live attachment,
-rendered visibility or physical movement. Composition with the ear/tail/P1
-configuration remains a separate integration step before combined installation.
+rendered visibility or physical movement.
+
+`python/compose_motion.py` is a separate offline composition step for the frozen
+neutral anatomy04 male resources. It retains the original nine-driver male
+ear/tail XML and three-driver anatomy XML parameters in one namespaced system.
+Dynamic ownership must be disjoint; duplicate drivers, incompatible anchors,
+unresolved constraints, collision records and global settings are refused. Only
+identical kinematic anchors can be deduplicated. The original female eleven-driver
+ear/tail/P1 XML remains a separate unchanged source witness; no male P1 or female
+anatomy support is inferred.
+
+Each frozen male NIF already owns one neutral-anatomy root hook. Composition
+appends the combined XML value string and redirects only that known hook's value
+index. Root references, all other blocks, original strings/IDs, geometry, skin,
+materials, bounds and BODYTRI remain exact. Unknown, multiple or shared hooks are
+refused. The original `Tails` kinematic anchor comes from the explicitly pinned
+existing XP32 skeleton; it is not grafted into the flat mesh bone graph.
+
+The output contains two male endpoints, their unchanged TRI and the combined XML.
+The focused `test_compose_motion.py` suite checks invalid graphs/hooks, actual
+native resources, all thirty morphs and the actual Morphbench Physics facade's
+twelve configured records. Its rest-frame ranges are not physics simulation or
+runtime acceptance. Live provider/config ownership and the selected VFS paths
+still need a separate conflict audit before installation. No provider binary,
+global configuration, installation action or game launch is included.
 
 Reuse the shared numerical core and suitable core adapters. Keep component
 resources and activation isolated, in the same repository and development
