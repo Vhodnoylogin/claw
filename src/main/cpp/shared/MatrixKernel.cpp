@@ -6,7 +6,6 @@ static_assert(alignof(CLAWMatrixRule) == 4);
 
 namespace {
 bool finiteFloat(float value) { return value >= -3.40282346638528859812e38F && value <= 3.40282346638528859812e38F; }
-bool finiteDouble(double value) { return value >= -1.7976931348623157e308 && value <= 1.7976931348623157e308; }
 }
 
 extern "C" double claw_matrix_transform(double input, uint32_t function, uint32_t exponent, float value) {
@@ -64,6 +63,7 @@ extern "C" int claw_matrix_evaluate(const CLAWMatrixRule* rules, uint32_t count,
     float* outputs, double* rawSums, uint32_t targetCount) {
     if ((!rules && count) || ((!outputs || !rawSums) && targetCount) || count > CLAW_MATRIX_MAX_RULES || targetCount > CLAW_MATRIX_MAX_TARGETS || (!targetCount && count)) return 1;
     for (uint32_t target = 0; target < targetCount; ++target) { outputs[target] = 0.F; rawSums[target] = 0.0; }
+    float caps[CLAW_MATRIX_MAX_TARGETS]{};
     for (uint32_t index = 0; index < count; ++index) {
         const auto& rule = rules[index];
         if (rule.target >= targetCount || rule.function > 5 ||
@@ -71,14 +71,23 @@ extern "C" int claw_matrix_evaluate(const CLAWMatrixRule* rules, uint32_t count,
             !finiteFloat(rule.input) || !finiteFloat(rule.gain) || !finiteFloat(rule.cap) || !finiteFloat(rule.value) ||
             rule.cap <= 0.F || rule.cap > 1.F || (rule.function != 5 && rule.value != 0.F)) return 2;
         if (!claw_matrix_gain_active(rule.gain)) continue;
-        if (outputs[rule.target] != 0.F && outputs[rule.target] != rule.cap) return 3;
-        outputs[rule.target] = rule.cap;
-        rawSums[rule.target] += claw_matrix_contribution(&rule);
-        if (!finiteDouble(rawSums[rule.target])) return 4;
+        if (caps[rule.target] != 0.F && caps[rule.target] != rule.cap) return 3;
+        caps[rule.target] = rule.cap;
     }
-    for (uint32_t target = 0; target < targetCount; ++target) {
-        const double clamped = claw_matrix_clamp(rawSums[target]);
-        outputs[target] = static_cast<float>(clamped * static_cast<double>(outputs[target]));
-    }
-    return 0;
+    morph_matrix::Workspace work[CLAW_MATRIX_MAX_TARGETS];
+    const morph_matrix::NumericPolicy policy{morph_matrix::Reduction::ordered,
+        morph_matrix::Precision::binary32, morph_matrix::Precision::binary32,
+        true, claw_matrix_gain_epsilon()};
+    const auto status = morph_matrix::evaluate(count, count, targetCount,
+        [&](size_t index) noexcept { return static_cast<double>(rules[index].input); },
+        [&](size_t index) noexcept {
+            const auto& rule = rules[index];
+            return morph_matrix::Edge{index, rule.target, rule.function, rule.exponent,
+                rule.gain, rule.value, 0.0};
+        },
+        [&](size_t target) noexcept { return morph_matrix::Target{0.0, 1.0, caps[target]}; },
+        work, policy,
+        [&](size_t target, double value) noexcept { outputs[target] = static_cast<float>(value); }, rawSums);
+    return status == morph_matrix::EvaluationStatus::ok ? 0 :
+        status == morph_matrix::EvaluationStatus::invalid ? 2 : 4;
 }
