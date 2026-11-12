@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "purpose": "TEST ONLY empty-graph engine feasibility; no physics or release acceptance",
+  "plugin": "test_CLAW - Graphless Werewolf Feasibility.esp",
+  "raceFormKey": "0CDD84:Skyrim.esm",
+  "winningSourceRequired": "Dawnguard.esm in explicit21-plugin retained CBPC order",
+  "sourceSubrecordCount": 173,
+  "exactRawEdits": [
+    {
+      "field": "BehaviorGraph.Male.File",
+      "subrecordIndex": 67,
+      "tag": "MODL",
+      "old": "Actors\\WerewolfBeast\\WerewolfBeastProject.hkx",
+      "new": ""
+    },
+    {
+      "field": "BehaviorGraph.Female.File",
+      "subrecordIndex": 70,
+      "tag": "MODL",
+      "old": "Actors\\WerewolfBeast\\WerewolfBeastProject.hkx",
+      "new": ""
+    }
+  ],
+  "allOther171SubrecordsByteExact": true,
+  "recordHeaderExactExceptPayloadSize": true,
+  "preserveLocalizedFlag": true,
+  "localizedNameId": "000029D0",
+  "localizedDescriptionId": "00000000",
+  "sourceStringNamespace": "Dawnguard",
+  "outputStringNamespace": "test_CLAW - Graphless Werewolf Feasibility",
+  "localOnlyProprietaryStringInputs": true,
+  "normalizedSpriggitRoundtripNotFinalBinary": true,
+  "futureMeasurementProtocol": {
+    "id": "claw-cbpc-animated-nominal-proposal/1",
+    "samples": 25,
+    "maximumSeconds": 160.0,
+    "periodSeconds": 0.85,
+    "maximumJitterSeconds": 0.15,
+    "settleSeconds": 2.0,
+    "motionComparabilityFraction": 0.25,
+    "amplitude": 0.5,
+    "signalFloors": 4.0,
+    "maximumOffRatio": 0.25,
+    "float32UncertaintyMultiplier": 8.0,
+    "baseTranslationFloor": 0.0001,
+    "baseRotationFloor": 1e-05
+  },
+  "gameTested": false,
+  "livePreparationAllowed": false,
+  "allowLaunch": false
+}
