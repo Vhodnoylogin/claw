@@ -12,6 +12,13 @@ prototypes still live in the earlier C++/Python/resource locations; migrate them
 with their imports, build/package paths and tests when this phase begins. This
 directory does not establish a working or released VR body.
 
+The current [resource candidate](IMPLEMENTATION.md) rebuilds the complete current
+male/female body and TRI family in an independent first-person namespace. It
+reuses the lossless split, Neck skin graft and bound tools and retains actual
+breast support. Its authored install manifest leaves every native dispatch probe
+disabled. Offline file, skin and finite-pose checks do not qualify camera, IK,
+sex/weight selection or live first-person behavior.
+
 Start from the retained [VR body design](../../docs/vr-body.md),
 [head policy](../../docs/vr-head-policy.md) and
 [loaded-graph notes](../../docs/vr-loaded-graphs.md). Shared matrix mathematics

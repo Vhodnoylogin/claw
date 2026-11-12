@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "sourceVersion": "0.10.0",
+  "sourceCommit": "196af6e839c5c72e119c65ec21b5fdeddcd88467",
+  "archiveSha256": "7ace80a2b811bdddbe34307c6832aa7d53e1c5a807664c33abd214c629e1ed7d",
+  "runtimeReceiptSha256": "b72dd504e3956b09075db01c3f3fef7b2a3e7c1ef8bd7ab259d3561a702daac1",
+  "inputSha256": {
+    "malebodywerewolf_0.nif": "6a7fa9e262a8a329dd3dc41a725edbf8c9da0a577176ed8c04dbae9924c45210",
+    "malebodywerewolf_1.nif": "6a7fa9e262a8a329dd3dc41a725edbf8c9da0a577176ed8c04dbae9924c45210",
+    "malebodywerewolf.tri": "3ff00f50493664ec68bbbfbe4843bd64f268df9a5659e6a6bd4baea14ae085fc",
+    "femalebodywerewolf_0.nif": "6638401ebc43a7d0a0c7d9aa227090d6ea84981c3c116c678c6037845089d961",
+    "femalebodywerewolf_1.nif": "6638401ebc43a7d0a0c7d9aa227090d6ea84981c3c116c678c6037845089d961",
+    "femalebodywerewolf.tri": "34744d5599531026f53a36e5438b39be3f880cd2cb7d9a0056b00bf343d05192"
+  },
+  "skeletonSha256": "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0",
+  "publicMorphCount": {"male": 30, "female": 31},
+  "protectedMorphs": {"female": ["CLAWTorsoBreastSize"], "male": []},
+  "hiddenShapes": [
+    "ChestBlend_CLAWHead", "eyes", "fur_back_CLAWHead", "fur_belly_CLAWHead",
+    "fur_chest_CLAWHead", "fur_face", "fur_shoulders_CLAWHead", "FurfaceBlend",
+    "head_CLAWHead", "mouth", "ScalpFurBlend"
+  ],
+  "reference": {
+    "modId": 56394,
+    "meshSha256": "1fa1f9b00a4564dfc02b6490713a264adf41ab19da0cba0d98e9572ef1cbef02",
+    "metadataSha256": "88b604fa8bd1978e94146e0334cd085cf5997e1c9d76ae5386400cc45bd0bf73"
+  },
+  "nativeDispatchQualified": false,
+  "automaticInstallEnabled": false
+}
