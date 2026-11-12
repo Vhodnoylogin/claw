@@ -1,4 +1,5 @@
 #include "PulseCase.h"
+#include "claw/WorldStartPolicy.h"
 #include <functional>
 #include <future>
 #include <condition_variable>
@@ -295,9 +296,31 @@ void descendantWorldsAreRecordsOnly() {
     require(d->view().state==State::quarantined&&q.updates==0,"descendant locals must remain exact across each translation call");
 }
 
+void encodedWorldStartMessages() {
+    using Start=claw::WorldStart;
+    struct Message { Start kind; std::uint32_t length; std::uintptr_t data; bool expected; };
+    constexpr std::array cases{
+        Message{Start::postLoadGame,1,1,true},Message{Start::postLoadGame,1,0,false},
+        Message{Start::postLoadGame,0,1,false},Message{Start::postLoadGame,0,0,false},
+        Message{Start::postLoadGame,8,1,false},Message{Start::postLoadGame,1,2,false},
+        Message{Start::postLoadGame,1,0x1234,false},Message{Start::postLoadGame,0xFFFFFFFF,1,false},
+        Message{Start::newGame,0,0,true},Message{Start::newGame,8,0x1234,true}};
+    for (const auto& m:cases)
+        require(claw::mayActivateWorld(m.kind,m.length,m.data)==m.expected,"actual shared world-start helper validates encoded scalar without dereferencing payload");
+    const bool storedTrue=true;
+    require(!claw::mayActivateWorld(Start::postLoadGame,1,reinterpret_cast<std::uintptr_t>(&storedTrue)),"bool storage address is malformed even when the stored value is true");
+    bool ready=false; unsigned successes=0;
+    for (const auto scalar:{std::uintptr_t{1},std::uintptr_t{0},std::uintptr_t{1}}) {
+        ready=claw::mayActivateWorld(Start::postLoadGame,1,scalar);
+        require(ready==(scalar==1),"successful/failed/successful load does not retain sticky world readiness");
+        successes+=ready;
+    }
+    require(successes==2&&ready,"successful world admission restored only by final encoded success");
+}
+
 }
 int main() {
-    try { normal(); admission(); guards(); propagation(); timingAndCancel(); exceptions(); additionalBoundaries(); completionBeforeWait(); generationAndRigidMath(); completionAfterPredicate(); fatalAtBoundary(); descendantWorldsAreRecordsOnly(); }
+    try { normal(); admission(); guards(); propagation(); timingAndCancel(); exceptions(); additionalBoundaries(); completionBeforeWait(); generationAndRigidMath(); completionAfterPredicate(); fatalAtBoundary(); descendantWorldsAreRecordsOnly(); encodedWorldStartMessages(); }
     catch (const std::exception& e) { std::cerr<<"FAILED after "<<checks<<" checks: "<<e.what()<<'\n'; return 1; }
     std::cout<<checks<<" finite-controller checks passed; no engine or plugin loaded\n";
 }

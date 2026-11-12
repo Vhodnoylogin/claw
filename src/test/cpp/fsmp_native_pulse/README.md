@@ -140,7 +140,11 @@ SKSE pre-load/save/new/post-load, the owned actor's object-load/race-switch and
 node-update events invalidate generation. Save/load during the case is forbidden
 by the outer packet; these event interlocks observe transitions rather than
 prevent the engine from starting one. Root/handle checks remain mandatory even
-without an event.
+without an event. World readiness delegates to CLAW's pinned pure
+`mayActivateWorld` helper: successful post-load is the scalar pointer value `1` with
+`dataLen == 1`, failure is null/0, and arbitrary bool-storage pointers or malformed
+lengths are rejected without dereferencing data. NewGame carries a quest pointer
+and is handled by the same helper's separate new-game rule.
 
 ## Own producer and tool
 
@@ -185,6 +189,12 @@ ownership failure, failed restore, exceptions/unknown calls, early/late callback
 cadence, deadline, bounded record capacity, POD retirement, nonzero generations,
 rigid composition inputs, both worker completion races (before wait and after
 predicate evaluation), and fatal flags at actual consumer-boundary entry.
+
+The first native build was withdrawn before live use after an encoded-message
+bug was found. Its artifact/receipts remain external and must not be deployed.
+The source correction reuses `claw/WorldStartPolicy.h` rather than introducing a
+second payload decoder. Pure tests cover true/false scalar, malformed length,
+real/fake pointer and success/failure/success messages through that actual helper.
 
 Native compilation remains a separate root-reviewed action. Explicit opt-in
 `CLAW_PULSE_BUILD_PLUGIN=ON` requires external `CLAW_PULSE_COMMONLIB_DIR`,

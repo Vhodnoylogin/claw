@@ -1,5 +1,6 @@
 // TEST ONLY. Consumes external MIT DevBench glue and the pinned CommonLib SDK.
 #include "PulseCase.h"
+#include "claw/WorldStartPolicy.h"
 #include "DevBenchAPI.h"
 #include <Windows.h>
 #include <objbase.h>
@@ -487,7 +488,9 @@ void message(SKSE::MessagingInterface::Message* e) {
     } else if (e->type==M::kPreLoadGame||e->type==M::kSaveGame) {
         worldReady.store(false); runtime->changed();
     } else if (e->type==M::kNewGame||e->type==M::kPostLoadGame) {
-        runtime->changed(); worldReady.store(e->type==M::kNewGame||(e->data&&e->dataLen>=sizeof(bool)&&*static_cast<bool*>(e->data)));
+        runtime->changed();
+        worldReady.store(claw::mayActivateWorld(e->type==M::kNewGame?claw::WorldStart::newGame:claw::WorldStart::postLoadGame,
+            e->dataLen,reinterpret_cast<std::uintptr_t>(e->data)));
     }
 }
 bool supported(const SKSE::QueryInterface* s) {
