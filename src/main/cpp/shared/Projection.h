@@ -38,6 +38,15 @@ constexpr double endpointContribution(double input, double below, double above) 
     return input < 0.0 ? contribution(input, below, 2) : contribution(input, above);
 }
 
+// A generic two-endpoint response: clamp only the source magnitude, apply the
+// existing smoothstep polynomial, then choose the independent signed coefficient.
+// Finite source validation/precision remains the evaluator policy. ±0 is neutral +0.
+inline constexpr unsigned signedEndpointSmoothstep = 7;
+constexpr double endpointSmoothstepContribution(double input, double below, double above) noexcept {
+    if (input == 0.0) return 0.0;
+    return contribution(input < 0.0 ? -input : input, input < 0.0 ? below : above, 3);
+}
+
 // Signed binary64 terms may include values near DBL_MAX.
 // Scaling before addition keeps opposing terms representable until clamping.
 template<class Terms>
@@ -76,7 +85,9 @@ struct Edge {
     unsigned function{}, exponent{2};
     double gain{}, constant{}, negativeGain{};
     // Functions 0..5 have the transform() meanings above. Function 6 describes
-    // signed endpoints: negativeGain below zero, gain at and above zero.
+    // signed endpoints: negativeGain below zero, gain at and above zero. Function 7
+    // (signedEndpointSmoothstep) applies the same endpoint coefficients to a
+    // smoothstep of clamp(abs(input), 0, 1); exponent=2 and constant=0 are canonical.
 };
 struct Target {
     double minimum{}, maximum{1.0}, scale{1.0};
@@ -101,12 +112,12 @@ inline bool parameter(double& value, Precision precision) noexcept {
     return true;
 }
 inline bool edgeParameters(Edge& edge, Precision precision) noexcept {
-    return edge.function <= 6 &&
+    return edge.function <= signedEndpointSmoothstep &&
         (edge.function == 4 ? edge.exponent >= 1 && edge.exponent <= 8 : edge.exponent == 2) &&
         parameter(edge.gain, precision) && parameter(edge.constant, precision) &&
         parameter(edge.negativeGain, precision) &&
         (edge.function == 5 || edge.constant == 0.0) &&
-        (edge.function == 6 || edge.negativeGain == 0.0);
+        (edge.function == 6 || edge.function == signedEndpointSmoothstep || edge.negativeGain == 0.0);
 }
 inline bool targetParameters(Target& target, Precision precision) noexcept {
     return parameter(target.minimum, precision) && parameter(target.maximum, precision) &&
@@ -115,15 +126,16 @@ inline bool targetParameters(Target& target, Precision precision) noexcept {
 inline bool active(Edge& edge, const NumericPolicy& policy) noexcept {
     if (!policy.omitSmallGains) return true;
     const bool positive = magnitude(edge.gain) > policy.gainCutoff;
-    if (edge.function != 6) return positive;
+    if (edge.function != 6 && edge.function != signedEndpointSmoothstep) return positive;
     const bool negative = magnitude(edge.negativeGain) > policy.gainCutoff;
     if (!positive) edge.gain = 0.0;
     if (!negative) edge.negativeGain = 0.0;
     return positive || negative;
 }
 inline double edgeContribution(double input, const Edge& edge) noexcept {
-    return edge.function == 6 ? endpointContribution(input, edge.negativeGain, edge.gain) :
-        contribution(input, edge.gain, edge.function, edge.exponent, edge.constant);
+    if (edge.function == 6) return endpointContribution(input, edge.negativeGain, edge.gain);
+    if (edge.function == signedEndpointSmoothstep) return endpointSmoothstepContribution(input, edge.negativeGain, edge.gain);
+    return contribution(input, edge.gain, edge.function, edge.exponent, edge.constant);
 }
 }
 

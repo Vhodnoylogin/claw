@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+extern "C" int projection_endpoint_smoothstep_properties();
+
 namespace {
 using namespace morph_matrix;
 void require(bool condition, const char* message) {
@@ -182,6 +184,41 @@ void compensatedLegacyResults() {
     require(reads == 6, "compensated evaluator rescanned edges per target");
 }
 
+void endpointSmoothstepPolicies() {
+    static_assert(signedEndpointSmoothstep == 7);
+    require(projection_endpoint_smoothstep_properties() == 0, "portable endpoint-smoothstep properties failed");
+    same(endpointSmoothstepContribution(0., -4., -3.), 0., "smooth endpoint neutral changed sign");
+    same(endpointSmoothstepContribution(-0., -4., -3.), 0., "negative zero did not normalize to neutral");
+    NumericPolicy policy;
+    policy.parameters = Precision::binary32; policy.result = Precision::binary32;
+    policy.omitSmallGains = true; policy.gainCutoff = static_cast<double>(1.e-6F);
+    const double roundedInactive = policy.gainCutoff + 1.e-15;
+    std::vector<double> outputs(1, 99.), raw(1, 99.);
+    const Edge below{0, 0, signedEndpointSmoothstep, 2, roundedInactive, 0., -.25};
+    require(run({.5}, {below}, {{-1., 1., 1.}}, policy, outputs, &raw) == EvaluationStatus::ok,
+        "independent smooth endpoint cutoff rejected");
+    same(outputs[0], 0., "inactive above coefficient leaked the negative endpoint");
+    require(run({-.5}, {below}, {{-1., 1., 1.}}, policy, outputs, &raw) == EvaluationStatus::ok,
+        "active below smooth endpoint rejected");
+    same(outputs[0], -.125, "active below coefficient was omitted with inactive above");
+    const Edge above{0, 0, signedEndpointSmoothstep, 2, .25, 0., roundedInactive};
+    require(run({-.5}, {above}, {{-1., 1., 1.}}, policy, outputs) == EvaluationStatus::ok,
+        "independent negative endpoint cutoff rejected");
+    same(outputs[0], 0., "inactive below coefficient leaked the positive endpoint");
+    require(run({.25}, {{0, 0, signedEndpointSmoothstep, 2, .7, 0., -.4}}, {{-1., 1., .3}}, policy, outputs) == EvaluationStatus::ok,
+        "smooth endpoint precision policy rejected");
+    const double expected = (.15625 * static_cast<double>(.7F)) * static_cast<double>(.3F);
+    same(outputs[0], static_cast<double>(static_cast<float>(expected)), "smooth coefficient/final precision or scale changed");
+    const double huge = std::numeric_limits<double>::max();
+    policy = {}; policy.reduction = Reduction::scaledCompensated;
+    require(run({1.}, {{0, 0, signedEndpointSmoothstep, 2, huge},
+        {0, 0, signedEndpointSmoothstep, 2, -huge}, {999, 0, 5, 2, 1., .25}},
+        {{-1., 1., 1.}}, policy, outputs) == EvaluationStatus::ok, "smooth endpoint extreme cancellation failed");
+    same(outputs[0], compensatedProjection(std::array<double, 3>{huge, -huge, .25}, -1., 1.),
+        "smooth endpoint terms changed compensated reduction");
+    require(std::abs(outputs[0] - .25) < 1.e-15, "smooth cancellation lost the finite residual");
+}
+
 void validationAndPublication() {
     const double huge = std::numeric_limits<double>::max();
     const double nan = std::numeric_limits<double>::quiet_NaN();
@@ -199,6 +236,10 @@ void validationAndPublication() {
     rejected({1.}, {{0, 0, 0, 2, 0., nan}}, {{}}, cutoff, EvaluationStatus::invalid);
     rejected({1.}, {{0, 0, 4, 0, 0.}}, {{}}, cutoff, EvaluationStatus::invalid);
     rejected({1.}, {{0, 0, 0, 2, .2, 0., 1.}}, {{}}, {}, EvaluationStatus::invalid);
+    rejected({1.}, {{0, 0, signedEndpointSmoothstep, 3, 0., 0., 0.}}, {{}}, cutoff, EvaluationStatus::invalid);
+    rejected({1.}, {{0, 0, signedEndpointSmoothstep, 2, 0., .1, 0.}}, {{}}, cutoff, EvaluationStatus::invalid);
+    rejected({1.}, {{0, 0, signedEndpointSmoothstep, 2, 0., 0., nan}}, {{}}, cutoff, EvaluationStatus::invalid);
+    rejected({1.}, {{0, 0, 8, 2, 0.}}, {{}}, cutoff, EvaluationStatus::invalid);
     rejected({1.}, {}, {{1., -1., 1.}}, {}, EvaluationStatus::invalid);
     NumericPolicy narrow; narrow.parameters = Precision::binary32;
     rejected({huge}, {}, {{}}, narrow, EvaluationStatus::invalid);
@@ -226,8 +267,9 @@ int main() {
         legacyOrderedResults();
         sourceFreeConstants();
         compensatedLegacyResults();
+        endpointSmoothstepPolicies();
         validationAndPublication();
-        std::cout << "shared projection: transforms, sparse policies, exact legacy reductions, 2000 endpoint fixtures, publication safety passed\n";
+        std::cout << "shared projection: transforms, sparse policies, exact legacy reductions, 2000 legacy endpoint fixtures, signed endpoint smoothstep properties, publication safety passed\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

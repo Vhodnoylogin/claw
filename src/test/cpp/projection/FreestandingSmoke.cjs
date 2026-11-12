@@ -8,4 +8,5 @@ assert.deepEqual(WebAssembly.Module.imports(moduleObject), []);
 const instance = new WebAssembly.Instance(moduleObject, {});
 assert.equal(instance.exports.projection_smoke(-0.5), 0);
 assert.equal(instance.exports.projection_smoke(NaN), 1);
-console.log(JSON.stringify({ imports: 0, finiteSmoke: 0, nonfiniteGuard: 1, bytes: moduleBytes.length }));
+assert.equal(instance.exports.projection_endpoint_smoothstep_properties(), 0);
+console.log(JSON.stringify({ imports: 0, finiteSmoke: 0, nonfiniteGuard: 1, endpointSmoothstepProperties: 0, bytes: moduleBytes.length }));
