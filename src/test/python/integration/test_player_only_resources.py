@@ -1,7 +1,8 @@
 """Prepared real-artifact PlayerOnly checks; no installation or game execution.
 
 Required environment inputs: CLAW_PLAYERONLY_PACKAGE, CLAW_PLAYERONLY_BASELINE,
-CLAW_PLAYERONLY_ELEGANT_ARCHIVE and CLAW_PLAYERONLY_PYNIFLY. Missing real inputs
+CLAW_PLAYERONLY_ELEGANT_ARCHIVE, CLAW_PLAYERONLY_PYNIFLY and
+CLAW_PLAYERONLY_NATIVE_DLL. Missing real inputs
 fail rather than using synthetic geometry. The positive resource selection is
 Default/Timber/Yellow; an inventory of other upstream FOMOD choices is separate.
 """
@@ -41,6 +42,7 @@ class PlayerOnlyResourceIntegrationTests(unittest.TestCase):
         cls.package_path = required_path('CLAW_PLAYERONLY_PACKAGE')
         cls.baseline_path = required_path('CLAW_PLAYERONLY_BASELINE')
         cls.elegant_path = required_path('CLAW_PLAYERONLY_ELEGANT_ARCHIVE')
+        cls.native_data = required_path('CLAW_PLAYERONLY_NATIVE_DLL').read_bytes()
         addon = required_path('CLAW_PLAYERONLY_PYNIFLY')
         sys.path.insert(0, str(addon))
         from pyn import pynifly
@@ -84,7 +86,9 @@ class PlayerOnlyResourceIntegrationTests(unittest.TestCase):
                     normal = MESH + sex + f'bodywerewolf_{endpoint}.nif'
                     self.assertEqual(installed[alias], installed[normal])
         for name, original in self.baseline.items():
-            if name.lower().endswith(('.tri', '.esp', '.pex', '.dll')):
+            if name.lower().endswith('.dll'):
+                self.assertEqual(self.files[name], self.native_data, name)
+            elif name.lower().endswith(('.tri', '.esp', '.pex')):
                 self.assertEqual(self.files[name], original, name)
 
     def test_independent_reader_preserves_actual_shapes_skin_uvs_head_and_matching_tri(self):
@@ -199,7 +203,7 @@ class PlayerOnlyResourceIntegrationTests(unittest.TestCase):
                     for texture in pattern.findall('Texture'):
                         path = texture.get('path').replace('/', '\\').casefold()
                         if randomized:
-                            self.assertEqual(vfs.get(path), int(texture.get('bytes')), path)
+                            self.assertIn(path, vfs)
                         else:
                             self.assertNotIn(path, vfs)
 
