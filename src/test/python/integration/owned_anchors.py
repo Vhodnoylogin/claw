@@ -71,6 +71,12 @@ def dispose_fixture(session, reference, sex, admitted, *, maximum_seconds=8, sle
         except BaseException as failure:
             record.setdefault("persistenceErrors", []).append(type(failure).__name__ + ": " + str(failure))
 
+    try:
+        output.parent.mkdir(parents=True, exist_ok=True)
+    except BaseException as error:
+        quarantine(error)  # No transport before our evidence parent is ready.
+        raise
+
     def save():
         try:
             output.write_text(json.dumps(record, indent=2), encoding="utf-8")

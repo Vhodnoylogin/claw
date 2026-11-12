@@ -238,5 +238,61 @@ class FsmpLifecycleSafetyTests(unittest.TestCase):
             self.assertEqual(session.calls[-1][1]["function"], "Disable")
 
 
+    def test_fresh_nested_disposal_evidence_exists_before_pre_pulse_transport(self):
+        with tempfile.TemporaryDirectory() as directory:
+            parent=Path(directory)/"fsmp-probe"/"after-model"
+            class FreshSegment(Session):
+                def phase(self,*args):
+                    self_parent=Path(directory)/"fsmp-probe"/"after-model"
+                    self.assert_directory_ready=self_parent.is_dir()
+                    super().phase(*args)
+                def tool(self,tool,args,**kwargs):
+                    if not parent.is_dir():raise AssertionError("Transport before disposal evidence parent")
+                    return super().tool(tool,args,**kwargs)
+            session=FreshSegment(directory)
+            self.assertFalse(parent.exists())
+            result=case.dispose_fixture(session,"0xFF001234","male",copy.deepcopy(session.sample),segment="after-model")
+            self.assertTrue(session.assert_directory_ready)
+            self.assertTrue(result["verifiedDisabledAndCrosshairReleased"])
+            self.assertEqual(len(result["observations"]),1)
+            self.assertEqual(sum(args.get("function")=="Disable" for _,args in session.calls),1)
+            self.assertTrue((parent/"fixture-disposal.json").is_file())
+            self.assertFalse(any(args.get("function")=="TogglePhysics" for _,args in session.calls))
+
+    def test_disposal_mkdir_failure_quarantines_before_any_transport_or_retry(self):
+        for failure in (OSError("disposal directory denied"),KeyboardInterrupt("disposal directory interrupted")):
+            with self.subTest(failure=type(failure).__name__),tempfile.TemporaryDirectory() as directory:
+                session=Session(directory);admitted=copy.deepcopy(session.sample)
+                with patch.object(Path,"mkdir",side_effect=failure) as mkdir:
+                    with self.assertRaises(type(failure)) as raised:
+                        case.dispose_fixture(session,"0xFF001234","male",admitted,segment="after-load")
+                    self.assertIs(raised.exception,failure)
+                    self.assertEqual(mkdir.call_count,1)
+                    self.assertEqual(session.calls,[])
+                    self.assertTrue(session.state["ownedFixtureQuarantine"]["ownedSessionTeardownRequired"])
+                    self.assertIsNone(session.state["ownedFixtureQuarantine"]["intent"])
+                    result=case.dispose_fixture(session,"0xFF001234","male",admitted,segment="after-load")
+                    self.assertTrue(result["skipped"])
+                    self.assertEqual(mkdir.call_count,1)
+                self.assertEqual(list(Path(directory).iterdir()),[])
+
+    def test_disposal_player_invalid_and_quarantined_refusal_has_zero_filesystem(self):
+        for reference in ("0x14","0x00000014","not-a-form","0x0"):
+            with self.subTest(reference=reference),tempfile.TemporaryDirectory() as directory:
+                session=Session(directory)
+                with patch.object(Path,"mkdir") as mkdir,patch.object(Path,"write_text") as write:
+                    with self.assertRaises(ValueError):
+                        case.dispose_fixture(session,reference,"male",copy.deepcopy(session.sample),segment="after-model")
+                    mkdir.assert_not_called();write.assert_not_called()
+                self.assertEqual(session.calls,[]);self.assertEqual(list(Path(directory).iterdir()),[])
+        with tempfile.TemporaryDirectory() as directory:
+            session=Session(directory);session.state["ownedFixtureQuarantine"]={"reason":"earlier unknown"}
+            with patch.object(Path,"mkdir") as mkdir,patch.object(Path,"write_text") as write:
+                self.assertTrue(case.dispose_fixture(session,"0xFF001234","male",None,segment="after-load")["skipped"])
+                mkdir.assert_not_called();write.assert_not_called()
+            self.assertEqual(session.calls,[]);self.assertEqual(list(Path(directory).iterdir()),[])
+
+
+
 if __name__ == "__main__":
     unittest.main()
