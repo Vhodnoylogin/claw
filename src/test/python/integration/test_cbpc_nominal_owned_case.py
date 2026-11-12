@@ -1,5 +1,6 @@
 """Transport fault/packet tests, not simulated CBPC or new game evidence."""
 import copy
+import asyncio
 import hashlib
 import json
 import os
@@ -228,6 +229,149 @@ class TransportTests(unittest.TestCase):
             state=json.loads((Path(directory)/"cbpc-nominal/state.json").read_bytes())
             self.assertTrue(state["cleanup"]["crosshairReleasedVerified"])
             self.assertEqual(len(state["cleanup"]["crosshairObservations"]),2)
+
+
+    def test_asyncio_cancellation_from_sleep_or_read_phase_forbids_all_later_tools(self):
+        for location in ("sleep", "phase"):
+            with self.subTest(location=location), tempfile.TemporaryDirectory() as directory:
+                class InterruptedClock(Clock):
+                    fired = False
+                    def sleep(self, seconds):
+                        if location == "sleep" and not self.fired:
+                            self.fired = True
+                            self.call_count = len(session.calls)
+                            raise asyncio.CancelledError("cancelled nominal settle")
+                        super().sleep(seconds)
+                class InterruptedSession(Session):
+                    def phase(self, *args):
+                        if location == "phase" and not clock.fired and args[0] == "cbpc-nominal: start-0-before":
+                            clock.fired = True
+                            clock.call_count = len(self.calls)
+                            raise asyncio.CancelledError("cancelled read phase")
+                clock=InterruptedClock(); session=InterruptedSession(directory, clock)
+                with self.assertRaises(asyncio.CancelledError): self.execute(session, clock)
+                self.assertEqual(len(session.calls), clock.call_count)
+                state=json.loads((Path(directory)/"cbpc-nominal/state.json").read_bytes())
+                self.assertTrue(state["cancelled"] and state["quarantined"])
+                self.assertFalse(any(p["function"] == "Disable" for p in mutations(session)))
+
+    def test_asyncio_cleanup_cancellation_preserves_primary_and_stops_later_tools(self):
+        jumped=False
+        def fault(session, tool, args):
+            nonlocal jumped
+            if args.get("function") == "SetPosition" and not jumped:
+                jumped=True; session.clock.now=128.001
+        class InterruptedClock(Clock):
+            def sleep(self, seconds):
+                if not jumped:
+                    return super().sleep(seconds)
+                self.call_count=len(session.calls)
+                raise asyncio.CancelledError("cancelled cleanup wait")
+        with tempfile.TemporaryDirectory() as directory:
+            clock=InterruptedClock(); session=Session(directory,clock,fault)
+            with self.assertRaisesRegex(ValueError,"deadline"): self.execute(session,clock)
+            self.assertEqual(len(session.calls), clock.call_count)
+            state=json.loads((Path(directory)/"cbpc-nominal/state.json").read_bytes())
+            self.assertTrue(state["cancelled"] and state["quarantined"])
+            self.assertEqual(state["cleanup"]["error"]["type"], "CancelledError")
+            self.assertFalse(any(p["function"] == "Disable" for p in mutations(session)))
+
+    def test_intent_raw_receipt_and_completion_persistence_failures_quarantine(self):
+        for stage in ("intent", "raw-receipt", "completion"):
+            with self.subTest(stage=stage), tempfile.TemporaryDirectory() as directory:
+                class FailingSession(Session):
+                    fired=False
+                    def save(self):
+                        current=self.state.get("cbpcNominal", {})
+                        intent=current.get("intent")
+                        enable_seen=any(p["function"] == "EnableAI" for p in mutations(self))
+                        selected=(intent is not None and intent["label"] == "EnableAI" and
+                                  ((stage == "intent" and "nativeResult" not in intent) or
+                                   (stage == "raw-receipt" and "nativeResult" in intent))) or (
+                                  stage == "completion" and intent is None and enable_seen)
+                        if selected and not self.fired:
+                            self.fired=True; self.call_count=len(self.calls)
+                            raise OSError("synthetic " + stage + " persistence failed")
+                clock=Clock(); session=FailingSession(directory,clock)
+                with self.assertRaisesRegex(OSError, stage): self.execute(session,clock)
+                self.assertEqual(len(session.calls), session.call_count)
+                state=json.loads((Path(directory)/"cbpc-nominal/state.json").read_bytes())
+                self.assertTrue(state["uncertain"] and state["quarantined"])
+                self.assertEqual(state["intent"]["label"], "EnableAI")
+                self.assertEqual("nativeResult" in state["intent"], stage != "intent")
+                self.assertEqual(session.state["checks"], [])
+
+    def test_observation_raw_write_failure_quarantines_before_any_cleanup_tool(self):
+        original_write=Path.write_text
+        with tempfile.TemporaryDirectory() as directory:
+            clock=Clock(); session=Session(directory,clock); failed=[]
+            def failing_write(path, *args, **kwargs):
+                if path.parent.name == "observations" and "EnableAI-after" in path.name and not failed:
+                    failed.append(len(session.calls))
+                    raise OSError("synthetic observation raw write failed")
+                return original_write(path,*args,**kwargs)
+            with patch.object(Path,"write_text",failing_write):
+                with self.assertRaisesRegex(OSError,"observation raw"): self.execute(session,clock)
+            self.assertEqual(len(session.calls),failed[0])
+            state=json.loads((Path(directory)/"cbpc-nominal/state.json").read_bytes())
+            self.assertTrue(state["quarantined"])
+            self.assertEqual(session.state["checks"], [])
+
+    def test_final_persistence_failure_fails_without_more_tools(self):
+        original_write=Path.write_text
+        with tempfile.TemporaryDirectory() as directory:
+            clock=Clock(); session=Session(directory,clock); failed=[]
+            def failing_write(path, *args, **kwargs):
+                if path.name == "state.json" and path.parent.name == "cbpc-nominal" and not failed:
+                    failed.append(len(session.calls))
+                    raise OSError("synthetic final persistence failed")
+                return original_write(path,*args,**kwargs)
+            with patch.object(Path,"write_text",failing_write):
+                with self.assertRaisesRegex(OSError,"final persistence"): self.execute(session,clock)
+            self.assertEqual(len(session.calls),failed[0])
+            state=json.loads((Path(directory)/"cbpc-nominal/state.json").read_bytes())
+            self.assertTrue(state["quarantined"])
+            self.assertEqual(state["finalPersistenceError"]["type"],"OSError")
+            self.assertEqual(session.state["checks"], [])
+
+    def test_error_persistence_failure_never_replaces_primary_receipt_failure(self):
+        def fault(session,tool,args):
+            if args.get("function") == "StartPhysics": return {**DONE,"isError":True}
+        class FailingErrorSession(Session):
+            def save(self):
+                if self.state.get("cbpcNominal",{}).get("quarantined"):
+                    raise OSError("synthetic error persistence failed")
+        with tempfile.TemporaryDirectory() as directory:
+            clock=Clock(); session=FailingErrorSession(directory,clock,fault)
+            with self.assertRaises(ValueError) as caught: self.execute(session,clock)
+            self.assertNotIsInstance(caught.exception,OSError)
+            self.assertEqual(session.calls[-1][1]["function"],"StartPhysics")
+            state=json.loads((Path(directory)/"cbpc-nominal/state.json").read_bytes())
+            self.assertEqual(state["primaryError"]["message"],str(caught.exception))
+            self.assertTrue(state["uncertain"] and state["quarantined"])
+            self.assertEqual(session.state["checks"], [])
+
+
+    def test_terminal_check_save_failure_quarantines_and_removes_only_its_check(self):
+        class FailingTerminalSession(Session):
+            failed=False
+            def save(self):
+                if not self.failed and any(row.get("name") == owned.nominal.protocol()["id"] for row in self.state["checks"]):
+                    self.failed=True
+                    self.call_count=len(self.calls)
+                    raise OSError("synthetic terminal check save failed")
+        with tempfile.TemporaryDirectory() as directory:
+            clock=Clock(); session=FailingTerminalSession(directory,clock)
+            original={"name":"preexisting-owned-check","result":"observed"}
+            session.state["checks"].append(original)
+            with self.assertRaisesRegex(OSError,"terminal check save"): self.execute(session,clock)
+            self.assertEqual(len(session.calls),session.call_count)
+            self.assertEqual(session.state["checks"],[original])
+            self.assertIs(session.state["checks"][0],original)
+            self.assertTrue(session.state["cbpcNominal"]["quarantined"])
+            state=json.loads((Path(directory)/"cbpc-nominal/state.json").read_bytes())
+            self.assertTrue(state["quarantined"])
+            self.assertEqual(state["terminalError"]["type"],"OSError")
 
 
 if __name__ == "__main__":

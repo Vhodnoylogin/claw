@@ -107,7 +107,9 @@ def run(session, reference, sex, *, admitted, subject_pins, stock_expected,
     cleaning = False
     sequence = 0
 
-    def save(full=False):
+    def save_raw(full=False):
+        session.state["cbpcNominal"] = {"directory": str(output), "intent": copy.deepcopy(state["intent"]),
+                                       "quarantined": state["quarantined"], "uncertain": state["uncertain"]}
         journal = {k: state[k] for k in ("protocol", "reference", "sex", "intent", "uncertain",
                    "cancelled", "quarantined", "providerState", "providerRestorationClaimed")}
         journal.update(receiptCounts={k: len(v) for k, v in state["receipts"].items()},
@@ -116,9 +118,26 @@ def run(session, reference, sex, *, admitted, subject_pins, stock_expected,
         (output / "journal.json").write_text(json.dumps(journal, indent=2), encoding="utf-8")
         if full:
             (output / "state.json").write_text(json.dumps(state, indent=2), encoding="utf-8")
-        session.state["cbpcNominal"] = {"directory": str(output), "intent": copy.deepcopy(state["intent"]),
-                                       "quarantined": state["quarantined"], "uncertain": state["uncertain"]}
         session.save()
+
+    def save(full=False):
+        try:
+            save_raw(full)
+        except BaseException as error:
+            state["quarantined"] = True
+            if isinstance(error, Cancelled) or not isinstance(error, Exception):
+                state["cancelled"] = True
+            raise
+
+    def save_after_error():
+        try:
+            save_raw(full=True)
+        except BaseException as error:
+            state["quarantined"] = True
+            if isinstance(error, Cancelled) or not isinstance(error, Exception):
+                state["cancelled"] = True
+            state.setdefault("persistenceErrors", []).append({"type": type(error).__name__, "message": str(error)})
+            session.state.setdefault("cbpcNominal", {}).update(quarantined=True, uncertain=state["uncertain"])
 
     def checkpoint():
         if cancelled():
@@ -131,8 +150,8 @@ def run(session, reference, sex, *, admitted, subject_pins, stock_expected,
         deadline = end if cleaning else end - RESERVE
         remaining = deadline - monotonic()
         scene.require(remaining > 0, "Nominal callback deadline/cleanup reserve exhausted")
-        session.phase("cbpc-nominal: " + label, min(remaining, 12.) + 1.)
         try:
+            session.phase("cbpc-nominal: " + label, min(remaining, 12.) + 1.)
             return session.tool(tool, args, timeout=min(remaining, 10.), deadline=deadline)
         except BaseException:
             state["quarantined"] = True  # No new call after any unresolved transport.
@@ -148,9 +167,9 @@ def run(session, reference, sex, *, admitted, subject_pins, stock_expected,
     def observe(label):
         nonlocal previous, sequence
         raw = call(label, "inspect", plan["query"])
-        sequence += 1
-        (observations / f"{sequence:04d}-{label}.json").write_text(json.dumps(raw, indent=2), encoding="utf-8")
         try:
+            sequence += 1
+            (observations / f"{sequence:04d}-{label}.json").write_text(json.dumps(raw, indent=2), encoding="utf-8")
             row = scene.snapshot(raw, reference, sex)
             scene.require(row["guard"] == expected["guard"], "Owned actor/root/source continuity lost")
             scene.require(row["sample"] > previous["sample"] and row["time"] > previous["time"],
@@ -166,21 +185,22 @@ def run(session, reference, sex, *, admitted, subject_pins, stock_expected,
     def mutate(label, request, before):
         checkpoint()
         scene.require(state["intent"] is None, "Previous mutation completion unresolved")
-        state["intent"] = {"label": label, "request": copy.deepcopy(request), "beforeSample": before["sampleId"]}
-        save()  # Durable intent before exactly one dispatch.
-        result = None
+        intent = {"label": label, "request": copy.deepcopy(request), "beforeSample": before["sampleId"]}
         try:
+            state["intent"] = intent
+            save()  # Durable intent before exactly one dispatch.
             result = call(label, "papyrus", request)
             receipt = {"request": copy.deepcopy(request), "nativeResult": result, "before": before}
-            state["intent"]["nativeResult"] = result
+            intent["nativeResult"] = result  # Actual received reply only, still unvalidated.
             save()
             controls.completed(receipt, request)
+            state["intent"] = None
+            save()  # Completion is durable before another world mutation.
         except BaseException:
+            state["intent"] = intent
             state["uncertain"] = state["quarantined"] = True
-            save()
+            save_after_error()  # Never replace the dispatch/persistence failure.
             raise
-        state["intent"] = None
-        save()  # A completed receipt is durable before any subsequent world mutation.
         checkpoint()
         return receipt
 
@@ -282,7 +302,7 @@ def run(session, reference, sex, *, admitted, subject_pins, stock_expected,
     except BaseException as error:
         primary = error
         state["primaryError"] = {"type": type(error).__name__, "message": str(error)}
-        if isinstance(error, (KeyboardInterrupt, SystemExit, Cancelled)):
+        if isinstance(error, Cancelled) or not isinstance(error, Exception):
             state["cancelled"] = state["quarantined"] = True
     finally:
         cleaning = True
@@ -292,18 +312,42 @@ def run(session, reference, sex, *, admitted, subject_pins, stock_expected,
                 cleanup()
         except BaseException as error:
             cleanup_error = error
+            if isinstance(error, Cancelled) or not isinstance(error, Exception):
+                state["cancelled"] = state["quarantined"] = True
             state.setdefault("cleanup", {}).update(error={"type": type(error).__name__, "message": str(error)},
                 callbackFurtherMutationsForbidden=state["quarantined"], outerOwnedSessionTeardownRequired=True)
-        save(full=True)
+        try:
+            save(full=True)
+        except BaseException as error:
+            state["finalPersistenceError"] = {"type": type(error).__name__, "message": str(error)}
+            if primary is None and cleanup_error is None:
+                cleanup_error = error
+            save_after_error()  # Preserve the earlier primary/cleanup exception.
     if primary is not None:
         raise primary
     if cleanup_error is not None:
         raise cleanup_error
     diagnostic = nominal.score(state, subject_pins)
-    (output / "diagnostic.json").write_text(json.dumps(diagnostic, indent=2), encoding="utf-8")
-    scene.require(diagnostic["status"] == "sampled-provider-selective-motion" and not diagnostic["missingDrivers"],
-                  "Nominal selective response unconfirmed; no runtime qualification")
-    session.state.setdefault("checks", []).append({"name": spec["id"], "result": "passed", "observation": diagnostic,
-        "scope": "sampled nominal technical contrast only; actual parent identity and runtime qualification unobserved"})
-    session.save()
+    appended_check = None
+    try:
+        (output / "diagnostic.json").write_text(json.dumps(diagnostic, indent=2), encoding="utf-8")
+        scene.require(diagnostic["status"] == "sampled-provider-selective-motion" and not diagnostic["missingDrivers"],
+                      "Nominal selective response unconfirmed; no runtime qualification")
+        appended_check = {"name": spec["id"], "result": "passed", "observation": diagnostic,
+            "scope": "sampled nominal technical contrast only; actual parent identity and runtime qualification unobserved"}
+        session.state.setdefault("checks", []).append(appended_check)
+        session.save()
+    except BaseException as error:
+        state["quarantined"] = True
+        if isinstance(error, Cancelled) or not isinstance(error, Exception):
+            state["cancelled"] = True
+        state["terminalError"] = {"type": type(error).__name__, "message": str(error)}
+        if appended_check is not None:
+            checks = session.state.get("checks", [])
+            for index, check in enumerate(checks):
+                if check is appended_check:
+                    del checks[index]  # Preserve every preexisting/unrelated check.
+                    break
+        save_after_error()
+        raise
     return diagnostic

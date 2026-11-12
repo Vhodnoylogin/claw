@@ -203,9 +203,10 @@ class OwnedFsmpCaseTests(unittest.TestCase):
     def test_one_anchor_cleanup_error_does_not_skip_the_other_or_hide_primary(self):
         with tempfile.TemporaryDirectory() as directory:
             session = Session(directory, frozen_anchors=True, fail_head_restore=True)
-            with self.assertRaisesRegex(ValueError, "primary: Mass-zero anchor world displacement"):
+            with self.assertRaisesRegex(ValueError, "Mass-zero anchor world displacement") as raised:
                 case.run(session, "0xFF001234", "male", stimulus="xml-anchors", sleep=lambda _: None)
             cleanup = json.loads((Path(directory)/"fsmp-probe/cleanup.json").read_bytes())
+            self.assertTrue(any("FSMP cleanup:" in note for note in raised.exception.__notes__))
             self.assertIn("error", cleanup["anchors"]["NPC Head [Head]"])
             self.assertTrue(cleanup["anchors"]["Tails"]["ownPositionComponentAbsent"])
             self.assertTrue(all(v is None for values in session.anchor_keys.values() for v in values.values()))
@@ -323,7 +324,9 @@ class OwnedFsmpCaseTests(unittest.TestCase):
                 case.run(session, "0xFF001234", "male", stimulus="xml-anchor-pulse", sleep=lambda _: None)
             state = json.loads((Path(directory)/"fsmp-probe/state.json").read_bytes())
             self.assertEqual(state["pulses"], {})
-            self.assertTrue(all(v is None for keys in session.anchor_keys.values() for v in keys.values()))
+            self.assertTrue(session.state["ownedFixtureQuarantine"])
+            self.assertEqual(session.calls[-1][1]["function"], "Wait")
+            self.assertTrue(all(v == [0., 0., 0.] for keys in session.anchor_keys.values() for v in keys.values()))
             prime = [args for _, args in session.calls if args.get("function") == "Wait" and args.get("args") == [2.]]
             self.assertEqual(len(prime), 1)
 
@@ -414,7 +417,13 @@ class OwnedFsmpCaseTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "pulse write completion uncertain"):
                 case.run(session, "0xFF001234", "female", stimulus="xml-anchor-pulse", sleep=lambda _: None)
             self.assertFalse(any("-pulse-sample-" in phase for phase, _ in session.inspect_keys))
-            self.assertTrue(all(v is None for values in session.anchor_keys.values() for v in values.values()))
+            # The Add may already have happened. An unknown receipt prohibits
+            # Remove/Update/NetImmerse cleanup; the owned world must be torn down.
+            self.assertTrue(any(v is not None for values in session.anchor_keys.values() for v in values.values()))
+            self.assertTrue(session.state["ownedFixtureQuarantine"])
+            writes = [args for _, args in session.calls if args.get("function") == "AddNodeTransformPosition"]
+            self.assertEqual(len(writes), 1)
+            self.assertEqual(session.calls[-1][1]["function"], "AddNodeTransformPosition")
 
 
 if __name__ == "__main__":
