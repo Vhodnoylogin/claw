@@ -44,7 +44,7 @@ def completed(receipt, request):
     result = receipt["nativeResult"]
     scene.require(type(result) is dict and result.get("called") is True and
                   result.get("returnedType") == "none" and "returned" in result and
-                  result["returned"] is None and not result.get("error"),
+                  result["returned"] is None and not result.get("error") and not result.get("isError"),
                   "Uncertain/non-void native completion")
 
 

@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "status": "predeclared-offline-proposal-not-launchable",
+  "knownProviderFiles": [
+    {
+      "path": "SKSE/Plugins/cbp.dll",
+      "source": "mod:CBPC - Physics with Collisions/SKSE/Plugins/cbp.dll",
+      "sha256": "4996c85ee00e051a903c15746e8686a2357b70c9b27957f8ef3026dbc62d5387"
+    },
+    {
+      "path": "SKSE/Plugins/CBPCMasterConfig.txt",
+      "source": "mod:CBPC - Physics with Collisions/SKSE/Plugins/CBPCMasterConfig.txt",
+      "sha256": "a77655c3384c9aaba22d22cf395d1ff93d75860697c3008acb48b05c8a3da8e9"
+    },
+    {
+      "path": "Scripts/CBPCPluginScript.pex",
+      "source": "mod:CBPC - Physics with Collisions/Scripts/CBPCPluginScript.pex",
+      "sha256": "d779a91232b130647ff5dc462e8f86a727ac995a5dd12d7c8a518f1df482e271"
+    }
+  ],
+  "xp32Sha256": "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0",
+  "stockConfigurationAndRoleProof": [
+    {
+      "path": "evidence:claw-cbpc-pulse-live-20261111-03/vfs-pins.json",
+      "sha256": "d2f87623da7ad173f9c95048f68d1da481245a75ca68fd651905c777d4d9e6e7"
+    },
+    {
+      "path": "evidence:claw-cbpc-pulse-live-20261111-03/provider-stock-audit.json",
+      "sha256": "65b18964eba8fec819f1f54624d48459b605f646a000f7ca592cf7033f1c94b9"
+    },
+    {
+      "path": "src/test/resources/physics/cbpc-nominal/stock-graph-expected.json",
+      "sha256": "b313c7f69d38aaf67ea7ba7931529a497629bec968d9bff2a86bab94624795b3",
+      "originalRecordedSha256": "dfe6b5cbc5e3d2a842af224d03935463bfed252b329e4368beebff0d5ce60e9d",
+      "scope": "Portable normalized fixture only; no live source admission"
+    },
+    {
+      "path": "evidence:claw-cbpc-pelvis-proof-20261111/provenance.json",
+      "sha256": "45d6e04c0e6072f889ac8b78565f12bc4f533831616b07319c2e96fee26f1a07"
+    },
+    {
+      "path": "evidence:claw-cbpc-pelvis-proof-20261111/REVIEW.md",
+      "sha256": "a2d8324eb5fa9b993d26f4498e2e2cbb2027d6f6382da75156f7f0d2158e5cae"
+    },
+    {
+      "path": "evidence:claw-cbpc-pelvis-proof-20261111/LIFECYCLE-REVIEW.md",
+      "sha256": "8b964fa3e40bae1cbdc5c99282f93336ec76caf0848d4dafb105b72e5952f529"
+    },
+    {
+      "path": "evidence:claw-cbpc-pelvis-proof-20261111/StartPhysics-lifecycle.asm",
+      "sha256": "6530b3e5a2667a3689b81d15e732212f8a4223fc25fbcaf5b0ead7a0acce8e52"
+    },
+    {
+      "path": "evidence:claw-cbpc-pelvis-proof-20261111/StopPhysics-lifecycle.asm",
+      "sha256": "46a555d4a97fe8b9e8976b1f98ac57e60c69448fc4446db11fd27adc33d0c7fe"
+    }
+  ],
+  "helperSources": {
+    "cbpc_probe.py": {
+      "path": "src/test/python/integration/cbpc_probe.py",
+      "sha256": "6393cbf1326175b729bd46fbef3d5ad7515a40791e2653854111c0268a6df783"
+    },
+    "cbpc_pulse.py": {
+      "path": "src/test/python/integration/cbpc_pulse.py",
+      "sha256": "707213fdd4952328d2acc94e30e651be875fa58346f22956dba06fd8f2b1eeb2"
+    },
+    "fsmp_probe.py": {
+      "path": "src/test/python/integration/fsmp_probe.py",
+      "sha256": "fd1d74209f91fffd0d97e062c51313aa4725480d49b56020501c1c0118dbe1d8"
+    },
+    "fsmp_pulse.py": {
+      "path": "src/test/python/integration/fsmp_pulse.py",
+      "sha256": "031bf5d97b67e274face4927f74c70177f58836eecafd31c4c9c2ce53cff6f40"
+    }
+  },
+  "float32SourceEvidence": {
+    "path": "repository:skyrim-world-observer/src/plugin_se.cpp",
+    "sha256": "1af391b795999167ae6be8e8458717ec6f31b41ffebb45e98fa3c61f00fd3ca7"
+  },
+  "sourceEvidenceLimit": "Current source scalar types plus actual float32-grid validation; exact current platform qualification remains operator responsibility.",
+  "oldCasesUnchanged": true,
+  "actualParentIdentityObserved": false,
+  "launchAuthorized": false,
+  "proposedHelperChange": {
+    "scope": "External source proposal only; primary and old raw cases unchanged, no rescore",
+    "original": {
+      "path": "src/test/python/integration/cbpc_probe.py",
+      "sha256": "2e800c55a77fb82bd859f904af0fc9e730b9189bdecc9c36a4402df02088b007"
+    },
+    "change": "cbpc_probe.completed additionally refuses result.isError"
+  },
+  "pathSemantics": "Logical source/evidence anchors are not resolved by these offline fixtures. Live execution requires a separately generated manifest with actual current file paths and hashes."
+}

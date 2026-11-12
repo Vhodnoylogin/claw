@@ -1,0 +1,487 @@
+{
+  "protectedNames": [
+    "Breast P1",
+    "CME Body [Body]",
+    "CME LBody [LBody]",
+    "CME Neck [Neck]",
+    "CME Pelvis [Pelv]",
+    "CME Spine [Spn0]",
+    "CME Spine1 [Spn1]",
+    "CME Spine2 [Spn2]",
+    "CME TailBone01",
+    "CME TailBone02",
+    "CME TailBone03",
+    "CME TailBone04",
+    "CME UBody [UBody]",
+    "NPC",
+    "NPC COM [COM ]",
+    "NPC EarL [EarL]Bone01",
+    "NPC EarL [EarL]Bone02",
+    "NPC EarR [EarR]Bone01",
+    "NPC EarR [EarR]Bone02",
+    "NPC Head [Head]",
+    "NPC L Breast P1",
+    "NPC L PreBreast P1",
+    "NPC Neck [Neck]",
+    "NPC Pelvis [Pelv]",
+    "NPC R Breast P1",
+    "NPC R PreBreast P1",
+    "NPC Root [Root]",
+    "NPC Spine [Spn0]",
+    "NPC Spine1 [Spn1]",
+    "NPC Spine2 [Spn2]",
+    "TailBone01",
+    "TailBone02",
+    "TailBone03",
+    "TailBone04",
+    "TailBone05",
+    "Tails",
+    "skeleton.nif"
+  ],
+  "sourceParentPaths": {
+    "NPC EarL [EarL]Bone01": [
+      "NPC EarL [EarL]Bone01",
+      "NPC Head [Head]",
+      "CME Neck [Neck]",
+      "NPC Neck [Neck]",
+      "CME Spine2 [Spn2]",
+      "NPC Spine2 [Spn2]",
+      "CME Spine1 [Spn1]",
+      "NPC Spine1 [Spn1]",
+      "CME Spine [Spn0]",
+      "NPC Spine [Spn0]",
+      "CME UBody [UBody]",
+      "CME Body [Body]",
+      "NPC COM [COM ]",
+      "NPC Root [Root]",
+      "NPC",
+      "skeleton.nif"
+    ],
+    "NPC EarL [EarL]Bone02": [
+      "NPC EarL [EarL]Bone02",
+      "NPC EarL [EarL]Bone01",
+      "NPC Head [Head]",
+      "CME Neck [Neck]",
+      "NPC Neck [Neck]",
+      "CME Spine2 [Spn2]",
+      "NPC Spine2 [Spn2]",
+      "CME Spine1 [Spn1]",
+      "NPC Spine1 [Spn1]",
+      "CME Spine [Spn0]",
+      "NPC Spine [Spn0]",
+      "CME UBody [UBody]",
+      "CME Body [Body]",
+      "NPC COM [COM ]",
+      "NPC Root [Root]",
+      "NPC",
+      "skeleton.nif"
+    ],
+    "NPC EarR [EarR]Bone01": [
+      "NPC EarR [EarR]Bone01",
+      "NPC Head [Head]",
+      "CME Neck [Neck]",
+      "NPC Neck [Neck]",
+      "CME Spine2 [Spn2]",
+      "NPC Spine2 [Spn2]",
+      "CME Spine1 [Spn1]",
+      "NPC Spine1 [Spn1]",
+      "CME Spine [Spn0]",
+      "NPC Spine [Spn0]",
+      "CME UBody [UBody]",
+      "CME Body [Body]",
+      "NPC COM [COM ]",
+      "NPC Root [Root]",
+      "NPC",
+      "skeleton.nif"
+    ],
+    "NPC EarR [EarR]Bone02": [
+      "NPC EarR [EarR]Bone02",
+      "NPC EarR [EarR]Bone01",
+      "NPC Head [Head]",
+      "CME Neck [Neck]",
+      "NPC Neck [Neck]",
+      "CME Spine2 [Spn2]",
+      "NPC Spine2 [Spn2]",
+      "CME Spine1 [Spn1]",
+      "NPC Spine1 [Spn1]",
+      "CME Spine [Spn0]",
+      "NPC Spine [Spn0]",
+      "CME UBody [UBody]",
+      "CME Body [Body]",
+      "NPC COM [COM ]",
+      "NPC Root [Root]",
+      "NPC",
+      "skeleton.nif"
+    ],
+    "TailBone01": [
+      "TailBone01",
+      "Tails",
+      "CME Pelvis [Pelv]",
+      "NPC Pelvis [Pelv]",
+      "CME LBody [LBody]",
+      "CME Body [Body]",
+      "NPC COM [COM ]",
+      "NPC Root [Root]",
+      "NPC",
+      "skeleton.nif"
+    ],
+    "TailBone02": [
+      "TailBone02",
+      "CME TailBone01",
+      "TailBone01",
+      "Tails",
+      "CME Pelvis [Pelv]",
+      "NPC Pelvis [Pelv]",
+      "CME LBody [LBody]",
+      "CME Body [Body]",
+      "NPC COM [COM ]",
+      "NPC Root [Root]",
+      "NPC",
+      "skeleton.nif"
+    ],
+    "TailBone03": [
+      "TailBone03",
+      "CME TailBone02",
+      "TailBone02",
+      "CME TailBone01",
+      "TailBone01",
+      "Tails",
+      "CME Pelvis [Pelv]",
+      "NPC Pelvis [Pelv]",
+      "CME LBody [LBody]",
+      "CME Body [Body]",
+      "NPC COM [COM ]",
+      "NPC Root [Root]",
+      "NPC",
+      "skeleton.nif"
+    ],
+    "TailBone04": [
+      "TailBone04",
+      "CME TailBone03",
+      "TailBone03",
+      "CME TailBone02",
+      "TailBone02",
+      "CME TailBone01",
+      "TailBone01",
+      "Tails",
+      "CME Pelvis [Pelv]",
+      "NPC Pelvis [Pelv]",
+      "CME LBody [LBody]",
+      "CME Body [Body]",
+      "NPC COM [COM ]",
+      "NPC Root [Root]",
+      "NPC",
+      "skeleton.nif"
+    ],
+    "TailBone05": [
+      "TailBone05",
+      "CME TailBone04",
+      "TailBone04",
+      "CME TailBone03",
+      "TailBone03",
+      "CME TailBone02",
+      "TailBone02",
+      "CME TailBone01",
+      "TailBone01",
+      "Tails",
+      "CME Pelvis [Pelv]",
+      "NPC Pelvis [Pelv]",
+      "CME LBody [LBody]",
+      "CME Body [Body]",
+      "NPC COM [COM ]",
+      "NPC Root [Root]",
+      "NPC",
+      "skeleton.nif"
+    ],
+    "NPC L Breast P1": [
+      "NPC L Breast P1",
+      "NPC L PreBreast P1",
+      "Breast P1",
+      "CME Spine2 [Spn2]",
+      "NPC Spine2 [Spn2]",
+      "CME Spine1 [Spn1]",
+      "NPC Spine1 [Spn1]",
+      "CME Spine [Spn0]",
+      "NPC Spine [Spn0]",
+      "CME UBody [UBody]",
+      "CME Body [Body]",
+      "NPC COM [COM ]",
+      "NPC Root [Root]",
+      "NPC",
+      "skeleton.nif"
+    ],
+    "NPC R Breast P1": [
+      "NPC R Breast P1",
+      "NPC R PreBreast P1",
+      "Breast P1",
+      "CME Spine2 [Spn2]",
+      "NPC Spine2 [Spn2]",
+      "CME Spine1 [Spn1]",
+      "NPC Spine1 [Spn1]",
+      "CME Spine [Spn0]",
+      "NPC Spine [Spn0]",
+      "CME UBody [UBody]",
+      "CME Body [Body]",
+      "NPC COM [COM ]",
+      "NPC Root [Root]",
+      "NPC",
+      "skeleton.nif"
+    ]
+  },
+  "requiredProbeNames": [
+    "NPC EarL [EarL]Bone01",
+    "NPC EarL [EarL]Bone02",
+    "NPC EarR [EarR]Bone01",
+    "NPC EarR [EarR]Bone02",
+    "TailBone01",
+    "TailBone02",
+    "TailBone03",
+    "TailBone04",
+    "TailBone05",
+    "NPC L Breast P1",
+    "NPC R Breast P1",
+    "NPC Head [Head]",
+    "Tails",
+    "NPC L PreBreast P1",
+    "NPC R PreBreast P1",
+    "NPC Root [Root]",
+    "NPC Pelvis [Pelv]",
+    "NPC Spine2 [Spn2]",
+    "CME TailBone01",
+    "CME TailBone02",
+    "CME TailBone03",
+    "CME TailBone04"
+  ],
+  "writeTargets": [
+    "NPC L Pussy02",
+    "NPC R Pussy02",
+    "VaginaB1",
+    "Clitoral1"
+  ],
+  "missingAnyMeansEarlyReturn": [
+    "VaginaB1",
+    "Clitoral1"
+  ],
+  "skeleton": {
+    "path": "src/main/resources/donors/skeleton.nif",
+    "bytes": 51942,
+    "sha256": "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0"
+  },
+  "providerSha256": "4996c85ee00e051a903c15746e8686a2357b70c9b27957f8ef3026dbc62d5387",
+  "offlineParentPathOnly": true,
+  "runtimeGenericParentageQualified": false,
+  "query": {
+    "kind": "world_observer",
+    "refs": [
+      "0x0D000900"
+    ],
+    "actors": true,
+    "nodes": [
+      {
+        "ref": "0x0D000900",
+        "name": "Breast P1",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "CME Body [Body]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "CME LBody [LBody]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "CME Neck [Neck]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "CME Pelvis [Pelv]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "CME Spine [Spn0]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "CME Spine1 [Spn1]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "CME Spine2 [Spn2]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "CME TailBone01",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "CME TailBone02",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "CME TailBone03",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "CME TailBone04",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "CME UBody [UBody]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "Clitoral1",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC COM [COM ]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC EarL [EarL]Bone01",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC EarL [EarL]Bone02",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC EarR [EarR]Bone01",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC EarR [EarR]Bone02",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC Head [Head]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC L Breast P1",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC L PreBreast P1",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC L Pussy02",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC Neck [Neck]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC Pelvis [Pelv]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC R Breast P1",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC R PreBreast P1",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC R Pussy02",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC Root [Root]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC Spine [Spn0]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC Spine1 [Spn1]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "NPC Spine2 [Spn2]",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "TailBone01",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "TailBone02",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "TailBone03",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "TailBone04",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "TailBone05",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "Tails",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "VaginaB1",
+        "firstPerson": false
+      },
+      {
+        "ref": "0x0D000900",
+        "name": "skeleton.nif",
+        "firstPerson": false
+      }
+    ]
+  }
+}

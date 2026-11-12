@@ -1,0 +1,114 @@
+{
+  "CBPCPluginScript": {
+    "name": "CBPCPluginScript",
+    "memberFunctions": [],
+    "globalFunctions": [
+      {
+        "name": "StartPhysics",
+        "native": true,
+        "params": [
+          {
+            "name": "param1",
+            "type": "Actor"
+          },
+          {
+            "name": "param2",
+            "type": "string"
+          }
+        ],
+        "returnType": "none"
+      },
+      {
+        "name": "StopPhysics",
+        "native": true,
+        "params": [
+          {
+            "name": "param1",
+            "type": "Actor"
+          },
+          {
+            "name": "param2",
+            "type": "string"
+          }
+        ],
+        "returnType": "none"
+      }
+    ]
+  },
+  "ObjectReference": {
+    "name": "ObjectReference",
+    "memberFunctions": [
+      {
+        "name": "Disable",
+        "native": true,
+        "params": [
+          {
+            "name": "param1",
+            "type": "bool"
+          }
+        ],
+        "returnType": "none"
+      },
+      {
+        "name": "SetPosition",
+        "native": true,
+        "params": [
+          {
+            "name": "param1",
+            "type": "float"
+          },
+          {
+            "name": "param2",
+            "type": "float"
+          },
+          {
+            "name": "param3",
+            "type": "float"
+          }
+        ],
+        "returnType": "none"
+      }
+    ],
+    "globalFunctions": []
+  },
+  "Actor": {
+    "name": "Actor",
+    "memberFunctions": [
+      {
+        "name": "EnableAI",
+        "native": true,
+        "params": [
+          {
+            "name": "param1",
+            "type": "bool"
+          }
+        ],
+        "returnType": "none"
+      },
+      {
+        "name": "SetRestrained",
+        "native": true,
+        "params": [
+          {
+            "name": "param1",
+            "type": "bool"
+          }
+        ],
+        "returnType": "none"
+      }
+    ],
+    "globalFunctions": []
+  },
+  "Game": {
+    "name": "Game",
+    "memberFunctions": [],
+    "globalFunctions": [
+      {
+        "name": "GetCurrentCrosshairRef",
+        "native": true,
+        "params": [],
+        "returnType": "ObjectReference"
+      }
+    ]
+  }
+}

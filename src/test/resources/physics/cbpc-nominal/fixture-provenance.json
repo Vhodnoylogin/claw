@@ -1,0 +1,20 @@
+{
+  "scope": "Recorded packet shapes only, not nominal observations or rescored physics",
+  "sourceFiles": [
+    {
+      "path": "evidence:claw-cbpc-pulse-live-20261111-03/runtime/runs/20261112-001605-4ae1dc/cbpc-native-contracts.json",
+      "sha256": "1758cc5f46e05a881fcbee2cba291a9ad37cb7e321b5a3dffec8627655ba139a"
+    },
+    {
+      "path": "evidence:claw-cbpc-pulse-live-20261111-02/runtime/runs/20261111-214933-366ed7/cbpc-probe/observations/41-stimulus-baseline.json",
+      "sha256": "7858b47fdd2abe8e8f449e9902080e2e4e0697e828933783323e9ff6bd7df250"
+    },
+    {
+      "path": "evidence:claw-cbpc-pulse-live-20261111-03/stock-graph-expected.json",
+      "sha256": "dfe6b5cbc5e3d2a842af224d03935463bfed252b329e4368beebff0d5ce60e9d"
+    }
+  ],
+  "oldCasesUnchanged": true,
+  "candidateTextEncoding": "UTF-8 LF. Only machine-specific provenance paths are normalized; original packet values and original source-file hashes are retained.",
+  "pathSemantics": "Repository-relative source paths; mod:, repository: and evidence: are logical provenance anchors, not runtime file paths. Original source hashes refer to retained external evidence. A live operator must freshly resolve and hash actual inputs."
+}

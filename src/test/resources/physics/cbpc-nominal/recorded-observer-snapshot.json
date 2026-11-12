@@ -1,0 +1,1580 @@
+{
+  "coherence": {
+    "mode": "single_main_thread_task",
+    "physics": "not_sampled",
+    "render": "not_synchronized"
+  },
+  "durationUs": 313,
+  "loadGeneration": 1,
+  "nodes": [
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          0.8485629558563232,
+          -0.03544756770133972,
+          -0.5279055833816528,
+          -0.4699423909187317,
+          0.4079267978668213,
+          -0.7827834486961365,
+          0.24309462308883667,
+          0.9123262166976929,
+          0.32949331402778625
+        ],
+        "scale": 1.0,
+        "translation": [
+          -6.483424663543701,
+          -2.8452725410461426,
+          8.04149055480957
+        ]
+      },
+      "name": "NPC EarL [EarL]Bone01",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": false,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.6770127415657043,
+          0.08892466127872467,
+          -0.7305793762207031,
+          -0.6893929839134216,
+          -0.2709124684333801,
+          -0.6718212962150574,
+          -0.2576645016670227,
+          0.9584877490997314,
+          -0.12210708856582642
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2601.40576171875,
+          1553.1810302734375,
+          7114.49169921875
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          0.9999979734420776,
+          -0.001446146983653307,
+          -0.0013929647393524647,
+          0.0014393286546692252,
+          0.999987006187439,
+          -0.0048833973705768585,
+          0.001400008681230247,
+          0.004881382454186678,
+          0.9999870657920837
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.0177261121571064,
+          -0.01694246381521225,
+          10.019173622131348
+        ]
+      },
+      "name": "NPC EarL [EarL]Bone02",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": false,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.6756138801574707,
+          0.08324255049228668,
+          -0.7325412631034851,
+          -0.6914353370666504,
+          -0.2732798159122467,
+          -0.6687566637992859,
+          -0.2558577060699463,
+          0.958325982093811,
+          -0.1270746886730194
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2608.716064453125,
+          1546.4295654296875,
+          7113.23291015625
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          0.8496654629707336,
+          0.035605527460575104,
+          0.5261186957359314,
+          0.4682181477546692,
+          0.4080142378807068,
+          -0.7837705016136169,
+          -0.24257051944732666,
+          0.9122810363769531,
+          0.33000442385673523
+        ],
+        "scale": 1.0,
+        "translation": [
+          6.4825358390808105,
+          -2.8452718257904053,
+          8.041489601135254
+        ]
+      },
+      "name": "NPC EarR [EarR]Bone01",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": false,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.9476297497749329,
+          0.1574583500623703,
+          0.27785733342170715,
+          0.313071608543396,
+          -0.28604379296302795,
+          -0.9056297540664673,
+          -0.06311963498592377,
+          0.9451909065246582,
+          -0.3203592896461487
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2588.98193359375,
+          1550.372802734375,
+          7112.06591796875
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          0.9999982118606567,
+          0.0012967787915840745,
+          0.001365290256217122,
+          -0.0012900320580229163,
+          0.999987006187439,
+          -0.004930971655994654,
+          -0.0013716669054701924,
+          0.004929201677441597,
+          0.9999868869781494
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.018389878794550896,
+          0.017978979274630547,
+          9.982198715209961
+        ]
+      },
+      "name": "NPC EarR [EarR]Bone02",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": false,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.9466609954833984,
+          0.1611599177122116,
+          0.27903467416763306,
+          0.3157188296318054,
+          -0.2906762957572937,
+          -0.9032324552536011,
+          -0.06445614993572235,
+          0.9431515336036682,
+          -0.32605305314064026
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2586.17724609375,
+          1541.3455810546875,
+          7108.89990234375
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          0.9999997615814209,
+          0.0006874719401821494,
+          9.884635801427066e-05,
+          0.000651761656627059,
+          -0.8796765208244324,
+          -0.47557201981544495,
+          -0.00023998958931770176,
+          0.47557196021080017,
+          -0.8796767592430115
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.0038069935981184244,
+          -13.270111083984375,
+          -4.121395587921143
+        ]
+      },
+      "name": "TailBone01",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": true,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.9923286437988281,
+          0.1018972098827362,
+          -0.07000507414340973,
+          0.07221978157758713,
+          -0.9373898506164551,
+          -0.34071290493011475,
+          -0.10033969581127167,
+          0.3330434262752533,
+          -0.9375577569007874
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2600.87158203125,
+          1523.579833984375,
+          7034.55224609375
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          0.9999997615814209,
+          -0.0005621362361125648,
+          -0.00035867918631993234,
+          0.0005619839648716152,
+          0.9999997019767761,
+          -0.00042464060243219137,
+          0.0003589178086258471,
+          0.00042443894199095666,
+          0.9999998211860657
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.004306375049054623,
+          -0.0035750584211200476,
+          10.005610466003418
+        ]
+      },
+      "name": "TailBone02",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": true,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.992358922958374,
+          0.10124635696411133,
+          -0.07051749527454376,
+          0.07236500829458237,
+          -0.9405055642127991,
+          -0.3319839537143707,
+          -0.09993421286344528,
+          0.3243442177772522,
+          -0.9406458139419556
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2601.571533203125,
+          1520.1727294921875,
+          7025.1767578125
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          0.9999997615814209,
+          -0.0005651196115650237,
+          -0.00035353461862541735,
+          0.0005849448498338461,
+          0.998266875743866,
+          0.058845844119787216,
+          0.0003196663164999336,
+          -0.058846037834882736,
+          0.9982669949531555
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.0043043470941483974,
+          -0.0035303521435707808,
+          10.005642890930176
+        ]
+      },
+      "name": "TailBone03",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": true,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.9919952750205994,
+          0.10447169095277786,
+          -0.07092779129743576,
+          0.07054786384105682,
+          -0.9243872761726379,
+          -0.37487587332725525,
+          -0.10472860932350159,
+          0.36687126755714417,
+          -0.9243581295013428
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2602.276611328125,
+          1516.8529052734375,
+          7015.7705078125
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          0.9999997615814209,
+          -0.0005462481058202684,
+          -0.00037887637154199183,
+          0.0006121274782344699,
+          0.9789110422134399,
+          0.2042856216430664,
+          0.0002592956880107522,
+          -0.20428578555583954,
+          0.9789112210273743
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.004332287237048149,
+          -0.0037835286930203438,
+          10.005456924438477
+        ]
+      },
+      "name": "TailBone04",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": true,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.9906159043312073,
+          0.11549504846334457,
+          -0.07308042794466019,
+          0.0588093101978302,
+          -0.8428720831871033,
+          -0.5348913669586182,
+          -0.12337472289800644,
+          0.5255740880966187,
+          -0.8417547941207886
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2602.98583984375,
+          1513.1041259765625,
+          7006.52685546875
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          0.9999997615814209,
+          -0.00046250992454588413,
+          -0.00046696033678017557,
+          0.0005435256753116846,
+          0.9814132452011108,
+          0.19190524518489838,
+          0.0003695230116136372,
+          -0.1919054538011551,
+          0.9814133048057556
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.004433322232216597,
+          -0.004663519095629454,
+          10.004618644714355
+        ]
+      },
+      "name": "TailBone05",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": true,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.9891420006752014,
+          0.1272483468055725,
+          -0.07352374494075775,
+          0.04402764141559601,
+          -0.7338933944702148,
+          -0.6778368353843689,
+          -0.14021217823028564,
+          0.6672399044036865,
+          -0.7315272092819214
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2603.716552734375,
+          1507.7552490234375,
+          6998.109375
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          0.9999998807907104,
+          0.0003753720666281879,
+          0.00024793201009742916,
+          -0.0003753852506633848,
+          0.9999999403953552,
+          5.310805136105046e-05,
+          -0.00024791204486973584,
+          -5.320111449691467e-05,
+          0.9999999403953552
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.00925232470035553,
+          1.0187187194824219,
+          -0.02183973602950573
+        ]
+      },
+      "name": "NPC L Breast P1",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": false,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.954755961894989,
+          0.2928125858306885,
+          0.05197887495160103,
+          -0.2926574945449829,
+          0.8940403461456299,
+          0.33918049931526184,
+          0.05284509435296059,
+          -0.33904656767845154,
+          0.9392841458320618
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2604.578857421875,
+          1556.772216796875,
+          7070.78857421875
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          0.9999998807907104,
+          0.0003753720666281879,
+          0.00024793201009742916,
+          -0.0003753852506633848,
+          0.9999999403953552,
+          5.310805136105046e-05,
+          -0.00024791204486973584,
+          -5.320111449691467e-05,
+          0.9999999403953552
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.00925232470035553,
+          1.0187187194824219,
+          -0.02183973602950573
+        ]
+      },
+      "name": "NPC R Breast P1",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": false,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.954755961894989,
+          0.29281264543533325,
+          0.05197865515947342,
+          -0.2926574945449829,
+          0.894040584564209,
+          0.3391798436641693,
+          0.05284509435296059,
+          -0.33904585242271423,
+          0.9392843842506409
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2586.435302734375,
+          1551.2235107421875,
+          7071.79833984375
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          0.9999504685401917,
+          0.009952337481081486,
+          0.0002095019444823265,
+          0.000826563686132431,
+          -0.06203818321228027,
+          -0.9980734586715698,
+          -0.009920166805386543,
+          0.9980242252349854,
+          -0.06204330921173096
+        ],
+        "scale": 1.0,
+        "translation": [
+          -9.5367431640625e-07,
+          3.814697265625e-06,
+          24.10481071472168
+        ]
+      },
+      "name": "NPC Head [Head]",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": true,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.9581745266914368,
+          0.2861018180847168,
+          0.006878608837723732,
+          -0.2165757417678833,
+          0.7406198978424072,
+          -0.6360638737678528,
+          -0.18707343935966492,
+          0.6079704165458679,
+          0.7716058492660522
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2594.42529296875,
+          1559.03125,
+          7108.83349609375
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "name": "Tails",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": true,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.9974302053451538,
+          0.05258588492870331,
+          0.04865880683064461,
+          -0.0456993393599987,
+          0.9900383949279785,
+          -0.1331750899553299,
+          -0.05517721548676491,
+          0.1306091994047165,
+          0.9898973107337952
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2599.973388671875,
+          1536.1707763671875,
+          7040.3583984375
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.9961947202682495,
+          -0.08715573698282242,
+          0.0,
+          0.08715573698282242,
+          0.9961947202682495
+        ],
+        "scale": 1.0,
+        "translation": [
+          -9.5,
+          17.604999542236328,
+          12.975000381469727
+        ]
+      },
+      "name": "NPC L PreBreast P1",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": false,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.9549281001091003,
+          0.2923416197299957,
+          0.051465071737766266,
+          -0.2920408248901367,
+          0.8942286968231201,
+          0.33921557664871216,
+          0.05314527824521065,
+          -0.338956356048584,
+          0.9392997622489929
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2604.889404296875,
+          1555.855224609375,
+          7071.1845703125
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.9961947202682495,
+          -0.08715573698282242,
+          0.0,
+          0.08715573698282242,
+          0.9961947202682495
+        ],
+        "scale": 1.0,
+        "translation": [
+          9.5,
+          17.604999542236328,
+          12.975000381469727
+        ]
+      },
+      "name": "NPC R PreBreast P1",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": false,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.9549281001091003,
+          0.2923416197299957,
+          0.051465071737766266,
+          -0.2920408248901367,
+          0.8942286968231201,
+          0.33921557664871216,
+          0.05314527824521065,
+          -0.338956356048584,
+          0.9392997622489929
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2586.745849609375,
+          1550.3065185546875,
+          7072.1943359375
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.0,
+          -0.2800597846508026,
+          0.0
+        ]
+      },
+      "name": "NPC Root [Root]",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": true,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2599.849853515625,
+          1535.547607421875,
+          6976.6650390625
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          0.9952553510665894,
+          5.45574766874779e-05,
+          0.09729719161987305,
+          -5.45574766874779e-05,
+          1.0,
+          -2.6604559479892487e-06,
+          -0.09729719161987305,
+          -2.6604559479892487e-06,
+          0.9952553510665894
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "name": "NPC Pelvis [Pelv]",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": true,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.9974302053451538,
+          0.05258588492870331,
+          0.04865880683064461,
+          -0.0456993393599987,
+          0.9900383949279785,
+          -0.1331750899553299,
+          -0.05517721548676491,
+          0.1306091994047165,
+          0.9898973107337952
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2599.973388671875,
+          1536.1707763671875,
+          7040.3583984375
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          0.9910997748374939,
+          0.10389376431703568,
+          0.08323061466217041,
+          -0.1280592828989029,
+          0.9148584008216858,
+          0.3829294443130493,
+          -0.0363602451980114,
+          -0.39017975330352783,
+          0.9200205206871033
+        ],
+        "scale": 1.0,
+        "translation": [
+          -8.559492562199011e-05,
+          -0.017173675820231438,
+          9.82275104522705
+        ]
+      },
+      "name": "NPC Spine2 [Spn2]",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": true,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.9549281001091003,
+          0.286743700504303,
+          0.07674847543239594,
+          -0.2920408248901367,
+          0.8612613081932068,
+          0.41586190462112427,
+          0.05314527824521065,
+          -0.419531911611557,
+          0.9061834812164307
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2601.861572265625,
+          1532.5225830078125,
+          7067.3173828125
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "name": "CME TailBone01",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": true,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.9923286437988281,
+          0.1018972098827362,
+          -0.07000507414340973,
+          0.07221978157758713,
+          -0.9373898506164551,
+          -0.34071290493011475,
+          -0.10033969581127167,
+          0.3330434262752533,
+          -0.9375577569007874
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2600.87158203125,
+          1523.579833984375,
+          7034.55224609375
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "name": "CME TailBone02",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": true,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.992358922958374,
+          0.10124635696411133,
+          -0.07051749527454376,
+          0.07236500829458237,
+          -0.9405055642127991,
+          -0.3319839537143707,
+          -0.09993421286344528,
+          0.3243442177772522,
+          -0.9406458139419556
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2601.571533203125,
+          1520.1727294921875,
+          7025.1767578125
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "name": "CME TailBone03",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": true,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.9919952750205994,
+          0.10447169095277786,
+          -0.07092779129743576,
+          0.07054786384105682,
+          -0.9243872761726379,
+          -0.37487587332725525,
+          -0.10472860932350159,
+          0.36687126755714417,
+          -0.9243581295013428
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2602.276611328125,
+          1516.8529052734375,
+          7015.7705078125
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    },
+    {
+      "firstPerson": false,
+      "form": "0x0D000900",
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "local": {
+        "rotationRowMajor": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": 1.0,
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "name": "CME TailBone04",
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "sceneCollisionObjectPresent": true,
+      "status": "available",
+      "world": {
+        "rotationRowMajor": [
+          0.9906159043312073,
+          0.11549504846334457,
+          -0.07308042794466019,
+          0.0588093101978302,
+          -0.8428720831871033,
+          -0.5348913669586182,
+          -0.12337472289800644,
+          0.5255740880966187,
+          -0.8417547941207886
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2602.98583984375,
+          1513.1041259765625,
+          7006.52685546875
+        ]
+      },
+      "worldBound": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.0
+      }
+    }
+  ],
+  "observerVersion": "0.3.1-se104-candidate",
+  "ok": true,
+  "phase": "skse_main_thread_task",
+  "physics": {
+    "reason": "No safe phase collector",
+    "status": "unavailable"
+  },
+  "producerFrame": null,
+  "producerMonotonicNs": 40837658566400,
+  "quality": "complete",
+  "refs": [
+    {
+      "actor": {
+        "baseForm": "0x0D000800",
+        "baseRace": "0x000CDD84",
+        "race": "0x000CDD84",
+        "raceStatus": "available",
+        "sex": 1,
+        "status": "available",
+        "weight": {
+          "basis": "TESNPC::weight; normalized is raw/100",
+          "normalizedNPCWeight": 1.0,
+          "rawNPCWeight": 100.0,
+          "renderedMeshInterpolationVerified": false,
+          "status": "available"
+        }
+      },
+      "anglesRadians": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "baseForm": "0x0D000800",
+      "cellForm": "0x00032AE7",
+      "deleted": false,
+      "disabled": false,
+      "identity": {
+        "form": "0x0D000900",
+        "loadGeneration": 1,
+        "localFormId": "0x00000900",
+        "runtimeHandle": 1111942,
+        "sourcePlugin": "test_CLAW - Physics Probe.esp"
+      },
+      "loaded3D": true,
+      "position": [
+        -2599.849853515625,
+        1536.107666015625,
+        6976.6650390625
+      ],
+      "rootIdentity": {
+        "firstPerson": false,
+        "identityBasis": "sampled_pointer_and_handle_changes_no_object_retention",
+        "loadedResourcePathsAvailable": false,
+        "sampledRootToken": 1,
+        "unobservedAddressReuseDetectable": false
+      },
+      "scale": 1.0,
+      "sceneTransform": {
+        "rotationRowMajor": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": 1.0,
+        "translation": [
+          -2599.849853515625,
+          1536.107666015625,
+          6976.6650390625
+        ]
+      },
+      "status": "available"
+    }
+  ],
+  "render": {
+    "reason": "No renderer provider",
+    "status": "unavailable"
+  },
+  "sampleId": 41,
+  "schemaVersion": 1,
+  "sessionId": "6720-40789486522400",
+  "space": "world",
+  "units": "skyrim_engine_units",
+  "vrPicking": {
+    "reason": "Flat game target",
+    "status": "unavailable"
+  },
+  "warnings": [
+    "unknown key(s) actors, nodes, refs; accepted: formId, formType, kind, limit, model, radius, reset, scope, selected"
+  ]
+}
