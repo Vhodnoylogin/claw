@@ -148,6 +148,19 @@ and is handled by the same helper's separate new-game rule.
 
 ## Own producer and tool
 
+Consumer DLL revision **0.0.3** registers exactly once at SKSE `kPostPostLoad`.
+The prior 0.0.2 game attempt reached the saved world but stopped before subject
+actions because it requested the interface during its own `kPostLoad`, before
+DevBench had received that message and registered its interface listener. The
+retained SKSE log records native handle 2 making the request before provider
+handle 3 received PostLoad. DevBench initializes at PostLoad; PostPostLoad runs
+after every plugin has completed that phase. There is no PostLoad attempt,
+polling registration, retry or fallback phase. The exact host build guard,
+mechanical tool name and schema remain unchanged. The historical raw tool-list
+response was not retained because the outer wrapper wrote it only after its
+failing admission check; a successor must retain that response before validation.
+This revision has no new game qualification until a separately approved case.
+
 Tool: `claw_test_direct_left_p1_v2`, exact DevBench build 13600 (1.36.0), API001.
 A registration collision disables admission; the published SDK replaces a name
 even when RegisterTool returns false, so the namespace must remain unique.

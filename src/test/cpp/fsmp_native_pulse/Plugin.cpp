@@ -476,7 +476,8 @@ void handler(void* ctx,const char* args,void* sink,DevBenchAPI::WriteFn write) {
 void message(SKSE::MessagingInterface::Message* e) {
     if (!e||!runtime) return;
     using M=SKSE::MessagingInterface;
-    if (e->type==M::kPostLoad) {
+    // All providers have completed kPostLoad before this single registration.
+    if (e->type==M::kPostPostLoad) {
         auto* api=DevBenchAPI::GetDevBenchInterface001();
         if (api&&api->GetBuildNumber()==13600) runtime->enabled.store(api->RegisterTool(toolName,
             R"({"description":"TEST ONLY: one declared female left-P1 direct-scenegraph mechanical feasibility pulse; no physics acceptance","readOnly":false,"inputSchema":{"type":"object","required":["action","operation"],"properties":{"action":{"enum":["prepare","start","status","cancel"]},"operation":{"type":"string"},"actorForm":{"type":"integer"},"baseForm":{"type":"integer"},"raceForm":{"type":"integer"},"sex":{"const":1},"fixtureEvidenceSha256":{"type":"string"},"outputDirectory":{"type":"string"}},"additionalProperties":false}})",handler,runtime));
@@ -498,12 +499,12 @@ bool supported(const SKSE::QueryInterface* s) {
 }
 }
 extern "C" __declspec(dllexport) constinit SKSE::PluginVersionData SKSEPlugin_Version=[] {
-    SKSE::PluginVersionData v; v.PluginVersion({0,0,2,0}); v.PluginName("CLAWNativeLeftP1Test"); v.AuthorName("CLAW contributors");
+    SKSE::PluginVersionData v; v.PluginVersion({0,0,3,0}); v.PluginName("CLAWNativeLeftP1Test"); v.AuthorName("CLAW contributors");
     v.versionIndependenceEx=SKSE::PluginVersionData::kVersionIndependentEx_AddressLibraryV5|SKSE::PluginVersionData::kVersionIndependentEx_NoStructUse;
     v.compatibleVersions[0]=SKSE::RUNTIME_SSE_1_7_104.pack(); v.MinimumRequiredXSEVersion({2,3,1,0}); return v;
 }();
 extern "C" __declspec(dllexport) bool SKSEPlugin_Query(const SKSE::QueryInterface* s,SKSE::PluginInfo* info) {
-    if (!info) return false; info->infoVersion=SKSE::PluginInfo::kVersion; info->name="CLAWNativeLeftP1Test"; info->version=2; return supported(s);
+    if (!info) return false; info->infoVersion=SKSE::PluginInfo::kVersion; info->name="CLAWNativeLeftP1Test"; info->version=3; return supported(s);
 }
 extern "C" __declspec(dllexport) bool SKSEPlugin_Load(const SKSE::LoadInterface* s) {
     if (!supported(s)) return false;
