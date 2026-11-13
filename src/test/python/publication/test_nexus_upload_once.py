@@ -78,6 +78,13 @@ class FakeApi:
 
 
 class OfflineTests(unittest.TestCase):
+    def test_description_input_does_not_resubmit_api_generated_break_tags(self):
+        stored = "Title\n<br />[b]Physics[/b]\n<br />Credits &amp; source"
+        self.assertEqual(helper.description_input(stored),
+                         "Title\n[b]Physics[/b]\nCredits &amp; source")
+        self.assertEqual(helper.description_input("An inline <br /> example"),
+                         "An inline <br /> example")
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)

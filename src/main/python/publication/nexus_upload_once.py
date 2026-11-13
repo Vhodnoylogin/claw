@@ -211,6 +211,11 @@ def upload_part(url, payload, allowed_hosts):
     return tag
 
 
+def description_input(stored_bbcode):
+    """The API adds line-prefix BR tags; submit raw newlines only once."""
+    return stored_bbcode.replace("\n<br />", "\n")
+
+
 def publish(value, acceptance, reviewed_path):
     require(value["publicationReady"] is True and acceptance.get("fullReleaseAccepted") is True, "Release remains blocked; final acceptance required")
     require(not Path(value["receiptDirectory"]).exists(), "Attempt directory already exists; inspect receipts instead of replaying")
@@ -283,7 +288,7 @@ def publish(value, acceptance, reviewed_path):
         require(changelog["version"] == VERSION and changelog["changelog"].strip() == value["_texts"]["changelog"], "Changelog append receipt differs")
         mod = api.call("GET", "/mods/" + GLOBAL_MOD)
         require(mod["description"].strip() == value["_texts"]["baselineModDescription"], "Description preimage changed before patch")
-        ledger.stage("07-patch-description", lambda: api.call("PATCH", "/mods/" + GLOBAL_MOD, {"description": value["_texts"]["modDescription"]}), lambda _: {"descriptionSha256": value["modDescription"]["sha256"], "onlyDescriptionFieldSent": True})
+        ledger.stage("07-patch-description", lambda: api.call("PATCH", "/mods/" + GLOBAL_MOD, {"description": description_input(value["_texts"]["modDescription"])}), lambda _: {"descriptionSha256": value["modDescription"]["sha256"], "onlyDescriptionFieldSent": True})
         mod = api.call("GET", "/mods/" + GLOBAL_MOD)
         require(mod["description"].strip() == value["_texts"]["modDescription"] and mod["version"] == VERSION, "Description/version readback differs")
         actual_lines = [line.strip() for entry in api.changelogs().get(VERSION, []) for line in entry.splitlines() if line.strip()]
