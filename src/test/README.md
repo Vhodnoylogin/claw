@@ -16,6 +16,11 @@ target/, rather than Git.
 - `python/vr/`: offline geometry/visibility and resource lookup contracts. Existing
   explicitly optional external-resource cases report their skips when their
   declared inputs are absent.
+- `python/photo_comparison/`: nonshipping pose, frame-registration and screenshot
+  custody checks retained from the 13F comparison. Run this separate suite with
+  Pillow, NumPy and OpenCV; four same-opened-file custody tests require Windows.
+  See [scope and provenance](docs/photo-comparison-13F.md). These helpers do not
+  launch a game and are not included in the default source suites.
 - `python/integration/`: mandatory prepared-resource checks. Missing inputs fail;
   they are not silently skipped or replaced by synthetic data. This includes16
   checks moved out of the default unit suite without changing their assertions:

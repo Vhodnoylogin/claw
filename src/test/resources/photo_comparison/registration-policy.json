@@ -1,0 +1,52 @@
+{
+  "originalResolution": [
+    1920,
+    1080
+  ],
+  "maximumDisplacementPixels": 0.5,
+  "minimumCornersPerRegion": 8,
+  "maximumMeanLuminanceDifference": 2.0,
+  "maximumRawMeanAbsoluteDifference": 3.0,
+  "regions": [
+    {
+      "id": "wall-left",
+      "surface": "wall",
+      "rectangle": [
+        80,
+        160,
+        400,
+        480
+      ]
+    },
+    {
+      "id": "wall-right",
+      "surface": "wall",
+      "rectangle": [
+        1520,
+        160,
+        1840,
+        480
+      ]
+    },
+    {
+      "id": "ground-left",
+      "surface": "ground",
+      "rectangle": [
+        80,
+        890,
+        400,
+        1040
+      ]
+    },
+    {
+      "id": "ground-right",
+      "surface": "ground",
+      "rectangle": [
+        1520,
+        890,
+        1840,
+        1040
+      ]
+    }
+  ]
+}

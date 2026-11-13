@@ -1,0 +1,39 @@
+{
+  "positions": {
+    "human": [
+      -2697.94482421875,
+      1945.9998779296875,
+      6976.4501953125
+    ],
+    "wolf": [
+      -2697.94482421875,
+      1836.0,
+      6976.4501953125
+    ]
+  },
+  "positionTolerance": 0.05,
+  "headingToleranceDegrees": 0.1,
+  "sampleSpanSeconds": 0.2,
+  "alignment": {
+    "scope": "Samecamera/scene/absolutephotoanchors. Eachfinalplacement needs2samples>=0.2swallANDproducer span atoldstrictnumericlimits; immutablefinalbaseline matchesBOTHrawcapturebrackets. Prepark retainedonlyidentity/root/scale/sourceproof. DifferentNPCs/forms do notclaimidenticalsilhouettes.",
+    "boneNames": [
+      "NPC Head [Head]",
+      "NPC Pelvis [Pelv]",
+      "NPC L Hand [LHnd]",
+      "NPC R Hand [RHnd]",
+      "NPC L Foot [Lft ]",
+      "NPC R Foot [Rft ]"
+    ],
+    "rootRotationTolerance": 1e-05,
+    "boneTranslationTolerance": 0.01,
+    "boneRotationTolerance": 1e-05,
+    "boneScaleTolerance": 1e-06,
+    "freezeWaitMs": 2000,
+    "registrationMaximumCornerDisplacementPixels": 0.5,
+    "rootPixelReviewRequired": true,
+    "sameGenerationAfterAdmissionObservable": false,
+    "sceneFreezeLeaseMs": 500000,
+    "runtimeRampSetting": "bChangeTimeMultSlowly:General",
+    "normalFrameRefreshSeconds": 0.2
+  }
+}

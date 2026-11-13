@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "status": "HISTORICAL_ACTUAL13F_SCOPE_NOT_A_NEW_TEST_RESULT",
+  "run": "20261113-062001-a97fa3",
+  "images": 4,
+  "gamePins": 2084,
+  "maximumBackgroundFeatureDisplacementPixels": 0.11885513365268707,
+  "maximumFittedFhdCornerDisplacementPixels": 0.08390157384903764,
+  "imagesEdited": false,
+  "originalPixelsNotIncludedInGit": true,
+  "endedRestoredPhotoCustody": "PASS_ENDED_RESTORED_PHOTO_CUSTODY",
+  "normalOwnMenuExitZero": true,
+  "oldEightOriginalsExact": true,
+  "sourceHashes": {
+    "capture_guards.py": "623153884820d29b7e1c3859b429e8b6fe9dacb08d988a092ef8f6a77352add9",
+    "photo_pose.py": "268dbd42b406729bc79a5eeb5c248c4a922de742d865c6d05788155a6730f1d3",
+    "frame_registration.py": "a798fe8eaaed9f3b6609229ac6d37f5706e821245482686185410ecf33672a2b",
+    "screenshot_custody.py": "c57c96a6a7972e39eb70cc263bce1fab30e2c5d75532887158e0598cb31e3653"
+  },
+  "retainedReceiptHashes": {
+    "compare-verification-13F.json": "ac290cc2868d46b168bd4d6e30acf3edbbb48da7a484db2169b79a389f5769e1",
+    "native-09/postrun-verification.json": "a9c4f9287f74e29163d9b97dac83856f329f10d07428ddc785bdcf2ec2d68618",
+    "native-09/root-postarchive-pin-review.json": "277904b80b527be5d95cb48650f6650e03655b0da7e5dee460c5c79dc7b93f4b"
+  },
+  "portableDifference": "Explicit set_ini callback replaces executor import; registration additionally requires the five existing manual pixel-admission flags explicitly true (hashes-only review withholds). Actual13F had all five true and is unchanged/not rescored. Other two helpers byte-exact. Fixture omits only top-level sourcePins; pose values unchanged. Protocol retains used numeric/position fields only."
+}
