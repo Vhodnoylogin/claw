@@ -1,6 +1,7 @@
 """Motion package boundaries, actual-weight preconditions and late mutation checks."""
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
@@ -75,6 +76,29 @@ class MotionAdapterTests(unittest.TestCase):
             self.assertFalse(report["collisionResponseEnabled"])
             self.assertFalse(report["runtimeQualified"])
             self.assertFalse((out / "FAILED-unverified-do-not-install").exists())
+            # Consume the actual serialized builder receipt with the packager's
+            # absolute-path/size/hash contract, without fabricating source rows.
+            receipt = json.loads((out / "motion-adapter-build.json").read_bytes())
+            self.assertTrue(receipt["sourceInputs"])
+            for row in receipt["sourceInputs"]:
+                path = Path(row["path"])
+                self.assertTrue(path.is_absolute() and path.is_file())
+                payload = path.read_bytes()
+                self.assertEqual(row["bytes"], len(payload))
+                self.assertEqual(row["sha256"], hashlib.sha256(payload).hexdigest())
+
+    def test_explicit_source_profile_is_pinned_from_consumed_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "profile.json"
+            path.write_bytes(b'{"explicit":"source profile"}')
+            inputs = adapter.source.SourceInputs(breast_profile=path)
+            row = adapter.source_pins(inputs)[-1]
+            self.assertEqual(row, {**adapter.pin(path), "role": "explicit-breast-resource-profile"})
+            # Late edits cannot silently repin data that the builder did not consume.
+            path.write_bytes(b'changed')
+            self.assertEqual(adapter.source_pins(inputs)[-1], row)
+            with self.assertRaisesRegex(ValueError, "Breast resource profile changed"):
+                inputs.verify()
 
     def test_present_bone_names_without_stored_weights_cannot_enable_p1(self):
         with tempfile.TemporaryDirectory() as directory:

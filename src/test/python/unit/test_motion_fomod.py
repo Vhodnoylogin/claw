@@ -81,23 +81,23 @@ class MotionFomodTests(unittest.TestCase):
         return result
 
     def arguments(self, output='motion'):
-        return dict(self.f.arguments(output=output), cbpc_motion_build=self.receipts['cbpc'], fsmp_motion_build=self.receipts['fsmp'])
+        return dict(self.f.arguments(output=output), fsmp_motion_build=self.receipts['fsmp'])
 
     def mutate_report(self, provider, callback):
         path = self.receipts[provider]; report = json.loads(path.read_bytes()); callback(report)
         path.write_bytes(self.package.encoded(report))
 
-    def test_sixty_actual_plans_are_exclusive_and_share_matrices_tris_native(self):
+    def test_forty_actual_plans_are_exclusive_and_share_matrices_tris_native(self):
         self.assertEqual(self.package.CBPC_FILES, {'SKSE/Plugins/' + name for name in
                          ('CBPCMasterConfig_CLAWMotion.txt', 'CBPConfig_CLAWMotion.txt',
                           'CBPCMasterConfig_CLAWBreastMotion.txt', 'CBPConfig_CLAWBreastMotion.txt')})
         result = self.package.build(**self.arguments())
-        self.assertEqual(len(result['selections']), 60)
+        self.assertEqual(len(result['selections']), 40)
         self.assertEqual({(r['maleFamily'], r['family'], r['obody'], r['physics']) for r in result['selections']},
                          {(m, f, o, p) for m in self.package.MALE_FAMILIES for f in self.package.FEMALE_FAMILIES
-                          for o in (False, True) for p in ('none', 'cbpc', 'fsmp')})
+                          for o in (False, True) for p in ('none', 'fsmp')})
         entries = self.package.read_zip(Path(result['archive']).read_bytes())
-        expected_counts = {'none': 18, 'cbpc': 22, 'fsmp': 20}
+        expected_counts = {'none': 18, 'fsmp': 20}
         grouped = {}
         for row in result['selections']:
             self.assertEqual(row['runtimeFiles'], expected_counts[row['physics']] + 2 * row['obody'])
@@ -107,23 +107,24 @@ class MotionFomodTests(unittest.TestCase):
                 self.assertEqual(value['sha256'], self.package.sha(entries[value['source']]))
                 if name.endswith('.nif'):
                     self.assertEqual(value['source'].startswith('40 Motion/FSMP/'), row['physics'] == 'fsmp')
-            self.assertEqual(set(selected) & self.package.CBPC_FILES, self.package.CBPC_FILES if row['physics'] == 'cbpc' else set())
+            self.assertFalse(set(selected) & self.package.CBPC_FILES)
             common = {n: v['sha256'] for n, v in selected.items() if not n.endswith('.nif') and n not in self.package.CBPC_FILES
                       and not n.startswith(self.package.MOTION_XML)}
             key = row['maleFamily'], row['family'], row['obody']
             self.assertEqual(grouped.setdefault(key, common), common)
         self.assertEqual(sum(n.endswith('.nif') for n in entries), 4)  # two unhooked + two hooked; no route/weight copies.
         self.assertFalse(result['gameOrManagerExecuted'])
-        for provider in ('cbpc', 'fsmp'):
-            self.assertFalse(result['motionProviders'][provider]['runtimeQualified'])
-            self.assertEqual(set(result['motionProviders'][provider]['sharedTriSha256']), {'male', 'female'})
+        self.assertEqual(set(result['motionProviders']), {'fsmp'})
+        self.assertFalse(result['motionProviders']['fsmp']['runtimeQualified'])
+        self.assertEqual(set(result['motionProviders']['fsmp']['sharedTriSha256']), {'male', 'female'})
+        self.assertFalse(any(name.startswith('40 Motion/CBPC/') for name in entries))
 
     def test_mutual_exclusion_is_read_from_xml_not_payload_priority(self):
         result = self.package.build(**self.arguments())
         entries = self.package.read_zip(Path(result['archive']).read_bytes()); config = ET.fromstring(entries['fomod/ModuleConfig.xml'])
         choices = config.find(".//group[@name='One werewolf motion provider']")
         self.assertEqual(choices.get('type'), 'SelectExactlyOne')
-        self.assertEqual([p.get('name') for p in choices.findall('plugins/plugin')], ['None', 'CBPC', 'FSMP'])
+        self.assertEqual([p.get('name') for p in choices.findall('plugins/plugin')], ['None', 'Faster HDT-SMP'])
         self.assertEqual(choices.find('plugins/plugin/typeDescriptor/type').get('name'), 'Recommended')
         choices.set('type', 'SelectAny')
         altered = dict(entries); altered['fomod/ModuleConfig.xml'] = ET.tostring(config)
@@ -131,6 +132,8 @@ class MotionFomodTests(unittest.TestCase):
         choices.set('type', 'SelectExactlyOne')
         with self.assertRaisesRegex(ValueError, 'known provider'):
             base.reader.resolve_selection(config, entries, native=True, male_family='HIMBO', family='3BA', physics='both')
+        with self.assertRaisesRegex(ValueError, 'known provider'):
+            base.reader.resolve_selection(config, entries, native=True, male_family='HIMBO', family='3BA', physics='cbpc')
         mapped = config.find("conditionalFileInstalls/patterns/pattern/dependencies/flagDependency[@flag='physicsMode'][@value='fsmp']")
         parent = next(p for p in config.findall('conditionalFileInstalls/patterns/pattern') if p.find('dependencies/flagDependency') is mapped)
         parent.find('files').append(copy.deepcopy(parent.find('files/file')))
@@ -138,12 +141,22 @@ class MotionFomodTests(unittest.TestCase):
             base.reader.resolve_selection(config, entries, native=True, male_family='HIMBO', family='3BA', physics='fsmp')
 
     def test_changed_payload_or_foreign_body_is_rejected(self):
-        path = self.receipts['cbpc'].parent / 'package' / next(iter(self.package.CBPC_FILES)); path.write_bytes(b'changed')
+        path = self.receipts['fsmp'].parent / 'package' / (self.package.MOTION_XML + 'Male.xml'); path.write_bytes(b'changed')
         with self.assertRaisesRegex(ValueError, 'Changed motion payload'): self.package.build(**self.arguments())
         self.receipts = self.prepare_motion()
         foreign = self.f.write('target/foreign-body.nif', body_fixture('male', b'anatomy-or-VR'))
         self.mutate_report('fsmp', lambda r: r['resources'].update(male0=self.pin(foreign)))
         with self.assertRaisesRegex(ValueError, 'selected core endpoint'): self.package.build(**self.arguments())
+
+    def test_cbpc_receipts_and_injected_payloads_cannot_enter_working_installer(self):
+        for fsmp in (None, self.receipts['fsmp']):
+            with self.subTest(fsmp=fsmp), self.assertRaisesRegex(ValueError, 'CBPC motion remains research-only'):
+                self.package.build(**self.f.arguments(), cbpc_motion_build=self.receipts['cbpc'], fsmp_motion_build=fsmp)
+        result = self.package.build(**self.arguments())
+        entries = self.package.read_zip(Path(result['archive']).read_bytes())
+        for name in ('40 Motion/CBPC/SKSE/Plugins/CBPConfig_CLAWMotion.txt', 'NOTICES/CBPCMasterConfig_CLAWMotion.txt'):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'CBPC motion payload'):
+                self.package.selection_audit(entries | {name: b'research configuration'})
 
     def test_unlisted_and_provider_or_test_payloads_are_rejected(self):
         for name in ('SKSE/Plugins/cbp.dll', 'Scripts/Test.pex', 'Textures/coat.dds', 'SKSE/Plugins/anatomy.xml'):
@@ -179,7 +192,7 @@ class MotionFomodTests(unittest.TestCase):
             for weight in (0, 1): self.f.write('target/bodies/' + sex + 'bodywerewolf_' + str(weight) + '.nif', body_fixture(sex, geometry_tri=True))
         self.receipts = self.prepare_motion()
         result = self.package.build(**self.arguments())
-        self.assertEqual(len(result['selections']), 60)
+        self.assertEqual(len(result['selections']), 40)
 
     def test_rehashed_geometry_hook_and_tri_counterexamples_are_rejected(self):
         directory = self.receipts['fsmp'].parent / 'package'

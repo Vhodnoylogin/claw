@@ -1,14 +1,13 @@
 # CLAW.Physics: CBPC ear/tail candidate
 
-The separate [motion adapters](motion-adapters.md) provide installable offline
-CBPC and FSMP alternatives, independent of the finite collider host. The
-current-TRI P1 rig has separate expressive v3/v4 contracts and composes with the
-nominal motion-sphere stage without retained runtime assets. Game acceptance
-remains scoped: the [12 November record](../../../test/docs/physics-qualification-20261112.md)
-accepts sampled FSMP female11/male9 response after observed root recreation.
-CBPC initial binding is verified separately; its controlled motion and the whole
-0.10 release remain unqualified. The source contracts below retain their separate
-contact scope; the motion-only packages do not activate that host.
+The separate [motion adapters](motion-adapters.md) build Faster HDT-SMP
+motion resources for the working installer and retain a standalone CBPC research
+generator, independent of this finite collider host. The current-TRI P1 rig has
+separate expressive v3/v4 contracts and composes with the nominal motion stage.
+The [0.10 verification record](../../../test/docs/release-0.10.0-2026-11-13.md)
+records the released FSMP scope and the unqualified CBPC human-origin rebind.
+The contact source contracts below retain their separate qualification policy;
+choosing motion does not activate that host.
 
 ## Current automatic source integration
 

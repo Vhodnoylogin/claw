@@ -1,11 +1,8 @@
-# CLAW Modder Guide — 0.9.0-r3
+# CLAW Modder Guide — 0.10.0
 
 Practical configuration and integration notes for **CLAW — Customizable
-Lycanthrope Appearance and Weight**. This guide describes the released runtime
-at [source commit b6f65b5](https://github.com/Vhodnoylogin/claw/tree/b6f65b5160efbd373ac35bd286810f8b3f805965),
-tagged [claw/0.9.0-r3](https://github.com/Vhodnoylogin/claw/releases/tag/claw%2F0.9.0-r3).
-The accompanying installation/documentation baseline is
-[2a4eb5e](https://github.com/Vhodnoylogin/claw/tree/2a4eb5e37e6eaf7e5de3eebcd33de0467d66f2aa).
+Lycanthrope Appearance and Weight**. This guide accompanies [CLAW 0.10.0](https://github.com/Vhodnoylogin/claw/releases/tag/claw%2F0.10.0).
+The release tag identifies its matching source and resource definitions.
 
 ## How the pipeline fits together
 
@@ -166,50 +163,65 @@ reapplication until explicit configuration/assignment resumes it.
 
 ## Coat data and the material adapter
 
-The released `CoatMatrix.xml` uses these actual rules:
+The shipped matrix retains a scalar `coat.selector` for hairless fallback
+and schema-1 compatibility. It also copies normalized `hair.red/green/blue` to
+`coat.red/green/blue`, and `seed.withHair` to `coat.variation`. The numerical
+kernel interprets none of those names as a colour or texture ID.
 
-```xml
-<CoatMatrix schemaVersion="1">
-  <Rule source="hair.red" target="coat.selector" gain="0.187088" cap="1"/>
-  <Rule source="hair.green" target="coat.selector" gain="0.629376" cap="1"/>
-  <Rule source="hair.blue" target="coat.selector" gain="0.063536" cap="1"/>
-  <Rule source="seed.withHair" target="coat.selector" gain="0.12" cap="1"/>
-  <Rule source="seed.withoutHair" target="coat.selector" gain="1" cap="1"/>
-</CoatMatrix>
-```
+Schema-2 `CoatMapping.xml` selects the configured colour group nearest the RGB
+output in weighted Oklab distance, then partitions that group's variants by the
+stable normalized variation value. RGB does not include the seed. Groups,
+anchors, weights and logical IDs are configuration, not DLL texture constants.
+The ten installed Elegant coats have a limited palette: an exact human RGB
+match is not promised. Without known hair, scalar half-open intervals select
+from the natural coat pool; the final upper endpoint includes 1.
 
-Hair channels are normalized RGB. With known human hair, `seed.withHair` supplies
-a small stable variation and `seed.withoutHair` is zero. Without it, hair inputs
-and `seed.withHair` are zero and `seed.withoutHair` supplies the stable selector.
-These five names are the coat collector's supported inputs.
+`CoatLibrary.xml` resolves material IDs to external diffuse paths. No texture
+artwork is included in CLAW. Install Elegant's PlayerOnly 2K or 4K FOMOD with
+Randomized to expose the ten optional coats, and let CLAW win its matching files.
+The authored empty `RandomElegantWerewolves_MS.json` prevents whole-model
+substitution without removing the author's texture files.
 
-`CoatMapping.xml` names the output and maps intervals to logical IDs/materials;
-for example its first range is:
-
-```xml
-<Range min="0" max="0.1" id="elegant-2k-2.1/black" material="randomized/black" />
-```
-
-Lower bounds are included; upper bounds are excluded except for the final 1.
-Aliases let several logical IDs share one material. `CoatLibrary.xml` resolves
-the ten materials to nine external diffuse files each, with metadata. No texture
-artwork is included in CLAW. Keep Elegant's base installation for the NIF's base
-material and obtain optional Randomized textures from the author's separate
-download. Follow the [release installation guide](https://github.com/Vhodnoylogin/claw/blob/2a4eb5e37e6eaf7e5de3eebcd33de0467d66f2aa/src/main/resources/publication/runtime/README.md)
-for the exact 0.9.0 dependency setup; this guide adds no new dependency mode.
-CLAW's empty `RandomElegantWerewolves_MS.json` must win the Model Swapper conflict.
-
-A complete coat is checked before binding. Missing/wrong-size files, invalid DDS
-headers or loaded dimensions cause fallback to the installed base material;
-body conversion continues. Catalog SHA values are provenance metadata: this
-release does not hash the installed DDS payload at runtime. Restart after fixing
-resources, or reassign the coat to invalidate its validation cache.
+A complete coat is checked before binding. Paths select textures, not fixed
+byte sizes or hashes. Source hashes are provenance. DDS structural validation
+accepts valid 2K, 4K or mixed resolutions and checks known compressed mip payloads;
+the engine validates loaded resources. Missing/incomplete/invalid sets retain
+the installed base coat while body conversion continues. Restart after fixing
+resources, or explicitly reassign a coat to invalidate its validation cache.
 
 Use `GetCoatPatterns()` for logical IDs, `SetCoatPattern(target,id)` for a manual
 override, and `ClearCoatPattern(target)` to resume automatic selection. Inspect
 `GetAppliedCoatPattern` and `GetCoatPatternStatus`; requested and applied states
-are separate. The shipped mapping keeps original texture colours. The separate
-appearance mechanism can use captured skin/hair colour for private material tint.
+are separate. The shipped configuration uses original texture colours.
+
+## Motion provider adapters
+
+The installer offers None or Faster HDT-SMP. None uses the normal morphable
+NIFs. FSMP adds one sex-specific XML hook to each model route and installs two XMLs.
+Its append-only hook preserves the original geometry, skin weights, materials
+and BODYTRI; both choices share the same male/female TRI resources.
+
+Drivers are four existing ear links and five tail links for both sexes; two
+existing female breast P1 nodes are female-only. Original XP32 nodes/skin
+influences are reused, not renamed. Physics providers and the skeleton are
+separate dependencies. Provider constants do not refit themselves to each morph,
+and this release adds no fitted contact colliders or first-person VR body.
+Avoid another configuration that writes the same werewolf nodes. Human physics
+can continue independently when it does not claim those nodes.
+
+The source builders consume explicit male0/1, female0/1 and skeleton paths plus
+a provider/configuration snapshot. They validate stored skin influences and
+writer ownership; the packager requires exact matching body/TRI inputs and
+one installed body source per route. The source and builder receipts are
+provenance, not live simulation evidence. See the release verification record
+for actual provider versions, measured motion and lifecycle scope.
+
+CBPC data generation and diagnostic source remain available for development,
+but CBPC is not a motion option in this release. On the tested 1.7.3 binary,
+first human-to-wolf transformation retained the human Thing set and created none
+of the eleven selected wolf drivers. Public bounce/collision parameter refresh
+does not establish actor rebinding; no global reload workaround is installed.
+See the retained technical test record before extending that backend.
 
 ## Engine ownership, optional sources and tools
 
@@ -230,7 +242,7 @@ The [Morphbench plugin](https://github.com/Vhodnoylogin/claw-morphbench-plugin) 
 optional authoring tooling. Public version 0.3 targets older CLAW 0.7 matrices;
 it is not a matching editor for every expanded 0.9 output. The updated public UI
 release is deferred. Matching development tools consume an explicitly pinned
-[shared C++ matrix kernel](https://github.com/Vhodnoylogin/claw/tree/b6f65b5160efbd373ac35bd286810f8b3f805965/src/main/cpp/shared),
+[shared C++ matrix kernel](https://github.com/Vhodnoylogin/claw/tree/claw%2F0.10.0/src/main/cpp/shared),
 compiled for native and WebAssembly use, rather than a second JavaScript equation.
 Pixel metrics describe sampled artwork; they do not automatically build matrix
 ranges or establish rendered colour/geometry quality.
@@ -242,6 +254,6 @@ coats and fallback separately from body morphs. `RequestCoatSurfaceAudit` and
 samples; concatenate every returned chunk before JSON parsing. Diagnostics and
 arithmetic parity still need visual review in the target runtime.
 
-Further reference: [matrix contract](https://github.com/Vhodnoylogin/claw/blob/b6f65b5160efbd373ac35bd286810f8b3f805965/src/main/docs/matrix-contract.md),
-[native Papyrus API](https://github.com/Vhodnoylogin/claw/blob/b6f65b5160efbd373ac35bd286810f8b3f805965/src/main/papyrus/claw/CLAWDistributionNative.psc),
-[coat contract](https://github.com/Vhodnoylogin/claw/blob/2a4eb5e37e6eaf7e5de3eebcd33de0467d66f2aa/src/main/docs/coat-library.md).
+Further reference: [matrix contract](https://github.com/Vhodnoylogin/claw/blob/claw%2F0.10.0/src/main/docs/matrix-contract.md),
+[native Papyrus API](https://github.com/Vhodnoylogin/claw/blob/claw%2F0.10.0/src/main/papyrus/claw/CLAWDistributionNative.psc),
+[coat contract](https://github.com/Vhodnoylogin/claw/blob/claw%2F0.10.0/src/main/docs/coat-library.md).

@@ -11,10 +11,31 @@ import xml.etree.ElementTree as ET
 import motion_adapter as common
 
 TOOLS = common.ROOT.parent / "build-tools"
+HELPER_PATHS = {name: (TOOLS / (name + ".py")).resolve()
+                for name in ("head_split", "breast_rig", "vr_head", "surface_collar")}
+HELPER_SOURCE_BYTES = {name: path.read_bytes() for name, path in HELPER_PATHS.items()}
 sys.path.insert(0, str(TOOLS))
+import head_split
 from head_split import Nif
 import player_only_materials as materials
 
+HELPER_MODULES = {name: sys.modules[name] for name in HELPER_PATHS}
+
+
+def helper_source_pins():
+    """Admit the actual imported helper graph and retain its consumed sources."""
+    rows = []
+    for name, path in HELPER_PATHS.items():
+        if Path(HELPER_MODULES[name].__file__).resolve() != path:
+            raise ValueError("A different FSMP local helper is already loaded: " + name)
+        payload = HELPER_SOURCE_BYTES[name]
+        if path.read_bytes() != payload:
+            raise ValueError("FSMP local helper source changed since loading: " + name)
+        rows.append({"path": str(path), "bytes": len(payload), "sha256": hashlib.sha256(payload).hexdigest()})
+    return rows
+
+
+helper_source_pins()
 MATERIAL_SOURCE = TOOLS / "player_only_materials.py"
 if Path(materials.__file__).resolve() != MATERIAL_SOURCE.resolve():
     raise ValueError("A different PlayerOnly material adapter is already loaded")
@@ -133,7 +154,7 @@ def build_adapter(out, provider_snapshot, resources, pynifly, *, breast=False, a
     coverage = common.inspect_resources(api, resources, breast)
     if MATERIAL_SOURCE.read_bytes() != MATERIAL_SOURCE_BYTES:
         raise ValueError("PlayerOnly material adapter source changed since loading")
-    sources = [common.pin(Path(__file__)), common.pin(Path(common.__file__)), common.pin(TOOLS / "head_split.py"),
+    sources = [common.pin(Path(__file__)), common.pin(Path(common.__file__)), *helper_source_pins(),
                common.pin(MATERIAL_SOURCE),
                common.pin(common.ROOT / "motion-adapters.md")]
     files = {}
@@ -183,6 +204,7 @@ def build_adapter(out, provider_snapshot, resources, pynifly, *, breast=False, a
     archive = out / "CLAW Physics - FSMP Motion.zip"
     common.archive(archive, files)
     common.unchanged([*pins.values(), *dependencies, *sources])
+    helper_source_pins()
     inputs.verify()
     common.source.verify_provider_unchanged(audit)
     binary = next((row for row in audit["files"] if row["path"].casefold() == "hdtsmp64.dll" and row["bytes"]), None)
@@ -191,7 +213,8 @@ def build_adapter(out, provider_snapshot, resources, pynifly, *, breast=False, a
               "runtimeQualified": False, "gameValidated": False, "releaseReady": False,
               "sourceContracts": {"binding": SOURCE + "hdtDefaultBBP.cpp", "constraints": SOURCE + "hdtSkyrimSystem.cpp"},
               "collisionResponseEnabled": False, "resources": pins, "storedWeightCoverage": coverage,
-              "bindings": bindings, "sourceInputs": [*inputs.rows(), *sources], "dependencies": dependencies,
+              "bindings": bindings, "sourceInputs": [*common.source_pins(inputs), *sources], "dependencies": dependencies,
+              "numericDependencies": [{"name": "numpy", "version": str(head_split.np.__version__), "bundled": False}],
               "providerAudit": audit,
               "files": [{"path": name, "bytes": len(payload), "sha256": hashlib.sha256(payload).hexdigest()}
                         for name, payload in sorted(files.items())], "archive": common.pin(archive)}

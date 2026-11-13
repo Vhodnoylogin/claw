@@ -29,11 +29,121 @@ def protocol(*, ai_disabled=False):
     return result
 
 
+def automatic_protocol():
+    """Prospective human-origin contract; no provider call before first window."""
+    return {**protocol(), "id": "claw-cbpc-human-origin-automatic-nominal/1",
+            "initialControlMode": "uncontrolled"}
+
+
+def human_subject(reference, sex, provider_name):
+    """Finite fixture policy, separate from unchanged transform calculations."""
+    reference = scene.form(reference)
+    require(sex in ("female", "male"), "Explicit human-origin sex required")
+    local, base, weight, scale = ((0x900, "0x000A2C91", 50., 1.) if sex == "female" else
+                                 (0x901, "0x000A2C90", struct.unpack("<f", bytes.fromhex("ffffef41"))[0], 1.13))
+    require(int(reference, 16) >> 24 != 0xFF and int(reference, 16) & 0xFFFFFF == local,
+            "Authored persistent lifecycle reference required")
+    require(type(provider_name) is str and 0 < len(provider_name) <= 128 and
+            all(c not in provider_name for c in "\r\n\0"), "Actual finite provider display name required")
+    return {"schemaVersion": 1, "reference": reference, "sex": sex,
+            "sourcePlugin": "test_CLAW - Physics Probe.esp", "localReference": f"0x{local:08X}",
+            "baseForm": base, "originalRace": "0x00013746", "currentRace": "0x000CDD84",
+            "rawNPCWeight": weight, "expectedUniformScale": scale, "providerActorName": provider_name}
+
+
+def admit_human_origin(row, subject, *, numeric=True):
+    expected = human_subject(subject["reference"], subject["sex"], subject["providerActorName"])
+    require(subject == expected, "Changed finite human-origin fixture policy")
+    actor, identity = row["guard"]["actor"], row["guard"]["identity"]
+    require(type(actor.get("sex")) is int and actor["sex"] == (subject["sex"] == "female") and
+            identity["form"].casefold() == subject["reference"].casefold() and
+            identity.get("sourcePlugin") == subject["sourcePlugin"] and
+            identity.get("localFormId", "").casefold() == subject["localReference"].casefold() and
+            actor.get("baseForm", "").casefold() == subject["baseForm"].casefold() and
+            actor.get("baseRace", "").casefold() == subject["currentRace"].casefold() and
+            actor.get("race", "").casefold() == subject["currentRace"].casefold(),
+            "Original-human base/current wolf identity differs")
+    if numeric:
+        scale = subject["expectedUniformScale"]
+        require(actor["weight"]["rawNPCWeight"] == subject["rawNPCWeight"], "Original NPC weight changed")
+        require(abs(row["root"]["scale"] - scale) <= 1e-5 and abs(row["guard"]["scale"] - scale) <= 1e-5,
+                "Declared human-origin actor/root scale differs")
+        require(all(abs(node["local"]["scale"] - 1.) <= 1e-5 and
+                    abs(node["world"]["scale"] - scale) <= 1e-5 for node in row["nodes"].values()),
+                "Declared local/world node scale differs")
+
+
+def admit_human_lifecycle(evidence, subject, final):
+    """Original ancestry is captured evidence; SetRace changes both race fields."""
+    require(evidence.get("completed") is True and evidence.get("unknown") is False and evidence.get("providerCalls") == [],
+            "Completed provider-untouched lifecycle evidence required")
+    labels = ["place-disabled", "enable-human", "restrain-human", "unequip-owned-outfit", "enable-human-ai", "first-wolf", "refresh", "human-return", "second-wolf", "node-update", "owned-save", "owned-load", "head-tracking-off"]
+    require([r.get("label") for r in evidence.get("writes", [])] == labels and
+            all(r.get("status") == "returned" for r in evidence["writes"]), "Known lifecycle completion sequence differs")
+    binding = evidence.get("firstTransformBinding", {})
+    require(binding.get("allDeclaredNodes") is True and binding.get("subject") == subject and
+            binding.get("providerControlsBeforeThisPrefix") == [] and
+            set(binding.get("ledger", {})) == set(scene.drivers(subject["sex"])) and
+            all(type(r.get("insertions")) is int and r["insertions"] >= 1 and
+                type(r.get("updates")) is int and r["updates"] >= 1 for r in binding["ledger"].values()),
+            "First-transform binding diagnostics missing")
+    source = evidence.get("humanSource", {})
+    require(type(source.get("linkStatus")) is int and source["linkStatus"] in (0, 5) and type(source.get("appearanceStatus")) is str and
+            (source["appearanceStatus"] == "human colours captured" or source["appearanceStatus"].startswith("record-hair-fallback:")),
+            "Observed human source/status missing")
+    witnesses = evidence.get("phaseWitnesses", {})
+    names = ("initial-human", "enabled-human", "first-wolf", "refresh", "human-return", "second-wolf", "post-load")
+    require(set(witnesses) == set(names), "Complete actual lifecycle phase witnesses required")
+    previous = None
+    for name in names:
+        raw = witnesses[name]
+        require(raw.get("ok") is True and raw.get("quality") == "complete" and len(raw.get("refs", [])) == 1,
+                "Lifecycle witness incomplete")
+        ref = raw["refs"][0]
+        actor, identity = ref["actor"], ref["identity"]
+        race = subject["originalRace"] if name in ("initial-human", "enabled-human", "human-return") else subject["currentRace"]
+        require(identity.get("form", "").casefold() == subject["reference"].casefold() and
+                identity.get("sourcePlugin") == subject["sourcePlugin"] and
+                identity.get("localFormId", "").casefold() == subject["localReference"].casefold() and
+                ref.get("baseForm", "").casefold() == subject["baseForm"].casefold() and actor.get("baseForm") == ref["baseForm"] and
+                actor.get("race", "").casefold() == race.casefold() and actor.get("baseRace", "").casefold() == race.casefold() and
+                type(actor.get("sex")) is int and actor["sex"] == (subject["sex"] == "female") and
+                actor.get("weight", {}).get("rawNPCWeight") == subject["rawNPCWeight"],
+                "Actual lifecycle base/sex/weight/current/base-race transition differs")
+        require(ref.get("disabled") is (name == "initial-human") and
+                ref.get("loaded3D") is (name != "initial-human"), "Lifecycle enabled/loaded boundary differs")
+        if previous is not None:
+            require(raw["sessionId"] == previous["sessionId"] and raw["producerMonotonicNs"] > previous["producerMonotonicNs"] and
+                    (raw["loadGeneration"] > previous["loadGeneration"] if name == "post-load" else
+                     raw["loadGeneration"] == previous["loadGeneration"] and raw["sampleId"] > previous["sampleId"]),
+                    "Lifecycle witness replay/process change")
+        previous = raw
+    initial, loaded = witnesses["initial-human"], witnesses["post-load"]
+    require(loaded["loadGeneration"] > initial["loadGeneration"] and
+            loaded["loadGeneration"] == final["guard"]["generation"] and
+            loaded["sessionId"] == final["guard"]["session"] and
+            loaded["refs"][0]["identity"] == final["guard"]["identity"] and
+            loaded["refs"][0]["rootIdentity"] == final["guard"]["root"] and
+            loaded["sampleId"] < final["sample"] and loaded["producerMonotonicNs"] < final["time"],
+            "Fresh postload root/epoch not reacquired")
+
+
+def provider_ledger(data, nodes, subject):
+    require(subject == human_subject(subject["reference"], subject["sex"], subject["providerActorName"]),
+            "Changed finite provider-log subject")
+    require(tuple(nodes) == scene.drivers(subject["sex"]), "Changed finite provider driver inventory")
+    lines = data[:data.rfind(b"\n") + 1].decode("utf8", errors="strict").splitlines()
+    base = subject["baseForm"][2:].lower()
+    name = subject["providerActorName"] + " - " + subject["sex"].title() + " - Thing.update() "
+    return {n: {"insertions": sum(x.startswith("Adding " + n + " to default list for " + base + " -> ") for x in lines),
+                "updates": sum(x.startswith(name + n + " - Diff: ") for x in lines)} for n in nodes}
+
+
 def selected_protocol(declared=None):
-    """Two immutable declared experiments; legacy remains the default."""
+    """Immutable declared experiments; legacy remains the default."""
     if declared is None:
         return protocol()
-    for expected in (protocol(), protocol(ai_disabled=True)):
+    for expected in (protocol(), protocol(ai_disabled=True), automatic_protocol()):
         if (type(declared) is dict and declared.keys() == expected.keys() and
                 all(type(declared[k]) is type(v) and declared[k] == v for k,v in expected.items())):
             return expected
@@ -102,7 +212,7 @@ def motion_index(rows, name, channel):
     return math.sqrt(statistics.mean(terms))
 
 
-def score(document, expected_subject_pins, *, declared_protocol=None):
+def score(document, expected_subject_pins, *, declared_protocol=None, human_origin=None):
     spec=selected_protocol(declared_protocol)
     require(document.get("schemaVersion")==1 and document.get("protocol")==spec, "Changed nominal contract")
     require(document.get("subjectPins")==expected_subject_pins and bool(expected_subject_pins), "Subject source/provider pins differ")
@@ -111,8 +221,18 @@ def score(document, expected_subject_pins, *, declared_protocol=None):
     parents={n:p[0] for n,p in hierarchy.parent_paths(sex).items()}
     require(document.get("expectedParents")==parents, "Changed pinned expected parent paths")
     baseline=previous=scene.snapshot(document["baseline"],reference,sex)
-    require(all(baseline["guard"]["actor"].get(k,"").lower()=="0x000cdd84" for k in ("race","baseRace")), "Born-beast fixture required")
-    require(abs(baseline["root"]["scale"]-1.)<=1e-5 and abs(baseline["guard"]["scale"]-1.)<=1e-5, "Nominal unit scale required")
+    automatic = spec == automatic_protocol()
+    if automatic:
+        require(human_origin is not None and document.get("humanOrigin") == human_origin,
+                "Explicit original-human subject contract required")
+        admit_human_origin(baseline, human_origin)
+        admit_human_lifecycle(document.get("humanLifecycle", {}), human_origin, baseline)
+        require(document.get("providerControlBeforeInitial") == [] and
+                set(document["receipts"]) == {"stop", "restart"}, "No initial provider control is permitted")
+    else:
+        require(human_origin is None, "Legacy contract cannot adopt a human-origin subject")
+        require(all(baseline["guard"]["actor"].get(k,"").lower()=="0x000cdd84" for k in ("race","baseRace")), "Born-beast fixture required")
+        require(abs(baseline["root"]["scale"]-1.)<=1e-5 and abs(baseline["guard"]["scale"]-1.)<=1e-5, "Nominal unit scale required")
     origin=baseline["position"]
     root_offset=[x-y for x,y in zip(baseline["root"]["translation"],origin)]
 
@@ -148,10 +268,10 @@ def score(document, expected_subject_pins, *, declared_protocol=None):
 
     plan=controls.prepare(reference,sex)
     windows={};cadence={};composition={}
-    for phase,action in zip(PHASES,("start","stop","restart")):
-        receipts=document["receipts"][action]
-        require(len(receipts)==len(plan["calls"][action]), "Missing driver control receipt")
-        for receipt,request in zip(receipts,plan["calls"][action]):
+    for phase,action in zip(PHASES,((None if automatic else "start"),"stop","restart")):
+        receipts=document["receipts"][action] if action is not None else []
+        require(len(receipts)==(len(plan["calls"][action]) if action is not None else 0), "Missing driver control receipt")
+        for receipt,request in zip(receipts,plan["calls"][action] if action is not None else []):
             consume(receipt["before"]);controls.completed(receipt,request);consume(receipt["after"])
         if phase=="active" and spec.get("disableAIAfterNormalStart"):
             freeze=document["aiFreezeReceipt"]

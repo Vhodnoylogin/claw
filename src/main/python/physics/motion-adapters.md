@@ -1,25 +1,28 @@
-# Separate motion adapters
+# FSMP release motion and CBPC research adapter
 
 `motion_adapter.py` builds a separate provider mod-manager archive from explicitly
 selected male/female weight-0/1 NIFs and the existing pinned XP32 skeleton. The
-CBPC archive includes only original motion configuration and a short README.
+CBPC research archive includes only original motion configuration and a short README.
 Neither adapter changes the universal CLAW DLL, human-family matrices, skeleton,
 other mods, or the optional collider host.
+Only FSMP motion is offered by the working CLAW 0.10 installer. The standalone
+CBPC generator remains offline research tooling, not a released runtime option.
 
 ## Optional integration in one CLAW installer
 
-The source packager accepts both `--cbpc-motion-build <motion-adapter-build.json>`
-and `--fsmp-motion-build <fsmp-motion-build.json>`, or neither. These are unpacked
-outputs of the existing builders, not ZIP inputs. With neither receipt the
-existing core-only installer and20 family/OBody selections are preserved.
-Supplying both adds a default-None, mutually exclusive None/CBPC/FSMP choice and
-60 selection plans. It does not establish runtime qualification of either provider.
+The source packager accepts `--fsmp-motion-build <fsmp-motion-build.json>` alone,
+or no motion receipt. This is an unpacked builder output, not a ZIP input.
+With no receipt, the existing core-only installer and 20 family/OBody selections
+are preserved. An FSMP receipt adds a default-None, mutually exclusive
+None/Faster HDT-SMP choice and 40 selection plans. `--cbpc-motion-build` is
+explicitly rejected by the working packager. Packaging does not establish
+runtime qualification.
 
-Build both adapters from the exact four core body inputs and the same skeleton,
+Build the FSMP adapter from the exact four core body inputs and pinned skeleton,
 with female P1 motion included. Each endpoint needs an explicit path even when
 its bytes equal the other weight endpoint. The packager verifies source/resource
-and output hashes, permits only the four CBPC configuration files or the eight
-FSMP NIF routes plus two XMLs, and discards the separate adapter README. Any
+and output hashes, permits only the eight FSMP NIF routes plus two XMLs, and
+discards the separate adapter README. Any
 unlisted payload fails. Source/recipe pins remain external provenance; no builder,
 provider DLL, skeleton, collider host, anatomy or VR component is installed.
 
@@ -27,7 +30,7 @@ The existing lightweight SSE reader independently checks the FSMP output against
 the final material-adapted core: unchanged original non-root blocks and strings,
 one appended root hook, and the exact sex-specific XML. Both armor routes must
 match. BODYTRI retains the core sex-specific path; both modes reference the same
-core TRI bytes and their hashes are recorded with each provider. Equal endpoint
+core TRI bytes and their hashes are recorded with the FSMP selection. Equal endpoint
 and PlayerOnly aliases reuse archive sources. No installed destination depends
 on overwrite priority: each selected plan supplies exactly one body source.
 
@@ -39,7 +42,7 @@ only without conflicting werewolf-node writers. Packaging neither inspects a liv
 profile nor verifies a provider's runtime version or lifecycle behavior.
 
 ```powershell
-python src/main/python/physics/motion_adapter.py --provider cbpc `
+python src/main/python/physics/motion_adapter.py --provider fsmp `
   --provider-snapshot '<baseline-winning-SKSE/Plugins>' `
   --male0 '<selected-malebodywerewolf_0.nif>' `
   --male1 '<selected-malebodywerewolf_1.nif>' `
@@ -57,7 +60,7 @@ The builder derives a new explicit P1 resource binding from the inspected female
 endpoints. It reuses the existing motion-only recipe without editing its legacy
 body pin. It neither reconstructs nor approves a new breast rig.
 
-With CBPC, both ears (four links) and the tail (five links, including TailBone04) use the
+In the research-only CBPC generator, both ears (four links) and the tail (five links, including TailBone04) use the
 existing race-gated original parameters. P1 is female-only. All collision response
 multipliers are zero in this adapter: detailed capsule/contact work remains a
 separate package and qualification. The private `CLAW_*` aliases deliberately
@@ -98,20 +101,19 @@ current-vector native observer/finite collider host supplies that separate path
 when compiled with a matching model, qualified and explicitly enabled. The
 motion-only archive cannot enable that host or its snapshot authority.
 
-Select `--provider fsmp` for the separate FSMP alternative in `fsmp_motion.py`.
+Select `--provider fsmp` for the working installer's motion resources in `fsmp_motion.py`.
 It emits original XML with nine or eleven dynamic bones, kinematic anchors,
 restoring linear/angular springs and no collision shapes. Tail constraints
 connect existing driver nodes across unchanged CME wrappers. Ear/tail identity
 `frameInB` uses actual loaded rest transforms. The two single-body P1 joints use
 identity `frameInA`, attaching at the kinematic PreBreast origin instead of the
 dynamic body's center. The pinned skeleton has a one-unit P1 lever; this pivot
-change is mechanical. Its earlier isolated female11-driver nominal response passed
-case08. The [current-resource qualification](../../../test/docs/physics-qualification-20261112.md)
-also records female11 and authored male9 sampled response after observed
+change is mechanical. Earlier isolated cases recorded female11 and authored
+male9 sampled response after observed
 Disable/unloaded/Enable root recreation, with the actual pulse fenced to the
 replacement graph. These cases do not establish human-origin transformation,
 cell unload, player routing, contacts or synchronized solver/render phases. Complete motion
-release acceptance still requires the [remaining lifecycle checks](../../../test/docs/physics-0.10-lifecycle-plan.md).
+release acceptance still requires the [remaining lifecycle checks](#release-cut-acceptance-boundary).
 Translation limits are +/-0.15 per axis;
 Euler limits are +/-0.01 radians. These are original small-motion trials.
 
@@ -151,8 +153,8 @@ the chosen motion envelope are a separate geometry prerequisite.
 The next motion trial uses the exact released v4 body endpoints and matching
 TRIs. The fresh v4 body pipeline already applies the current-TRI P1 rig and
 nominal motion bounds; another skeleton or morph-family-specific physics DLL is
-not required. Qualify CBPC and FSMP independently, with only one werewolf motion
-adapter enabled in each trial. Include born beasts and NPCs first admitted while
+not required. The working installer uses FSMP only; separate CBPC research is
+not release qualification. Include born beasts and NPCs first admitted while
 human, then transformed, so a successful initial beast bind cannot conceal a
 race/root rebinding failure. Compare local driver motion with controlled movement
 and a disabled/neutral control; inherited world motion alone is insufficient.
@@ -209,6 +211,13 @@ Enlarged bounds do not establish visible motion or contact quality.
 
 ## CBPC runtime admission investigation
 
+CLAW 0.10 excludes CBPC motion from the working installer. The actual
+human-to-wolf case did not create the selected wolf simulation Things, and the
+inspected public API supplies no actor-scoped reset/rebind. No global reload is
+introduced as a workaround. The standalone generator remains available for
+offline research; its narrow amplitude evidence does not qualify automatic
+human-origin binding. See [the human-origin record](../../../test/docs/cbpc-human-origin-automatic.md).
+
 The first six-wolf observation used the installed CBPC 1.7.3 runtime-specific
 SE 1.7.104 binary. All 240 requested bone observations were available. Ear/tail
 rotations varied, while all six P1 local transform sequences were exactly
@@ -224,8 +233,8 @@ only binds actors whose cached object is unbound. Player beast-form changes,
 cell changes and configuration reload clear that cache; this source does not
 show an equivalent NPC root/race transition check. A subject admitted while
 human could therefore lack the subsequently applicable werewolf-only rows.
-That is a testable source-backed hypothesis. The official repository's current
-master is still this 2022 commit; equivalence to the installed 1.7.3 binary has
+That is a testable source-backed hypothesis. This cached source is from 2022;
+equivalence to the installed 1.7.3 binary has
 not been established.
 
 The exact 1.7.3 FOMOD archive supplies the original `CBPCPluginScript.psc` with
@@ -238,3 +247,18 @@ and after one provider reload, followed by a controlled motion and disabled
 comparison. No such call is implicit in an adapter build, and an unobserved
 reload must not be presented as an automatic transformation fix. No additional
 dependency or `extraRaces` edit is justified by the current evidence.
+
+## Release-cut acceptance boundary
+
+This source cut adds the motion builders and installer selection, retaining the
+existing v4 geometry, skin weights, P1 rig and nominal shape bounds. It does not
+include VR, anatomy extensions or a new contact model. The finite collider host
+remains separate and disabled; choosing motion does not grant its authority.
+
+Historical binding or response cases do not qualify this cut. FSMP
+still requires matching installed resources and measured selective response,
+then human-to-wolf admission, refresh, human return and a second transformation,
+actual model recreation, save/load and cell-unload/reload checks with cleanup.
+Visible motion, solver limit compliance and morph/weight/scale coverage are
+separate observations. Exported constants and enlarged rest bounds do not
+predict actual motion amplitude.

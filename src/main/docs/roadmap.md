@@ -9,11 +9,22 @@ Check both installations, selections, game materials and save/load.
 
 ## 0.10.0: motion physics
 
-Complete actual CBPC and FSMP provider binding, actor-scoped activation,
-refresh/rebinding, cleanup and motion. Prefer provider-specific adapters and the
-existing XP32 skeleton. Compilation, a void callback and animation-driven node
+Ship the checked Faster HDT-SMP motion adapter, lifecycle and cleanup using the
+existing XP32 skeleton. Keep CBPC out of the installer until its original-human
+rebind problem has a provider-supported solution. Compilation, a void callback and animation-driven node
 changes do not prove physics simulation. Establish actual provider state and
 controlled motion in the game; do not mask uncertainty with qualification flags.
+
+## Deferred CBPC actor rebinding
+
+Actual 13 November case142827-3a903c transformed a human NPC successfully, but
+CBPC1.7.3 kept updating human Things and created none of the eleven requested
+wolf drivers. Its installed public interface provides parameter refresh, not a
+proven per-actor rebind. Retain the exact failed test/API evidence and pursue a
+provider-supported invalidation contract separately. Do not ship guessed refresh
+calls, a global reset workaround or an unverified CBPC option. The independent
+FSMP mode passed the full both-sex human-origin lifecycle and remains0.10 scope.
+
 
 ## Active development sequence — owner update, 12 November
 

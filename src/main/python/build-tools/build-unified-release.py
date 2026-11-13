@@ -97,7 +97,7 @@ def resolve_selection(config, archive_paths, game_version="1.7.104.0", racemenu=
     independent_families = config.find("conditionalFileInstalls") is not None
     motion_options = config.findall(".//conditionFlags/flag[@name='physicsMode']")
     if motion_options:
-        if not native or physics not in {None, "none", "cbpc", "fsmp"}:
+        if not native or physics not in {None, "none", "fsmp"}:
             raise ValueError("Motion selection requires native linkage and one known provider")
         physics = physics or "none"
     elif physics is not None:

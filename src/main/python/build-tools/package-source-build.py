@@ -34,7 +34,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[4]
 NAME = "CLAW - Customizable Lycanthrope Appearance and Weight"
 ARCHIVE_NAME = "CLAW - Customizable Lycanthrope Appearance and Weight.zip"
-VERSION = "0.9.0"
+VERSION = "0.10.0"
 APPEARANCE_FILES = ("CoatLibrary.xml", "CoatMapping.xml", "CoatMatrix.xml")
 APPEARANCE_PATH = "SKSE/Plugins/CLAW/"
 RUNTIME_README = "src/main/resources/publication/runtime/README.md"
@@ -527,9 +527,9 @@ def installer(template, entries, motion=False):
         group = ET.SubElement(ET.SubElement(step, 'optionalFileGroups', order='Explicit'), 'group',
                               name='One werewolf motion provider', type='SelectExactlyOne')
         options = ET.SubElement(group, 'plugins', order='Explicit')
-        for mode, name in (('none', 'None'), ('cbpc', 'CBPC'), ('fsmp', 'FSMP')):
+        for mode, name in (('none', 'None'), ('fsmp', 'Faster HDT-SMP')):
             option = ET.SubElement(options, 'plugin', name=name)
-            provider_url = 'https://www.nexusmods.com/skyrimspecialedition/mods/' + ('21224' if mode == 'cbpc' else '57339')
+            provider_url = 'https://www.nexusmods.com/skyrimspecialedition/mods/57339'
             ET.SubElement(option, 'description').text = ('No CLAW werewolf motion configuration.' if mode == 'none' else
                 'Install the matching ' + name + ' provider separately: ' + provider_url +
                 '. Adds motion to ears, tail and female breasts. Choose one option. No contact colliders.')
@@ -542,7 +542,7 @@ def installer(template, entries, motion=False):
                 source, destination = body.get('source'), body.get('destination')
                 if mode == 'fsmp': source = source.replace('00 Base/', MOTION_PREFIX + 'FSMP/', 1)
                 ET.SubElement(files, 'file', source=source, destination=destination)
-            extra = CBPC_FILES if mode == 'cbpc' else ({MOTION_XML + sex + '.xml' for sex in ('Male', 'Female')} if mode == 'fsmp' else set())
+            extra = {MOTION_XML + sex + '.xml' for sex in ('Male', 'Female')} if mode == 'fsmp' else set()
             for destination in sorted(extra):
                 ET.SubElement(files, 'file', source=MOTION_PREFIX + mode.upper() + '/' + destination, destination=destination)
     if not any(name.startswith("30 OBody Source/") for name in entries):
@@ -624,13 +624,16 @@ def selection_audit(entries):
     if motion:
         groups = [group for group in config.findall('.//group') if group.findall("plugins/plugin/conditionFlags/flag[@name='physicsMode']")]
         flags = groups[0].findall("plugins/plugin/conditionFlags/flag[@name='physicsMode']") if len(groups) == 1 else []
-        if (len(groups) != 1 or groups[0].get('type') != 'SelectExactlyOne' or len(flags) != 3 or
-                {flag.text for flag in flags} != {'none', 'cbpc', 'fsmp'}):
-            raise ValueError('Motion requires exactly one mutually exclusive three-choice group')
+        if (len(groups) != 1 or groups[0].get('type') != 'SelectExactlyOne' or len(flags) != 2 or
+                {flag.text for flag in flags} != {'none', 'fsmp'}):
+            raise ValueError('Motion requires one mutually exclusive None/Faster HDT-SMP group')
     if json.loads(entries["00 Base/" + MODEL_SWAP_OVERRIDE]) != []:
         raise ValueError("Elegant model-swap compatibility override must be an empty JSON array")
     audit_external_coats(entries)
     for name, data in entries.items():
+        if (name.startswith(MOTION_PREFIX + 'CBPC/') or
+                Path(name).name.casefold().startswith(('cbpcmasterconfig', 'cbpconfig', 'cbpcollisionconfig'))):
+            raise ValueError('CBPC motion payload is not part of the working installer')
         if (Path(name).suffix.lower() == ".dds" or "textures" in PurePosixPath(name.casefold()).parts
                 or data.startswith(b"DDS ")):
             raise ValueError("Texture redistribution is not part of this runtime: " + name)
@@ -638,7 +641,7 @@ def selection_audit(entries):
         raise ValueError("Literal serialized FOMOD must contain body/base mappings, four PlayerOnly model aliases and all coat resources")
     rows = []
     for male, family in ((male, female) for male in MALE_FAMILIES for female in FEMALE_FAMILIES):
-        for host, physics in ((host, mode) for host in (False, True) for mode in (('none', 'cbpc', 'fsmp') if motion else (None,))):
+        for host, physics in ((host, mode) for host in (False, True) for mode in (('none', 'fsmp') if motion else (None,))):
             if host and not any(name.startswith("30 OBody Source/") for name in entries):
                 continue
             active = ({"HIMBO.esp"} if male == "HIMBO" else set())
@@ -653,7 +656,7 @@ def selection_audit(entries):
                     raise ValueError("Missing source or duplicate required destination")
                 installed[destination] = source
             expected = reader.BASE_RUNTIME | reader.NATIVE_RUNTIME | {reader.FAMILY_DEST} | extra_base | player_models | (reader.HOST_RUNTIME if host else set())
-            extra_motion = CBPC_FILES if physics == 'cbpc' else ({MOTION_XML + sex + '.xml' for sex in ('Male', 'Female')} if physics == 'fsmp' else set())
+            extra_motion = {MOTION_XML + sex + '.xml' for sex in ('Male', 'Female')} if physics == 'fsmp' else set()
             expected |= extra_motion
             if set(installed) != expected or len(installed) != (12 if host else 10) + len(extra_base) + len(player_models) + len(extra_motion):
                 raise ValueError("Nonminimal/incomplete selected runtime")
@@ -748,9 +751,9 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
         raise ValueError("Use an numeric product version")
     if (obody_esp is None) != (obody_pex is None):
         raise ValueError("OBody host ESP and PEX must be supplied together")
-    if (cbpc_motion_build is None) != (fsmp_motion_build is None):
-        raise ValueError('Supply both CBPC and FSMP motion build receipts or neither')
-    motion = cbpc_motion_build is not None
+    if cbpc_motion_build is not None:
+        raise ValueError('CBPC motion remains research-only and cannot be included in the working installer; supply --fsmp-motion-build alone')
+    motion = fsmp_motion_build is not None
     inputs = Inputs()
     inputs.read(ROOT / "src/main/python/build-tools/player_only_materials.py")
     material_spec = importlib.util.spec_from_file_location("claw_player_only_materials",
@@ -778,15 +781,13 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
             entries["00 Base/" + MESH + "/" + sex + "bodywerewolf" + ending] = data
     motion_review = {}
     if motion:
-        for provider, receipt in (('cbpc', cbpc_motion_build), ('fsmp', fsmp_motion_build)):
+        for provider, receipt in (('fsmp', fsmp_motion_build),):
             files, motion_review[provider] = _motion_payload(inputs, receipt, provider, core_inputs, core_bodies, materials)
             for name, data in files.items():
                 if name.endswith('.nif'):
                     if 'PlayerWerewolf' in name: continue
                     if name.endswith('_1.nif') and data == files[name.replace('_1.nif', '_0.nif')]: continue
                 entries[MOTION_PREFIX + provider.upper() + '/' + name] = data
-        if motion_review['cbpc']['resources']['skeleton']['sha256'] != motion_review['fsmp']['resources']['skeleton']['sha256']:
-            raise ValueError('Motion providers used different skeletons')
     if obody_esp is not None:
         entries["30 OBody Source/CLAW - OBody Integration.esp"] = inputs.runtime(obody_esp, b"TES4", "OBody ESP")
         entries["30 OBody Source/Scripts/CLAWOBodySourceHost.pex"] = inputs.runtime(obody_pex, b"\xfa\x57\xc0\xde", "OBody PEX")
@@ -812,10 +813,9 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     entries.update(notices)
     entries["README.md"] = inputs.read(ROOT / RUNTIME_README).replace(
         b"@SOURCE_URL@", reference["url"].encode("ascii")).replace(b"@VERSION@", version.encode("ascii")).replace(
-        b'@MOTION_INSTRUCTIONS@', (b'Choose None, CBPC or FSMP on the Werewolf motion page. None is the default. '
-        b'Install the matching provider separately: [CBPC](https://www.nexusmods.com/skyrimspecialedition/mods/21224) '
-        b'or [Faster HDT-SMP](https://www.nexusmods.com/skyrimspecialedition/mods/57339). Choose one option. '
-        b'These options add motion to ears, tail and female breasts. Replace the previous CLAW installation when switching options, '
+        b'@MOTION_INSTRUCTIONS@', (b'Choose None or Faster HDT-SMP on the Werewolf motion page. None is the default. '
+        b'Install the matching [Faster HDT-SMP](https://www.nexusmods.com/skyrimspecialedition/mods/57339) provider separately. '
+        b'FSMP adds motion to ears, tail and female breasts. Replace the previous CLAW installation when switching options, '
         b'and disable older CLAW motion mods. Contact colliders, VR body and anatomy are not included.'
         if motion else b'This core archive does not include motion physics.'))
     validate_no_nested_archives(entries)
@@ -863,8 +863,8 @@ def main(argv=None):
     parser.add_argument("--commonlib-commit", required=True)
     parser.add_argument("--obody-esp", type=Path)
     parser.add_argument("--obody-pex", type=Path)
-    parser.add_argument('--cbpc-motion-build', type=Path, help='Explicit motion-adapter-build.json; requires matching FSMP receipt')
-    parser.add_argument('--fsmp-motion-build', type=Path, help='Explicit fsmp-motion-build.json; requires matching CBPC receipt')
+    parser.add_argument('--cbpc-motion-build', type=Path, help='Rejected: CBPC authoring remains research-only, outside the working installer')
+    parser.add_argument('--fsmp-motion-build', type=Path, help='Explicit fsmp-motion-build.json adds the None/Faster HDT-SMP installer choice')
     parser.add_argument("--version", default=VERSION)
     parser.add_argument("--source-commit", help="Optional exact local commit matching reviewed source; verify public availability before publishing")
     args = parser.parse_args(argv)

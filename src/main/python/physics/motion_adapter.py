@@ -34,6 +34,19 @@ def pin(path):
     return {"path": str(path), "bytes": len(payload), "sha256": hashlib.sha256(payload).hexdigest()}
 
 
+def source_pins(inputs):
+    """Bind consumed source bytes to readable paths for the package consumer."""
+    rows = [{"path": str((inputs.root / name).resolve()), "bytes": len(payload),
+             "sha256": hashlib.sha256(payload).hexdigest()}
+            for name, payload in inputs.payloads.items()]
+    if inputs.breast_profile:
+        profile = inputs.breast_profile
+        rows.append({"path": str(Path(profile["path"]).resolve()), "bytes": len(profile["payload"]),
+                     "sha256": hashlib.sha256(profile["payload"]).hexdigest(),
+                     "role": "explicit-breast-resource-profile"})
+    return rows
+
+
 def unchanged(rows):
     for row in rows:
         if pin(row["path"]) != row:
@@ -214,7 +227,7 @@ def build_adapter(out, provider_snapshot, resources, pynifly, *, breast=False, p
               "morphBehavior": "Skinned-node motion applies to the current morphed mesh; constants do not observe coefficients or refit contacts",
               "resources": resource_pins, "storedWeightCoverage": coverage,
               "breastResourceProfile": profile, "providerAudit": audit,
-              "dependencies": dependencies, "sourceInputs": [*inputs.rows(), *own_sources],
+              "dependencies": dependencies, "sourceInputs": [*source_pins(inputs), *own_sources],
               "files": [{"path": name, "bytes": len(payload), "sha256": hashlib.sha256(payload).hexdigest()}
                         for name, payload in sorted(files.items())],
               "archive": pin(out / PACKAGE_NAME)}

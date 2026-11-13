@@ -204,6 +204,18 @@ class FsmpMotionTests(unittest.TestCase):
                     self.assertEqual(len({archive.read(fsmp.MESH + sex + "PlayerWerewolf_" + endpoint + ".nif")
                                           for sex in ("male", "female") for endpoint in ("0", "1")}), 4)
                 self.assertEqual(json.loads((out / "fsmp-motion-build.json").read_text()), report)
+                # Read the real serialized source rows, exactly as the FOMOD
+                # consumer does; synthetic absolute source rows hid this bug.
+                receipt = json.loads((out / "fsmp-motion-build.json").read_bytes())
+                self.assertTrue(receipt["sourceInputs"])
+                self.assertTrue(set(fsmp.HELPER_PATHS.values()).issubset(
+                    {Path(row["path"]) for row in receipt["sourceInputs"]}))
+                for row in receipt["sourceInputs"]:
+                    path = Path(row["path"])
+                    self.assertTrue(path.is_absolute() and path.is_file())
+                    payload = path.read_bytes()
+                    self.assertEqual(row["bytes"], len(payload))
+                    self.assertEqual(row["sha256"], hashlib.sha256(payload).hexdigest())
                 self.assertEqual(report["providerBinary"]["sha256"], fsmp.common.pin(baseline / "hdtSMP64.dll")["sha256"])
                 for key in ("runtimeQualified", "gameValidated", "releaseReady", "collisionResponseEnabled"):
                     self.assertFalse(report[key])
@@ -247,6 +259,41 @@ class FsmpMotionTests(unittest.TestCase):
             out = Path(directory) / "candidate"
             with source_fixture, patch.object(fsmp, "MATERIAL_SOURCE_BYTES", b"different captured source"), \
                     self.assertRaisesRegex(ValueError, "material adapter source changed since loading"):
+                fsmp.build_adapter(out, baseline, resources, None, api=api)
+            self.assertFalse(out.exists())
+
+    def test_transitive_helper_changes_are_refused_before_output_and_after_archive(self):
+        for helper in fsmp.HELPER_PATHS.values():
+            for late in (False, True):
+                with self.subTest(helper=helper.name, late=late), tempfile.TemporaryDirectory() as directory:
+                    resources, baseline, api, _, source_fixture = self.builder_fixture(directory)
+                    out = Path(directory) / "candidate"
+                    original_read = Path.read_bytes
+                    original_archive = fsmp.common.archive
+                    changed = not late
+
+                    def read(path):
+                        return b"changed helper source" if changed and path.resolve() == helper else original_read(path)
+
+                    def archive_then_change(path, files):
+                        nonlocal changed
+                        original_archive(path, files)
+                        changed = True
+
+                    with source_fixture, patch.object(Path, "read_bytes", read), \
+                            patch.object(fsmp.common, "archive", archive_then_change), \
+                            self.assertRaisesRegex(ValueError, "source changed since loading|Input changed"):
+                        fsmp.build_adapter(out, baseline, resources, None, breast=True, api=api)
+                    self.assertEqual(out.exists(), late)
+                    if late:self.assertTrue((out / "FAILED-unverified-do-not-install").exists())
+                    self.assertFalse((out / "fsmp-motion-build.json").exists())
+
+    def test_foreign_transitive_helper_module_path_is_refused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            resources, baseline, api, _, source_fixture = self.builder_fixture(directory)
+            out = Path(directory) / "candidate"
+            with source_fixture, patch.object(fsmp.HELPER_MODULES["surface_collar"], "__file__", str(Path(directory) / "surface_collar.py")), \
+                    self.assertRaisesRegex(ValueError, "different FSMP local helper"):
                 fsmp.build_adapter(out, baseline, resources, None, api=api)
             self.assertFalse(out.exists())
 
