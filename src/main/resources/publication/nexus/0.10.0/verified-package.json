@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "game": "skyrimspecialedition",
+  "globalModId": "7318624467182",
+  "activeFileId": "8342508",
+  "previousVersionId": "7318625109219",
+  "scopedPreviousVersionId": "836835",
+  "version": "0.10.0",
+  "name": "CLAW - Custom Lycanthrope Appearance and Weight",
+  "sourceCommit": "1e7513b8c4e439ed93fec6d0856642b7cf90e75d",
+  "allowedStorageHosts": [
+    "nexus-files.04fb79c0e95598720de4dff7e8d589b5.r2.cloudflarestorage.com"
+  ],
+  "remoteRecoveryReady": true,
+  "publisherSha256": "95b544b806b8091ef020f3dfc575762cd427cb0f83689f3af70af2c100aef9e1",
+  "runnerSha256": "b9871ac5b094567d2a029b2924b96518b6c4d5976cbf621b726a9a94c0991196",
+  "releaseDll": {
+    "bytes": 1165824,
+    "sha256": "ccf7718d90f99ebc176b4231566fa6cc1cbbb117741de6e1babe267ab508503b"
+  },
+  "requirements": {
+    "groups": 8,
+    "dlcGroups": 0,
+    "meaningSha256": "bd5f79eed7226b48bd35534bfc04576904d02f2a7035afc0b2adeb52c70afedd"
+  },
+  "archive": {
+    "url": "https://github.com/Vhodnoylogin/claw/releases/download/claw/0.10.0/CLAW.-.Customizable.Lycanthrope.Appearance.and.Weight.zip",
+    "assetId": "743515596",
+    "filename": "CLAW - Customizable Lycanthrope Appearance and Weight.zip",
+    "bytes": 24362264,
+    "sha256": "f571ad5e486600c3fcd06432034eeed9a2837be2706ca59bc0f72be28262c91a"
+  },
+  "guide": {
+    "url": "https://github.com/Vhodnoylogin/claw/releases/download/claw/0.10.0/CLAW-Modder-Guide.md",
+    "assetId": "743515590",
+    "filename": "CLAW-Modder-Guide.md",
+    "bytes": 14336,
+    "sha256": "9f694ba7d6303303b8ea93410ecb3fe8f32299c3f166a1185bfb0df83802fe4c"
+  },
+  "acceptedEvidence": {
+    "fullReleaseAccepted": true,
+    "releaseAcceptanceSha256": "82168251eb7e98c4abde349fccde1f5b7fed71b41b2a699e47a1c46e28f4442e",
+    "runtimeRun": {
+      "id": "20261113-132921-ea509a",
+      "result": "passed",
+      "restored": true,
+      "resultSha256": "11a33ad3a9184ad7dae6229523c099cb5d7698215bc63b259e5f5a38665be393"
+    },
+    "scope": "CLAW0.10 FSMP-only; SE ordinary both-sex human-origin lifecycle and final20dynamic writes; exactfinalarchiveparity; no AE/VR runtime/contact/visible-amplitude claim"
+  },
+  "transportRecovery": {
+    "oldUploadId": "289d7120-fb73-478e-8486-08932b656a55",
+    "oldState": "created",
+    "claimedFieldAvailable": false,
+    "oldFinaliseOrVersionIntentAbsent": true,
+    "oldAttemptMustNotBeReplayed": true,
+    "oldLocalIntentFiles": [
+      "upload-intent.json",
+      "01-create-multipart.intent.json",
+      "02-part-001.intent.json"
+    ],
+    "rootReadOnlyAdmissionSha256": "023f852f63109dc765d704955c4e32dbbf8a3eade1ae7133ab579aa3925b4d41",
+    "rootReadOnlyAdmissionAtUtc": "2026-11-13T12:17:50.313647+00:00",
+    "newVersionAndChangelogAbsentAtReview": true
+  },
+  "baselineModDescription": {
+    "sourceLfSha256": "f09b81f87e60f40769ce213b960eb1b8ef2f970533a6c3ad78e1ce388fe4a7c6",
+    "text": "[size=4][color=#D0B17A][b]CLAW — Customizable Lycanthrope Appearance and Weight[/b][/color][/size]\n<br />\n<br />CLAW links a character’s human appearance to their werewolf form. Human body shape influences the werewolf’s body fat, musculature and proportions. The mod works with the player and NPCs, including werewolves that originally spawned in beast form.\n<br />[center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]\n<br />[size=4][color=#D0B17A][b]What changes[/b][/color][/size]\n<br />[list]\n<br />[*]Body, arm, leg, belly and chest proportions.[/*]\n<br />[*]Head and muzzle shape, based on available human traits.[/*]\n<br />[*]Ear, tail and claw size, influenced by human stature and proportions.[/*]\n<br />[*]Coat appearance, using ten variants from Elegant.[/*]\n<br />[/list]Human hair colour determines the colour group, while a stable individual seed selects a variant within that group. Werewolves without a known human appearance receive an individual coat selection. The selected coat persists through transformations, model updates and saving/loading.\n<br />[center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]\n<br />[b][color=#d0b17a][size=4]Supported human bodies[/size][/color][/b]\n<br />[list]\n<br />[*][b]Male[/b]\n<br />[list]\n<br />[*]Vanilla — weight[/*]\n<br />[*][url=https://www.nexusmods.com/skyrimspecialedition/mods/46311]HIMBO[/url] — weight and BodySlide morphs[/*]\n<br />[/list][/*]\n<br />[*][b]Female[/b]\n<br />[list]\n<br />[*]Vanilla — weight.[/*]\n<br />[*][url=https://www.nexusmods.com/skyrimspecialedition/mods/198]CBBE[/url] — weight and BodySlide morphs[/*]\n<br />[*][url=https://www.nexusmods.com/skyrimspecialedition/mods/30174]CBBE 3BA[/url] — weight and BodySlide morphs[/*]\n<br />[*][url=https://www.nexusmods.com/skyrimspecialedition/mods/31126]BHUNP[/url] — weight and BodySlide morphs[/*]\n<br />[*][url=https://www.nexusmods.com/skyrimspecialedition/mods/1699]UNP[/url] — weight[/*]\n<br />[/list][/*]\n<br />[/list][center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]\n<br />[size=4][color=#D0B17A][b]Requirements[/b][/color][/size]\n<br />[list]\n<br />[*]SKSE[/*]\n<br />[*][url=https://www.nexusmods.com/skyrimspecialedition/mods/19080]RaceMenu[/url][/*]\n<br />[*]Address Library[/*]\n<br />[*][url=https://www.nexusmods.com/skyrimspecialedition/mods/1988]XP32 Maximum Skeleton Special Extended[/url][/*]\n<br />[*][url=https://www.nexusmods.com/skyrimspecialedition/mods/93336]Elegant Werewolf Replacer with Player Only and Randomized Options[/url][/*]\n<br />[*][url=https://www.nexusmods.com/skyrimspecialedition/mods/77016]OBody[/url] — optional[/*]\n<br />[*]HIMBO — optional[/*]\n<br />[*]CBBE, CBBE 3BA, BHUNP, UNP — optional[/*]\n<br />[/list][center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]\n<br />[size=4][color=#D0B17A][b]Installation[/b][/color][/size]\n<br />[list=1]\n<br />[*]Install the required dependencies.[/*]\n<br />[*]For Elegant, download [url=https://www.nexusmods.com/skyrimspecialedition/mods/93336?tab=files][b]Elegant Werewolf Player Only FOMOD 4K[/b] or [b]Elegant Werewolf Player Only FOMOD 2K[/b][/url]. Select [b]Randomized[/b] during installation to give werewolves different coats. Other choices provide a single coat.[/*]\n<br />[*]Install a supported replacement body to transfer its human morphs to the werewolf form. For HIMBO, CBBE, 3BA and BHUNP, build the body in BodySlide with [b]Build Morphs[/b] enabled. With vanilla bodies, werewolf body shape uses the character’s current weight.[/*]\n<br />[*]Install OBody if you want varied human presets. These differences will also be reflected in werewolf forms. The installer option [b]“Use OBody presets for wild werewolves”[/b] assigns source presets to eligible characters that originally spawned as werewolves. Without this option, CLAW uses their existing available parameters.[/*]\n<br />[/list][center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]\n<br />[size=4][color=#D0B17A][b]For modders[/b][/color][/size]\n<br />[url=https://github.com/Vhodnoylogin/claw/releases/download/claw/0.9.0-r3/CLAW-Modder-Guide.md]CLAW modder guide: conversion matrices, coat configuration and API[/url].\n<br />\n<br />[center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]\n<br />[size=4][color=#D0B17A][b]Credits &amp; source[/b][/color][/size]\n<br />Thanks to [url=https://www.nexusmods.com/profile/Wolflady500]Wolflady500[/url] and [url=https://www.nexusmods.com/profile/KaienHash]KaienHash[/url] for Elegant Werewolf Replacer, [url=https://www.nexusmods.com/profile/Groovtama]Groovtama[/url] for XP32 Maximum Skeleton Special Extended, and [url=https://www.nexusmods.com/profile/expired6978]Expired[/url] for RaceMenu / NiOverride. Thanks also to [url=https://www.nexusmods.com/users/149133973]Aietos[/url] and the OBody team for OBody NG. Valley coat artwork is by LilyValley807; texture processing is by XilaMonstrr.\n<br />\n<br />[url=https://github.com/Vhodnoylogin/claw]Source and reproducible build on GitHub[/url]",
+    "origin": "Actual raw publicAPI description field, retained publication-preflight/mod.json; LF unchanged"
+  },
+  "description": {
+    "path": "src/main/resources/publication/nexus/0.10.0/file-description.txt",
+    "sourceLfSha256": "ac48b930dda5800d8f89c3064ffb9079bea2391d33a06a9bd300d91da6e1fdfd"
+  },
+  "modDescription": {
+    "path": "src/main/resources/publication/nexus/0.10.0/description.bbcode.txt",
+    "sourceLfSha256": "89e2b7cd49ebaf3259f294375e800a13a3e00523cd2493bba7a87eba42653867"
+  },
+  "changelog": {
+    "path": "src/main/resources/publication/nexus/0.10.0/changelog-0.10.0.txt",
+    "sourceLfSha256": "dc347c4741a39efc2f2d6cbd9067c2770154b6e3dc5ac27f6aa30988088ba3bf",
+    "mode": "append-once"
+  }
+}

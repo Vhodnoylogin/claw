@@ -1,0 +1,51 @@
+name: Publish accepted CLAW 0.10.0 transport recovery once
+
+on: workflow_dispatch
+
+permissions:
+  contents: read
+
+concurrency:
+  group: claw-nexus-010-recovery-once
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    if: >-
+      github.repository == 'Vhodnoylogin/claw' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      github.run_number == 1 && github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify and publish the already accepted package
+        env:
+          NEXUS_API_KEY: ${{ secrets.NEXUS_UPLOAD_010_ONCE }}
+        run: >-
+          python3 src/main/python/publication/run_nexus_upload_once.py
+          --pin src/main/resources/publication/nexus/0.10.0/verified-package.json
+          --reviewed-pin-sha256 9836697a8d582fea69c20840221a4073b73be605c8efac4f9cf545fbbdbf3232
+          --apply
+      - name: Retain sanitized one-use receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: claw-nexus-010-recovery-receipts
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/claw-nexus-010-recovery-${{ github.run_id }}/run-intent.json
+            ${{ runner.temp }}/claw-nexus-010-recovery-${{ github.run_id }}/run-summary.json
+            ${{ runner.temp }}/claw-nexus-010-recovery-${{ github.run_id }}/attempt/upload-intent.json
+            ${{ runner.temp }}/claw-nexus-010-recovery-${{ github.run_id }}/attempt/*.intent.json
+            ${{ runner.temp }}/claw-nexus-010-recovery-${{ github.run_id }}/attempt/*.receipt.json
+            ${{ runner.temp }}/claw-nexus-010-recovery-${{ github.run_id }}/attempt/uncertain-stop.json
+            ${{ runner.temp }}/claw-nexus-010-recovery-${{ github.run_id }}/attempt/upload-result.json
+            ${{ runner.temp }}/claw-nexus-010-recovery-${{ github.run_id }}/attempt/publication-readback.json
+            ${{ runner.temp }}/claw-nexus-010-recovery-${{ github.run_id }}/attempt/version-readback.json
+            ${{ runner.temp }}/claw-nexus-010-recovery-${{ github.run_id }}/attempt/old-local-upload-guard.json
