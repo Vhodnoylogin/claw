@@ -1,0 +1,282 @@
+{
+  "schemaVersion": 1,
+  "kind": "configured-coat-colour-anchors",
+  "sourceArchiveSha256": "0cec26f8b14a1a91aa8ffc0e14ca80989deda1f5a7d2386d11451af5cf52b0a8",
+  "sourceComponent": "Elegant Werewolf Player Only Addon 2K/Randomized/Data",
+  "catalogSha256": "00c80d486f9f71f8858f07bbe2583272834a69471cd83837843f0a015aa8689b",
+  "method": "DDS grid, alpha-weighted linear mean per texture and equal seven-fur-texture average; interpreted sRGB, not rendered color or UV area weighting.",
+  "sampleMethod": "coat_palette_metrics.sample_rgba, maximumSamples=65536; fully transparent samples excluded; other samples weighted by alpha. Group anchors copy the seven-texture linear mean converted back to normalized sRGB.",
+  "policy": "Groups and distance weights in CoatMapping.xml are authored selection policy, not measured game colors. No red-only coat exists in this ten-set palette; warm-brown is the nearest available warm family.",
+  "patterns": [
+    {
+      "id": "black",
+      "meanLinearRgb": [
+        0.005081739722530489,
+        0.005079778373422009,
+        0.0050816982408106925
+      ],
+      "meanSrgb": [
+        0.061795013246946744,
+        0.06177622853931992,
+        0.06179461600195681
+      ],
+      "meanSrgb8": [
+        16,
+        16,
+        16
+      ],
+      "furTextureSha256": {
+        "furarms.dds": "7af3ed909a85d6c661845dcee6c1aaf7715a7835a32f7299a12790e7b04a110f",
+        "furback.dds": "7af3ed909a85d6c661845dcee6c1aaf7715a7835a32f7299a12790e7b04a110f",
+        "furbelly.dds": "7af3ed909a85d6c661845dcee6c1aaf7715a7835a32f7299a12790e7b04a110f",
+        "furchest.dds": "7af3ed909a85d6c661845dcee6c1aaf7715a7835a32f7299a12790e7b04a110f",
+        "furface.dds": "7af3ed909a85d6c661845dcee6c1aaf7715a7835a32f7299a12790e7b04a110f",
+        "furshoulders.dds": "7af3ed909a85d6c661845dcee6c1aaf7715a7835a32f7299a12790e7b04a110f",
+        "furtail.dds": "7af3ed909a85d6c661845dcee6c1aaf7715a7835a32f7299a12790e7b04a110f"
+      }
+    },
+    {
+      "id": "valley-black",
+      "meanLinearRgb": [
+        0.002445475400627914,
+        0.0023364479259702026,
+        0.002417871881501815
+      ],
+      "meanSrgb": [
+        0.03159554217611265,
+        0.030186907203535018,
+        0.031238904709003448
+      ],
+      "meanSrgb8": [
+        8,
+        8,
+        8
+      ],
+      "furTextureSha256": {
+        "furarms.dds": "f85229e1a9c2058c5c264b9ecec77bb00d2d8923968c55697d480a478e844ca3",
+        "furback.dds": "f85229e1a9c2058c5c264b9ecec77bb00d2d8923968c55697d480a478e844ca3",
+        "furbelly.dds": "f85229e1a9c2058c5c264b9ecec77bb00d2d8923968c55697d480a478e844ca3",
+        "furchest.dds": "f85229e1a9c2058c5c264b9ecec77bb00d2d8923968c55697d480a478e844ca3",
+        "furface.dds": "f85229e1a9c2058c5c264b9ecec77bb00d2d8923968c55697d480a478e844ca3",
+        "furshoulders.dds": "f85229e1a9c2058c5c264b9ecec77bb00d2d8923968c55697d480a478e844ca3",
+        "furtail.dds": "320f4801c7cd795e9bfc0547e19b29ab92aa1265b277046f83596208f6eb3b86"
+      }
+    },
+    {
+      "id": "timber-dark",
+      "meanLinearRgb": [
+        0.02105676867985628,
+        0.016701825840845248,
+        0.012152338954264872
+      ],
+      "meanSrgb": [
+        0.1561862696069191,
+        0.13675091239997594,
+        0.11295543959990584
+      ],
+      "meanSrgb8": [
+        40,
+        35,
+        29
+      ],
+      "furTextureSha256": {
+        "furarms.dds": "57a47234a51d931c39cf651ec7cbe28e4d7cedd175c60578515e19c0fbf93882",
+        "furback.dds": "9e0f701874049516b0a8f61e0083d42bce9e634f9cedf81aa4d439f857190056",
+        "furbelly.dds": "57a47234a51d931c39cf651ec7cbe28e4d7cedd175c60578515e19c0fbf93882",
+        "furchest.dds": "57a47234a51d931c39cf651ec7cbe28e4d7cedd175c60578515e19c0fbf93882",
+        "furface.dds": "9e0f701874049516b0a8f61e0083d42bce9e634f9cedf81aa4d439f857190056",
+        "furshoulders.dds": "9e0f701874049516b0a8f61e0083d42bce9e634f9cedf81aa4d439f857190056",
+        "furtail.dds": "86c3ab957110b8f765c72000b86da5851113676561e97b9caa5dec95bd7f6a10"
+      }
+    },
+    {
+      "id": "valley-brown",
+      "meanLinearRgb": [
+        0.03199906215612649,
+        0.018639048969845234,
+        0.01095996166326878
+      ],
+      "meanSrgb": [
+        0.19641603932639362,
+        0.1457223294767908,
+        0.10588154349847165
+      ],
+      "meanSrgb8": [
+        50,
+        37,
+        27
+      ],
+      "furTextureSha256": {
+        "furarms.dds": "40274d394aadaa4a88a779f0f50640c03cd6e51178f2f1b2c5bcf95e3f00e66c",
+        "furback.dds": "306952b7e421b041189a64c97dccdae5824eb8c14891ee46901bb1663db58f0f",
+        "furbelly.dds": "306952b7e421b041189a64c97dccdae5824eb8c14891ee46901bb1663db58f0f",
+        "furchest.dds": "306952b7e421b041189a64c97dccdae5824eb8c14891ee46901bb1663db58f0f",
+        "furface.dds": "306952b7e421b041189a64c97dccdae5824eb8c14891ee46901bb1663db58f0f",
+        "furshoulders.dds": "40274d394aadaa4a88a779f0f50640c03cd6e51178f2f1b2c5bcf95e3f00e66c",
+        "furtail.dds": "40274d394aadaa4a88a779f0f50640c03cd6e51178f2f1b2c5bcf95e3f00e66c"
+      }
+    },
+    {
+      "id": "brown",
+      "meanLinearRgb": [
+        0.06391355597693242,
+        0.04718864389305167,
+        0.03875978893657272
+      ],
+      "meanSrgb": [
+        0.28041529950346816,
+        0.24058660538435211,
+        0.21731906320868388
+      ],
+      "meanSrgb8": [
+        72,
+        61,
+        55
+      ],
+      "furTextureSha256": {
+        "furarms.dds": "07d6d77b562096f2c2313811713df5e516726fd2a9db7462ae3530de8b27cd28",
+        "furback.dds": "07d6d77b562096f2c2313811713df5e516726fd2a9db7462ae3530de8b27cd28",
+        "furbelly.dds": "07d6d77b562096f2c2313811713df5e516726fd2a9db7462ae3530de8b27cd28",
+        "furchest.dds": "07d6d77b562096f2c2313811713df5e516726fd2a9db7462ae3530de8b27cd28",
+        "furface.dds": "07d6d77b562096f2c2313811713df5e516726fd2a9db7462ae3530de8b27cd28",
+        "furshoulders.dds": "07d6d77b562096f2c2313811713df5e516726fd2a9db7462ae3530de8b27cd28",
+        "furtail.dds": "07d6d77b562096f2c2313811713df5e516726fd2a9db7462ae3530de8b27cd28"
+      }
+    },
+    {
+      "id": "timber",
+      "meanLinearRgb": [
+        0.21083846975998474,
+        0.19182365146359043,
+        0.17474860700202802
+      ],
+      "meanSrgb": [
+        0.4965246141028345,
+        0.4752268186260838,
+        0.4550250541920328
+      ],
+      "meanSrgb8": [
+        127,
+        121,
+        116
+      ],
+      "furTextureSha256": {
+        "furarms.dds": "97c2d4f2d679cf2cb5817f5894ddc17979007a3857cc1ea5591a51b62b4a64e9",
+        "furback.dds": "5331252c0bdfcff9879a0b49e4db927474c4d41f58079ee9aa5cd72478ea6527",
+        "furbelly.dds": "97c2d4f2d679cf2cb5817f5894ddc17979007a3857cc1ea5591a51b62b4a64e9",
+        "furchest.dds": "97c2d4f2d679cf2cb5817f5894ddc17979007a3857cc1ea5591a51b62b4a64e9",
+        "furface.dds": "5331252c0bdfcff9879a0b49e4db927474c4d41f58079ee9aa5cd72478ea6527",
+        "furshoulders.dds": "5331252c0bdfcff9879a0b49e4db927474c4d41f58079ee9aa5cd72478ea6527",
+        "furtail.dds": "8f66f41610de5870972e2090710e1371051b5d5530a7ed18188957c1c9c2a9f3"
+      }
+    },
+    {
+      "id": "valley-grey",
+      "meanLinearRgb": [
+        0.12139695192120815,
+        0.12168721630586685,
+        0.12276503043054297
+      ],
+      "meanSrgb": [
+        0.38319999572611335,
+        0.383636254828834,
+        0.3852508886046124
+      ],
+      "meanSrgb8": [
+        98,
+        98,
+        98
+      ],
+      "furTextureSha256": {
+        "furarms.dds": "1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82",
+        "furback.dds": "1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82",
+        "furbelly.dds": "4cde6f05a96bff8130267483975eaed3c9276af3b1e5ad722be23bbcfaee1bde",
+        "furchest.dds": "7d8b81110835f0ba17888f52ca1e5dfc5e10170e127ddabcf829d5f46a7bc9b7",
+        "furface.dds": "7d8b81110835f0ba17888f52ca1e5dfc5e10170e127ddabcf829d5f46a7bc9b7",
+        "furshoulders.dds": "1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82",
+        "furtail.dds": "7d8b81110835f0ba17888f52ca1e5dfc5e10170e127ddabcf829d5f46a7bc9b7"
+      }
+    },
+    {
+      "id": "grey",
+      "meanLinearRgb": [
+        0.10906903626032384,
+        0.10929955099769607,
+        0.110155506452534
+      ],
+      "meanSrgb": [
+        0.3640778828073414,
+        0.3644467017542236,
+        0.36581225707877485
+      ],
+      "meanSrgb8": [
+        93,
+        93,
+        93
+      ],
+      "furTextureSha256": {
+        "furarms.dds": "1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82",
+        "furback.dds": "1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82",
+        "furbelly.dds": "1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82",
+        "furchest.dds": "1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82",
+        "furface.dds": "1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82",
+        "furshoulders.dds": "1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82",
+        "furtail.dds": "1a305a47fa22b5ce87cd62846074108991c54cb1b78823f47d0dfe9d412afe82"
+      }
+    },
+    {
+      "id": "valley-white",
+      "meanLinearRgb": [
+        0.3700966363413661,
+        0.3700964555455996,
+        0.3700966388145451
+      ],
+      "meanSrgb": [
+        0.642242364695838,
+        0.6422422227751506,
+        0.6422423666372288
+      ],
+      "meanSrgb8": [
+        164,
+        164,
+        164
+      ],
+      "furTextureSha256": {
+        "furarms.dds": "58d0ae14dfd8c2f400e72f0f709cd32c50433da622db52f804c05f1489ac31ef",
+        "furback.dds": "58d0ae14dfd8c2f400e72f0f709cd32c50433da622db52f804c05f1489ac31ef",
+        "furbelly.dds": "dd6e8a0083936b4a83323503bd2475e85c0f59d989d9571795dbcdb80c59d8e4",
+        "furchest.dds": "58d0ae14dfd8c2f400e72f0f709cd32c50433da622db52f804c05f1489ac31ef",
+        "furface.dds": "db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811",
+        "furshoulders.dds": "58d0ae14dfd8c2f400e72f0f709cd32c50433da622db52f804c05f1489ac31ef",
+        "furtail.dds": "58d0ae14dfd8c2f400e72f0f709cd32c50433da622db52f804c05f1489ac31ef"
+      }
+    },
+    {
+      "id": "white",
+      "meanLinearRgb": [
+        0.4740235082043357,
+        0.47402093036602977,
+        0.474023531047278
+      ],
+      "meanSrgb": [
+        0.7179814580219381,
+        0.7179797065051019,
+        0.7179814735425911
+      ],
+      "meanSrgb8": [
+        183,
+        183,
+        183
+      ],
+      "furTextureSha256": {
+        "furarms.dds": "db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811",
+        "furback.dds": "db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811",
+        "furbelly.dds": "db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811",
+        "furchest.dds": "db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811",
+        "furface.dds": "db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811",
+        "furshoulders.dds": "db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811",
+        "furtail.dds": "db014881df4cd67523558430537e511bceeb00ec6e96a9aa6ca0c12b707f4811"
+      }
+    }
+  ]
+}

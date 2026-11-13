@@ -22,6 +22,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import math
 import os
 from pathlib import Path, PurePosixPath
 import re
@@ -434,9 +435,24 @@ def audit_external_coats(entries):
 
     mapping = ET.fromstring(entries[prefix + "CoatMapping.xml"])
     materials = {"randomized/" + name for name in expected_ids}
+    records = [row for row in mapping if row.tag != "Group"]
     if ({row.get("material") for row in mapping.findall("Range")} != materials or
-            any(row.get("material") not in materials for row in mapping)):
+            any(row.tag not in {"Range", "Manual", "Alias"} or row.get("material") not in materials for row in records)):
         raise ValueError("Coat mapping and external catalog do not agree")
+    groups = mapping.findall("Group")
+    if mapping.get("schemaVersion") == "2":
+        choices = {row.get("id") for row in records if row.tag != "Alias"}
+        variants = [row.get("id") for group in groups for row in group.findall("Variant")]
+        if (not groups or len(variants) != len(set(variants)) or set(variants) != choices or
+                any(not group.findall("Anchor") or not group.findall("Variant") for group in groups)):
+            raise ValueError("Coat colour groups and logical choices do not agree")
+        for group in groups:
+            for anchor in group.findall("Anchor"):
+                if (set(anchor.attrib) != {"red", "green", "blue"} or
+                        any(not math.isfinite(float(value)) or not 0 <= float(value) <= 1 for value in anchor.attrib.values())):
+                    raise ValueError("Invalid coat colour anchor")
+    elif mapping.get("schemaVersion") != "1" or groups:
+        raise ValueError("Unsupported coat mapping schema")
 
 
 def selection_audit(entries):

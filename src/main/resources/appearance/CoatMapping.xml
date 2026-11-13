@@ -1,4 +1,6 @@
-<CoatMapping schemaVersion="1" output="coat.selector">
+<CoatMapping schemaVersion="2" output="coat.selector"
+  red="coat.red" green="coat.green" blue="coat.blue" seed="coat.variation"
+  lightnessWeight="1" chromaWeight="256">
   <Range min="0" max="0.1" id="elegant-2k-2.1/black" material="randomized/black" />
   <Range min="0.1" max="0.2" id="elegant-2k-2.1/valley-black" material="randomized/valley-black" />
   <Range min="0.2" max="0.3" id="elegant-2k-2.1/timber-dark" material="randomized/timber-dark" />
@@ -33,4 +35,34 @@
   <Alias id="elegant-2k-2.1/silver-alt" material="randomized/grey" />
   <Alias id="elegant-2k-2.1/silver" material="randomized/grey" />
   <Alias id="elegant-2k-2.1/spirit" material="randomized/valley-white" />
+  <Group id="dark-neutral">
+    <Anchor red="0.06179501325" green="0.06177622854" blue="0.061794616"/>
+    <Anchor red="0.03159554218" green="0.0301869072" blue="0.03123890471"/>
+    <Variant id="elegant-2k-2.1/black"/>
+    <Variant id="elegant-2k-2.1/valley-black"/>
+  </Group>
+  <Group id="warm-brown">
+    <Anchor red="0.1561862696" green="0.1367509124" blue="0.1129554396"/>
+    <Anchor red="0.1964160393" green="0.1457223295" blue="0.1058815435"/>
+    <Anchor red="0.2804152995" green="0.2405866054" blue="0.2173190632"/>
+    <Variant id="elegant-2k-2.1/timber-dark"/>
+    <Variant id="elegant-2k-2.1/valley-brown"/>
+    <Variant id="elegant-2k-2.1/brown"/>
+  </Group>
+  <Group id="light-warm">
+    <Anchor red="0.4965246141" green="0.4752268186" blue="0.4550250542"/>
+    <Variant id="elegant-2k-2.1/timber"/>
+  </Group>
+  <Group id="grey">
+    <Anchor red="0.3831999957" green="0.3836362548" blue="0.3852508886"/>
+    <Anchor red="0.3640778828" green="0.3644467018" blue="0.3658122571"/>
+    <Variant id="elegant-2k-2.1/valley-grey"/>
+    <Variant id="elegant-2k-2.1/grey"/>
+  </Group>
+  <Group id="white">
+    <Anchor red="0.6422423647" green="0.6422422228" blue="0.6422423666"/>
+    <Anchor red="0.717981458" green="0.7179797065" blue="0.7179814735"/>
+    <Variant id="elegant-2k-2.1/valley-white"/>
+    <Variant id="elegant-2k-2.1/white"/>
+  </Group>
 </CoatMapping>

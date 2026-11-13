@@ -58,16 +58,27 @@ The final visual review covers female breast refinement, musculature, lean/bulky
 self-intersection tuning and new morph authoring. Fix functional
 defects such as missing textures or broken animation as they are found.
 
-### Hair-to-coat hue calibration
+## Immediate corrections — owner update, 13 November
 
-The owner classifies closer hair/coat hue correspondence as deferred aesthetic
-work. The current matrix primarily maps hair lightness, with a stable seed
-varying the discrete result; grey hair can therefore select a brown coat.
-Improve the correspondence for grey, blond and warm/red hair during the visual
-phase, using the existing input/matrix/mapping boundaries. Assess real human/wolf
-pairs under the same neutral bright lighting. This refinement does not block
-the current technical build or documentary screenshots; do not manually assign
-coats or retune the matrix merely to manufacture matching examples.
+Complete hair-to-coat hue matching now, while motion physics remains the main
+priority. Preserve RGB through the matrix and let the configurable material
+adapter choose a colour group before seed variation within that group. Validate
+the actual captured hair source and applied material in game; a record-colour
+regression alone does not establish the rendered result. The available Elegant
+palette limits the closest possible match. Do not manufacture examples with
+manual coat assignments.
+
+The current Living Physique before/after images were rejected by the owner as
+visually indistinct and must not be used as release demonstrations. Their
+technical evidence and originals remain retained.
+
+For physics, distinguish provider-global stepping from target-rig movement and
+visible model deformation. A read-only FSMP pre/post-step witness observed 129
+completed steps in 2.16 seconds on 13 November with freezeTime and UI pause false;
+this does not qualify a particular bone, collision or Morphbench correspondence.
+Investigate rig motion/writeback next. Reuse the successful Body Pouches VR launch
+sequence: the later failed run was interrupted by a reversed SteamVR room-setup
+takeover order, rather than calibration 201 alone proving VR unavailable.
 
 ### Visual reference library
 

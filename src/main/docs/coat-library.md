@@ -1,12 +1,55 @@
 # Coat selection and materials
 
 The 0.9.0 FOMOD installs three XML files under `SKSE/Plugins/CLAW/`.
-`CoatMatrix.xml` produces a named, normalized value from actor inputs.
-`CoatMapping.xml` maps that value to a logical coat ID and then a material.
-Each interval includes its lower bound, and the final interval includes 1.
+`CoatMatrix.xml` produces a named numeric dictionary through the common evaluator.
+The development schema-2 `CoatMapping.xml` reads separate normalized sRGB channels
+and a variation channel. Its configured colour anchors select a group; the saved
+reference seed selects a variant only inside that group. RGB is never mixed with
+the seed. The material adapter owns this interpretation; the shared numerical
+matrix knows no colours, groups or texture identifiers.
+
+Schema 1 remains supported. Its scalar intervals also remain the schema-2
+hairless fallback: each includes its lower bound, and the final interval includes 1.
 Manual assignments take precedence. Several logical IDs can share a material.
 `CoatLibrary.xml` describes ten externally installed material sets and their
 texture paths, so integrations can retain prior logical identifiers.
+
+### Configured colour groups (development)
+
+Schema 2 binds `red`, `green`, `blue` and `seed` attributes to exact-case matrix
+output names, alongside the legacy scalar `output`. Each `Group` has an opaque
+`id`, one or more normalized-sRGB `Anchor` entries and logical-ID `Variant`
+entries. Members must exist, be non-alias choices and belong to only one group.
+Missing/nonfinite/out-of-range required numeric outputs withhold automatic
+selection. A valid manual ID still wins without automatic inputs. Configuration
+load checks all bound names against the matrix output dictionary.
+
+The adapter converts RGB to Oklab and minimizes
+`lightnessWeight * deltaL² + chromaWeight * (deltaA² + deltaB²)` over configured
+anchors. Weights default to 1, must be finite in [0,1024], and cannot both be zero.
+Ties use declared group/anchor order. The selected group's declared variant order
+partitions the normalized seed into equal half-open intervals; seed 1 selects the
+last variant. No texture ID or colour-family name is compiled into the adapter.
+
+The shipped development mapping uses weights 1 and 256 to prioritize chroma.
+Unweighted distance incorrectly maps some neutral greys to nearby warm textures.
+The authored groups are dark neutral, warm brown, light warm, grey and white.
+Their anchors are actual sampled diffuse means, recorded with original hashes in
+[`elegant-randomized.palette.json`](../resources/appearance/elegant-randomized.palette.json).
+Seven fur textures receive equal weight after alpha-weighted linear-RGB sampling;
+this is neither UV-area weighting nor rendered colour under game lighting. This
+source metadata is not installed and redistributes no pixels.
+
+The record-input regression uses Skyrim.esm `HousecarlRiften` 0A2C91, whose HCLF
+points to `HairColor06Auburn` 0A0431, CNAM bytes `30 23 21 00` (RGB 48,35,33).
+The selected record hashes are `6e7559e62fd30bb1b526c570615b9d93efea65b0d5cdd16e9ed7070ddd6f3c10`
+and `4ddc5271ca123fb605d6a02fb7acbbc99aeaa543bd35dbf1c78a24def46ea107`.
+The retained 13F run reports a rendered hair source and ValleyBlack, but retains
+no captured RGB; the regression does not invent that measurement. This palette
+has no exact red-only coat. The new rule chooses the nearest available warm-brown
+family for this auburn record across all seeds. Native source tests cover neutral
+greys and equal-luminance warm/neutral inputs; rendered acceptance of the new
+mapping still requires a new scoped game comparison.
 
 The optional artwork is installed from Elegant's own Randomized component.
 The adapter keeps the installed model material when the selected resources
@@ -82,7 +125,8 @@ not independent renderer measurements.
 ### Explicit current-surface observations
 
 `RequestCoatSurfaceAudit(actor)` requests a separate read-only main-task sample
-of an already bound actor's loaded werewolf model. It never refreshes or applies
+of an already bound actor's current loaded third-person human or werewolf model.
+It never refreshes or applies
 materials. `true` means queued; an already pending request or unavailable bound
 appearance entry returns `false`. Poll `GetCoatSurfaceAudit(actor)` promptly after
 admission. It returns empty while pending, invalidated, unavailable or more than

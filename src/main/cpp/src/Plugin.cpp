@@ -1000,13 +1000,12 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         if (!readback(actor, expected)) { logError(*state, "SKEE own morph readback differs from requested values"); return; }
     }
     auto& appearance = claw::appearance::runtime;
-    std::optional<float> selector;
+    claw::appearance::CoatValues coatOutputs;
     if (coatMatrix) {
-        const auto outputs = coatMatrix->evaluate(appearance.humanColours(actor->formID),
+        coatOutputs = coatMatrix->evaluate(appearance.humanColours(actor->formID),
             claw::appearance::coatSeed(saveNamespace, state->identity));
-        if (const auto it = outputs.find(appearance.coatOutputName()); it != outputs.end()) selector = it->second;
     }
-    (void)appearance.applyWolf(actor, appearanceOverrides, saveNamespace, state->identity, selector);
+    (void)appearance.applyWolf(actor, appearanceOverrides, saveNamespace, state->identity, std::move(coatOutputs));
     state->sex = desiredSex; state->cache = std::move(expected); state->lastRoot = root; state->lastWeight = weight;
     state->dirty = false; state->status = Status::applied; state->error.clear();
 }
@@ -1466,7 +1465,7 @@ bool requestCoatSurfaceAudit(RE::StaticFunctionTag*, RE::Actor* actor) {
         if (!enabled || world != epoch || found == states.end() || found->second.quarantined ||
             found->second.runtimeSerial != runtime || !boundTo(found->second, target) ||
             !claw::mayRunActorRequest(target, RE::TESForm::LookupByID<RE::Actor>(id), target && target->formID == id, !target || target->IsDeleted()) ||
-            !beastRace || target->GetRace() != beastRace || !target->Is3DLoaded() || !target->Get3D(false)) { cancel(); return; }
+            !target->Is3DLoaded() || !target->Get3D(false)) { cancel(); return; }
         (void)claw::appearance::runtime.sampleSurfaceAudit(target, token);
     });
     return true;
@@ -2075,15 +2074,14 @@ void message(SKSE::MessagingInterface::Message* event) {
                 };
                 auto matrix = claw::appearance::CoatMatrix::parse(readXml(claw::appearance::coatMatrixRelativePath));
                 auto mapping = claw::appearance::CoatMapping::parse(readXml(claw::appearance::coatMappingRelativePath));
-                if (!matrix.evaluate({}, 0).contains(mapping.output()))
-                    throw std::runtime_error("Coat mapping requests an absent matrix output");
+                mapping.checkOutputs(matrix.evaluate({}, 0));
                 claw::appearance::CoatLibrary materials;
                 if (mapping.usesExternalMaterials())
                     materials = claw::appearance::CoatLibrary::parse(readXml(claw::appearance::coatLibraryRelativePath));
                 appearance.setLibrary(std::move(materials), dataRoot);
                 appearance.setCoatMapping(std::move(mapping));
                 coatMatrix = std::move(matrix);
-                SKSE::log::info("CLAW coat matrix and range mapping loaded");
+                SKSE::log::info("CLAW coat matrix and configured material mapping loaded");
             } catch (const std::exception& error) {
                 appearance.unavailableCoatMapping(error.what());
                 SKSE::log::warn("CLAW coat adapter unavailable: {}", error.what());
