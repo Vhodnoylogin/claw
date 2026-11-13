@@ -6,6 +6,38 @@ CBPC archive includes only original motion configuration and a short README.
 Neither adapter changes the universal CLAW DLL, human-family matrices, skeleton,
 other mods, or the optional collider host.
 
+## Optional integration in one CLAW installer
+
+The source packager accepts both `--cbpc-motion-build <motion-adapter-build.json>`
+and `--fsmp-motion-build <fsmp-motion-build.json>`, or neither. These are unpacked
+outputs of the existing builders, not ZIP inputs. With neither receipt the
+existing core-only installer and20 family/OBody selections are preserved.
+Supplying both adds a default-None, mutually exclusive None/CBPC/FSMP choice and
+60 selection plans. It does not establish runtime qualification of either provider.
+
+Build both adapters from the exact four core body inputs and the same skeleton,
+with female P1 motion included. Each endpoint needs an explicit path even when
+its bytes equal the other weight endpoint. The packager verifies source/resource
+and output hashes, permits only the four CBPC configuration files or the eight
+FSMP NIF routes plus two XMLs, and discards the separate adapter README. Any
+unlisted payload fails. Source/recipe pins remain external provenance; no builder,
+provider DLL, skeleton, collider host, anatomy or VR component is installed.
+
+The existing lightweight SSE reader independently checks the FSMP output against
+the final material-adapted core: unchanged original non-root blocks and strings,
+one appended root hook, and the exact sex-specific XML. Both armor routes must
+match. BODYTRI retains the core sex-specific path; both modes reference the same
+core TRI bytes and their hashes are recorded with each provider. Equal endpoint
+and PlayerOnly aliases reuse archive sources. No installed destination depends
+on overwrite priority: each selected plan supplies exactly one body source.
+
+The matrix-family choices still select only human-to-werewolf coefficients.
+They share the werewolf resources, so motion adds no family-specific NIF or DLL.
+Current morphs retain their original skin influences; this does not make motion
+constants, pivots or contacts adapt to morphs. Existing human physics can coexist
+only without conflicting werewolf-node writers. Packaging neither inspects a live
+profile nor verifies a provider's runtime version or lifecycle behavior.
+
 ```powershell
 python src/main/python/physics/motion_adapter.py --provider cbpc `
   --provider-snapshot '<baseline-winning-SKSE/Plugins>' `

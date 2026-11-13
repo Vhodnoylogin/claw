@@ -121,6 +121,11 @@ class SourcePackageTests(unittest.TestCase):
             values.update(obody_esp=self.host, obody_pex=self.host_pex)
         return values
 
+    def test_motion_receipts_are_an_explicit_pair(self):
+        for key in ('cbpc_motion_build', 'fsmp_motion_build'):
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, 'both CBPC and FSMP'):
+                package.build(**self.arguments(), **{key: self.root / 'target/not-supplied.json'})
+
     def test_archive_rejects_texture_payloads_and_unreferenced_configs(self):
         result = package.build(**self.arguments())
         files = package.read_zip(Path(result["archive"]).read_bytes())

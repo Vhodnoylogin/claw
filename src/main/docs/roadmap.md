@@ -17,6 +17,28 @@ controlled motion in the game; do not mask uncertainty with qualification flags.
 
 ## Active development sequence — owner update, 12 November
 
+### Current scope — owner update, 13 November
+
+Only CLAW motion physics and the verified 0.10.0 release are active. Finish
+provider binding, controlled rig motion and cleanup checks, then validate the
+actual release archive, integrate released sources into main and publish the
+matching GitHub and Nexus release. The broader sequence below is paused;
+Living Physique, Morphbench development, VR body, contacts and anatomy are not
+part of this current task.
+
+Deferred tooling: extend MO2 API Bridge with Qt-native inspection of its own
+windows, active modal text and enabled buttons, plus identity-checked actions.
+Obtain the original Bridge chat's current release/candidate status before
+planning implementation. No Bridge development, build or release is authorized
+by this backlog entry. Existing Win32 window enumeration does not establish
+that a Qt dialog has no buttons.
+
+The original Bridge chat confirmed on 13 November: released 2.3.6; unreleased
+2.3.7 on develop at e643698. Native candidate acceptance and the investigation
+of inactive-profile serialization remain open. General Qt inspection is absent
+from both versions and is not a committed part of that candidate's release.
+Retain this as a separate deferred request, rather than a dependency of 0.10.0.
+
 Finish shared mathematics and the first checked Living Physique RC, then the
 CLAW physics/Morphbench configuration work and offline qualification. Prepare
 VR body/contact and optional anatomy candidates before one ordered game batch:
@@ -96,5 +118,7 @@ Every matrix retains actor weight as an explicit input. Human presets remain
 OBody's responsibility; CLAW does not randomly distribute conversion matrices.
 
 Testing is performed in the CLAW chat in its dedicated test environment. Retain
-launch/tool defects locally for a later owner-approved handoff; send no messages
-to other chats during this work. Keep FHD and the accepted paired-scene rules.
+launch/tool defects locally for a later owner-approved handoff. The owner's
+13 November exception permits one status request to the original MO2 API Bridge
+chat; other testing coordination remains local. Keep FHD and the accepted
+paired-scene rules.

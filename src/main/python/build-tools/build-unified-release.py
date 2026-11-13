@@ -84,7 +84,7 @@ def plugin_type(plugin, game_version, active, flags):
 
 def resolve_selection(config, archive_paths, game_version="1.7.104.0", racemenu=True,
                       obody=True, native=False, family=None, host=False,
-                      additional_active=(), male_family=None):
+                      additional_active=(), male_family=None, physics=None):
     """Evaluate the shipped XML's reviewed subset, returning installed destinations.
 
     Four-component minimum-version and first-matching-pattern semantics match
@@ -95,6 +95,13 @@ def resolve_selection(config, archive_paths, game_version="1.7.104.0", racemenu=
     """
     active = ({"RaceMenu.esp"} if racemenu else set()) | ({"OBody.esp"} if obody else set()) | set(additional_active)
     independent_families = config.find("conditionalFileInstalls") is not None
+    motion_options = config.findall(".//conditionFlags/flag[@name='physicsMode']")
+    if motion_options:
+        if not native or physics not in {None, "none", "cbpc", "fsmp"}:
+            raise ValueError("Motion selection requires native linkage and one known provider")
+        physics = physics or "none"
+    elif physics is not None:
+        raise ValueError("This installer has no motion selection")
     if family not in ((None, "CBBE", "3BA", "BHUNP", "UNP", "Vanilla") if independent_families else (None, "CBBE", "3BA")):
         raise ValueError("Unknown human resource family")
     if male_family is not None and (not independent_families or male_family not in {"HIMBO", "Vanilla"}):
@@ -111,7 +118,9 @@ def resolve_selection(config, archive_paths, game_version="1.7.104.0", racemenu=
             choices.update("@"+name+"="+value for name, value in requested_flags.items())
         else: choices.add("20 Human Family/HIMBO-and-"+family)
     if host: choices.add("30 OBody Source")
+    if motion_options: choices.add("@physicsMode=" + physics)
     folders = list(config.findall("requiredInstallFiles/folder")); flags = {}; selected = set()
+    direct_files = []
     module = config.find("moduleDependencies")
     if module is not None and not dependency(module,game_version,active,flags): raise ValueError("Module dependency refused")
     for step in config.findall("installSteps/installStep"):
@@ -124,7 +133,7 @@ def resolve_selection(config, archive_paths, game_version="1.7.104.0", racemenu=
                 files = plugin.find("files")
                 declared_flags = plugin.findall("conditionFlags/flag")
                 if files is None and independent_families:
-                    if len(declared_flags) != 1 or declared_flags[0].get("name") not in {"maleFamily", "femaleFamily"}:
+                    if len(declared_flags) != 1 or declared_flags[0].get("name") not in {"maleFamily", "femaleFamily", "physicsMode"}:
                         raise ValueError("Unreviewed flag-only FOMOD option")
                     flag = declared_flags[0]
                     source = "@"+flag.get("name")+"="+(flag.text or "")
@@ -148,9 +157,14 @@ def resolve_selection(config, archive_paths, game_version="1.7.104.0", racemenu=
     for pattern in config.findall("conditionalFileInstalls/patterns/pattern"):
         if dependency(pattern.find("dependencies"),game_version,active,flags):
             files = pattern.find("files")
-            if files is None or len(files) != 1 or files[0].tag != "folder":
-                raise ValueError("Conditional option requires one explicit folder")
-            folders.extend(files)
+            if files is None or not len(files):
+                raise ValueError("Conditional option requires explicit files")
+            if len(files) == 1 and files[0].tag == "folder":
+                folders.extend(files)
+            elif motion_options and all(row.tag == "file" for row in files):
+                direct_files.extend(files)
+            else:
+                raise ValueError("Conditional option requires one folder or motion file mappings")
     installed = {}
     for folder in folders:
         source = safe_path(folder.attrib["source"]).rstrip("/")+"/"
@@ -162,6 +176,15 @@ def resolve_selection(config, archive_paths, game_version="1.7.104.0", racemenu=
             if destination.casefold() in {path.casefold() for path in installed}:
                 raise ValueError("Conflicting installed destination: " + destination)
             installed[destination] = name
+    for row in direct_files:
+        if set(row.attrib) != {"source", "destination"} or len(row):
+            raise ValueError("Unreviewed direct motion mapping")
+        source, destination = safe_path(row.attrib["source"]), safe_path(row.attrib["destination"])
+        if source not in archive_paths:
+            raise ValueError("Missing selected archive file: " + source)
+        if destination.casefold() in {path.casefold() for path in installed}:
+            raise ValueError("Conflicting installed destination: " + destination)
+        installed[destination] = source
     return installed
 
 

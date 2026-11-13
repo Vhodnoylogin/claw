@@ -37,6 +37,10 @@ If the base Elegant textures are also missing, install Elegant first. The base
 model references those files directly, so absent base files can produce missing
 textures even when the optional coat fallback is working.
 
+## Werewolf motion
+
+@MOTION_INSTRUCTIONS@
+
 ## Optional OBody presets
 
 The installer option **Use OBody presets for wild werewolves** requests human
