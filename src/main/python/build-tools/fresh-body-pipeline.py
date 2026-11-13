@@ -165,6 +165,7 @@ def build(out, reference, blender=None, release_reference=None,
         source_files += [ROOT/'src/main/python/physics/p1_rig.py',
                          ROOT/('src/main/python/physics/p1-rig-'+expressive_version+'.json'),
                          ROOT/'src/main/python/physics/motion_bounds.py',
+                         ROOT/'src/main/python/physics/motion_adapter.py',
                          ROOT/'src/main/python/physics/recipe.json',
                          ROOT/'src/main/python/physics/breast-motion.json',
                          HERE/'breast_rig.py', HERE/'surface_collar.py', HERE/'vr_head.py']

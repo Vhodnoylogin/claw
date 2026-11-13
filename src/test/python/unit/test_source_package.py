@@ -121,6 +121,11 @@ class SourcePackageTests(unittest.TestCase):
             values.update(obody_esp=self.host, obody_pex=self.host_pex)
         return values
 
+    def test_cbpc_receipt_is_refused_for_the_working_installer(self):
+        for fsmp in (None, self.root / 'target/not-supplied-fsmp.json'):
+            with self.subTest(fsmp=fsmp), self.assertRaisesRegex(ValueError, 'CBPC motion remains research-only'):
+                package.build(**self.arguments(), cbpc_motion_build=self.root / 'target/not-supplied-cbpc.json', fsmp_motion_build=fsmp)
+
     def test_archive_rejects_texture_payloads_and_unreferenced_configs(self):
         result = package.build(**self.arguments())
         files = package.read_zip(Path(result["archive"]).read_bytes())
@@ -144,6 +149,27 @@ class SourcePackageTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, error):
                     package.build(**self.arguments())
                 self.write(relative, valid)
+
+    def test_colour_groups_reject_missing_unknown_and_nonfinite_anchors(self):
+        relative = "src/main/resources/appearance/CoatMapping.xml"
+        valid = (self.root / relative).read_bytes()
+        for original, invalid, error in (
+                (b'<Variant id="elegant-2k-2.1/black"/>', b'<Variant id="unknown/coat"/>', "do not agree"),
+                (b'<Variant id="elegant-2k-2.1/black"/>', b'', "do not agree"),
+                (b'<Anchor red="', b'<Anchor unexpected="', "colour anchor")):
+            with self.subTest(invalid=invalid):
+                self.assertIn(original, valid)
+                self.write(relative, valid.replace(original, invalid, 1))
+                with self.assertRaisesRegex(ValueError, error):
+                    package.build(**self.arguments())
+        root = ET.fromstring(valid)
+        for invalid in ("nan", "1e999", "-1", "1.01"):
+            with self.subTest(anchor=invalid):
+                root.find("Group/Anchor").set("red", invalid)
+                self.write(relative, ET.tostring(root))
+                with self.assertRaisesRegex(ValueError, "colour anchor"):
+                    package.build(**self.arguments())
+        self.write(relative, valid)
 
     def test_full_package_has_literal_minimal_twenty_selections_and_no_development_payload(self):
         result = package.build(**self.arguments())

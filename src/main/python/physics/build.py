@@ -26,6 +26,16 @@ NODES = ("NPC EarL [EarL]Bone01", "NPC EarL [EarL]Bone02",
          "NPC EarR [EarR]Bone01", "NPC EarR [EarR]Bone02",
          "TailBone01", "TailBone02", "TailBone03", "TailBone04", "TailBone05")
 ALIASES = ("CLAW_EarL", "CLAW_EarR", "CLAW_Tail")
+# Non-driver ancestor union from the pinned XP32 donor's actual parent links.
+# Simulation on an intermediary can also move the selected descendants.
+EAR_TAIL_ANCESTORS = (
+    "NPC Head [Head]", "CME Neck [Neck]", "NPC Neck [Neck]", "CME Spine2 [Spn2]",
+    "NPC Spine2 [Spn2]", "CME Spine1 [Spn1]", "NPC Spine1 [Spn1]", "CME Spine [Spn0]",
+    "NPC Spine [Spn0]", "CME UBody [UBody]", "CME Body [Body]", "NPC COM [COM ]",
+    "NPC Root [Root]", "NPC", "skeleton.nif", "Tails", "CME Pelvis [Pelv]",
+    "NPC Pelvis [Pelv]", "CME LBody [LBody]", "CME TailBone01", "CME TailBone02",
+    "CME TailBone03", "CME TailBone04")
+
 BREAST_NODES = ("NPC L Breast P1", "NPC R Breast P1")
 # Exact ancestor union in the pinned b64b614d XP32 donor. A configured simulation
 # on these nodes can move P1 by inheritance; ordinary animation is not scanned.
@@ -34,6 +44,13 @@ BREAST_ANCESTORS = ("NPC L PreBreast P1", "NPC R PreBreast P1", "Breast P1", "CM
                     "NPC Spine [Spn0]", "CME UBody [UBody]", "CME Body [Body]", "NPC COM [COM ]",
                     "NPC Root [Root]", "NPC", "skeleton.nif")
 BREAST_ALIASES = ("CLAW_BreastL", "CLAW_BreastR")
+# Exact CBPC image/PDB role evidence; unknown images retain the conservative
+# writer interpretation. See src/test/docs/cbpc-pelvis-role-2026-11-11.md.
+CBPC_WRITE_ROLES = {
+    ("4996c85ee00e051a903c15746e8686a2357b70c9b27957f8ef3026dbc62d5387", "NPC Pelvis [Pelv]"):
+        ("NPC L Pussy02", "NPC R Pussy02", "VaginaB1", "Clitoral1")
+}
+
 ORDINARY_BREAST_NODES = tuple(f"NPC {side} {part}" for side in ("L", "R") for part in ("Breast", "Breast01")) + tuple(
     f"{side} Breast0{part}" for side in ("L", "R") for part in (1, 2, 3))
 SCRIPTS = ("CLAWPhysicsActor.psc", "CLAWPhysicsHost.psc", "CLAWPhysicsLoadRelay.psc", "CLAWPhysicsControl.psc", "CLAWPhysicsNative.psc")
@@ -437,19 +454,51 @@ def provider_inputs(directory):
     return paths
 
 
-def audit_provider(directory):
+def static_smp_bones(tree):
+    """Recognize explicit zero-mass system bones, not guessed template defaults.
+
+    FSMP reads system-level bone declarations and child mass elements. Attribute
+    lookalikes, omitted/template mass, conflicting duplicates and use before an
+    explicit declaration stay potential writers. Constraints/shapes can create
+    undeclared bones with defaults, so a later zero mass does not qualify them.
+    """
+    declarations, used, implicit_mesh_bones = {}, set(), False
+    for bone in tree if tree.tag == "system" else ():
+        if bone.tag in ("per-vertex-shape", "per-triangle-shape"):
+            implicit_mesh_bones = True
+        if bone.tag != "bone":
+            for element in bone.iter():
+                if element.tag in ("generic-constraint", "stiffspring-constraint", "conetwist-constraint"):
+                    used.update(element.get(attribute, "") for attribute in ("bodyA", "bodyB"))
+            continue
+        name = bone.get("name", "")
+        if not name or name != name.strip():
+            continue
+        mass = bone.findall("mass")
+        try:
+            value = float(mass[0].text) if len(mass) == 1 else float("nan")
+        except (TypeError, ValueError):
+            value = float("nan")
+        declarations.setdefault(name, []).append(not implicit_mesh_bones and name not in used
+                                                  and math.isfinite(value) and value == 0)
+    return {name for name, values in declarations.items() if all(values)}
+
+def audit_provider(directory, *, require_cbpc_master=True):
     """Inventory supplied winning bytes, preserving all declarations and conditions.
 
     We deliberately do not choose between duplicate rows, evaluate conditions,
     infer SMP selection, or infer loaded native ownership from a text search.
+    Only the FSMP motion builder may omit the CBPC master requirement; all
+    supplied CBPC/SMP bytes are still inspected for conflicts and uncertainty.
     """
     inputs = provider_inputs(directory)
+    cbpc_sha = next((row["sha256"] for _, _, row in inputs if row["path"].lower() == "cbp.dll"), None)
     report = {"schemaVersion":1, "snapshot":str(directory.resolve()),
               "status":"static-audit-only", "runtimeQualified":False,
               "files":[row for _, _, row in inputs], "mappings":[],
-              "privateAliasDefinitions":[], "smpReferences":[], "uncertainties":[],
+              "privateAliasDefinitions":[], "smpReferences":[], "smpStaticReferences":[], "uncertainties":[],
               "scope":"Explicit SKSE/Plugins snapshot only; no VFS/archive, NIF extra-data, loaded-module, generated-binding or native-index proof"}
-    all_nodes = set(NODES + BREAST_NODES + BREAST_ANCESTORS + ORDINARY_BREAST_NODES)
+    all_nodes = set(NODES + EAR_TAIL_ANCESTORS + BREAST_NODES + BREAST_ANCESTORS + ORDINARY_BREAST_NODES)
     all_aliases = set(ALIASES + BREAST_ALIASES)
     masters = 0
     for path, payload, record in inputs:
@@ -457,11 +506,13 @@ def audit_provider(directory):
         if path.suffix.lower() == ".xml":
             try:
                 tree = ET.fromstring(payload, parser=ET.XMLParser(target=NoDoctypeTreeBuilder()))
+                static = static_smp_bones(tree)
                 for element in tree.iter():
                     for attribute, value in [("#text", element.text or ""), *element.attrib.items()]:
                         if value.strip() in all_nodes:
-                            report["smpReferences"].append({"path":record["path"], "element":element.tag,
-                                                           "attribute":attribute, "node":value.strip()})
+                            key = "smpStaticReferences" if value.strip() in static else "smpReferences"
+                            report[key].append({"path":record["path"], "element":element.tag,
+                                                "attribute":attribute, "node":value.strip()})
             except (ValueError, ET.ParseError) as error:
                 report["uncertainties"].append({"path":record["path"], "error":str(error)})
             continue
@@ -484,16 +535,21 @@ def audit_provider(directory):
                     node = fields[0]
                     alias = fields[1] if len(fields) > 1 else ""
                     if node in all_nodes or alias in all_aliases:
-                        report["mappings"].append({"path":record["path"], "line":line_number,
-                            "node":node, "alias":alias, "condition":fields[2] if len(fields) > 2 else ""})
+                        mapping = {"path":record["path"], "line":line_number,
+                            "node":node, "alias":alias, "condition":fields[2] if len(fields) > 2 else ""}
+                        writes = CBPC_WRITE_ROLES.get((cbpc_sha, node)) if len(fields) == 1 else None
+                        if writes:
+                            mapping.update(writeNodes=list(writes), readOnlyAnchor=node, providerSha256=cbpc_sha)
+                        report["mappings"].append(mapping)
             elif name.startswith("cbpconfig") and line and not line.startswith("#"):
                 token = line.split()[0]
                 alias = token.split(".", 1)[0]
                 if alias in all_aliases:
                     report["privateAliasDefinitions"].append({"path":record["path"], "line":line_number,
                                                               "alias":alias, "parameter":token})
-    if not masters: report["uncertainties"].append({"error":"Provider snapshot contains no master config"})
-    report["earTailConflicts"] = provider_conflicts(report, NODES, ALIASES)
+    if require_cbpc_master and not masters:
+        report["uncertainties"].append({"error":"Provider snapshot contains no master config"})
+    report["earTailConflicts"] = provider_conflicts(report, NODES + EAR_TAIL_ANCESTORS, ALIASES)
     report["breastConflicts"] = provider_conflicts(report, BREAST_NODES + BREAST_ANCESTORS, BREAST_ALIASES)
     report["ordinaryBreastMappings"] = [row for row in report["mappings"] if row["node"] in ORDINARY_BREAST_NODES]
     report["ordinaryBreastMeaning"] = "These are separate XP32 branches; ordinary breast mappings alone establish neither P1 ownership nor P1 motion"
@@ -502,7 +558,7 @@ def audit_provider(directory):
 
 def provider_conflicts(report, nodes, aliases):
     return ([{"kind":"CBPC mapping", **row} for row in report["mappings"]
-             if row["node"] in nodes or row["alias"] in aliases] +
+             if set(row.get("writeNodes", (row["node"],))).intersection(nodes) or row["alias"] in aliases] +
             [{"kind":"private alias parameter", **row} for row in report["privateAliasDefinitions"] if row["alias"] in aliases] +
             [{"kind":"potential SMP reference", **row} for row in report["smpReferences"] if row["node"] in nodes])
 

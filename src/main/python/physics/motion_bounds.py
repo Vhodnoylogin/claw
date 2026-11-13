@@ -45,7 +45,8 @@ def build(sourceDir, outputDir):
     names = [sex + "bodywerewolf" + ending for sex in ("male", "female") for ending in ("_0.nif", "_1.nif", ".tri")]
     pins = {name: rig.sha256(source / name) for name in names}
     source_files = [Path(__file__), Path(bounds.__file__), TOOLS / "head_split.py",
-                    Path(__file__).with_name("recipe.json"),
+                    Path(__file__).with_name("motion_adapter.py"), Path(__file__).with_name("recipe.json"),
+                    Path(__file__).with_name("fsmp_motion.py"),
                     Path(__file__).with_name("breast-motion.json"), Path(__file__).with_name("p1-rig-v3.json")]
     sources = {str(path): rig.sha256(path) for path in source_files}
     skeleton = ROOT / "src/main/resources/donors/skeleton.nif"

@@ -1,0 +1,5 @@
+Added optional Faster HDT-SMP werewolf motion physics: ears and tail for both sexes, plus female breast motion.
+Added a separate installer page to choose None or Faster HDT-SMP. The selected physics provider is installed separately.
+Improved automatic coat matching: human hair hue now selects the nearest configured Elegant colour group, while the persistent actor seed chooses a pattern within that group.
+Fixed compatibility with Elegant PlayerOnly model paths and valid 2K, 4K or mixed-resolution coat textures. Missing optional coats retain the installed base material.
+Aligned morph-name matching with RaceMenu/SKEE case-insensitive names.

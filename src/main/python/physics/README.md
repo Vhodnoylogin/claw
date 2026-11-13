@@ -1,5 +1,9 @@
 # CLAW.Physics: CBPC ear/tail candidate
 
+The separate [motion adapters](motion-adapters.md) build the optional CBPC/FSMP
+motion resources for the core installer. They do not activate this finite
+collider host or change its model/qualification policy.
+
 ## Current automatic source integration
 
 The optional Distribution DLL now observes the provider's actual effective

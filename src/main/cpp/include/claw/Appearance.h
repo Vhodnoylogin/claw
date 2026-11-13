@@ -54,7 +54,7 @@ public:
     bool sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token);
     [[nodiscard]] std::string surfaceAudit(RE::FormID id) const;
     bool applyWolf(RE::Actor* actor, IOverrideInterface* provider,
-        std::uint64_t saveNamespace, std::uint64_t identity, std::optional<float> coatOutput);
+        std::uint64_t saveNamespace, std::uint64_t identity, CoatValues coatOutputs);
     void save(SKSE::SerializationInterface* serial) const;
     bool loadRecord(SKSE::SerializationInterface* serial, std::uint32_t type, std::uint32_t version, std::uint32_t length);
     [[nodiscard]] std::string_view status(RE::FormID id) const;
@@ -91,7 +91,7 @@ private:
         std::string status;
         std::string explicitPattern, appliedPattern, attemptedPattern;
         AutomaticCoatState automatic;
-        std::optional<float> coatOutput;
+        CoatValues coatOutputs;
         TintMode attemptedMode{TintMode::linked};
         CoatSurfaceAuditCache audit;
         RE::NiPointer<RE::NiAVObject> auditRoot; // Turnover/release occurs only in game tasks.
@@ -186,7 +186,7 @@ inline void Runtime::setLibrary(CoatLibrary library, std::filesystem::path dataR
 }
 inline void Runtime::setCoatMapping(CoatMapping mapping) {
     mapping.checkMaterials(library_);
-    for (auto& [id, entry] : entries_) { (void)id; unbind(entry); entry.coatOutput.reset(); }
+    for (auto& [id, entry] : entries_) { (void)id; unbind(entry); entry.coatOutputs.clear(); }
     mapping_ = std::move(mapping);
 }
 inline void Runtime::unavailableCoatMapping(std::string reason) {
@@ -237,7 +237,7 @@ inline void Runtime::clearPattern(RE::Actor* actor) {
     }
 }
 inline CoatDecision Runtime::decision(const Entry& entry) const {
-    if (mapping_) return mapping_->select(entry.explicitPattern, entry.coatOutput, entry.colours.hasHair);
+    if (mapping_) return mapping_->selectOutputs(entry.explicitPattern, entry.coatOutputs, entry.colours.hasHair);
     return policy_.select(library_, entry.explicitPattern,
         entry.colours.hasHair ? std::optional{entry.colours.hair} : std::nullopt,
         entry.automatic.seed, entry.automatic);
@@ -655,7 +655,7 @@ inline void Runtime::reportYieldDifferences(RE::FormID actor, const Entry& entry
             actor, coatAuditQuote(failure.name), difference.field, coatAuditQuote(difference.expected), coatAuditQuote(difference.observed));
 }
 inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
-    std::uint64_t saveNamespace, std::uint64_t identity, std::optional<float> coatOutput) {
+    std::uint64_t saveNamespace, std::uint64_t identity, CoatValues coatOutputs) {
     if (!actor || !actor->GetActorBase() || (!mapping_ && !provider)) return false;
     if (!saveNamespace || !identity) return false;
     auto found = entries_.find(actor->formID);
@@ -681,7 +681,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         entry.audit.invalidate(); entry.auditRoot.reset(); entry.auditGeneration = 0;
     }
     if (!root) { unbind(entry); entry.status = "unloaded"; return false; }
-    entry.coatOutput = coatOutput;
+    entry.coatOutputs = std::move(coatOutputs);
     const auto selectedChoice = decision(entry);
     if (selectedChoice.origin == CoatOrigin::hairPool && !selectedChoice.pattern.empty())
         entry.automatic.hair = {selectedChoice.pool, selectedChoice.pattern};

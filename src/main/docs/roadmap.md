@@ -1,5 +1,19 @@
 # CLAW development roadmap
 
+## Current owner scope — 13 November 2026
+
+Only CLAW motion physics and the verified 0.10.0 release are active. Complete
+provider behavior/lifecycle checks, validate the final installer, integrate its
+source into main and publish matching GitHub/Nexus releases. The remaining
+roadmap items are deferred; this slice does not resume them automatically.
+
+MO2 API Bridge follow-up is planned separately: Qt-native inspection of MO2's
+windows, modal text and enabled buttons, with identity-checked actions. The
+original chat reports released 2.3.6 and unreleased 2.3.7/develop e643698. Native
+candidate acceptance and inactive-profile serialization remain unresolved.
+General Qt inspection is absent from both and is not a committed candidate
+feature. No Bridge implementation, build or release is part of this task.
+
 ## 0.9.0: core mechanics and external artwork
 
 Read the ten optional coat sets from Elegant Randomized through the game data
@@ -9,11 +23,21 @@ Check both installations, selections, game materials and save/load.
 
 ## 0.10.0: motion physics
 
-Complete actual CBPC and FSMP provider binding, actor-scoped activation,
-refresh/rebinding, cleanup and motion. Prefer provider-specific adapters and the
-existing XP32 skeleton. Compilation, a void callback and animation-driven node
+Ship the checked Faster HDT-SMP motion adapter, lifecycle and cleanup using the
+existing XP32 skeleton. Keep CBPC out of the installer until its original-human
+rebind problem has a provider-supported solution. Compilation, a void callback and animation-driven node
 changes do not prove physics simulation. Establish actual provider state and
 controlled motion in the game; do not mask uncertainty with qualification flags.
+
+## Deferred CBPC actor rebinding
+
+Actual 13 November case142827-3a903c transformed a human NPC successfully, but
+CBPC1.7.3 kept updating human Things and created none of the eleven requested
+wolf drivers. Its installed public interface provides parameter refresh, not a
+proven per-actor rebind. Retain the exact failed test/API evidence and pursue a
+provider-supported invalidation contract separately. Do not ship guessed refresh
+calls, a global reset workaround or an unverified CBPC option. The independent
+FSMP mode passed the full both-sex human-origin lifecycle and remains0.10 scope.
 
 ## After motion physics: female breast, then VR body and contact colliders
 

@@ -19,6 +19,19 @@ class ProviderAuditTests(unittest.TestCase):
         (root / "CBPCMasterConfig.txt").write_text("[ConfigMap]\n" + rows, encoding="utf-8")
         return build.audit_provider(root)
 
+    def test_cbpc_master_is_required_by_default_but_not_for_fsmp_only_snapshot(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "hdtSMP64.dll").write_bytes(b"synthetic provider presence")
+            default = build.audit_provider(root)
+            self.assertEqual([{"error": "Provider snapshot contains no master config"}], default["uncertainties"])
+            with self.assertRaisesRegex(ValueError, "no master config"):
+                build.require_provider_clear(default)
+            fsmp_only = build.audit_provider(root, require_cbpc_master=False)
+            build.require_provider_clear(fsmp_only, breast=True)
+            self.assertEqual(default["files"], fsmp_only["files"])
+            self.assertFalse(fsmp_only["runtimeQualified"])
+
     def test_all_duplicate_conditions_are_preserved_without_guessing_winner(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -50,13 +63,139 @@ class ProviderAuditTests(unittest.TestCase):
                 audit = self.snapshot(root)
                 with self.assertRaises(ValueError): build.require_provider_clear(audit)
 
-    def test_breast_ancestry_and_aliases_block_optional_trial_only(self):
-        for row in ("NPC L Breast P1=Other=IsMale()", "Breast P1=Other", "CME Spine2 [Spn2]=Other",
-                    "NPC Spine2 [Spn2]=Other=IsFemale()", "NPC Root [Root]=Other", "Other=CLAW_BreastL"):
+    def test_breast_exclusive_ancestry_and_aliases_block_optional_trial_only(self):
+        for row in ("NPC L Breast P1=Other=IsMale()", "Breast P1=Other", "NPC L PreBreast P1=Other",
+                    "NPC R PreBreast P1=Other", "Other=CLAW_BreastL"):
             with self.subTest(row=row), tempfile.TemporaryDirectory() as folder:
                 audit = self.snapshot(Path(folder), row + "\n")
                 build.require_provider_clear(audit)
                 with self.assertRaises(ValueError): build.require_provider_clear(audit, breast=True)
+
+    def test_cbpc_exact_ear_tail_ancestors_block_with_or_without_breast_motion(self):
+        for node in build.EAR_TAIL_ANCESTORS:
+            with self.subTest(node=node), tempfile.TemporaryDirectory() as folder:
+                audit = self.snapshot(Path(folder), node + "=Other=IsRaceFormId(Skyrim.esm|000CDD84)\n")
+                self.assertEqual([row["node"] for row in audit["earTailConflicts"]], [node])
+                for breast in (False, True):
+                    with self.assertRaises(ValueError): build.require_provider_clear(audit, breast=breast)
+
+    def test_known_bare_pelvis_records_real_write_targets_without_claiming_runtime(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            # Synthetic image contract tests inventory/parser integration only;
+            # the production image/PDB evidence is recorded separately.
+            image = b"synthetic role-contract fixture"
+            (root / "cbp.dll").write_bytes(image)
+            sha = hashlib.sha256(image).hexdigest()
+            writes = ("NPC L Pussy02", "NPC R Pussy02", "VaginaB1", "Clitoral1")
+            with patch.dict(build.CBPC_WRITE_ROLES, {(sha, "NPC Pelvis [Pelv]"): writes}):
+                audit = self.snapshot(root, "NPC Pelvis [Pelv] # stock anchor\n")
+            for breast in (False, True): build.require_provider_clear(audit, breast=breast)
+            row, = audit["mappings"]
+            self.assertEqual(row["node"], row["readOnlyAnchor"])
+            self.assertEqual(row["writeNodes"], list(writes))
+            self.assertEqual(row["providerSha256"], sha)
+            self.assertFalse(audit["runtimeQualified"])
+            # A future protected graph containing any child must still conflict.
+            for node in writes:
+                self.assertEqual(build.provider_conflicts(audit, (node,), ())[0]["node"], row["node"])
+            (root / "cbp.dll").write_bytes(image + b"changed")
+            with self.assertRaisesRegex(ValueError, "changed after audit"):
+                build.verify_provider_unchanged(audit)
+
+    def test_pelvis_role_requires_exact_image_and_bare_row_and_preserves_other_conflicts(self):
+        image = b"synthetic role-contract fixture"
+        sha = hashlib.sha256(image).hexdigest()
+        role = {(sha, "NPC Pelvis [Pelv]"): ("NPC L Pussy02", "NPC R Pussy02", "VaginaB1", "Clitoral1")}
+        for provider in (None, image + b"different", image):
+            for row in ("NPC Pelvis [Pelv]", "NPC Pelvis [Pelv]=", "NPC Pelvis [Pelv]==",
+                        "NPC Pelvis [Pelv]=Other", "NPC Pelvis [Pelv]=CLAW_Tail"):
+                with self.subTest(provider=provider, row=row), tempfile.TemporaryDirectory() as folder:
+                    root = Path(folder)
+                    if provider is not None: (root / "cbp.dll").write_bytes(provider)
+                    with patch.dict(build.CBPC_WRITE_ROLES, role):
+                        audit = self.snapshot(root, row + "\n")
+                    allowed = provider == image and row == "NPC Pelvis [Pelv]"
+                    if allowed:
+                        build.require_provider_clear(audit, breast=True)
+                    else:
+                        with self.assertRaises(ValueError): build.require_provider_clear(audit)
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder); (root / "cbp.dll").write_bytes(image)
+            with patch.dict(build.CBPC_WRITE_ROLES, role):
+                audit = self.snapshot(root, "NPC Pelvis [Pelv]\nTailBone01=Other\nDifferent=CLAW_EarL\n")
+            self.assertEqual(len(audit["mappings"]), 3)
+            self.assertEqual(len(audit["earTailConflicts"]), 2)
+            with self.assertRaises(ValueError): build.require_provider_clear(audit, breast=True)
+
+    def test_dynamic_smp_ear_tail_ancestors_block_with_or_without_breast_motion(self):
+        for node in build.EAR_TAIL_ANCESTORS:
+            with self.subTest(node=node), tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                (root / "other.xml").write_text('<system><bone name="' + node + '"><mass>1</mass></bone></system>')
+                audit = self.snapshot(root)
+                self.assertEqual([row["node"] for row in audit["earTailConflicts"]], [node])
+                for breast in (False, True):
+                    with self.assertRaises(ValueError): build.require_provider_clear(audit, breast=breast)
+
+    def test_explicit_zero_mass_smp_anchors_and_constraint_references_are_preserved(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            protected = (*build.NODES, *build.EAR_TAIL_ANCESTORS, *build.BREAST_NODES, *build.BREAST_ANCESTORS)
+            protected = tuple(dict.fromkeys(protected))
+            (root / "static.xml").write_text('<system>' + ''.join(
+                '<bone name="' + node + '"><mass>0</mass></bone>' for node in protected) + ''.join(
+                '<generic-constraint bodyA="' + node + '" bodyB="Unrelated"/>' for node in protected) + '</system>')
+            audit = self.snapshot(root, "")
+            self.assertEqual(audit["smpReferences"], [])
+            self.assertEqual({row["node"] for row in audit["smpStaticReferences"]}, set(protected))
+            for breast in (False, True): build.require_provider_clear(audit, breast=breast)
+
+    def test_ambiguous_mass_cannot_disguise_an_ancestor_writer(self):
+        for bone in ('<bone name="Tails"/>', '<bone name="Tails" mass="0"/>',
+                     '<bone name="Tails" template="Static"/>',
+                     '<bone name="Tails"><mass>nan</mass></bone>',
+                     '<bone name="Tails"><mass>0</mass><mass>1</mass></bone>',
+                     '<bone name="Tails"><mass>0</mass></bone><bone name="Tails"><mass>1</mass></bone>',
+                     '<bone name=" Tails "><mass>0</mass></bone>'):
+            with self.subTest(bone=bone), tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                (root / "other.xml").write_text('<system><bone-default name="Static"><mass>0</mass></bone-default>'
+                    + bone + '<generic-constraint bodyA="Tails" bodyB="Unrelated"/></system>')
+                audit = self.snapshot(root)
+                self.assertTrue(audit["earTailConflicts"])
+                for breast in (False, True):
+                    with self.assertRaises(ValueError): build.require_provider_clear(audit, breast=breast)
+
+    def test_implicit_creation_before_zero_mass_declaration_is_not_static_proof(self):
+        for earlier in ('<generic-constraint bodyA="Tails" bodyB="Other"/>',
+                        '<constraint-group><stiffspring-constraint bodyA="Other" bodyB="Tails"/></constraint-group>',
+                        '<per-vertex-shape name="UnknownMesh"/>', '<per-triangle-shape name="UnknownMesh"/>'):
+            with self.subTest(earlier=earlier), tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                (root / "other.xml").write_text('<system><bone-default><mass>1</mass></bone-default>'
+                    + earlier + '<bone name="Tails"><mass>0</mass></bone></system>')
+                audit = self.snapshot(root)
+                for breast in (False, True):
+                    with self.assertRaises(ValueError): build.require_provider_clear(audit, breast=breast)
+
+    def test_unrelated_constraint_does_not_disqualify_later_explicit_static_anchor(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "other.xml").write_text('<system><generic-constraint bodyA="OtherA" bodyB="OtherB"/>'
+                '<bone name="Tails"><mass>0</mass></bone><generic-constraint bodyA="Tails" bodyB="OtherA"/></system>')
+            audit = self.snapshot(root)
+            for breast in (False, True): build.require_provider_clear(audit, breast=breast)
+
+    def test_ordinary_unrelated_physics_and_animation_files_are_untouched(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "human.xml").write_text('<system><bone name="NPC L Breast"><mass>1</mass></bone>'
+                                            '<bone name="TailBone010"><mass>1</mass></bone></system>')
+            (root / "walk.hkx").write_bytes(b"NPC Head [Head] Tails CME TailBone02")
+            audit = self.snapshot(root)
+            for breast in (False, True): build.require_provider_clear(audit, breast=breast)
+            self.assertFalse(any(row["path"].endswith(".hkx") for row in audit["files"]))
 
     def test_smp_simulated_spine_ancestor_blocks_p1_even_without_p1_literal(self):
         with tempfile.TemporaryDirectory() as folder:

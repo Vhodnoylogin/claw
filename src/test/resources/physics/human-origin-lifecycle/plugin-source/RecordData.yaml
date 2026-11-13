@@ -1,0 +1,13 @@
+SpriggitSource:
+  PackageName: Spriggit.Yaml.Skyrim
+  Version: 0.41
+ModKey: test_CLAW - Physics Probe.esp
+GameRelease: SkyrimSE
+ModHeader:
+  Stats:
+    Version: 1.7
+  Author: CLAW physics test fixture
+  Description: 'TEST ONLY: two initially-disabled persistent human-origin lifecycle references; original Skyrim NPC bases unchanged in QASmoke.'
+  MasterReferences:
+  - Master: Skyrim.esm
+    FileSize: 0

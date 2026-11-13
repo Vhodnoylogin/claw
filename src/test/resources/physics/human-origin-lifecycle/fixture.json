@@ -1,0 +1,60 @@
+{
+  "schema": "claw-human-origin-lifecycle-fixture/1",
+  "plugin": "test_CLAW - Physics Probe.esp",
+  "masters": [
+    "Skyrim.esm"
+  ],
+  "cell": "032AE7:Skyrim.esm",
+  "references": [
+    {
+      "sceneAlias": "Runa",
+      "referenceLocalId": "000900",
+      "basePlugin": "Skyrim.esm",
+      "baseLocalFormId": "0A2C91",
+      "editorId": "HousecarlRiften",
+      "sex": "female",
+      "raceLocalFormId": "013746",
+      "height": 1.0,
+      "weight": 50.0,
+      "weightFloat32Hex": "00004842",
+      "sourceRecordOffset": 10541541,
+      "sourceRecordBytes": 570,
+      "sourceRecordSha256": "6e7559e62fd30bb1b526c570615b9d93efea65b0d5cdd16e9ed7070ddd6f3c10",
+      "storagePosition": [
+        -554,
+        1893,
+        6650
+      ]
+    },
+    {
+      "sceneAlias": "Grom",
+      "referenceLocalId": "000901",
+      "basePlugin": "Skyrim.esm",
+      "baseLocalFormId": "0A2C90",
+      "editorId": "HousecarlWindhelm",
+      "sex": "male",
+      "raceLocalFormId": "013746",
+      "height": 1.0,
+      "weight": 29.999998092651367,
+      "weightFloat32Hex": "ffffef41",
+      "sourceRecordOffset": 10542111,
+      "sourceRecordBytes": 623,
+      "sourceRecordSha256": "447d90437576b6808131f2ec861f6a2d3ff40ff7c176211168eb8f73fd07602f",
+      "storagePosition": [
+        -224,
+        1893,
+        6650
+      ]
+    }
+  ],
+  "sourceRecordEvidence": {
+    "fileName": "claw-hair-coat-source-prep-20261112/PREP.json",
+    "sha256": "889c7426a175a27fecb7cb888f633e00bd00e8a3af2a62de72e4903e1846581b",
+    "scope": "Static original Skyrim NPC records, not active-profile winning overrides or current game observations."
+  },
+  "referenceFlags": 3072,
+  "npcRecordsAuthored": 0,
+  "runtimeFormPrefix": null,
+  "gameValidated": false,
+  "installed": false
+}

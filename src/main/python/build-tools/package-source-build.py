@@ -22,10 +22,12 @@ import hashlib
 import importlib.util
 import io
 import json
+import math
 import os
 from pathlib import Path, PurePosixPath
 import re
 import subprocess
+import struct
 import xml.etree.ElementTree as ET
 import zipfile
 
@@ -39,6 +41,13 @@ RUNTIME_README = "src/main/resources/publication/runtime/README.md"
 MODEL_SWAP_OVERRIDE = "RandomElegantWerewolves_MS.json"
 MODEL_SWAP_SOURCE = "src/main/resources/compatibility/" + MODEL_SWAP_OVERRIDE
 MESH = "Meshes/Actors/WerewolfBeast/Character Assets"
+MOTION_PREFIX = "40 Motion/"
+MOTION_XML = "SKSE/Plugins/hdtSkinnedMeshConfigs/CLAW/CLAWMotion"
+CBPC_FILES = {"SKSE/Plugins/" + prefix + suffix + ".txt"
+              for prefix in ("CBPCMasterConfig_", "CBPConfig_") for suffix in ("CLAWMotion", "CLAWBreastMotion")}
+FSMP_FILES = {MOTION_XML + sex + ".xml" for sex in ("Male", "Female")} | {
+    MESH + "/" + sex + route + "_" + str(weight) + ".nif"
+    for sex in ("male", "female") for route in ("bodywerewolf", "PlayerWerewolf") for weight in (0, 1)}
 ARCHIVES = {".zip", ".7z", ".rar", ".tar", ".gz", ".gzip", ".tgz", ".bz2", ".bzip2",
             ".tbz", ".tbz2", ".xz", ".txz", ".lz", ".lzma", ".zst", ".zstd", ".tzst",
             ".cab", ".iso", ".arj", ".ace", ".bsa", ".ba2", ".jar", ".war", ".whl",
@@ -57,6 +66,9 @@ SOURCE_FILES = {"CMakeLists.txt", "src/main/resources/profiles/MorphLinks.xml",
 HOST_SOURCES = {"src/main/papyrus/obody/CLAWOBodySourceHost.psc",
                 "src/main/papyrus/obody/build.py", "src/main/papyrus/obody/README.md",
                 "src/main/python/physics/wiring.py"}
+MOTION_SOURCES = {"src/main/python/physics/" + name for name in
+                  ("motion_adapter.py", "fsmp_motion.py", "build.py", "current_model.py", "recipe.json",
+                   "capsules.json", "breast-motion.json", "motion-adapters.md")}
 
 
 def sha(data):
@@ -154,11 +166,12 @@ class Inputs:
                 raise ValueError("Input changed during packaging: " + str(path))
 
 
-def tracked_source(inputs, include_host):
+def tracked_source(inputs, include_host, include_motion=False):
     result = subprocess.run(["git", "-C", str(ROOT), "ls-files", "-z"], capture_output=True, check=True)
     names = [name.decode("utf-8") for name in result.stdout.split(b"\0") if name]
     required = SOURCE_FILES | (HOST_SOURCES if include_host else set())
     required.update("src/main/resources/appearance/" + name for name in APPEARANCE_FILES)
+    if include_motion: required.update(MOTION_SOURCES)
     selected = sorted(name for name in names if name.startswith(SOURCE_PREFIXES) or name in required)
     if not required.issubset(selected) or not any(name.startswith("src/main/cpp/") for name in selected):
         raise ValueError("Current source hierarchy/packager must be tracked (stage src/ before packaging)")
@@ -300,7 +313,121 @@ def profiles(data, family, male_family="HIMBO"):
     return ET.tostring(tree, encoding="utf-8") + b"\n"
 
 
-def installer(template, entries):
+def _nif_fields(materials, payload):
+    """Reuse the existing bounded SSE container reader; do not rewrite a mesh."""
+    _, middle, types, indices, blocks, _ = materials.container(payload)
+    reader = materials.Reader(middle)
+    count, _ = reader.unpack('<II')
+    strings = [reader.string() for _ in range(count)]
+    if reader.unpack('<I') != (0,) or reader.pos != len(middle) or types[indices[0]] != 'NiNode':
+        raise ValueError('Unsupported motion Scene Root/string table')
+    root = blocks[0]
+    if len(root) < 8:
+        raise ValueError('Truncated motion Scene Root')
+    count = struct.unpack_from('<I', root, 4)[0]
+    if 8 + 4 * count > len(root):
+        raise ValueError('Truncated motion root extras')
+    refs = struct.unpack_from('<' + str(count) + 'I', root, 8)
+    extras, records = {}, []
+    if any(index >= len(blocks) for index in refs): raise ValueError('Invalid motion root reference')
+    for index, block in enumerate(blocks):
+        if types[indices[index]] == 'NiStringExtraData':
+            if len(block) != 8: raise ValueError('Unsupported motion string extra')
+            key, value = struct.unpack('<II', block)
+            if max(key, value) >= len(strings): raise ValueError('Invalid motion string extra index')
+            records.append((strings[key], strings[value]))
+            if index in refs:
+                if strings[key] in extras: raise ValueError('Ambiguous motion root string extra')
+                extras[strings[key]] = strings[value]
+    return types, indices, blocks, strings, refs, extras, records
+
+
+def _check_motion_nif(materials, core, hooked, sex):
+    before, after = _nif_fields(materials, core), _nif_fields(materials, hooked)
+    bt, bi, bb, bs, br, be, records = before
+    at, ai, ab, ass, ar, ae, _ = after
+    hook = b'HDT Skinned Mesh Physics Object'
+    xml = (MOTION_XML + sex.title() + '.xml').encode('ascii')
+    # BODYTRI may belong to individual geometries, not the Scene Root.
+    tris = {value.decode('ascii').replace('\\', '/').casefold().removeprefix('meshes/') for key, value in records if key == b'BODYTRI'}
+    if tris != {'actors/werewolfbeast/character assets/' + sex + 'bodywerewolf.tri'} or any(key == hook for key, _ in records):
+        raise ValueError('Core motion input has mismatched BODYTRI or an existing FSMP hook')
+    expected_types = bt if 'NiStringExtraData' in bt else bt + ['NiStringExtraData']
+    if (at != expected_types or ai[:-1] != bi or len(ab) != len(bb) + 1 or ab[1:-1] != bb[1:] or
+            ass[:len(bs)] != bs or any(value not in (hook, xml) for value in ass[len(bs):]) or
+            ar != (*br, len(bb)) or ae != {**be, hook: xml} or
+            ab[0][:4] != bb[0][:4] or ab[0][8 + 4 * len(ar):] != bb[0][8 + 4 * len(br):] or
+            at[ai[-1]] != 'NiStringExtraData' or len(ab[-1]) != 8):
+        raise ValueError('FSMP output changed core geometry/skin/material/strings or root hook scope')
+
+
+def _motion_payload(inputs, receipt_path, provider, core_inputs, core_bodies, materials):
+    """Consume an existing builder receipt; never generate physics or qualify it."""
+    payload = inputs.read(receipt_path)
+    if len(payload) > 16 * 1024 * 1024: raise ValueError('Motion receipt exceeds bounded size')
+    report = json.loads(payload)
+    status = 'built-offline-motion-adapter-runtime-pending' if provider == 'cbpc' else 'built-offline-FSMP-motion-runtime-pending'
+    if (report.get('schemaVersion') != 1 or report.get('provider') != provider or report.get('status') != status or
+            report.get('collisionResponseEnabled') is not False):
+        raise ValueError('Expected original motion-only builder receipt for ' + provider)
+    resources = report.get('resources', {})
+    if set(resources) != {'male0', 'male1', 'female0', 'female1', 'skeleton'}:
+        raise ValueError('Motion receipt requires four endpoints and skeleton')
+    for role, row in resources.items():
+        actual = inputs.read(row['path'])
+        if type(row.get('bytes')) is not int or row['bytes'] != len(actual) or row.get('sha256') != sha(actual):
+            raise ValueError('Changed motion resource: ' + role)
+        if role != 'skeleton' and actual != core_inputs[role]:
+            raise ValueError('Motion resource does not match selected core endpoint: ' + role)
+    sources = report.get('sourceInputs')
+    if not isinstance(sources, list) or not sources: raise ValueError('Motion builder source pins required')
+    for row in sources:
+        actual = inputs.read(row['path'])
+        if row.get('bytes') != len(actual) or row.get('sha256') != sha(actual):
+            raise ValueError('Changed motion builder source')
+    expected = (CBPC_FILES if provider == 'cbpc' else FSMP_FILES) | {'README.txt'}
+    rows = report.get('files', [])
+    names = [safe_name(row['path']) for row in rows]
+    if len(names) != len(set(names)) or set(names) != expected:
+        raise ValueError('Unexpected or incomplete motion payload')
+    folder = Path(receipt_path).parent / 'package'
+    if {p.relative_to(folder).as_posix() for p in folder.rglob('*') if p.is_file()} != expected:
+        raise ValueError('Unlisted motion payload file')
+    files = {}
+    for row in rows:
+        data = inputs.read(folder / row['path'])
+        if row.get('bytes') != len(data) or row.get('sha256') != sha(data):
+            raise ValueError('Changed motion payload: ' + row['path'])
+        if row['path'] != 'README.txt': files[row['path']] = data
+    if provider == 'fsmp':
+        for role, core in core_bodies.items():
+            sex, weight = role[:-1], role[-1]
+            paths = [MESH + '/' + sex + route + '_' + weight + '.nif' for route in ('bodywerewolf', 'PlayerWerewolf')]
+            if files[paths[0]] != files[paths[1]]: raise ValueError('FSMP armor routes differ')
+            _check_motion_nif(materials, core, files[paths[0]], sex)
+        for sex in ('Male', 'Female'):
+            root = ET.fromstring(files[MOTION_XML + sex + '.xml'])
+            if root.tag != 'system' or root.attrib or any(row.tag not in {'bone', 'generic-constraint'} for row in root):
+                raise ValueError('Expected a complete FSMP motion system')
+            recipe = json.loads(inputs.read(ROOT / 'src/main/python/physics/recipe.json'))
+            drivers = {node for group in recipe['groups'] for node in group['nodes']}
+            anchors = {'NPC Head [Head]', 'Tails'}
+            if sex == 'Female':
+                recipe = json.loads(inputs.read(ROOT / 'src/main/python/physics/breast-motion.json'))
+                drivers.update(node for group in recipe['groups'] for node in group['nodes'])
+                anchors.update({'NPC L PreBreast P1', 'NPC R PreBreast P1'})
+            bones, constraints = root.findall('bone'), root.findall('generic-constraint')
+            if ({row.get('name') for row in bones} != drivers | anchors or len(bones) != len(drivers | anchors) or
+                    any(set(row.attrib) != {'name'} or not math.isfinite(float(row.findtext('mass', 'nan'))) or
+                        (float(row.findtext('mass')) <= 0 if row.get('name') in drivers else float(row.findtext('mass')) != 0) for row in bones) or
+                    len(constraints) != len(drivers) or {row.get('bodyB') for row in constraints} != drivers or
+                    any(set(row.attrib) != {'bodyA', 'bodyB'} or row.get('bodyA') not in drivers | anchors for row in constraints)):
+                raise ValueError('FSMP graph is not the declared ear/tail/female-P1 motion scope')
+    return files, {'provider': provider, 'receiptSha256': sha(payload), 'resources': resources,
+                   'runtimeQualified': False, 'sharedTriSha256': {sex: sha(core_inputs[sex + 'Tri']) for sex in ('male', 'female')}}
+
+
+def installer(template, entries, motion=False):
     config = ET.fromstring(template)
     config.find("moduleName").text = NAME
     required = config.find("requiredInstallFiles")
@@ -393,11 +520,41 @@ def installer(template, entries):
             ET.SubElement(dependencies, "flagDependency", flag="femaleFamily", value=female)
             ET.SubElement(ET.SubElement(pattern, "files"), "folder",
                           source="20 Human Family/"+male+"-and-"+female, destination="", priority="0")
+    if motion:
+        bodies = [node for node in required if node.get('destination', '').endswith('.nif')]
+        for node in bodies: required.remove(node)
+        step = ET.SubElement(steps, 'installStep', name='Werewolf motion')
+        group = ET.SubElement(ET.SubElement(step, 'optionalFileGroups', order='Explicit'), 'group',
+                              name='One werewolf motion provider', type='SelectExactlyOne')
+        options = ET.SubElement(group, 'plugins', order='Explicit')
+        for mode, name in (('none', 'None'), ('fsmp', 'Faster HDT-SMP')):
+            option = ET.SubElement(options, 'plugin', name=name)
+            provider_url = 'https://www.nexusmods.com/skyrimspecialedition/mods/57339'
+            ET.SubElement(option, 'description').text = ('No CLAW werewolf motion configuration.' if mode == 'none' else
+                'Install the matching ' + name + ' provider separately: ' + provider_url +
+                '. Adds motion to ears, tail and female breasts. Choose one option. No contact colliders.')
+            ET.SubElement(ET.SubElement(option, 'conditionFlags'), 'flag', name='physicsMode').text = mode
+            ET.SubElement(ET.SubElement(option, 'typeDescriptor'), 'type', name='Recommended' if mode == 'none' else 'Optional')
+            pattern = ET.SubElement(patterns, 'pattern')
+            ET.SubElement(ET.SubElement(pattern, 'dependencies', operator='And'), 'flagDependency', flag='physicsMode', value=mode)
+            files = ET.SubElement(pattern, 'files')
+            for body in bodies:
+                source, destination = body.get('source'), body.get('destination')
+                if mode == 'fsmp': source = source.replace('00 Base/', MOTION_PREFIX + 'FSMP/', 1)
+                ET.SubElement(files, 'file', source=source, destination=destination)
+            extra = {MOTION_XML + sex + '.xml' for sex in ('Male', 'Female')} if mode == 'fsmp' else set()
+            for destination in sorted(extra):
+                ET.SubElement(files, 'file', source=MOTION_PREFIX + mode.upper() + '/' + destination, destination=destination)
     if not any(name.startswith("30 OBody Source/") for name in entries):
         for step in list(steps):
             if any(row.get("source") == "30 OBody Source" for row in step.findall(".//files/folder")):
                 steps.remove(step)
     installer_help(config)
+    if motion:
+        for description in config.findall('.//description'):
+            if description.text:
+                description.text = description.text.replace('Human bodies and physics are not bundled.',
+                    'Human bodies are not bundled. Select werewolf motion separately.')
     ET.indent(config)
     # Vortex re-encodes this string as UTF-16 but strips only double-quoted
     # encoding declarations. Omit ElementTree's single-quoted declaration.
@@ -434,9 +591,24 @@ def audit_external_coats(entries):
 
     mapping = ET.fromstring(entries[prefix + "CoatMapping.xml"])
     materials = {"randomized/" + name for name in expected_ids}
+    records = [row for row in mapping if row.tag != "Group"]
     if ({row.get("material") for row in mapping.findall("Range")} != materials or
-            any(row.get("material") not in materials for row in mapping)):
+            any(row.tag not in {"Range", "Manual", "Alias"} or row.get("material") not in materials for row in records)):
         raise ValueError("Coat mapping and external catalog do not agree")
+    groups = mapping.findall("Group")
+    if mapping.get("schemaVersion") == "2":
+        choices = {row.get("id") for row in records if row.tag != "Alias"}
+        variants = [row.get("id") for group in groups for row in group.findall("Variant")]
+        if (not groups or len(variants) != len(set(variants)) or set(variants) != choices or
+                any(not group.findall("Anchor") or not group.findall("Variant") for group in groups)):
+            raise ValueError("Coat colour groups and logical choices do not agree")
+        for group in groups:
+            for anchor in group.findall("Anchor"):
+                if (set(anchor.attrib) != {"red", "green", "blue"} or
+                        any(not math.isfinite(float(value)) or not 0 <= float(value) <= 1 for value in anchor.attrib.values())):
+                    raise ValueError("Invalid coat colour anchor")
+    elif mapping.get("schemaVersion") != "1" or groups:
+        raise ValueError("Unsupported coat mapping schema")
 
 
 def selection_audit(entries):
@@ -448,18 +620,28 @@ def selection_audit(entries):
     extra_base = {APPEARANCE_PATH + name for name in APPEARANCE_FILES} | {MODEL_SWAP_OVERRIDE}
     player_models = {MESH + "/" + sex + "PlayerWerewolf" + ending
         for sex in ("male", "female") for ending in ("_0.nif", "_1.nif")}
+    motion = bool(config.findall(".//conditionFlags/flag[@name='physicsMode']"))
+    if motion:
+        groups = [group for group in config.findall('.//group') if group.findall("plugins/plugin/conditionFlags/flag[@name='physicsMode']")]
+        flags = groups[0].findall("plugins/plugin/conditionFlags/flag[@name='physicsMode']") if len(groups) == 1 else []
+        if (len(groups) != 1 or groups[0].get('type') != 'SelectExactlyOne' or len(flags) != 2 or
+                {flag.text for flag in flags} != {'none', 'fsmp'}):
+            raise ValueError('Motion requires one mutually exclusive None/Faster HDT-SMP group')
     if json.loads(entries["00 Base/" + MODEL_SWAP_OVERRIDE]) != []:
         raise ValueError("Elegant model-swap compatibility override must be an empty JSON array")
     audit_external_coats(entries)
     for name, data in entries.items():
+        if (name.startswith(MOTION_PREFIX + 'CBPC/') or
+                Path(name).name.casefold().startswith(('cbpcmasterconfig', 'cbpconfig', 'cbpcollisionconfig'))):
+            raise ValueError('CBPC motion payload is not part of the working installer')
         if (Path(name).suffix.lower() == ".dds" or "textures" in PurePosixPath(name.casefold()).parts
                 or data.startswith(b"DDS ")):
             raise ValueError("Texture redistribution is not part of this runtime: " + name)
-    if required is None or len(required) != 7 + len(extra_base) + len(player_models) or any(row.tag != "file" for row in required):
+    if required is None or len(required) != 7 + len(extra_base) + len(player_models) - (8 if motion else 0) or any(row.tag != "file" for row in required):
         raise ValueError("Literal serialized FOMOD must contain body/base mappings, four PlayerOnly model aliases and all coat resources")
     rows = []
     for male, family in ((male, female) for male in MALE_FAMILIES for female in FEMALE_FAMILIES):
-        for host in (False, True):
+        for host, physics in ((host, mode) for host in (False, True) for mode in (('none', 'fsmp') if motion else (None,))):
             if host and not any(name.startswith("30 OBody Source/") for name in entries):
                 continue
             active = ({"HIMBO.esp"} if male == "HIMBO" else set())
@@ -467,14 +649,16 @@ def selection_audit(entries):
             active |= ({"3BBB.esp"} if family == "3BA" else set())
             active |= ({"BHUNP3BBB.esp"} if family == "BHUNP" else set())
             installed = reader.resolve_selection(config, entries, native=True, male_family=male,
-                                                family=family, host=host, additional_active=active)
+                                                family=family, host=host, additional_active=active, physics=physics)
             for item in required:
                 source, destination = safe_name(item.get("source", "")), safe_name(item.get("destination", ""))
                 if source not in entries or destination in installed:
                     raise ValueError("Missing source or duplicate required destination")
                 installed[destination] = source
             expected = reader.BASE_RUNTIME | reader.NATIVE_RUNTIME | {reader.FAMILY_DEST} | extra_base | player_models | (reader.HOST_RUNTIME if host else set())
-            if set(installed) != expected or len(installed) != (12 if host else 10) + len(extra_base) + len(player_models):
+            extra_motion = {MOTION_XML + sex + '.xml' for sex in ('Male', 'Female')} if physics == 'fsmp' else set()
+            expected |= extra_motion
+            if set(installed) != expected or len(installed) != (12 if host else 10) + len(extra_base) + len(player_models) + len(extra_motion):
                 raise ValueError("Nonminimal/incomplete selected runtime")
             for alias in player_models:
                 standard = alias.replace("PlayerWerewolf", "bodywerewolf")
@@ -487,7 +671,11 @@ def selection_audit(entries):
             if (selected != {("male", male), ("female", family)} or len(matrix.findall("Profile")) != 2 or
                     defaults is None or defaults.get("male") != ids["male"] or defaults.get("female") != ids["female"]):
                 raise ValueError("Selected body matrices/defaults differ from the independent choices")
-            rows.append({"maleFamily": male, "family": family, "obody": host, "runtimeFiles": len(installed),
+            if physics == 'fsmp' and any(not source.startswith(MOTION_PREFIX + 'FSMP/') for name, source in installed.items() if name.endswith('.nif')):
+                raise ValueError('FSMP selection retained an unhooked core model')
+            if physics != 'fsmp' and any(source.startswith(MOTION_PREFIX + 'FSMP/') for source in installed.values()):
+                raise ValueError('Unselected FSMP payload installed')
+            rows.append({"maleFamily": male, "family": family, "obody": host, **({'physics': physics} if motion else {}), "runtimeFiles": len(installed),
                          "files": [{"path": name, "source": source, "sha256": sha(entries[source])}
                                    for name, source in sorted(installed.items())]})
     used = {item["source"] for row in rows for item in row["files"]}
@@ -550,7 +738,8 @@ def runtime_notices(licenses, review):
 
 
 def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
-          commonlib_commit, out, obody_esp=None, obody_pex=None, version=VERSION, source_commit=None):
+          commonlib_commit, out, obody_esp=None, obody_pex=None, version=VERSION, source_commit=None,
+          cbpc_motion_build=None, fsmp_motion_build=None):
     original_output = Path(out).absolute()
     if any(part.exists() and (part.is_symlink() or part.is_junction()) for part in (original_output, *original_output.parents)):
         raise ValueError("Linked output ancestry refused")
@@ -562,6 +751,9 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
         raise ValueError("Use an numeric product version")
     if (obody_esp is None) != (obody_pex is None):
         raise ValueError("OBody host ESP and PEX must be supplied together")
+    if cbpc_motion_build is not None:
+        raise ValueError('CBPC motion remains research-only and cannot be included in the working installer; supply --fsmp-motion-build alone')
+    motion = fsmp_motion_build is not None
     inputs = Inputs()
     inputs.read(ROOT / "src/main/python/build-tools/player_only_materials.py")
     material_spec = importlib.util.spec_from_file_location("claw_player_only_materials",
@@ -569,6 +761,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     materials = importlib.util.module_from_spec(material_spec)
     material_spec.loader.exec_module(materials)
     material_adaptations = {}
+    core_inputs, core_bodies = {}, {}
     entries = {"00 Base/CLAW.esp": inputs.runtime(game_esp, b"TES4", "game ESP"),
                "10 Native/SKSE/Plugins/CLAWDistribution.dll": inputs.runtime(native_dll, b"MZ", "native DLL"),
                "10 Native/Scripts/CLAWDistributionNative.pex": inputs.runtime(native_pex, b"\xfa\x57\xc0\xde", "native PEX")}
@@ -577,12 +770,24 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
         for ending in ("_0.nif", "_1.nif", ".tri"):
             name = sex + "bodywerewolf" + ending
             body[ending] = inputs.runtime(Path(bodies_dir) / name, b"PIRT" if ending == ".tri" else b"Gamebryo", name)
+            role = sex + ('Tri' if ending == '.tri' else ending[1])
+            core_inputs[role] = body[ending]
             if ending != ".tri":
                 body[ending], material_adaptations[name] = materials.adapt_nif(body[ending])
+                core_bodies[role] = body[ending]
         for ending, data in body.items():
             if ending == "_1.nif" and data == body["_0.nif"]:
                 continue
             entries["00 Base/" + MESH + "/" + sex + "bodywerewolf" + ending] = data
+    motion_review = {}
+    if motion:
+        for provider, receipt in (('fsmp', fsmp_motion_build),):
+            files, motion_review[provider] = _motion_payload(inputs, receipt, provider, core_inputs, core_bodies, materials)
+            for name, data in files.items():
+                if name.endswith('.nif'):
+                    if 'PlayerWerewolf' in name: continue
+                    if name.endswith('_1.nif') and data == files[name.replace('_1.nif', '_0.nif')]: continue
+                entries[MOTION_PREFIX + provider.upper() + '/' + name] = data
     if obody_esp is not None:
         entries["30 OBody Source/CLAW - OBody Integration.esp"] = inputs.runtime(obody_esp, b"TES4", "OBody ESP")
         entries["30 OBody Source/Scripts/CLAWOBodySourceHost.pex"] = inputs.runtime(obody_pex, b"\xfa\x57\xc0\xde", "OBody PEX")
@@ -594,12 +799,12 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
         entries["00 Base/" + APPEARANCE_PATH + name] = inputs.read(ROOT / "src/main/resources/appearance" / name)
     entries["00 Base/" + MODEL_SWAP_OVERRIDE] = inputs.read(ROOT / MODEL_SWAP_SOURCE)
     template = ROOT / "src/main/resources/publication/unified-installer"
-    entries["fomod/ModuleConfig.xml"] = installer(inputs.read(template / "ModuleConfig.xml"), entries)
+    entries["fomod/ModuleConfig.xml"] = installer(inputs.read(template / "ModuleConfig.xml"), entries, motion=motion)
     info = ET.fromstring(inputs.read(template / "info.xml"))
     info.find("Name").text = NAME
     info.find("Version").text = version
     entries["fomod/info.xml"] = ET.tostring(info, encoding="utf-8", xml_declaration=False)
-    own, native_sources, commit, source_selection = tracked_source(inputs, obody_esp is not None)
+    own, native_sources, commit, source_selection = tracked_source(inputs, obody_esp is not None, include_motion=motion)
     native_sha = sha(entries["10 Native/SKSE/Plugins/CLAWDistribution.dll"])
     external, licenses, review = companion(inputs, source_companion_dir, native_sha, native_sources, commonlib_commit)
     validate_no_nested_archives(external)
@@ -607,7 +812,12 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     notices, notice_selection = runtime_notices(licenses, review)
     entries.update(notices)
     entries["README.md"] = inputs.read(ROOT / RUNTIME_README).replace(
-        b"@SOURCE_URL@", reference["url"].encode("ascii")).replace(b"@VERSION@", version.encode("ascii"))
+        b"@SOURCE_URL@", reference["url"].encode("ascii")).replace(b"@VERSION@", version.encode("ascii")).replace(
+        b'@MOTION_INSTRUCTIONS@', (b'Choose None or Faster HDT-SMP on the Werewolf motion page. None is the default. '
+        b'Install the matching [Faster HDT-SMP](https://www.nexusmods.com/skyrimspecialedition/mods/57339) provider separately. '
+        b'FSMP adds motion to ears, tail and female breasts. Replace the previous CLAW installation when switching options, '
+        b'and disable older CLAW motion mods. Contact colliders, VR body and anatomy are not included.'
+        if motion else b'This core archive does not include motion physics.'))
     validate_no_nested_archives(entries)
     packed = zip_bytes(entries)
     readback = read_zip(packed)
@@ -626,6 +836,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
                "runtimeInputsCompiledByThisCommand": False, "gameOrManagerExecuted": False,
                "runtimeInputProvenance": inputs.runtime_roles,
                "playerOnlyMaterialAdaptations": material_adaptations,
+               **({'motionProviders': motion_review} if motion else {}),
                "historicalArchiveUsedAsSource": False, "iniInstalled": False,
                "configuration": "canonical MorphLinks.xml family defaults; runtime has no INI reader",
                "texturePayloads": 0, "appearanceFiles": list(APPEARANCE_FILES),
@@ -652,6 +863,8 @@ def main(argv=None):
     parser.add_argument("--commonlib-commit", required=True)
     parser.add_argument("--obody-esp", type=Path)
     parser.add_argument("--obody-pex", type=Path)
+    parser.add_argument('--cbpc-motion-build', type=Path, help='Rejected: CBPC authoring remains research-only, outside the working installer')
+    parser.add_argument('--fsmp-motion-build', type=Path, help='Explicit fsmp-motion-build.json adds the None/Faster HDT-SMP installer choice')
     parser.add_argument("--version", default=VERSION)
     parser.add_argument("--source-commit", help="Optional exact local commit matching reviewed source; verify public availability before publishing")
     args = parser.parse_args(argv)

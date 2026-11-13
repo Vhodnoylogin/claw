@@ -1,17 +1,19 @@
 # CLAW — Customizable Lycanthrope Appearance and Weight
 
 Human body morphs shape male and female werewolves through editable coefficient
-and function matrices. CLAW 0.9 supports HIMBO, CBBE, CBBE+3BA, BHUNP, classic UNP Renewal and
+and function matrices. CLAW 0.10 supports HIMBO, CBBE, CBBE+3BA, BHUNP, classic UNP Renewal and
 separate male/female Vanilla matrices. Available human face and stature inputs
 also influence the head, ears, tail and claws. Users can install ten optional coats from the original Elegant Randomized
 component. CLAW uses the installed base coat when the selected textures are unavailable. Optional OBody integration supplies human preset inputs to
-eligible actors first encountered as werewolves.
+eligible actors first encountered as werewolves. Optional Faster HDT-SMP
+adds ear and tail motion on both sexes and female breast motion; select
+Faster HDT-SMP or None in the installer.
 
 Every matrix explicitly reads `$actor.weight`, independently of the already
 effective RaceMenu morph values. The installer selects one male and one female
 family. Native and the matching development Morphbench plugin use the same
 compiled evaluator. Installed-game evidence is recorded separately from source
-features in the [current verification record](src/test/docs/release-0.9.0-2026-11-11.md).
+features in the [current verification record](src/test/docs/release-0.10.0-2026-11-13.md).
 
 [Released downloads](https://github.com/Vhodnoylogin/claw/releases)
 · [Nexus](https://www.nexusmods.com/skyrimspecialedition/mods/194798)
@@ -124,9 +126,9 @@ The [withdrawn 0.9.0 verification](src/main/docs/verification-20261108.md) ident
 the final archive and its exact validation scope. Different runtime builds,
 complete-palette rendering and artistic quality are distinct checks.
 
-Physics is the next development milestone. Breast work, the VR body and final
-visual review follow in that order. See the [roadmap](src/main/docs/roadmap.md),
-[release notes](src/main/resources/publication/CLAW-0.9.0.md),
+Optional motion physics is included in 0.10.0. Further breast geometry work,
+the VR body, contacts and final visual review remain separate roadmap items. See the [roadmap](src/main/docs/roadmap.md),
+[release notes](src/main/resources/publication/CLAW-0.10.0.md),
 [matrix contract](src/main/docs/matrix-contract.md),
 [coat contract](src/main/docs/coat-library.md) and
 [reusable inspection configuration](src/test/resources/inspection/README.md).
