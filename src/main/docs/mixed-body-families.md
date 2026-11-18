@@ -94,6 +94,15 @@ same private path, and its supplied static bodies have no BODYTRI. Individual
 skin routing, family semantics, available morph inputs and wolf-model routing
 must not be treated as one inferred property.
 
+The subsequent Bijin AIO/CBBE SE check qualifies two original NPCs through an
+owned lifecycle with a separate skin-armature patch. The mathematical core,
+family selection, source meshes and original Bijin payload remain unchanged;
+adding the missing wolf addon makes the actual wolf geometry available. Treat
+this as a model-application adapter boundary, not a reason to add a guessed
+body classifier or promise all custom-skin mods. Static human bodies still have
+only weight/available-trait coverage. The dated record distinguishes the initial
+unpatched observations, private patch, two tested NPCs and untested configurations.
+
 ## Check a compatibility installation offline
 
 The development `claw-preset-tool` uses the same catalog and binding policy as

@@ -2,9 +2,9 @@
 
 The owner's downloaded `Bijin NPCs SE 1.2.1-11287-1-2-1.7z` has SHA256
 `c862bee6f49dd064d62f8606df074e9125e2e7cf6e84127b7cb3ced7442c83df`
-and size 159,295,466 bytes. Extraction and analysis are external; no installed mod,
-profile or original archive was changed. No Bijin game test or compatibility
-promise follows from this record. Private extracted artwork/record dumps are
+and size 159,295,466 bytes. Initial extraction and analysis were external and
+changed no installed mod, profile or original archive. The subsequent owned SE
+installation and game checks are recorded below. Private extracted artwork/record dumps are
 not CLAW source or distributable payload.
 
 ## Actual archive and record chain
@@ -70,3 +70,47 @@ not part of this analysis or the owner's current compatibility scope.
 External evidence: `Builds/claw-bijin-analysis-20261118/analysis.json`,
 `binary-plugin-proof.json`, `weight-endpoint-proof.json`, official AIO readback
 and the original archive/extraction logs. No third-party asset is copied here.
+
+## Actual SE lifecycle and optional skin patch
+
+The owner then requested installation in TEST SE. Native MO2 installation selected
+AIO/CBBE and original appearance options from the original archive. All200 selected
+payload files, source IDs11287/30612, provenance and native Installed accounting
+were verified. Only the CLAW source profile's three lists changed; other profiles
+and gaming libraries were preserved. Tests used FHD, owned dynamic references in
+a disposable NEW world and the same qualified native/observer composition.
+
+Adrianne (Skyrim.esm:013BB9, Imperial, weight80) and Lisette
+(Skyrim.esm:013297, Breton, weight50) completed human→wolf→owned save/load→human.
+All31 target values matched the external native evaluator at eight observations;
+source values, available traits, weight and selected CBBE matrix persisted.
+Missing face inputs remained unavailable: this is partial facial-source coverage,
+not full facial equivalence or nonzero human BodySlide deformation acceptance.
+
+The unpatched run exposed the skin-route gap: actual human geometry/material
+inventories were available, but wolf inventories were unavailable. An independent
+[private patch builder](../resources/compatibility/bijin/README.md) adds only
+Skyrim.esm:0CDD87 to the14 original skin armature lists. All original payload
+bytes are recovered by removing that one field; official Spriggit roundtrip
+checks the14 overrides. No original Bijin file, NPC, DLL, matrix, mesh or texture
+is edited. Generated vendor-derived records remain outside Git and releases.
+
+With that sole patch, run20261118-180157-d6f279 passes the unchanged24-step case:
+all four wolf inventories contain15 actual geometries, including BODY, HEAD,
+claws and tail fur; twelve coat geometries are managed. All four human inventories
+contain the original ten Bijin geometries/materials, including both returned
+characters. Independent actor/base race reads confirm Imperial/Breton restoration
+and weights80/50. Exit0, full restoration/collection and268 cold pins pass.
+
+Do not infer invisible bodies from source-name lookup alone: the engine renames
+weighted human geometry with ARMA/skin IDs and weight, while wolf BODY/HEAD names
+are capitalized. The actual bounded geometry/material traversal supplies the
+positive evidence, with independent actor/root/race bracketing. This is engine
+model availability, not rendered pixels, artistic quality or physics acceptance.
+
+The first attempt stopped on an omitted reference-name preparation before subject
+capture; the next two retained numerical success and unresolved model evidence.
+All four starts/restorations remain accounted; cumulative18 November starts are15.
+`Builds/claw-bijin-game-20261118/BIJIN-ACCEPTANCE.json` records exact scope.
+Only these two AIO/CBBE NPCs are game-qualified with this optional private patch;
+fourteen structural overrides do not qualify every character or UNP installation.

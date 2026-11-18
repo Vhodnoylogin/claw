@@ -258,3 +258,16 @@ No general damping, limit, amplitude/time-response, contact, rendered strain,
 root578 attachment, VR or aesthetic acceptance follows. Raw evidence and the
 independent `ROOT-ACCEPTANCE.json` are under
 `Builds/claw-breast-attachment-20261118/physics-next-case-analysis/runtime-case-proposal-03/`.
+
+## Owner-requested Bijin installation and lifecycle
+
+The [Bijin record](bijin-npcs-20261118.md) now includes native TEST SE installation
+and four owned starts. The final unchanged24-step lifecycle passes for original
+Adrianne/Lisette with one separate14-skin ARMO compatibility patch. Eight actual
+geometry/material inventories confirm human10→wolf15→loaded wolf15→human10 for
+each NPC; twelve wolf coat geometries are managed. All31 numerical target values
+match, with explicitly partial face inputs. Original Bijin, CLAW DLL/matrices/
+models and providers remain unchanged. Exit0, restoration/collection and268
+cold subject/profile pins pass. Today has15 cumulative physical starts, retaining
+the preparation error and earlier unresolved model observations. No unknown-body,
+all-NPC, UNP-variant, rendered-pixel, physics or public-release claim follows.

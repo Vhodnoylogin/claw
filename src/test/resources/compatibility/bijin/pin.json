@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "mod": "Bijin NPCs SE",
+  "version": "1.2.1",
+  "plugin": "Bijin NPCs.esp",
+  "sha256": "9ac97c6473fe914302145796c1b7f12aa75305b343e5b80f418f6436c50c31f3",
+  "sourceMasters": ["Skyrim.esm", "Update.esm"],
+  "skinCount": 14,
+  "npcCount": 16,
+  "werewolfAddon": "0x000CDD87"
+}
