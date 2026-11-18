@@ -271,3 +271,23 @@ models and providers remain unchanged. Exit0, restoration/collection and268
 cold subject/profile pins pass. Today has15 cumulative physical starts, retaining
 the preparation error and earlier unresolved model observations. No unknown-body,
 all-NPC, UNP-variant, rendered-pixel, physics or public-release claim follows.
+
+## Required-model correction and another functional physics parameter
+
+The subsequent [model-presence pair](model-availability-20261118.md) uses the
+new ordinary a101 DLL temporarily: patched193007-c890f6 succeeds, while
+unpatched193919-343bdf reports the completed missing-role error instead of
+coefficient-only success. Both complete the original two NPCs' human returns,
+save/load and exact material restoration. These bring the physical count to17.
+Source be403ca is pushed on the development branch; main/tags/releases remain
+unchanged. The owner's unrelated dirty quartet is preserved.
+
+The [linear lower-limit case](physics-lower-limit-20261118.md),
+195300-705a97, then passes with a101 and one actual Morphbench XML edit. Left
+joint X settles at0.0500069484 for the authored +0.05 stop; unchanged right stays
+near0. One900-pair window, original masses20/20, fresh four-role association,
+unchanged31 aggregates, normal exit0 and128 restored preimages pass. Cumulative
+physical starts18; three failed VR control-chain attempts never dispatched SKSE
+and add no game starts. All failed attempts/recovery evidence remain retained.
+This adds a bounded constraint correspondence result, not full physics/VR/
+rendered-attachment calibration or release readiness.

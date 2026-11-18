@@ -119,6 +119,33 @@ the optional class reports a visible skip; `REQUIRED=1`, a missing selected file
 or a changed selected digest fails. No game, manager or synthetic positive
 observation is created. Raw archived captures stay outside Git and release files.
 
+## Replay the actual joint lower-limit observation
+
+`python/integration/fsmp_joint_limit_readback.py` ports the frozen pure checker
+used by the18November functional lower-limit case. It shares the sole native
+witness validator. Portable symbolic fixtures check pivot/frame math, original
+mass and kinematic-parent association, positive/zero/wrong-sign discrimination,
+right-side controls and both-side completed-window drift. Symbolic passes are
+scorer checks, not game evidence.
+
+Select the immutable archived `ACTUAL-REPLAY-BUNDLE.json` explicitly to replay
+run`20261118-195300-705a97`:
+
+```powershell
+$env:CLAW_FSMP_JOINT_LIMIT_READBACK_EVIDENCE = '<archived-ACTUAL-REPLAY-BUNDLE.json>'
+$env:CLAW_FSMP_JOINT_LIMIT_READBACK_REQUIRED = '1'
+python -m unittest discover -s src/test/python/integration -p 'test_fsmp_joint_limit*.py' -v
+```
+
+Without selection the actual class reports a visible skip; `REQUIRED=1`, an
+explicitly missing input or changed selected digest fails. The six actual-data
+checks replay both paused associations and the completed900pair window, then
+reject corrupted mass, parent association, identity/scale/clock and right-side
+drift. Raw captures stay outside Git. These functions do not call the historical
+cached module-admission dictionary or perform current binary admission.
+The scope is one edited lower-limit's unit-scale solver/WORLD effect; no broad
+damping, contact, rendering, root578 or VR qualification follows.
+
 ## Test actors and manual scene
 
 Every actual test actor/scene mod uses the prefix test_. Ordinary dependencies
