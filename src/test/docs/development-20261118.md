@@ -102,3 +102,27 @@ stack; the separately audited current-v4 carrier and private fits are not instal
 Installed source identity is not actual actor, rendering or physics acceptance.
 The three semantic plans remain unrun at this checkpoint; startup, factual
 subject checks, restoration and final analysis still need actual game evidence.
+
+## First direct game attempt
+
+SE run`20261118-134318-6623b3` physically started once, performed the real NEW
+selection and observed the fresh initial world. It stopped before fixture/CLAW
+checks: `Game.GetGameSettingString` returned mojibake while native MessageBox
+inspection returned correct Russian. The exact character-confirmation comparison
+therefore refused to answer. The classifier was not weakened. This is a producer
+encoding finding, not failed body-family acceptance.
+
+The retained game handle separately observed exit`0xC0000005` during cleanup;
+no own quit or forced-stop request was recorded. Its cause is not established.
+Restoration completed without errors. One physical start, zero factual subject
+checks; the female/mixed cases remain unrun. Subsequent cold preparation added
+the two missing authored coat matrix/mapping files to the own runtime mod, after
+the log identified their absence. No third-party payload was changed.
+
+Further private attachment work found a bilateral fourth-slot transfer at root578.
+Actual serialized readback changes three vertices, preserves all non-P1 weights,
+exact packed sums and the four-influence budget, and compares6,375,120 belly
+samples with no regression above1e-8. Controlled-P1 squared residual improves
+30.33% at that root/4.69% over the belly layer. It remains uninstalled and needs
+composition/engine correspondence. The wider eight-card tradeoff candidate is
+rejected:1,838 samples worsen, including one combined-state increase of0.108.
