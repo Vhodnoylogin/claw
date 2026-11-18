@@ -217,3 +217,44 @@ for any third-party follower. The installer remains single-select per sex;
 arbitrary individual-body mods have no compatibility promise. The owner clarified
 that this unsupported status is the intended meaning of prohibiting their use,
 not a requirement to detect or disable another mod at runtime.
+
+## Morphbench mass parameter and actual FSMP writeback
+
+Direct SE run `20261118-155945-8dbb99` passed the independently reviewed private
+case after thirty-eight offline guard tests. The final female NIF/TRI remained
+unchanged (`e5a9d6b5…` / `34744d55…`); the private root578 candidate was not used.
+The actual Morphbench XML workspace preserves a no-edit export exactly and
+exports one left P1 mass change from 0.05 to 0.10. Right P1 remains 0.05. Temporary
+Session staging supplies that XML and the existing pinned read-only witness;
+no installed vendor file or original tool repository is modified.
+
+The fresh owned female NPC passed native persistent identity, applied status,
+actual loaded-module/signature and unit actor/root/driver-scale admission. The
+existing selective anchor-pulse protocol passed all eleven drivers/twenty-two
+translation/rotation channels in active, stopped and restarted samples, with
+quiet local animation/control parents and comparable excitation timing. Original
+dynamic states and owned anchor components were restored before the next check.
+
+Two advancing paused WORLD observations independently associate all eleven
+drivers with distinct positive-mass solver objects from one unchanged window.
+The associated P1 tokens 9/11 expose inverse masses 10/20 at initialPre, lastPre
+and lastPost in both observations. Thus the edited left mass 0.10 and unchanged
+right 0.05 reach the actual unit-scale solver, not only the XML parser. The same
+window completes 900 paired steps with fifteen observed objects. The known camera
+inverse restores the captured state; the exact fixture is observed disabled and
+unloaded. Normal exit 0, restoration, collection and heartbeat shutdown pass.
+
+Independent cold readback checks all 125 snapshot preimages and 127 declared
+subject/resource/profile pins. All 65 native VFS winners were checked before
+launch, including the temporary XML and witness. Cumulative actual starts are
+eleven, retaining all previous failed preparation/subject attempts.
+
+This is a bounded one-parameter correspondence check. Morphbench's nominal
+constraint lines are not a dynamic FSMP simulation. The pulse report retains
+`solverQualified:false` and `physicsPhaseObserved:false`: its scene samples are
+not synchronized with a solver/render phase. The separate native window and
+paused associations establish only the declared solver/WORLD and mass evidence.
+No general damping, limit, amplitude/time-response, contact, rendered strain,
+root578 attachment, VR or aesthetic acceptance follows. Raw evidence and the
+independent `ROOT-ACCEPTANCE.json` are under
+`Builds/claw-breast-attachment-20261118/physics-next-case-analysis/runtime-case-proposal-03/`.

@@ -2,7 +2,7 @@
 
 The owner's downloaded `Bijin NPCs SE 1.2.1-11287-1-2-1.7z` has SHA256
 `c862bee6f49dd064d62f8606df074e9125e2e7cf6e84127b7cb3ced7442c83df`
-and size159,295,466bytes. Extraction and analysis are external; no installed mod,
+and size 159,295,466 bytes. Extraction and analysis are external; no installed mod,
 profile or original archive was changed. No Bijin game test or compatibility
 promise follows from this record. Private extracted artwork/record dumps are
 not CLAW source or distributable payload.
@@ -37,15 +37,15 @@ an observed invisible-body failure from static records alone.
 
 ## Morph capability is distinct from body-family names
 
-The257actual files include98NIFs,125DDS,15ESPs,18JPGs and one FOMOD XML. There is
+The 257 actual files include 98 NIFs, 125 DDS, 15 ESPs, 18 JPGs and one FOMOD XML. There is
 no TRI, BodySlide project, DLL or packaged script. Public PyNifly independently
 loads all twelve supplied body/hands/feet endpoints. They have no attached root/
 shape string extra data and no BODYTRI, `.tri` or NiGeomMorpherController marker.
 The body headers use BS83; rejection by CLAW's intentionally narrow BS100 editing
 helper is unsupported format, not corruption. No helper restriction was relaxed.
 
-UNP torso has6,622vertices; CBBE has3,471. Every torso vertex differs between
-its0/1endpoints, and the ARMA enables weight interpolation. This is source evidence
+UNP torso has 6,622 vertices; CBBE has 3,471. Every torso vertex differs between
+its 0/1 endpoints, and the ARMA enables weight interpolation. This is source evidence
 for ordinary weight variation, not RaceMenu BodySlide morphs or actual game
 interpolation acceptance. Additional user-generated patches can change that
 capability; this analysis applies only to the exact downloaded archive.
@@ -60,7 +60,9 @@ deform by that morph. Do not add a guessed permanent Bijin→CBBE binding.
 Keep the mathematical evaluator independent of these decisions. A future source
 adapter can distinguish declared family/resource identity, actual morph
 capability and input availability; a separate model adapter owns the wolf skin
-route. For a confirmed static body, weight and available actor traits remain
+route. Inspect the naked skin's referenced resources rather than identifying the
+family from an equipped outfit's embedded body. Changing clothes must not select
+another conversion matrix. For a confirmed static body, weight and available actor traits remain
 useful without inventing BodySlide inputs. Unknown bodies remain unsupported
 unless their configuration is explicitly verified. A universal classifier is
 not part of this analysis or the owner's current compatibility scope.

@@ -21,8 +21,9 @@ target/, rather than Git.
   Pillow, NumPy and OpenCV; four same-opened-file custody tests require Windows.
   See [scope and provenance](docs/photo-comparison-13F.md). These helpers do not
   launch a game and are not included in the default source suites.
-- `python/integration/`: mandatory prepared-resource checks. Missing inputs fail;
-  they are not silently skipped or replaced by synthetic data. This includes16
+- `python/integration/`: prepared-resource checks. Missing mandatory inputs fail;
+  they are not silently replaced by synthetic data. Explicitly opt-in archived
+  evidence checks identify their skips separately. This includes16
   checks moved out of the default unit suite without changing their assertions:
   ten historical FOMOD checks, three actual surface-repair checks, one six-resource
   hash inventory and two compiled wild-NPC fixture checks.
@@ -96,6 +97,27 @@ python src/test/resources/inspection/validate.py
 
 The `test-integration` wrapper action runs this prepared-resource category and
 inspection validation. Neither command starts a game or writes live MO2 files.
+
+## Replay the actual physics mass observation
+
+`python/integration/fsmp_mass_readback.py` is the pure, nonshipping checker for
+two paused solver/WORLD observations. It reuses the one existing native witness
+validator. The [18 November record](docs/development-20261118.md) identifies the
+actual one-parameter Morphbench/FSMP check and its limits.
+
+Select the immutable archived `paused-mass-writeback.json` explicitly:
+
+```powershell
+$env:CLAW_FSMP_MASS_READBACK_EVIDENCE = '<archived-paused-mass-writeback.json>'
+$env:CLAW_FSMP_MASS_READBACK_REQUIRED = '1'
+python -m unittest discover -s src/test/python/integration -p 'test_fsmp_mass_readback.py' -v
+```
+
+These eight checks replay the actual positive observation and reject corrupted
+mass, body association, scale, identity, cache and clock data. With no selection
+the optional class reports a visible skip; `REQUIRED=1`, a missing selected file
+or a changed selected digest fails. No game, manager or synthetic positive
+observation is created. Raw archived captures stay outside Git and release files.
 
 ## Test actors and manual scene
 
