@@ -339,3 +339,38 @@ mutations including known cleanup complete, all test keys are removed, exact
 game exit0 and122/268 restoration pins pass. Physical starts22. A future case
 should remove redundant transport reads while retaining full-catalog final
 guards, and budget the14-capture total prospectively from measured throughput.
+
+## Completed mixed-source lifecycle and retained VR startup failure
+
+Proposals04/05 also retain failed outcomes:04 exhausted the second full-source
+read within30s;05 completed13/14 captures and both human returns but exhausted
+its original900s total. Proposal06 with prospective1200s failed before subject
+creation at MainMenu GFX HTTP504. All restored normally. These are physical
+starts23/24/25, not accepted full cases.
+
+Proposal07,225457-40b531, passes the unchanged06 case after a fresh startup.
+Root independently re-executes the pinned native evaluator for all14 full
+captures and31 targets, verifies nine source operations, one save/load,
+automatic update and deletion without Refresh, exact foreign-key preservation
+and both human returns. Four fast32-row markers remain provisional; four
+subsequent full actor barriers and full captures supply fresh-source proof.
+Normalexit0,122 snapshot preimages,268 cold pins and266 native VFS checks pass.
+Physical starts26. The [portable replay](nonzero-mixed-20261118.md) adds23
+selected checks without claiming another native evaluation or current game.
+
+VR case06,231701-84972b, then actually starts SkyrimVR14380 and official VR
+DevBench answers with advancing frames. The private executor cannot attach:
+its custody-mode ancestry filter discards the already-ended SKSE loader.
+No subject/body steps execute. MO2 Bridge's retained handle proves child birth
+inside the exact original loader lifetime. A separately archived recovery-only
+certificate permits one normal WM_CLOSE, followed by ordinary guarded cleanup;
+all99 snapshot preimages and231 cold pins restore. The original failed report
+remains unchanged in its archive. Physical starts27; VR starts1. This identifies
+a process-discovery regression, not failure of SkyrimVR or qualification of its
+body. A separately frozen private adapter fix and fresh admission are required.
+
+The nonshipping fixed-nine-point CPU geometry witness builds offline. Review
+found and fixed a missing partition-storage pointer guard before dereference;
+the shared pure helper and zero-element-read refusal control pass root's fresh
+CMake Release/CTest build. Engine ABI, actual attached buffers and rendered
+attachment remain unqualified until a separate owned game case.

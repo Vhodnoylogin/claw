@@ -195,6 +195,33 @@ actual class visibly; required, missing or changed selections fail. Raw captures
 remain external. This finite case does not establish general damping, nonuniform
 scales, rendered attachment, contacts or VR behavior.
 
+## Replay the actual nonzero mixed-source lifecycle
+
+The [18 November record](docs/nonzero-mixed-20261118.md) describes the accepted
+CBBE/BHUNP source-update/deletion/save-load/return case. Its portable replay uses
+recorded native predictions and independently parsed Observer storage packets;
+it neither reruns the native evaluator nor checks current installed files.
+
+```powershell
+$env:CLAW_MIXED_SOURCE_READBACK_EVIDENCE = '<archived-ACTUAL-MIXED-SOURCE-REPLAY.json>'
+$env:CLAW_MIXED_SOURCE_READBACK_REQUIRED = '1'
+python -B -m unittest discover -s src/test/python/integration -p 'test_mixed_source*.py' -v
+```
+
+The selected suite passes23 checks. Without selection the actual class skips
+visibly; explicit missing, changed or required-unset evidence fails. Four fast
+markers remain provisional: mandatory full source/target audits cannot be
+replaced by retained-input predictions. This is numerical/storage evidence,
+not rendered body deformation or a universal body-family classifier.
+
+## Private CPU geometry observation
+
+The standalone [geometry witness](cpp/geometry_witness/README.md) is a
+nonshipping SE-only test component. It reads nine bounded points from the
+currently attached CPU pre-skin stream. Portable controls and a successful DLL
+build do not qualify the engine ABI, actual GPU positions or visual attachment.
+It has no production CMake, install or game-launch integration.
+
 ## Test actors and manual scene
 
 Every actual test actor/scene mod uses the prefix test_. Ordinary dependencies
