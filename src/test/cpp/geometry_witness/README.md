@@ -38,7 +38,9 @@ does not guess a try-lock or silently use a different position source.
 One SKSE main task owns retained NiPointers to root, both geometries, skin
 instances/data/partitions and bones. It takes **try-locks** in the source-observed
 renderer→skin order; contention refuses without waiting. Both leases survive the
-shared final identity/pose bracket. No pointer escapes the task. Buffer decoding
+shared final identity/pose bracket. Busy reasons distinguish the renderer,
+initial skin copy(role) and final skin bracket(role); the labels provide no lock
+acquisition retry or ABI acceptance. No pointer escapes the task. Buffer decoding
 uses bounded counts/strides/offsets and finite numeric checks; ambiguous data,
 unsupported palette/layout, detached roots, changed skin or pose refuse. Root
 address continuity between requests is sampled, not a retained lifetime proof:
@@ -111,7 +113,14 @@ checks exports and compiles the PSC. Each new attempt uses a new directory;
 failed outputs are not overwritten. Generated DLL/PEX/PDB/JSON/logs stay outside
 Git. No install or game-launch command exists here.
 
-The next separately authorized gate is actual CPU-buffer qualification:
+Actual SE attempts234057-36bd42 and235502-991f7e loaded the pinned component and
+applied/read back all31 Neutral coefficients, but their sole capture refused
+with lock contention; the second specifically identifies the renderer. Both
+games exited normally with exact file restoration. Neither obtained CPU point data
+or requested FHeavy, so CPU-buffer/ABI qualification remains open. Historical
+failure receipts and build-source preimages stay outside Git.
+
+The remaining separately admitted gate is actual CPU-buffer qualification:
 neutral versus fixed FHeavy, current TRI-predicted deltas, support/unchanged-point
 controls, root/epoch/refusal behavior and source/VFS/module admission. A future
 test can temporarily stage two nondefault constant profiles (Neutral/FHeavy)

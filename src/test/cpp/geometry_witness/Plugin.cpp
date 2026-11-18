@@ -26,7 +26,7 @@ Transform transform(const RE::NiTransform& t){Transform out{};for(unsigned r=0;r
 class TryCritical {
     CRITICAL_SECTION* lock_{};
 public:
-    explicit TryCritical(REX::W32::CRITICAL_SECTION& lock){auto* p=reinterpret_cast<CRITICAL_SECTION*>(&lock);g::require(TryEnterCriticalSection(p)!=FALSE,"CPU buffer lock busy; no wait/retry");lock_=p;}
+    explicit TryCritical(REX::W32::CRITICAL_SECTION& lock,g::LockStage stage,g::LockRole role){auto* p=reinterpret_cast<CRITICAL_SECTION*>(&lock);g::require(TryEnterCriticalSection(p)!=FALSE,g::lockBusyReason(stage,role));lock_=p;}
     ~TryCritical(){if(lock_)LeaveCriticalSection(lock_);}TryCritical(const TryCritical&)=delete;
 };
 struct Bone {char name[64]{};Transform local{},world{},bind{};};
@@ -57,7 +57,7 @@ void meshCopy(RE::BSGeometry* geometry,unsigned shapeIndex,Mesh& out,MeshLease& 
     g::require(geometry->AsDynamicTriShape()==nullptr,"Dynamic stream unsupported: SDK has no bounded BSSpinLock try API; no stream read");
     auto* shape=geometry->AsTriShape();g::require(shape&&geometry->GetType().underlying()==static_cast<std::uint8_t>(RE::BSGeometry::Type::kTriShape),"Unsupported fixed geometry RTTI/type");
     auto& skin=lease.skin;skin=geometry->GetGeometryRuntimeData().skinInstance;g::require(bool(skin),"Missing skin instance");
-    TryCritical skinLock(skin->lock); // Renderer lock is already held by caller, matching SKEE writer order.
+    TryCritical skinLock(skin->lock,g::LockStage::skinCopy,shapeIndex?g::LockRole::head:g::LockRole::furBelly); // Renderer lock is already held by caller, matching SKEE writer order.
     auto& data=lease.data;data=skin->skinData;auto& partition=lease.partition;partition=skin->skinPartition;
     g::require(data&&partition&&skin->bones,"Missing attached skin data/partition/bones");
     out.vertices=partition->vertexCount;out.partitionCount=partition->numPartitions;out.boneCount=data->GetBoneCount();out.pointCount=expected.pointCount;
@@ -120,9 +120,9 @@ std::unique_ptr<Sample> collect(std::uint32_t form,std::uint32_t base,std::uint6
     g::require(selected[0]&&selected[1],"Required fur_belly/HEAD roles absent");
     auto* renderer=RE::BSGraphics::Renderer::GetSingleton();g::require(renderer,"Renderer lock unavailable");
     std::array<MeshLease,2> leases{}; // Retained only until this main task finishes, never cached/published.
-    {TryCritical rendererLock(renderer->GetLock());
+    {TryCritical rendererLock(renderer->GetLock(),g::LockStage::renderer,g::LockRole::none);
         for(unsigned i=0;i<2;++i)meshCopy(selected[i].get(),i,out->meshes[i],leases[i]);
-        for(unsigned i=0;i<2;++i){const auto& lease=leases[i];const auto& mesh=out->meshes[i];TryCritical skinLock(lease.skin->lock);
+        for(unsigned i=0;i<2;++i){const auto& lease=leases[i];const auto& mesh=out->meshes[i];TryCritical skinLock(lease.skin->lock,g::LockStage::skinBracket,i?g::LockRole::head:g::LockRole::furBelly);
             g::require(selected[i]->GetGeometryRuntimeData().skinInstance.get()==lease.skin.get()&&lease.skin->skinPartition.get()==lease.partition.get()&&lease.skin->skinData.get()==lease.data.get(),"Attached two-mesh lease changed");
             g::require(transform(selected[i]->local)==mesh.local&&transform(selected[i]->world)==mesh.world&&lease.data->GetBoneCount()==mesh.boneCount,"Geometry/bone metadata changed across shared copy");
             for(unsigned b=0;b<mesh.boneCount;++b)g::require(lease.skin->bones[b]==lease.bones[b].get()&&transform(lease.bones[b]->local)==mesh.bones[b].local&&transform(lease.bones[b]->world)==mesh.bones[b].world,"Bone identity/pose changed across two-mesh copy");

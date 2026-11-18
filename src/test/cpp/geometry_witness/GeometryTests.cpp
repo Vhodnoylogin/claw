@@ -6,6 +6,11 @@
 using namespace claw::geometry;
 template<class F> void refused(F f){bool failed=false;try{f();}catch(const std::runtime_error&){failed=true;}assert(failed);}
 int main(){
+    assert(std::strcmp(lockBusyReason(LockStage::renderer,LockRole::none),"CPU buffer lock busy: renderer; no wait/retry")==0);
+    assert(std::strcmp(lockBusyReason(LockStage::skinCopy,LockRole::furBelly),"CPU buffer lock busy: initial skin copy(fur_belly); no wait/retry")==0);
+    assert(std::strcmp(lockBusyReason(LockStage::skinCopy,LockRole::head),"CPU buffer lock busy: initial skin copy(head); no wait/retry")==0);
+    assert(std::strcmp(lockBusyReason(LockStage::skinBracket,LockRole::furBelly),"CPU buffer lock busy: final skin bracket(fur_belly); no wait/retry")==0);
+    assert(std::strcmp(lockBusyReason(LockStage::skinBracket,LockRole::head),"CPU buffer lock busy: final skin bracket(head); no wait/retry")==0);
     struct PartitionRow {int value;};std::array<PartitionRow,2> partitionRows{{{7},{9}}};
     auto admitted=partitionStorage(partitionRows.data(),2);assert(admitted.size()==2&&admitted[1].value==9);
     unsigned elementReads=0;

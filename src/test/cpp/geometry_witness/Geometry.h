@@ -14,6 +14,16 @@ namespace claw::geometry {
 inline constexpr std::uint32_t maxBones=128,maxPartitions=32,maxTriangles=32768,maxObjects=4096,maxSamples=32;
 inline constexpr std::uint32_t fixtureBase=0x0D000801,beastRace=0x000CDD84;
 inline void require(bool ok,const char* reason){if(!ok)throw std::runtime_error(reason);}
+enum class LockStage {renderer,skinCopy,skinBracket};
+enum class LockRole {none,furBelly,head};
+inline constexpr const char* lockBusyReason(LockStage stage,LockRole role) {
+    if(stage==LockStage::renderer)return "CPU buffer lock busy: renderer; no wait/retry";
+    if(stage==LockStage::skinCopy&&role==LockRole::furBelly)return "CPU buffer lock busy: initial skin copy(fur_belly); no wait/retry";
+    if(stage==LockStage::skinCopy&&role==LockRole::head)return "CPU buffer lock busy: initial skin copy(head); no wait/retry";
+    if(stage==LockStage::skinBracket&&role==LockRole::furBelly)return "CPU buffer lock busy: final skin bracket(fur_belly); no wait/retry";
+    if(stage==LockStage::skinBracket&&role==LockRole::head)return "CPU buffer lock busy: final skin bracket(head); no wait/retry";
+    return "CPU buffer lock busy: unspecified diagnostic stage; no wait/retry";
+}
 template<class T> inline std::span<T> partitionStorage(T* storage,std::uint32_t count) {
     // The attached engine allocation/count invariant remains required. SimpleArray
     // size() is not an independently qualified allocation-length oracle here.
