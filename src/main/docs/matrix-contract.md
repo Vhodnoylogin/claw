@@ -161,6 +161,11 @@ empty string. While a change is queued, the previous actual binding may remain
 visible, so inspect `GetStatus` and completion separately. `GetAssigned` retains
 its standalone-preset meaning and returns empty for linked actors.
 
+The development [per-actor skin binding adapter](mixed-body-families.md) can select
+one profile on first eligible source-form adoption. It does not alter this
+evaluator or replace saved/manual links. Resource-family interpretation and
+skin lookup stay outside the shared numerical kernel.
+
 Runtime cleanup snapshots every name under the exact `CLAW.Distribution` key,
 then clears those names after enumeration. Removed/custom names cannot survive
 because a new catalog no longer lists them, and other providers' keys are not

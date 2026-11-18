@@ -1,6 +1,7 @@
 #include "claw/SourceBootstrapPolicy.h"
 #include "claw/RequestOwnership.h"
 #undef NDEBUG
+#include <array>
 #include <cassert>
 #include <iostream>
 #include <memory>
@@ -17,14 +18,20 @@ int main() {
     // All human-source adapters use this gate. A known creature, an unresolved
     // current race or a missing beast-race lookup cannot invent human history.
     constexpr unsigned wolfRace = 0xCDD84, nordRace = 0x13746, merRace = 0x13743,
-        vampireRace = 0x8883A, creatureRace = 0x131F7;
+        khajiitRace = 0x13745, khajiitVampireRace = 0x88845,
+        argonianRace = 0x13740, argonianVampireRace = 0x8883A, creatureRace = 0x131F7;
     assert(!claw::humanSourceEligible(wolfRace, wolfRace, true));
     assert(!claw::humanSourceEligible(wolfRace, creatureRace, false));
     assert(!claw::humanSourceEligible(wolfRace, 0, true));
     assert(!claw::humanSourceEligible(0, nordRace, true));
     assert(claw::humanSourceEligible(wolfRace, nordRace, true));
     assert(claw::humanSourceEligible(wolfRace, merRace, true));
-    assert(claw::humanSourceEligible(wolfRace, vampireRace, true));
+    // IsBeastRace is distinct from WerewolfBeastRace. These four NPC races
+    // carry ActorTypeNPC and must retain the ordinary source-history path.
+    assert(claw::humanSourceEligible(wolfRace, khajiitRace, true));
+    assert(claw::humanSourceEligible(wolfRace, khajiitVampireRace, true));
+    assert(claw::humanSourceEligible(wolfRace, argonianRace, true));
+    assert(claw::humanSourceEligible(wolfRace, argonianVampireRace, true));
     float humanWeight = -1, beastWeight = -1;
     const auto observeWeight = [&](unsigned currentRace, bool npc, float weight) {
         if (currentRace == wolfRace) beastWeight = weight;
@@ -46,6 +53,17 @@ int main() {
     observeWeight(0, false, .8F);
     observeWeight(wolfRace, false, .7F);
     assert(humanWeight == .6F && beastWeight == .7F && state.observedHuman && !state.allows());
+    for (const auto sourceRace : std::array{khajiitRace, khajiitVampireRace, argonianRace, argonianVampireRace}) {
+        state = {true,true,false,false,false,false,false,false,false};
+        humanWeight = beastWeight = -1;
+        assert(!claw::humanSourceEligible(wolfRace, sourceRace, false));
+        assert(!claw::humanSourceEligible(0, sourceRace, true));
+        observeWeight(sourceRace, true, .3F);
+        assert(humanWeight == .3F && state.observedHuman && state.revoked && !state.allows());
+        observeWeight(wolfRace, false, .8F);
+        observeWeight(creatureRace, false, .9F);
+        assert(humanWeight == .3F && beastWeight == .8F && state.observedHuman && !state.allows());
+    }
     state = {true,true,false,false,false,false,false,false,false};
     // Native callback accepts manual intent before the first State exists.
     const auto manual = requests.begin(id,epoch,owner,pin); assert(manual);

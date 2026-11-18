@@ -8,6 +8,7 @@
 #include "claw/PhysicsObserver.h"
 #include "claw/PhysicsAuthority.h"
 #include "claw/MorphProfiles.h"
+#include "claw/BodyFamilyBindings.h"
 #include "claw/SourceBootstrapPolicy.h"
 #include "claw/RuntimeSupport.h"
 #include "claw/VRBodyState.h"
@@ -114,6 +115,8 @@ constexpr std::size_t maxActors = 8192;
 constexpr float epsilon = 0.0001F;
 claw::Catalog catalog;
 claw::MorphProfileCatalog morphProfiles;
+claw::BodyFamilyBindings bodyFamilyBindings;
+std::set<RE::FormID> bodyBindingWarnings; // Bounded diagnostics; never selects or persists a family.
 std::map<RE::FormID, State> states;
 claw::RequestChannels<Pin> requestChannels{maxActors};
 auto& requests = requestChannels.body();
@@ -393,6 +396,26 @@ claw::PhysicsOwner physicsOwner(const State& state) { return {epoch.load(), stat
 
 ::TESObjectREFR* skeeReference(RE::Actor* actor);
 void captureSources(RE::Actor* actor, claw::MorphLink& link, claw::Sex boundSex, claw::HumanTraits& humanTraits);
+claw::BodyFamilySelection automaticFamily(RE::Actor* actor, claw::Sex sex) {
+    const auto fallback = claw::BodyFamilySelection{morphProfiles.defaultFor(sex)};
+    if (bodyFamilyBindings.empty()) return fallback;
+    if (!beastRace) if (auto* data = RE::TESDataHandler::GetSingleton())
+        beastRace = data->LookupForm<RE::TESRace>(0xCDD84, "Skyrim.esm");
+    auto* race = actor->GetRace();
+    // A wolf mesh cannot identify its former body. Existing saved/manual links
+    // bypass new adoption, and originally-beast actors retain the sex default.
+    if (!claw::humanSourceEligible(beastRace ? beastRace->GetFormID() : 0,
+        race ? race->GetFormID() : 0, race && race->HasKeywordString("ActorTypeNPC")))
+        return bodyFamilyBindings.select(sex, {}, morphProfiles, false);
+    std::vector<std::string> models;
+    // The parameterless GetSkin reads NPC skin then race skin. The slot overload
+    // prefers worn armour and must not be used for identifying the source body.
+    if (const auto* skin = actor->GetSkin()) for (auto* addon : skin->armorAddons) {
+        if (!addon || !addon->HasPartOf(RE::BGSBipedObjectForm::BipedObjectSlot::kBody) || !addon->IsValidRace(race)) continue;
+        if (const auto* path = addon->bipedModels[static_cast<std::size_t>(sex)].GetModel(); path && *path) models.emplace_back(path);
+    }
+    return bodyFamilyBindings.select(sex, models, morphProfiles);
+}
 State* stateFor(RE::Actor* actor, bool create, bool adoptDefaults = true) {
     if (!currentOwner(actor) || !actor->GetActorBase()) return nullptr;
     const auto id = actor->GetFormID();
@@ -438,7 +461,13 @@ State* stateFor(RE::Actor* actor, bool create, bool adoptDefaults = true) {
     const auto newSex = actor->GetActorBase()->GetSex();
     if (newSex != RE::SEX::kMale && newSex != RE::SEX::kFemale) return nullptr;
     state.sex = newSex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male;
-    if (adoptDefaults) if (const auto* profile = morphProfiles.defaultFor(state.sex)) {
+    const auto family = adoptDefaults ? automaticFamily(actor, state.sex) : claw::BodyFamilySelection{};
+    if (family.blocked()) {
+        if (bodyBindingWarnings.size() < maxActors && bodyBindingWarnings.emplace(id).second)
+            SKSE::log::warn("CLAW actor {:08X}: ambiguous or invalid skin family binding; automatic adoption withheld", id);
+        return nullptr;
+    }
+    if (const auto* profile = family.profile) {
         if (!morphs) return nullptr; // No empty identity is minted before a full source capture.
         auto link = profile->link;
         try { captureSources(actor, link, state.sex, state.humanTraits); }
@@ -889,7 +918,8 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         currentRace ? currentRace->GetFormID() : 0, currentRace && currentRace->HasKeywordString("ActorTypeNPC"));
     const auto actorSex = actor->GetActorBase()->GetSex();
     const bool defaultDeclared = (actorSex == RE::SEX::kMale || actorSex == RE::SEX::kFemale) &&
-        morphProfiles.defaultFor(actorSex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male);
+        (morphProfiles.defaultFor(actorSex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male) ||
+         bodyFamilyBindings.hasSex(actorSex == RE::SEX::kFemale ? claw::Sex::female : claw::Sex::male));
     State* state = stateFor(actor, beast || defaultDeclared);
     if (!state || state->quarantined || !boundTo(*state, actor)) return;
     if (!observePhysicsContext(actor, *state)) state->physicsAuthority.reject(claw::PhysicsRejection::identity);
@@ -2057,6 +2087,10 @@ void message(SKSE::MessagingInterface::Message* event) {
             try { morphProfiles.loadFile(dataDirectory() / claw::morphProfilesRelativePath); }
             catch (const std::exception& error) { SKSE::log::error("CLAW morph family catalog: {}", error.what()); }
             if (!morphProfiles.valid()) SKSE::log::warn("CLAW morph family catalog: {}", morphProfiles.error());
+            bodyBindingWarnings.clear();
+            try { bodyFamilyBindings.loadFile(dataDirectory() / claw::bodyFamilyBindingsRelativePath, morphProfiles); }
+            catch (const std::exception& error) { SKSE::log::error("CLAW body family bindings: {}", error.what()); }
+            if (!bodyFamilyBindings.error().empty()) SKSE::log::error("CLAW body family bindings: {}", bodyFamilyBindings.error());
             const auto dataRoot = dataDirectory();
             auto& appearance = claw::appearance::runtime;
             coatMatrix.reset();

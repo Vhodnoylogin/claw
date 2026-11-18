@@ -28,14 +28,37 @@ FSMP mode passed the full both-sex human-origin lifecycle and remains0.10 scope.
 
 ## Active development sequence — owner update, 12 November
 
-### Current scope — owner update, 13 November
+### Resumed CLAW scope — owner update, 18 November
 
-Only CLAW motion physics and the verified 0.10.0 release are active. Finish
-provider binding, controlled rig motion and cleanup checks, then validate the
-actual release archive, integrate released sources into main and publish the
-matching GitHub and Nexus release. The broader sequence below is paused;
-Living Physique, Morphbench development, VR body, contacts and anatomy are not
-part of this current task.
+Product ownership of Living Physique, Morphbench and MO2 API Bridge returns to
+their original chats with the rechecked 17/18 November handoff packets. Shared
+numerical source stays CLAW-owned and is consumed through immutable pins. An
+ordinary RaceMenu interoperability check does not create a private LP dependency.
+Morphbench still owns its open tool-to-game physics correspondence gate.
+
+Investigate Khajiit/Argonian sources and individual BHUNP bodies before deciding
+mixed-family installer behavior. The new optional explicit naked-skin binding
+adapter is described in [mixed-body-families.md](mixed-body-families.md). Preserve
+one matrix per actor, saved/manual ownership and born-wolf fallback; do not infer
+families from installed plugins or outfit meshes. Offline selection tests do not
+qualify simultaneous mixed bodies in game. Keep the current installer until that
+acceptance is completed.
+
+Khajiit/Argonian static records and regression coverage are recorded under
+src/test/docs/beast-races-20261118.md. Follow up partial FaceGen semantics,
+hair/feather versus pelt/scale colour provenance and direct source-tail inputs;
+do not claim those inputs are already represented. Broader implementation order
+remains motion-physics follow-up, female breast work, VR body/contacts, optional
+anatomy and final artistic review. Nexus removal/restoration is separate from
+local development; no new public release is authorized by this resume.
+
+### Completed release scope — owner update, 13 November
+
+The 13 November scope was CLAW motion physics and the verified 0.10.0 release.
+Provider binding, controlled rig motion, cleanup and final archive checks were
+completed before matching GitHub/Nexus publication. The 18 November resume above
+supersedes that completed task's stop; it does not reopen another product's
+ownership. Historical publication is not a present Nexus-availability claim.
 
 Deferred tooling: extend MO2 API Bridge with Qt-native inspection of its own
 windows, active modal text and enabled buttons, plus identity-checked actions.

@@ -1,0 +1,4 @@
+<BodyFamilyBindings schemaVersion="1">
+  <Bind sex="female" mesh="actors/MyFollower/femalebody_1.nif" profile="CLAW.BHUNP.3.34.AdvancedV4" />
+  <Bind sex="female" mesh="actors/MyFollower/femalebody_0.nif" profile="CLAW.BHUNP.3.34.AdvancedV4" />
+</BodyFamilyBindings>

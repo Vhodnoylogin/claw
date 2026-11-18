@@ -1,5 +1,7 @@
 #include "claw/HumanTraits.h"
 #include "claw/MorphRuleSerialization.h"
+#include "claw/SourceBootstrapPolicy.h"
+#include <array>
 #include <iostream>
 #include <limits>
 
@@ -12,11 +14,105 @@ struct Record {
     std::uint32_t u32() { return integers.at(ii++); }
     std::string string() { return strings.at(si++); }
 };
+void beastRaceTraits() {
+    using claw::Sex;
+    struct Source {
+        const char* name;
+        std::uint32_t race;
+        std::array<float, 5> face;
+    };
+    // Authored regression inputs over the same five NAM9 slots. The normal
+    // cases use inspected preset values; vampire cases reuse those inputs to
+    // test policy, without asserting a particular vampire NPC's appearance.
+    const std::array sources{
+        Source{"Khajiit", 0x13745, {0.F, 0.F, 0.F, -.6F, 0.F}},
+        Source{"Khajiit vampire", 0x88845, {0.F, 0.F, 0.F, -.6F, 0.F}},
+        Source{"Argonian", 0x13740, {.4F, .6F, 0.F, 0.F, .8F}},
+        Source{"Argonian vampire", 0x8883A, {.4F, .6F, 0.F, 0.F, .8F}}
+    };
+    constexpr std::uint32_t wolfRace = 0xCDD84, npc = 0x01000800, faceNPC = 0x02000801;
+    for (const auto& source : sources) for (const auto sex : {Sex::male, Sex::female}) {
+        const auto check = [&](bool value, const char* message) {
+            if (!value) throw std::runtime_error(std::string(source.name) + ": " + message);
+        };
+        claw::HumanTraits traits;
+        unsigned faceReads{};
+        const auto observeCurrent = [&](std::uint32_t race, bool npcKeyword, std::uint32_t face,
+                                        std::optional<float> height) {
+            if (!claw::humanSourceEligible(wolfRace, race, npcKeyword)) return;
+            traits.observe(race, npc, face, sex, height, [&](std::uint32_t slot) -> std::optional<float> {
+                ++faceReads;
+                for (std::size_t i = 0; i < claw::humanFaceChannels.size(); ++i)
+                    if (claw::humanFaceChannels[i].second == slot) return source.face[i];
+                throw std::runtime_error("unexpected FaceGen slot");
+            });
+        };
+        // No human snapshot may be invented from the base NPC of a born wolf.
+        observeCurrent(wolfRace, true, faceNPC, 2.F);
+        check(!traits.observed() && traits.values.empty() && faceReads == 0, "born wolf invented a source snapshot");
+        observeCurrent(source.race, true, faceNPC, 1.125F);
+        check(traits.valid() && traits.race == source.race && traits.npc == npc && traits.faceNPC == faceNPC &&
+            traits.sex == sex && faceReads == 5, "capture lost beast-race source provenance");
+        for (std::size_t i = 0; i < claw::humanFaceChannels.size(); ++i) {
+            const auto name = claw::humanFaceChannels[i].first;
+            check(traits.available(name, sex) && traits.input(name, sex) == source.face[i],
+                "supported FaceGen value, including zero, was lost");
+        }
+        check(traits.available("$human.height", sex) && traits.input("$human.height", sex) == 1.125F,
+            "stature capture was lost");
+        const auto captured = traits.values;
+        observeCurrent(wolfRace, false, 0x03000802, 3.F);
+        observeCurrent(0x131F7, false, 0x03000802, 3.F);
+        observeCurrent(0, true, 0x03000802, 3.F);
+        check(traits.race == source.race && traits.faceNPC == faceNPC && traits.values == captured && faceReads == 5,
+            "wolf, creature or unresolved race replaced the retained source");
+        Record saved;
+        claw::writeHumanTraits(traits, [&](auto value) { saved.integers.push_back(value); },
+            [&](const auto& value) { saved.strings.push_back(value); });
+        auto restored = claw::readHumanTraits(saved);
+        // Reader/writer preserve opaque FormIDs, including different file
+        // prefixes. Engine ResolveFormID is an adapter boundary, not simulated.
+        check(restored.race == source.race && restored.npc == npc && restored.faceNPC == faceNPC &&
+            restored.sex == sex && restored.values == captured, "co-save roundtrip changed source identity or availability");
+        const auto otherSex = sex == Sex::male ? Sex::female : Sex::male;
+        check(!restored.available("$human.face.noseLength", otherSex) &&
+            !restored.available("$human.height", otherSex), "source snapshot leaked across sexes");
+        // A new eligible source form replaces race and face provenance. Missing
+        // face/height is unavailable, even though arithmetic uses neutral 0/1.
+        const auto nextRace = source.race == 0x13745 || source.race == 0x88845 ? 0x13740U : 0x13745U;
+        restored.observe(nextRace, npc, 0, sex, std::nullopt,
+            [](auto) -> std::optional<float> { throw std::runtime_error("missing face was read"); });
+        check(restored.race == nextRace && restored.npc == npc && restored.faceNPC == 0 && restored.values.empty(),
+            "recapture retained stale face, race or channel availability");
+        check(!restored.available("$human.face.noseLength", sex) && restored.input("$human.face.noseLength", sex) == 0.F &&
+            !restored.available("$human.height", sex) && restored.input("$human.height", sex) == 1.F,
+            "missing channels became available arithmetic neutrals");
+        Record unavailableSaved;
+        claw::writeHumanTraits(restored, [&](auto value) { unavailableSaved.integers.push_back(value); },
+            [&](const auto& value) { unavailableSaved.strings.push_back(value); });
+        restored = claw::readHumanTraits(unavailableSaved);
+        check(restored.race == nextRace && restored.npc == npc && restored.faceNPC == 0 && restored.values.empty() &&
+            !restored.available("$human.face.noseLength", sex) && !restored.available("$human.height", sex),
+            "co-save revived unavailable face or stature after recapture");
+        restored.observe(nextRace, npc, 0x03000802, sex, 1.F, [](auto) { return std::optional<float>{0.F}; });
+        check(restored.faceNPC == 0x03000802 && restored.available("$human.face.noseLength", sex) &&
+            restored.input("$human.face.noseLength", sex) == 0.F && restored.available("$human.height", sex),
+            "new face provenance with supported zero failed to replace unavailable channels");
+        Record zeroSaved;
+        claw::writeHumanTraits(restored, [&](auto value) { zeroSaved.integers.push_back(value); },
+            [&](const auto& value) { zeroSaved.strings.push_back(value); });
+        const auto zeroRestored = claw::readHumanTraits(zeroSaved);
+        check(zeroRestored.race == nextRace && zeroRestored.faceNPC == 0x03000802 &&
+            zeroRestored.available("$human.face.noseLength", sex) && zeroRestored.values == restored.values,
+            "co-save confused supported zero with unavailable after recapture");
+    }
+}
 }
 int main() {
     try {
         using claw::Sex;
         using claw::MorphFunction;
+        beastRaceTraits();
         for (const auto& [source, slot] : claw::humanFaceChannels) {
             (void)slot;
             require(claw::morphSourceKind(source) == 2, "face source not recognized by shared kernel");
