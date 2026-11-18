@@ -88,6 +88,12 @@ classify arbitrary TRI files or discover every runtime body-swap implementation.
 A dynamically replaced naked mesh that disagrees with the skin records needs
 its own observed-resource integration or an explicit assignment.
 
+The [actual Bijin archive analysis](../../test/docs/bijin-npcs-20261118.md) shows
+why path bindings are declarations: its UNP/CBBE installer alternatives use the
+same private path, and its supplied static bodies have no BODYTRI. Individual
+skin routing, family semantics, available morph inputs and wolf-model routing
+must not be treated as one inferred property.
+
 ## Check a compatibility installation offline
 
 The development `claw-preset-tool` uses the same catalog and binding policy as
