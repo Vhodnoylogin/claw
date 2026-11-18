@@ -26,6 +26,9 @@ struct PhysicsObservation {
     bool dirty{true};
 
     void invalidate() { candidate.clear(); stablePasses = 0; dirty = true; }
+    // An unavailable graph observation is not proof of a missing model, but
+    // in-flight fits must no longer match its old observed root.
+    void deferModel() { invalidate(); root = 0; }
     bool observe(std::uintptr_t currentRoot, std::vector<float> values, float normalizedWeight = 0) {
         if (!currentRoot || !validPhysicsValues(values) || !std::isfinite(normalizedWeight) || normalizedWeight < 0 || normalizedWeight > 1) { invalidate(); return false; }
         if (root != currentRoot || candidate != values || weight != normalizedWeight) {

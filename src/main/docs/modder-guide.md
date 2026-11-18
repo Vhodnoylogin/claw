@@ -151,8 +151,13 @@ Bool queued = CLAWDistributionNative.ConfigureMorphFamily(target, "CLAW.3BA.2.48
 `GetMorphFamilies(female)` enumerates loaded IDs. Check `GetStatus(target)` and
 `GetLastError(target)`, then `GetMorphFamily(target)` for the actual binding.
 A returned `true` means queued, not applied. Status 1 is pending, 2 means own
-coefficients were read back/update requested, 3 unloaded, 4 error, 5 human with
+coefficients were read back/update requested and required third-person wolf
+geometries were observed, 3 unloaded, 4 error, 5 human with
 own wolf key cleared, 6 explicitly cleared, and 7 SKEE unavailable.
+The bounded model check requires the supplied `body`, `head`, `claws` and
+`fur_tailtip` geometry roles; it retries missing parts beneath an unchanged root.
+Optional first-person/coat results and zero coefficients do not block it. This
+does not certify TRI support, deformation or rendered visibility.
 
 `Refresh(target)` recaptures inputs and recomposes the actor's current stored
 rules. `ConfigureMorphFamily` binds the new loaded rules and resumes a suppressed

@@ -31,7 +31,8 @@ String Function GetAssigned(Actor target) Global Native
 ; A queued change may still report the prior binding: check GetStatus separately.
 ; This read never creates state, adopts a default or touches SKEE/the engine.
 String Function GetMorphFamily(Actor target) Global Native
-; 0 unknown, 1 pending, 2 coefficients read back/update requested, 3 unloaded,
+; 0 unknown, 1 pending, 2 coefficients read back/update requested and required
+; third-person wolf geometries observed (not rendered deformation), 3 unloaded,
 ; 4 error, 5 human (own key cleared), 6 explicitly cleared, 7 SKEE unavailable.
 Int Function GetStatus(Actor target) Global Native
 String Function GetLastError(Actor target) Global Native

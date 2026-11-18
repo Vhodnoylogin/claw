@@ -247,13 +247,24 @@ The coordinator owns the user menu and optional human OBody route.
 | `GetAppearanceStatus(actor)` | Cached colour-capture/application diagnostic, separate from morph readback status |
 | `DisableMorphLink(actor)` | Queued return to the retained independent preset |
 
-Status values: **0** unknown, **1** pending, **2** own coefficients read back and
-model update requested, **3** unloaded, **4** error, **5** human/own key cleared,
+Status values: **0** unknown, **1** pending, **2** own coefficients read back,
+model update requested and required world-model geometry observed, **3** unloaded, **4** error, **5** human/own key cleared,
 **6** explicitly cleared, **7** SKEE unavailable. A queued assignment can still
 fail because race/sex/reference/3D changed. `GetOwnMorph` is a cached readback, not
 the aggregate across mods. Inspect status before interpreting zero.
 Explicit refresh immediately marks the request pending and hides its previous
 coefficient cache until queued work completes or reports an error.
+
+The beast-model prerequisite is a bounded observation of actual third-person
+`body`, `head`, `claws` and `fur_tailtip` geometries, one of each using engine name
+identity (uppercase `BODY`/`HEAD` are valid). Both supplied sexes retain these
+authored roles. Missing/ambiguous roles or an incomplete observation report an
+error and remain retryable, including parts arriving beneath an unchanged root.
+Optional first-person graphs, coat materials and nonzero coefficients are not
+prerequisites. Presence does not prove TRI/target support, vertex deformation,
+rendered visibility, physics or artistic quality. Unknown human body families
+are not inferred from these model names. This source correction requires its
+own native/game qualification; retained older DLL evidence is unchanged.
 
 The optional [morph-to-morph bridge](../docs/transformation.md) reads actual
 applied signed human coefficients through SKEE in main-thread tasks. It evaluates each configured function and sums its output times the gain,

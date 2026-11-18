@@ -19,6 +19,7 @@
 #endif
 #include <IPluginInterface.h>  // official pinned external API, never vendored
 #include "claw/Appearance.h"
+#include "claw/TargetModelAvailability.h"
 #include "claw/CoatMatrix.h"
 #if defined(CLAW_OBODY_API_HEADER)
 #include CLAW_OBODY_API_HEADER // Official public protocol, optional external SDK.
@@ -256,6 +257,14 @@ void observePhysics(RE::Actor* actor);
 void invalidatePhysics(RE::FormID id) {
     if (const auto it = physicsBindings.find(id); it != physicsBindings.end()) {
         it->second.observation.invalidate(); it->second.ready = false;
+    }
+}
+void deferPhysicsTargetModel(RE::FormID id) {
+    if (const auto it = physicsBindings.find(id); it != physicsBindings.end()) {
+        auto& binding = it->second;
+        binding.observation.deferModel(); binding.ready = false; binding.delivered = false;
+        if (binding.condition.empty() || binding.condition == "waiting" || binding.condition == "human" || binding.condition == "unloaded")
+            binding.condition = "waiting";
     }
 }
 void logError(State& state, std::string reason, Status status = Status::error);
@@ -589,12 +598,53 @@ claw::PhysicsRejection physicsRejection(std::string_view condition) {
 void rejectPhysics(RE::Actor* actor, PhysicsBinding& binding, claw::PhysicsRejection reason) {
     const auto state = states.find(actor->GetFormID());
     if (state != states.end() && boundTo(state->second, binding.pointer) && state->second.runtimeSerial == binding.runtime) {
-        state->second.physicsAuthority.reject(reason);
+        if (reason == claw::PhysicsRejection::model) state->second.physicsAuthority.requireModel(false);
+        else state->second.physicsAuthority.reject(reason);
         binding.condition = state->second.physicsAuthority.condition();
     } else binding.condition = "identity";
     binding.ready = false; binding.delivered = false; binding.observation.invalidate();
     physicsPopulationBlocked.insert_or_assign(actor->GetFormID(), binding.runtime);
     physicsEvent(actor, binding.condition);
+}
+
+struct TargetModelSample {
+    RE::NiPointer<RE::NiAVObject> root;
+    std::array<RE::NiPointer<RE::BSGeometry>, claw::targetModelRoles.size()> roles;
+    claw::TargetModelObservation observation;
+};
+
+TargetModelSample sampleTargetModel(RE::Actor* actor) {
+    // Main-task only. Required geometries stay pinned through application and
+    // the final comparison, including replacement beneath an unchanged root.
+    TargetModelSample sample;
+    sample.root.reset(actor->Is3DLoaded() ? actor->Get3D(false) : nullptr);
+    std::array<RE::BSFixedString, claw::targetModelRoles.size()> names;
+    for (std::size_t i = 0; i < names.size(); ++i) names[i] = RE::BSFixedString{claw::targetModelRoles[i].data()};
+    sample.observation = claw::collectTargetModel(sample.root.get(), [&](RE::NiAVObject* object) {
+        auto* geometry = object->AsGeometry();
+        claw::TargetModelObject actual{geometry != nullptr};
+        for (std::size_t i = 0; i < names.size(); ++i) if (object->name == names[i]) {
+            actual.role = i;
+            if (geometry && !sample.roles[i]) sample.roles[i].reset(geometry);
+            break;
+        }
+        return actual;
+    }, [](RE::NiAVObject* object, auto&& push) {
+        if (auto* node = object->AsNode()) for (const auto& child : node->GetChildren())
+            if (!push(child.get())) return false;
+        return true;
+    });
+    return sample;
+}
+
+bool requirePhysicsTargetModel(RE::Actor* actor, PhysicsBinding& binding) {
+    const auto actual = sampleTargetModel(actor);
+    const auto availability = claw::targetModelAvailability(actual.observation);
+    if (availability == claw::TargetModelAvailability::ready) return true;
+    if (availability == claw::TargetModelAvailability::missing || availability == claw::TargetModelAvailability::ambiguous)
+        rejectPhysics(actor, binding, claw::PhysicsRejection::model);
+    else deferPhysicsTargetModel(actor->GetFormID());
+    return false;
 }
 
 // Called only on existing main-task paths, and only for one of the sixteen
@@ -633,6 +683,7 @@ bool observePhysicsContext(RE::Actor* actor, State& state) {
 void publishPhysics(RE::Actor* actor, PhysicsBinding& binding) {
     const auto state = states.find(actor->GetFormID());
     if (state == states.end() || !state->second.physicsAuthority.publishable(physicsOwner(state->second), binding.authorityRevision)) return;
+    if (!requirePhysicsTargetModel(actor, binding)) return;
     if (nextPhysicsSnapshot >= 0x01000000U) { rejectPhysics(actor, binding, claw::PhysicsRejection::tokenLimit); return; }
     binding.snapshot = nextPhysicsSnapshot++; binding.ready = true; binding.delivered = false;
     physicsEvent(actor, "snapshot", binding.snapshot);
@@ -673,6 +724,7 @@ void startPhysicsWorker() {
                 if (!observePhysicsContext(actor, state->second)) { rejectPhysics(actor, binding, claw::PhysicsRejection::identity); return; }
                 if (!state->second.physicsAuthority.publishable(physicsOwner(state->second), binding.authorityRevision) ||
                     !actor->Is3DLoaded() || reinterpret_cast<std::uintptr_t>(actor->Get3D()) != job.root || actor->GetRace() != beastRace) return;
+                if (!requirePhysicsTargetModel(actor, binding)) return;
                 if (!morphs) { rejectPhysics(actor, binding, claw::PhysicsRejection::provider); return; }
                 const auto* base = actor->GetActorBase();
                 const float rawWeight = base ? base->weight : std::numeric_limits<float>::quiet_NaN();
@@ -772,6 +824,10 @@ void observePhysics(RE::Actor* actor) {
         if (!binding.delivered) physicsEvent(actor, condition);
         return;
     }
+    // Missing roles can be an in-place graph edit with identical skeleton and
+    // biped pointers. Never reapply or refit merely because invalidation cleared
+    // the old candidate while a required model is unavailable.
+    if (!requirePhysicsTargetModel(actor, binding)) return;
     if (!binding.condition.empty() || binding.authorityRevision != authority.revision()) {
         if (binding.condition != "waiting") binding.delivered = false;
         binding.condition = "waiting";
@@ -798,6 +854,7 @@ void observePhysics(RE::Actor* actor) {
             if (currentOwner(actor)) observePhysicsContext(actor, state->second);
             invalidatePhysics(actor->GetFormID()); return;
         }
+        if (!requirePhysicsTargetModel(actor, binding)) return;
     }
     if (!binding.observation.observe(root, std::move(values), normalizedWeight)) {
         if (!binding.ready) physicsEvent(actor, "refit", binding.snapshot);
@@ -953,7 +1010,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     const float observedWeight = std::isfinite(rawNPCWeight) && rawNPCWeight >= 0 && rawNPCWeight <= 100 ? rawNPCWeight / 100.0F : -1.0F;
     if (beast) state->beastWeight = observedWeight;
     else if (human) { state->humanWeight = observedWeight; state->observedHuman = true; revokeSourceBootstrap(*state); }
-    if (!actor->Is3DLoaded() || !actor->Get3D()) { claw::appearance::runtime.restore(actor); state->status = Status::unloaded; state->dirty = true; return; }
+    if (!actor->Is3DLoaded() || !actor->Get3D(false)) { claw::appearance::runtime.restore(actor); state->status = Status::unloaded; state->dirty = true; return; }
     if (human && !bindingMismatch) claw::appearance::runtime.captureHuman(actor);
     if (!beast || state->suppressed || bindingMismatch) claw::appearance::runtime.restore(actor);
     if (!morphs) { logError(*state, "SKEE BodyMorph API is unavailable", Status::providerUnavailable); return; }
@@ -975,7 +1032,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
             }
         } catch (const std::exception& error) { sourceError = error.what(); }
     }
-    const auto root = reinterpret_cast<std::uintptr_t>(actor->Get3D());
+    const auto root = reinterpret_cast<std::uintptr_t>(actor->Get3D(false));
     if (!beast || state->suppressed || bindingMismatch) {
         bool hasOwnValue = false;
         // Zero-valued names can still affect a provider's aggregate policy.
@@ -1014,15 +1071,40 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         });
     }
     catch (const std::exception& error) { logError(*state, error.what()); return; }
+    // Stored coefficient readback alone cannot establish that a wolf model
+    // exists (custom NPC skins can omit its armature). Observe on every beast
+    // refresh, including matching coefficients under an unchanged world root.
+    const auto modelWorld = epoch.load(), modelRuntime = state->runtimeSerial;
+    const auto* modelBase = actor->GetActorBase();
+    const auto targetModel = sampleTargetModel(actor);
+    const auto modelCurrent = [&] {
+        return enabled && modelWorld == epoch.load() && state->runtimeSerial == modelRuntime &&
+            currentOwner(actor) && boundTo(*state, actor) && modelBase && actor->GetActorBase() == modelBase &&
+            modelBase->GetSex() == actorSex && actor->GetRace() == beastRace && actor->Is3DLoaded() &&
+            actor->Get3D(false) == targetModel.root.get() && reinterpret_cast<std::uintptr_t>(targetModel.root.get()) == root &&
+            (!vrLease || (state->vrBody && state->vrBody->current(*vrLease, vrBodyInput(actor, *state, true))));
+    };
+    const auto requireTargetModel = [&](const claw::TargetModelObservation& actual, bool current) {
+        const auto availability = claw::targetModelAvailability(actual, current);
+        if (availability == claw::TargetModelAvailability::ready) return true;
+        state->dirty = true;
+        invalidatePhysics(actor->GetFormID());
+        if (availability == claw::TargetModelAvailability::missing || availability == claw::TargetModelAvailability::ambiguous)
+            state->physicsAuthority.requireModel(false);
+        else if (availability == claw::TargetModelAvailability::indeterminate)
+            deferPhysicsTargetModel(actor->GetFormID());
+        const auto status = availability == claw::TargetModelAvailability::changed ? Status::pending :
+            availability == claw::TargetModelAvailability::unloaded ? Status::unloaded : Status::error;
+        logError(*state, claw::targetModelDiagnostic(actual, current), status);
+        return false;
+    };
+    if (!requireTargetModel(targetModel.observation, modelCurrent())) return;
     const bool matching = readback(actor, expected);
     if (force || state->dirty || state->lastRoot != root || (!linked && state->lastWeight != weight) || !matching) {
         state->status = Status::pending;
         if (!clearOwnMorphs(actor)) { logError(*state, "own-key preparation readback failed"); return; }
         // Recheck race/model immediately before writes; all operations stay on this main-thread task.
-        if (!currentOwner(actor) || actor->GetRace() != beastRace || !actor->Is3DLoaded() || !actor->Get3D() ||
-            (vrLease && (!state->vrBody || !state->vrBody->current(*vrLease, vrBodyInput(actor, *state, true))))) {
-            state->dirty = true; state->status = Status::pending; return;
-        }
+        if (!requireTargetModel(targetModel.observation, modelCurrent())) return;
         for (const auto& [name, value] : expected) if (value != 0)
             morphs->SetMorph(skeeReference(actor), name.c_str(), claw::morphKey, value);
         morphs->ApplyBodyMorphs(skeeReference(actor), false);
@@ -1036,6 +1118,12 @@ void refreshActor(RE::Actor* actor, bool force = false) {
             claw::appearance::coatSeed(saveNamespace, state->identity));
     }
     (void)appearance.applyWolf(actor, appearanceOverrides, saveNamespace, state->identity, std::move(coatOutputs));
+    // Provider/model updates may replace parts without replacing the skeleton.
+    // Reobserve after side effects; neither stale geometry nor a coat bool can
+    // publish applied. Optional/missing first-person roles are not requirements.
+    const auto finalModel = sampleTargetModel(actor);
+    const bool sameModel = finalModel.root == targetModel.root && finalModel.roles == targetModel.roles;
+    if (!requireTargetModel(finalModel.observation, modelCurrent() && sameModel)) return;
     state->sex = desiredSex; state->cache = std::move(expected); state->lastRoot = root; state->lastWeight = weight;
     state->dirty = false; state->status = Status::applied; state->error.clear();
 }
@@ -1755,6 +1843,15 @@ bool registerPhysics(RE::Actor* actor, std::int32_t generation,
         const auto sex = target->GetActorBase()->GetSex();
         if (sex != RE::SEX::kMale && sex != RE::SEX::kFemale) { state.physicsAuthority.reject(claw::PhysicsRejection::identity); finish(); return; }
         if (!morphs) { state.physicsAuthority.reject(claw::PhysicsRejection::provider); finish(); return; }
+        if (target->GetRace() == beastRace && target->Is3DLoaded() && target->Get3D(false)) {
+            const auto actual = sampleTargetModel(target);
+            const auto availability = claw::targetModelAvailability(actual.observation);
+            if (availability != claw::TargetModelAvailability::ready) {
+                if (availability == claw::TargetModelAvailability::missing || availability == claw::TargetModelAvailability::ambiguous)
+                    state.physicsAuthority.requireModel(false);
+                deferPhysicsTargetModel(target->GetFormID()); finish(); return;
+            }
+        }
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
         const auto& compiled = compiledPhysicsModel(sex == RE::SEX::kFemale);
         if (compiled.identity != model || compiled.morphs != ordered) {

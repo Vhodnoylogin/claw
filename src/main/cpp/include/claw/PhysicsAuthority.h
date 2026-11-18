@@ -75,6 +75,15 @@ public:
         advance();
     }
 
+    // A required geometry can disappear inside unchanged root/part objects.
+    // Revoke in-flight fits through the existing authority revision, without
+    // enrolling virgin actors or silently requalifying a returned model.
+    bool requireModel(bool present) {
+        if (!present && engaged() && !(rejection_ & unsigned(PhysicsRejection::model)))
+            reject(PhysicsRejection::model);
+        return present;
+    }
+
     std::string_view condition() const {
         for (const auto reason : {PhysicsRejection::identity, PhysicsRejection::provider, PhysicsRejection::model,
                  PhysicsRejection::weight, PhysicsRejection::domain, PhysicsRejection::tokenLimit})

@@ -114,3 +114,9 @@ All four starts/restorations remain accounted; cumulative18 November starts are1
 `Builds/claw-bijin-game-20261118/BIJIN-ACCEPTANCE.json` records exact scope.
 Only these two AIO/CBBE NPCs are game-qualified with this optional private patch;
 fourteen structural overrides do not qualify every character or UNP installation.
+
+The subsequent [model-availability correction](model-availability-20261118.md)
+also passed a fresh patched/unpatched pair with the new DLL. It preserves the
+successful lifecycle and diagnoses the original unpatched missing-model state
+instead of reporting applied coefficients as complete success. Those two later
+starts bring the cumulative count to17 at their acceptance.
