@@ -23,6 +23,77 @@ def window():
   'lastPreThreadId':7,'lastPostThreadId':7,'lastTimeStep':.016,'awaitingPost':False,
   'objects':[{'token':1,'initialPre':a,'lastPre':a,'lastPost':b,'minimumPostWorld':a['world'],
    'maximumPostWorld':b['world'],'maximumPairedDifference':.01,'firstNonzeroStep':1,'firstNonzeroPreQpc':1,'firstNonzeroPostQpc':2,'firstNonzeroPair':{'pre':a,'post':b}}]}
+
+def v3_window():
+ w=window();w.update(schemaVersion=3,minimumPairedHostTimeStep=.016,summedPairedHostTimeStep=.016*900,
+                     timeStepStatisticsScope=v.HOST_DT_SCOPE)
+ for row in w['objects']:
+  for p in [row['initialPre'],row['lastPre'],row['lastPost'],row['firstNonzeroPair']['pre'],row['firstNonzeroPair']['post']]:
+   p.update(linearVelocity=[0.,-1.,0.],angularVelocity=[-.25,0.,0.],inverseLocalInertia=[10.,0.,10.])
+ return w
+
+class V3Tests(unittest.TestCase):
+ def test_explicit_v3_parse_and_direct_window_keep_exact_dynamics(self):
+  w=v3_window();self.assertIs(v.validate_window(w,2,71),w)
+  d=fixture();d['schema']='claw-fsmp-step-witness/3';d['sample']['objectWindow']=w
+  self.assertEqual(v.parse(json.dumps(d))['sample']['objectWindow'],w)
+  self.assertEqual(w['objects'][0]['firstNonzeroPair']['post']['inverseLocalInertia'],[10.,0.,10.])
+ def test_zero_rigid_dynamics_are_available_and_valid(self):
+  w=v3_window()
+  for p in [w['objects'][0]['initialPre'],w['objects'][0]['lastPre'],w['objects'][0]['lastPost']]:
+   for key in v.DYNAMICS_FIELDS:p[key]=[0.,0.,0.]
+  v.validate_window(w,2)
+ def test_nonrigid_requires_explicit_null_not_fabricated_zero(self):
+  w=v3_window();r=w['objects'][0]
+  for p in [r['initialPre'],r['lastPre'],r['lastPost'],r['firstNonzeroPair']['pre'],r['firstNonzeroPair']['post']]:
+   p['rigidBody']=False;p['inverseMass']=0.
+   for key in v.DYNAMICS_FIELDS:p[key]=None
+  v.validate_window(w,2)
+  r['lastPost']['linearVelocity']=[0.,0.,0.]
+  with self.assertRaises(ValueError):v.validate_window(w,2)
+ def test_bad_rigid_vectors_and_negative_inertia_refused(self):
+  for field,value in [('linearVelocity',None),('linearVelocity',[False,0,0]),('angularVelocity',[0,0]),
+      ('angularVelocity',[0,float('inf'),0]),('inverseLocalInertia',[10,-1,10])]:
+   w=v3_window();w['objects'][0]['lastPost'][field]=value
+   with self.subTest(field=field,value=value),self.assertRaises(ValueError):v.validate_window(w,2)
+ def test_initial_and_first_pair_dynamics_are_not_optional(self):
+  for stage in ('initialPre','lastPre','firstNonzeroPair'):
+   w=v3_window();p=w['objects'][0][stage]
+   if stage=='firstNonzeroPair':p=p['post']
+   del p['angularVelocity']
+   with self.subTest(stage=stage),self.assertRaises(ValueError):v.validate_window(w,2)
+ def test_no_schema_inference_or_cross_schema_comparison(self):
+  for version in (None,2,True,4):
+   w=v3_window()
+   if version is None:del w['schemaVersion']
+   else:w['schemaVersion']=version
+   with self.subTest(version=version),self.assertRaises(ValueError):v.validate_window(w,2)
+  d=fixture();d['sample']['objectWindow']=v3_window()
+  with self.assertRaises(ValueError):v.parse(json.dumps(d))
+  d=fixture(2,20,300);d['schema']='claw-fsmp-step-witness/3';w=copy.deepcopy(d['sample']['objectWindow'])
+  w.update(schemaVersion=3,minimumPairedHostTimeStep=None,summedPairedHostTimeStep=0.,timeStepStatisticsScope=v.HOST_DT_SCOPE)
+  d['sample']['objectWindow']=w
+  with self.assertRaises(ValueError):v.compare(v.parse(json.dumps(fixture())),v.parse(json.dumps(d)))
+ def test_host_pair_statistics_bounds_and_scope(self):
+  for key,value in [('minimumPairedHostTimeStep',None),('minimumPairedHostTimeStep',0),
+     ('summedPairedHostTimeStep',float('nan')),('summedPairedHostTimeStep',.1),
+     ('timeStepStatisticsScope','Bullet substeps')]:
+   w=v3_window();w[key]=value
+   with self.subTest(key=key),self.assertRaises(ValueError):v.validate_window(w,2)
+ def test_completed_statistics_contain_last_pair_but_pending_pre_is_excluded(self):
+  w=v3_window();w.update(minimumPairedHostTimeStep=.05,summedPairedHostTimeStep=45.)
+  with self.assertRaises(ValueError):v.validate_window(w,2)
+  w=v3_window();w.update(lastTimeStep=15.)
+  with self.assertRaises(ValueError):v.validate_window(w,2)
+  w=v3_window();w.update(status='collecting',awaitingPost=True,lastPreQpc=3001,lastTimeStep=.001)
+  v.validate_window(w,2)
+ def test_idle_and_pending_pre_do_not_require_or_count_unpaired_dt(self):
+  w=fixture()['sample']['objectWindow'];w.update(schemaVersion=3,minimumPairedHostTimeStep=None,
+       summedPairedHostTimeStep=0.,timeStepStatisticsScope=v.HOST_DT_SCOPE);v.validate_window(w,2)
+  w['summedPairedHostTimeStep']=.016
+  with self.assertRaises(ValueError):v.validate_window(w,2)
+  w=v3_window();w.update(status='collecting',awaitingPost=True,lastPreQpc=3001,lastTimeStep=.001)
+  v.validate_window(w,2) # The in-flight host step is not yet part of completed statistics.
 class Tests(unittest.TestCase):
  def test_zero_is_valid_unqualified_and_positive_growth_is_only_global_steps(self):
   a=v.parse(json.dumps(fixture()),1);b=v.parse(json.dumps(fixture(2,20,300)),2)

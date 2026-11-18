@@ -42,7 +42,12 @@ ObjectFrame objectFrame(const btAlignedObjectArray<btCollisionObject*>& objects,
         for(int r=0;r<3;++r)for(int c=0;c<3;++c)row.world[r*3+c]=basis[r][c];
         for(int j=0;j<3;++j)row.world[9+j]=transform.getOrigin()[j];
         row.flags=object->getCollisionFlags();
-        if(const auto* body=btRigidBody::upcast(object)){row.rigidBody=true;row.inverseMass=body->getInvMass();}
+        if(const auto* body=btRigidBody::upcast(object)){
+            row.rigidBody=true;row.inverseMass=body->getInvMass();
+            const auto& linear=body->getLinearVelocity();const auto& angular=body->getAngularVelocity();
+            const auto& inertia=body->getInvInertiaDiagLocal();
+            for(int j=0;j<3;++j){row.linearVelocity[j]=linear[j];row.angularVelocity[j]=angular[j];row.inverseLocalInertia[j]=inertia[j];}
+        }
     }
     std::sort(out.objects.begin(),out.objects.begin()+out.count,[](const auto& a,const auto& b){return a.key<b.key;});
     return out;
@@ -83,12 +88,15 @@ Json eventJson(const claw::witness::EventSample& s) {
             {"coherent",s.coherent},{"invalidEvents",s.invalidEvents},{"droppedEvents",s.droppedEvents}};
 }
 Json envelope(const char* status,int serial) {
-    return {{"schema","claw-fsmp-step-witness/2"},{"status",status},{"requestSerial",serial},
+    return {{"schema","claw-fsmp-step-witness/3"},{"status",status},{"requestSerial",serial},
             {"provider",context->provider},{"pid",GetCurrentProcessId()},{"qpcFrequency",context->frequency}};
 }
 Json poseJson(const claw::witness::ObjectPose& pose) {
     // key is intentionally omitted. Tokens are 1-based positions in the fixed catalog.
-    return {{"world",pose.world},{"rigidBody",pose.rigidBody},{"inverseMass",pose.inverseMass},{"flags",pose.flags}};
+    return {{"world",pose.world},{"rigidBody",pose.rigidBody},{"inverseMass",pose.inverseMass},{"flags",pose.flags},
+            {"linearVelocity",pose.rigidBody?Json(pose.linearVelocity):Json(nullptr)},
+            {"angularVelocity",pose.rigidBody?Json(pose.angularVelocity):Json(nullptr)},
+            {"inverseLocalInertia",pose.rigidBody?Json(pose.inverseLocalInertia):Json(nullptr)}};
 }
 Json windowJson() {
     auto window=std::make_unique<WindowSnapshot>(); // Main task only; never in a provider event.
@@ -96,11 +104,14 @@ Json windowJson() {
     const auto& s=*window;
     if(s.nonce&&s.epoch!=context->loadEpoch.load())return {{"status","refused"},{"reason","window load epoch changed"},{"nonce",s.nonce},{"loadEpoch",s.epoch}};
     const char* status=s.failure!=claw::witness::WindowFailure::none?"refused":!s.nonce?"idle":!s.started?"armed":s.complete?"complete":"collecting";
-    Json out={{"status",status},{"nonce",s.nonce},{"loadEpoch",s.epoch},{"coherent",s.coherent},
+    Json out={{"schemaVersion",3},{"status",status},{"nonce",s.nonce},{"loadEpoch",s.epoch},{"coherent",s.coherent},
         {"objectCapacity",claw::witness::objectCapacity},{"pairedStepLimit",claw::witness::pairedStepLimit},
         {"objectCount",s.count},{"pairedSteps",s.pairedSteps},{"failureCode",static_cast<unsigned>(s.failure)},
         {"callbackDrops",s.dropped},{"firstPreQpc",s.firstPreQpc},{"lastPreQpc",s.lastPreQpc},{"lastPostQpc",s.lastPostQpc},
         {"lastPreThreadId",s.lastPreThread},{"lastPostThreadId",s.lastPostThread},{"lastTimeStep",s.lastTimeStep},
+        {"minimumPairedHostTimeStep",s.pairedSteps?Json(s.minimumPairedHostTimeStep):Json(nullptr)},
+        {"summedPairedHostTimeStep",s.summedPairedHostTimeStep},
+        {"timeStepStatisticsScope","completed-provider-callback-pairs; not Bullet substeps or integrated simulated time"},
         {"awaitingPost",s.awaitingPost},{"objects",Json::array()}};
     for(std::uint32_t i=0;i<s.count;++i) {
         const auto& r=s.objects[i];Json object={{"token",i+1},{"initialPre",poseJson(r.initialPre)},
@@ -146,7 +157,7 @@ void snapshot(int serial,std::uint64_t epoch) noexcept {
     }
 }
 std::string readState(RE::StaticFunctionTag*,std::int32_t requested) {
-    if(!context)return R"({"schema":"claw-fsmp-step-witness/2","status":"refused","reason":"context unavailable"})";
+    if(!context)return R"({"schema":"claw-fsmp-step-witness/3","status":"refused","reason":"context unavailable"})";
     std::lock_guard lock(context->mutex);
     if(context->providerState.load(std::memory_order_acquire)!=2) {
         auto out=envelope("refused",requested);out["reason"]="provider startup/version unavailable";return out.dump();
@@ -170,9 +181,9 @@ std::string readState(RE::StaticFunctionTag*,std::int32_t requested) {
     return out.dump();
 }
 std::string beginWindow(RE::StaticFunctionTag*,std::int32_t nonce) {
-    if(!context)return R"({"schema":"claw-fsmp-step-witness/2","status":"refused","reason":"context unavailable"})";
+    if(!context)return R"({"schema":"claw-fsmp-step-witness/3","status":"refused","reason":"context unavailable"})";
     std::lock_guard lock(context->mutex);
-    Json out={{"schema","claw-fsmp-step-witness/2"},{"nonce",nonce},{"status","refused"}};
+    Json out={{"schema","claw-fsmp-step-witness/3"},{"nonce",nonce},{"status","refused"}};
     if(nonce<=0||context->providerState.load(std::memory_order_acquire)!=2){out["reason"]="positive nonce/ready provider required";return out.dump();}
     if(context->beginNonce&&context->beginNonce!=nonce){out["reason"]="different nonce refused; one window per process";return out.dump();}
     if(!context->beginNonce) {
@@ -231,12 +242,12 @@ bool supported(const SKSE::QueryInterface* s) {
 }
 }
 extern "C" __declspec(dllexport) constinit SKSE::PluginVersionData SKSEPlugin_Version=[] {
-    SKSE::PluginVersionData v;v.PluginVersion({0,0,2,0});v.PluginName("CLAWFSMPWitness");v.AuthorName("CLAW contributors");
+    SKSE::PluginVersionData v;v.PluginVersion({0,0,3,0});v.PluginName("CLAWFSMPWitness");v.AuthorName("CLAW contributors");
     v.versionIndependenceEx=SKSE::PluginVersionData::kVersionIndependentEx_AddressLibraryV5;
     v.compatibleVersions[0]=SKSE::RUNTIME_SSE_1_7_104.pack();v.MinimumRequiredXSEVersion({2,3,1,0});return v;
 }();
 extern "C" __declspec(dllexport) bool SKSEPlugin_Query(const SKSE::QueryInterface* s,SKSE::PluginInfo* info) {
-    if(!info)return false;info->infoVersion=SKSE::PluginInfo::kVersion;info->name="CLAWFSMPWitness";info->version=2;return supported(s);
+    if(!info)return false;info->infoVersion=SKSE::PluginInfo::kVersion;info->name="CLAWFSMPWitness";info->version=3;return supported(s);
 }
 extern "C" __declspec(dllexport) bool SKSEPlugin_Load(const SKSE::LoadInterface* s) {
     if(!supported(s))return false;

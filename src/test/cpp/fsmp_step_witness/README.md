@@ -43,6 +43,60 @@ Zero counts are valid diagnostic data, never a simulation PASS. A positive
 post-step delta proves provider-global completed events, not target body motion,
 correct reset behavior, writeback visibility, contacts or parameter correspondence.
 
+## v3 observer-only dynamics extension
+
+The current test source emits `claw-fsmp-step-witness/3`, window
+`schemaVersion:3` and plugin version0.0.3. It adds observations without changing
+ReadState/BeginWindow signatures or adding a hook, simulation write or actuator.
+The historical build-02 DLL, PEX and schema2 actual captures remain immutable.
+The pure reader explicitly accepts archived schema2, with its exact old pose
+shape, and schema3, with its required new fields. Direct validate_window calls
+use the explicit window version; absent version means historical2 only. New
+vectors or statistics cannot implicitly promote an old record to version3.
+Mixed-version compare refuses. Old readers intentionally refuse new schema3.
+
+Each initialPre, lastPre, lastPost and retained firstNonzeroPair pose now also
+contains `linearVelocity`, `angularVelocity` and `inverseLocalInertia`. Public
+const SDK getters copy xyz in the same provider callback as WORLD/mass/flags.
+Rigid-body zero vectors and zero inverse-inertia axes are valid observations.
+Non-rigid objects publish null for all three unavailable vectors. Linear values
+are raw Bullet world-distance units per second, angular values radians per
+second, and inertia remains in the provider's local mass/distance convention;
+there is no hidden unit conversion or claim of metres. Local inertia can change
+between recorded poses; it is observed rather than assumed constant. No object
+pointer escapes its callback or becomes an external identity.
+
+FirstNonzeroPair selection remains based ONLY on WORLD pre/post difference,
+preserving v2 semantics. Its added vectors can expose actual onset velocity
+when WORLD first moves, but a velocity-only change does not create a new
+firstNonzeroPair. This is bounded existing storage, not a growing trajectory.
+
+`minimumPairedHostTimeStep` and double-precision `summedPairedHostTimeStep`
+count each successfully completed provider pre/post callback pair once. The
+minimum is null and sum0 before the first completed pair. An in-flight pre does
+not contribute; nonce polling and copying do not rebase or add to either value.
+`timeStepStatisticsScope` explicitly says these are completed host callback
+intervals, **not Bullet substeps or integrated simulated time**. FSMP can split
+an interval or discard a small remainder internally. All pose/statistic fields
+are published together by the existing fixed-memory copy gate. Contention still
+invalidates evidence rather than blocking a provider callback.
+
+Before these edits, the actual provider's retained PDB type records and fresh
+MSVC public-getter assembly/layout proof confirmed rigid-body offsets432
+(linear velocity),448 (angular velocity),528 (inverse local inertia), size784,
+float32/SSE API, and the same13 PDB-exact official3.25 headers. The pre-edit proof
+and separate candidate build live under
+`Builds/claw-physics-next-response-20261119/observer-extension-03/`.
+No private offset read, Bullet link library or provider change is introduced.
+
+Portable collector/reader tests exercise co-temporal initial/latest/onset fields,
+legitimate zero values, non-rigid nulls, malformed vectors, completed-pair dt
+accounting, pending-pre behavior, strict version selection and historical v2.
+They qualify source behavior only. This extension is not installed, admitted or
+game-qualified, and cannot retroactively supply missing data to the failed
+004012 damping run. Velocities/inertia help diagnose its unexplained input kick;
+they do not directly expose a constraint's damping coefficient or solver impulse.
+
 ## v2 bounded Bullet observation
 
 `String BeginWindow(Int nonce)` queues one consumer-only arm task. Positive nonce

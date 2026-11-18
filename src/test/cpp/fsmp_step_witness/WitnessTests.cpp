@@ -12,6 +12,35 @@ ObjectFrame frame(std::uint64_t when=100) {
  for(std::uint32_t i=0;i<f.count;++i){auto& o=f.objects[i];o.key=100+i;o.rigidBody=true;o.flags=i?0:1;o.inverseMass=i?20.f:0.f;o.world[0]=o.world[4]=o.world[8]=1;o.world[9]=float(i);}
  return f;
 }
+void dynamicsTests() {
+ auto w=std::make_unique<ObjectWindow>();auto s=std::make_unique<WindowSnapshot>();assert(w->request(5,2));
+ auto pre=frame(100),post=frame(101);pre.dt=post.dt=.02f;
+ pre.objects[1].inverseLocalInertia={10.f,0.f,10.f};post.objects[1].inverseLocalInertia=pre.objects[1].inverseLocalInertia;
+ post.objects[1].linearVelocity={-3.5f,0.f,2.f};post.objects[1].angularVelocity={0.f,-.25f,0.f};
+ w->pre(pre);assert(w->copy(*s)&&s->pairedSteps==0&&s->minimumPairedHostTimeStep==0&&s->summedPairedHostTimeStep==0);
+ w->post(post);assert(w->copy(*s)&&s->pairedSteps==1&&s->minimumPairedHostTimeStep==.02f&&s->summedPairedHostTimeStep==double(.02f));
+ assert(s->objects[1].initialPre.linearVelocity[0]==0&&s->objects[1].lastPost.linearVelocity[0]==-3.5f);
+ assert(s->objects[1].firstNonzeroStep==0); // Selection remains WORLD-only, not velocity-only.
+ pre=post;pre.qpc=103;pre.dt=.01f;post=pre;post.qpc=104;post.objects[1].world[9]+=.01f;
+ post.objects[1].angularVelocity[1]=.5f;post.objects[1].inverseLocalInertia[2]=8.f;
+ w->pre(pre);assert(w->copy(*s)&&s->pairedSteps==1&&s->minimumPairedHostTimeStep==.02f); // Pending pre not counted.
+ w->post(post);assert(w->copy(*s)&&s->pairedSteps==2&&s->minimumPairedHostTimeStep==.01f);
+ assert(s->summedPairedHostTimeStep==double(.02f)+double(.01f));
+ const auto& r=s->objects[1];assert(r.firstNonzeroStep==2&&r.firstNonzeroPre.linearVelocity[0]==-3.5f);
+ assert(r.firstNonzeroPre.angularVelocity[1]==-.25f&&r.firstNonzeroPost.angularVelocity[1]==.5f);
+ assert(r.initialPre.inverseLocalInertia[2]==10.f&&r.firstNonzeroPost.inverseLocalInertia[2]==8.f);
+ for(int channel=0;channel<3;++channel) {
+  auto bad=std::make_unique<ObjectWindow>();assert(bad->request(7,2));auto f=frame();
+  if(channel==0)f.objects[1].linearVelocity[1]=std::numeric_limits<float>::infinity();
+  if(channel==1)f.objects[1].angularVelocity[0]=std::numeric_limits<float>::quiet_NaN();
+  if(channel==2)f.objects[1].inverseLocalInertia[2]=-1.f;
+  bad->pre(f);assert(bad->copy(*s)&&s->failure==WindowFailure::invalid&&s->pairedSteps==0&&s->summedPairedHostTimeStep==0);
+ }
+ auto unavailable=std::make_unique<ObjectWindow>();assert(unavailable->request(9,2));pre=frame();post=frame(101);
+ pre.objects[0].rigidBody=post.objects[0].rigidBody=false;unavailable->pre(pre);unavailable->post(post);
+ assert(unavailable->copy(*s)&&s->failure==WindowFailure::none&&!s->objects[0].lastPost.rigidBody);
+ std::cout<<"v3 co-temporal dynamics, zero inertia, WORLD-only first pair and completed-host-pair dt statistics passed\n";
+}
 void objectTests() {
  auto w=std::make_unique<ObjectWindow>();auto s=std::make_unique<WindowSnapshot>();
  assert(!w->request(0,2)&&!w->request(41,0));assert(w->request(41,2));
@@ -28,6 +57,7 @@ void objectTests() {
  assert(s->objects[1].firstNonzeroPre.world[9]==1&&s->objects[1].firstNonzeroPost.world[9]>1);
  assert(s->objects[1].minimumPost[9]==1&&s->objects[1].maximumPost[9]==1.899f);
  assert(s->objects[0].maximumPairedDifference==0&&s->objects[0].firstNonzeroStep==0);
+ assert(s->minimumPairedHostTimeStep==.016f&&s->summedPairedHostTimeStep==double(.016f)*900);
  const auto last=s->lastPostQpc;w->pre(frame(10000));w->post(frame(10001));
  assert(w->copy(*s)&&s->lastPostQpc==last&&s->pairedSteps==900&&!w->requested());
  auto failure=[&](ObjectFrame pre,ObjectFrame post,WindowFailure expected){
@@ -72,5 +102,5 @@ int main() {
  for(int i=0;i<4;i++)threads.emplace_back([&]{for(int j=0;j<10000;j++)parallel.record(.02f,j+1,3);});
  for(auto& t:threads)t.join();a=parallel.read();assert(a.coherent&&a.count+a.droppedEvents==40000&&a.invalidEvents==0&&a.lastThreadId==3);
  std::cout<<"witness ABI, finite values, coherent publication and bounded contention checks passed\n";
- objectTests();
+ objectTests();dynamicsTests();
 }

@@ -11,6 +11,9 @@ constexpr std::uint32_t pairedStepLimit=900;
 struct ObjectPose {
     std::uintptr_t key{};
     std::array<float,12> world{}; // row-major 3x3 basis followed by xyz origin
+    // Public const btRigidBody getters, copied in the SAME provider callback.
+    // Unavailable for a non-rigid collision object; JSON publishes null then.
+    std::array<float,3> linearVelocity{},angularVelocity{},inverseLocalInertia{};
     float inverseMass{};
     int flags{};
     bool rigidBody{};
@@ -37,6 +40,8 @@ struct WindowSnapshot {
     std::uint64_t nonce{},epoch{},firstPreQpc{},lastPreQpc{},lastPostQpc{},dropped{};
     std::uint32_t count{},pairedSteps{},lastPreThread{},lastPostThread{};
     float lastTimeStep{};
+    float minimumPairedHostTimeStep{};
+    double summedPairedHostTimeStep{}; // Completed host callback pairs, NOT Bullet substeps.
     WindowFailure failure{};
     bool started{},complete{},awaitingPost{},coherent{};
     std::array<ObjectRecord,objectCapacity> objects{};
@@ -61,6 +66,9 @@ class ObjectWindow {
             if(!o.key||!std::isfinite(o.inverseMass)||o.inverseMass<0)return false;
             if(i&&frame.objects[i-1].key>=o.key)return false;
             for(float v:o.world)if(!std::isfinite(v))return false;
+            for(float v:o.linearVelocity)if(!std::isfinite(v))return false;
+            for(float v:o.angularVelocity)if(!std::isfinite(v))return false;
+            for(float v:o.inverseLocalInertia)if(!std::isfinite(v)||v<0)return false;
         }
         return true;
     }
@@ -131,6 +139,8 @@ public:
                 r.firstNonzeroPreQpc=state.lastPreQpc;r.firstNonzeroPostQpc=frame.qpc;
             }
         }
+        if(!state.pairedSteps||frame.dt<state.minimumPairedHostTimeStep)state.minimumPairedHostTimeStep=frame.dt;
+        state.summedPairedHostTimeStep+=static_cast<double>(frame.dt);
         ++state.pairedSteps;state.lastPostQpc=frame.qpc;state.lastPostThread=frame.thread;state.awaitingPost=false;
         if(state.pairedSteps==pairedStepLimit){state.complete=true;finished.store(true,std::memory_order_release);}
         leave();
