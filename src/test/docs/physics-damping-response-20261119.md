@@ -49,3 +49,18 @@ Raw observations, original failed reports and root restoration receipts remain
 in the external `claw-physics-next-response-20261119/proposal01` build directory.
 The next diagnostic must explain the observed response and preserve all failed
 evidence before requesting another finite game case.
+
+The optional `test_fsmp_damping_response_actual.py` replays the hash-bound,
+asset-free failed capture. Select its external JSON explicitly:
+
+```powershell
+$env:CLAW_FSMP_DAMPING_RESPONSE_EVIDENCE = '<absolute path to reviewed failed replay JSON>'
+$env:CLAW_FSMP_DAMPING_RESPONSE_REQUIRED = '1'
+python -B -m unittest discover -s src/test/python/integration -p 'test_fsmp_damping_response_actual.py' -v
+```
+
+Success means the original right-control refusal was reproduced unchanged.
+It grants no physics acceptance. Unset evidence visibly skips; required,
+explicitly missing or altered evidence fails. Raw opening/held/final observations,
+rest frames, input hashes and final-packet extraction line/offset stay in the
+external bundle; game assets and machine-specific source paths are excluded.
