@@ -300,3 +300,42 @@ from the pinned official source and FSMP overlay before fixing the convention.
 307 settling steps, one900-pair/15-object window, unchanged31 aggregates, normal
 exit0 and128/268 restoration pins pass. Physical starts19 at acceptance. This is
 one nonsingular angular-stop result, not broader damping/rendering/VR coverage.
+
+The [uniform-scale case](physics-uniform-scale-20261118.md),
+211810-d86de9, passes after one owned SetScale1.1. Actual getter/root/role scales
+agree at1.10000002384; P1 inverse masses15.02629375 follow20/s^3 and the left
+linear stop settles near0.055258 instead of0.05. Original unit evidence is
+retained separately from the acknowledged stable measurement lease.312 settling
+steps, one900-pair/15-object window, unchanged31 aggregates, normal exit0 and
+128/268 restoration pins pass. Physical starts20 at acceptance. No general
+nonuniform-scale, damping, rendered-attachment or VR claim follows.
+
+The preceding nonzero-mixed proposal01 was refused before actual SKSE dispatch:
+its added VFS admission named RaceMenu NG's losing skee64.ini rather than the
+existing comparison-mod winner. The failed result, original strict check and
+all122 restored snapshot preimages are retained. It contributes zero physical
+starts. A separately reviewed derivative corrects only the expected winner;
+no installed INI, source matrix or failed observation is rewritten.
+
+Actual mixed-source derivative02,212257-66dca5, then starts Skyrim but is stopped
+by the tool guardian: the callback left the last actor-creation phase deadline
+active during its longer private work. Heartbeat remains healthy; four initial
+source setters and one human baseline are retained. No wolf lifecycle/update
+qualification follows. The guardian normally closes the exact game with exit0;
+all122 snapshot preimages and268 original cold pins restore. This is physical
+start21. Keep this failure unchanged; a new callback must expose its original
+absolute work/cleanup budget to the guardian, including after nested semantic
+load initialization, without extending private operation or30-second caps.
+
+The phase-corrected full replay03,213231-90d7de, retains eight complete31-target
+captures: both human nonzero baselines, both initial wolves, the automatically
+changed CBBE wolf with unchanged BHUNP peer, and both loaded wolves. CBBE input
+Breasts0.4375 yields0.62108171; BHUNP0.1875 yields0.142843604 including its0.4
+constant. No manual refresh occurs in the successful changed-source interval.
+The automatic-empty interval then exhausts its original30s while reading the
+guarded subject status. Deletion, returns and the full case remain unqualified;
+do not rescore the failure using partial successful observations. Nine source
+mutations including known cleanup complete, all test keys are removed, exact
+game exit0 and122/268 restoration pins pass. Physical starts22. A future case
+should remove redundant transport reads while retaining full-catalog final
+guards, and budget the14-capture total prospectively from measured throughput.

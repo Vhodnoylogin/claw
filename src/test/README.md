@@ -172,6 +172,29 @@ explicit input selection. Without selection the actual class skips visibly;
 remain outside Git. This is one angular stop's solver/WORLD effect, without
 general damping, amplitude, contact, rendering or VR qualification.
 
+## Replay the actual uniform-scale observation
+
+`python/integration/fsmp_uniform_scale_readback.py` reuses the canonical joint
+and angular helpers for one observed uniform1.1-scale case. It retains the unit
+setup separately from the acknowledged measurement lease and uses actual WORLD
+scale for inverse mass20/s^3 and the scaled rest pivot. The accepted unit-scale
+pair contract is unchanged. See the
+[18 November scale record](docs/physics-uniform-scale-20261118.md).
+
+```powershell
+$env:CLAW_FSMP_UNIFORM_SCALE_READBACK_EVIDENCE = '<archived-ACTUAL-REPLAY-BUNDLE.json>'
+$env:CLAW_FSMP_UNIFORM_SCALE_READBACK_REQUIRED = '1'
+python -m unittest discover -s src/test/python/integration -p 'test_fsmp_uniform_scale*.py' -v
+```
+
+Fourteen portable checks cover scale, mass, pivot and identity discrimination.
+Six selected actual-data checks replay the retained setup and900-pair window,
+including unscaled mass/limit, right-side drift and stale-data refusals; two
+additional checks cover explicit evidence selection. Unset evidence skips the
+actual class visibly; required, missing or changed selections fail. Raw captures
+remain external. This finite case does not establish general damping, nonuniform
+scales, rendered attachment, contacts or VR behavior.
+
 ## Test actors and manual scene
 
 Every actual test actor/scene mod uses the prefix test_. Ordinary dependencies
