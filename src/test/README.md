@@ -146,6 +146,32 @@ cached module-admission dictionary or perform current binary admission.
 The scope is one edited lower-limit's unit-scale solver/WORLD effect; no broad
 damping, contact, rendering, root578 or VR qualification follows.
 
+## Replay the actual angular lower-limit observation
+
+`python/integration/fsmp_angular_limit_readback.py` reuses the canonical joint
+pairing/frame helpers and their sole witness validator. It checks one left P1
+angular lower limit+.005radians with1e-4rad tolerance, unchanged right control
+and bilateral settling. Bullet RO_XYZ uses column-indexed matrix elements:
+positive Bullet x has the opposite sign to ordinary active Rx. Portable tests
+cover this sign, rotated frames/pivots, invalid bases/regimes and drift, using
+the existing symbolic fixture helper. Symbolic positives are not game evidence.
+
+Select the immutable bundle from run`20261118-201916-366d11` explicitly:
+
+```powershell
+$env:CLAW_FSMP_ANGULAR_LIMIT_READBACK_EVIDENCE = '<archived-ACTUAL-REPLAY-BUNDLE.json>'
+$env:CLAW_FSMP_ANGULAR_LIMIT_READBACK_REQUIRED = '1'
+python -m unittest discover -s src/test/python/integration -p 'test_fsmp_angular_limit*.py' -v
+```
+
+The eight portable checks require no external assets. Four selected actual-data
+checks replay the paused and completed900pair window and reject sign/zero,
+right-drift, mass and stale-observation corruptions; two additional checks cover
+explicit input selection. Without selection the actual class skips visibly;
+`REQUIRED=1`, a missing selected file or a changed digest fails. Raw captures
+remain outside Git. This is one angular stop's solver/WORLD effect, without
+general damping, amplitude, contact, rendering or VR qualification.
+
 ## Test actors and manual scene
 
 Every actual test actor/scene mod uses the prefix test_. Ordinary dependencies

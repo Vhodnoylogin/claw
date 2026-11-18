@@ -291,3 +291,12 @@ physical starts18; three failed VR control-chain attempts never dispatched SKSE
 and add no game starts. All failed attempts/recovery evidence remain retained.
 This adds a bounded constraint correspondence result, not full physics/VR/
 rendered-attachment calibration or release readiness.
+
+The [angular lower-limit case](physics-angular-limit-20261118.md),
+201916-366d11, subsequently passes with original linear bounds/masses. Actual
+Morphbench left angular X+0.005 radians yields Bullet RO_XYZ X0.0049673369,
+while unchanged right stays near0. The exact PDB source checksum was reproduced
+from the pinned official source and FSMP overlay before fixing the convention.
+307 settling steps, one900-pair/15-object window, unchanged31 aggregates, normal
+exit0 and128/268 restoration pins pass. Physical starts19 at acceptance. This is
+one nonsingular angular-stop result, not broader damping/rendering/VR coverage.
