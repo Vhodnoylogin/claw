@@ -18,6 +18,15 @@ ESP alone does not establish which family an actor actually uses. SKEE values
 are actor contributions, not a reliable body-family identifier: a zero slider is
 still a valid input and some families share names with different meanings.
 
+An explicit NPC skin also needs a compatible werewolf ARMA in its armature if
+that skin remains selected after transformation. Human-only Nord addons cannot
+supply a wolf torso. A compatibility patch can retain its custom human body,
+hands and feet while adding `NakedTorsoWerewolfBeast` (`Skyrim.esm:0CDD87`), whose
+winning CLAW override supplies the matching wolf model. Race filtering keeps the
+human and wolf routes separate. Verify the actual selected skin and loaded model
+in game: body-family selection alone does not repair an incompatible custom
+skin, and CLAW does not rewrite another mod's skin records automatically.
+
 ## Explicit source adapter
 
 CLAW optionally reads `Data/SKSE/Plugins/CLAW/BodyFamilyBindings.xml` at data load.
@@ -60,6 +69,23 @@ This supports explicit compatibility for known separate skin paths. It does not
 classify arbitrary TRI files or discover every runtime body-swap implementation.
 A dynamically replaced naked mesh that disagrees with the skin records needs
 its own observed-resource integration or an explicit assignment.
+
+## Check a compatibility installation offline
+
+The development `claw-preset-tool` uses the same catalog and binding policy as
+the DLL. Supply the actual installed XML files and naked-skin body model paths
+from the source actor's ARMA, one path per input line:
+
+```powershell
+'actors/MyFollower/femalebody_1.nif' | & $tool body-family $catalog $bindings female
+```
+
+The JSON result names the chosen profile and whether it came from a skin binding
+or the default. Ambiguous paths, invalid data and an absent usable default return
+exit code 2. A missing optional bindings file retains the ordinary default.
+`--source-unobserved` with empty input checks the initially-wolf fallback.
+This command reads supplied records' paths; it does not inspect a running game,
+prove which resources win in a manager, or change an actor's stored assignment.
 
 Native tests exercise default/custom selection, shared zero-capable inputs,
 case/path identity, ambiguity, malformed files and preserved copied matrices.

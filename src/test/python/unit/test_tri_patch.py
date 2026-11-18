@@ -39,6 +39,20 @@ class PatchTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 tri_patch.offsets(raw)
 
+    def test_empty_uv_section_is_accepted_and_preserved(self):
+        raw = stream() + b'\x00\x00'
+        self.assertEqual(tri_patch.offsets(raw), tri_patch.offsets(stream()))
+        self.assertEqual(tri_patch.patch(raw, {}), raw)
+        key = ('head', 'G', 7)
+        position = tri_patch.offsets(raw)[key].position
+        expected = raw[:position] + struct.pack('<3h', 11, -20, 31) + raw[position + 6:]
+        self.assertEqual(tri_patch.patch(raw, {key: (11, -20, 31)}), expected)
+
+    def test_nonempty_uv_section_or_other_trailer_is_rejected(self):
+        for trailer in (b'\x01\x00', b'\x00', b'\x00\x00\x00', b'\x01\x00\x00\x00', b'\x00\x00\x00\x00'):
+            with self.subTest(trailer=trailer), self.assertRaises(ValueError):
+                tri_patch.offsets(stream() + trailer)
+
 
 if __name__ == '__main__':
     unittest.main()

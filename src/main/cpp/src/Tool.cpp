@@ -1,5 +1,6 @@
 #include "claw/Preset.h"
 #include "claw/MorphProfiles.h"
+#include "claw/BodyFamilyBindings.h"
 #include <charconv>
 #include <iostream>
 #include <iomanip>
@@ -7,6 +8,44 @@
 
 int main(int argc, char** argv) {
     const auto command = argc > 1 ? std::string_view(argv[1]) : std::string_view{};
+    if ((argc == 5 || argc == 6) && command == "body-family") {
+        const std::string_view sexName = argv[4];
+        if ((sexName != "male" && sexName != "female") ||
+            (argc == 6 && std::string_view(argv[5]) != "--source-unobserved")) return 2;
+        const bool observed = argc == 5;
+        claw::MorphProfileCatalog profiles;
+        if (!profiles.loadFile(argv[2])) { std::cerr << profiles.error() << '\n'; return 2; }
+        claw::BodyFamilyBindings bindings;
+        if (!bindings.loadFile(argv[3], profiles)) { std::cerr << bindings.error() << '\n'; return 2; }
+        std::vector<std::string> models;
+        std::string line;
+        while (std::getline(std::cin, line)) {
+            if (line.empty()) continue;
+            if (!observed || models.size() == 512 || !claw::bodyMeshIdentity(line)) {
+                std::cerr << "Expected at most 512 relative naked-skin NIF paths, or no paths for an unobserved source\n";
+                return 2;
+            }
+            models.push_back(std::move(line));
+        }
+        if (std::cin.bad()) { std::cerr << "Could not read naked-skin model paths\n"; return 2; }
+        const auto selection = bindings.select(sexName == "female" ? claw::Sex::female : claw::Sex::male,
+            models, profiles, observed);
+        const auto reason = [&] {
+            using Reason = claw::BodyFamilySelection::Reason;
+            switch (selection.reason) {
+            case Reason::defaultFamily: return "default";
+            case Reason::skinBinding: return "skin-binding";
+            case Reason::ambiguous: return "ambiguous";
+            case Reason::invalidBindings: return "invalid-bindings";
+            }
+            return "unknown";
+        }();
+        std::cout << "{\"schema\":\"claw-body-family-selection/1\",\"sourceObserved\":" << (observed ? "true" : "false")
+            << ",\"modelCount\":" << models.size() << ",\"reason\":" << claw::jsonString(reason)
+            << ",\"blocked\":" << (selection.blocked() ? "true" : "false") << ",\"profile\":"
+            << (selection.profile ? claw::jsonString(selection.profile->id) : "null") << "}\n";
+        return selection.profile && !selection.blocked() ? 0 : 2;
+    }
     if ((argc == 4 || argc == 6) && (command == "matrix" || command == "matrix-info")) {
         claw::MorphProfileCatalog profiles;
         if (!profiles.loadFile(argv[2])) { std::cerr << profiles.error() << '\n'; return 2; }
@@ -106,6 +145,7 @@ int main(int argc, char** argv) {
     }
     if (argc != 3 && argc != 6) {
         std::cerr << "claw-preset-tool validate <CLAW-preset-directory>\n"
+                     "claw-preset-tool body-family <MorphLinks.xml> <BodyFamilyBindings.xml> <male|female> [--source-unobserved] (one naked-skin NIF path per stdin line)\n"
                      "claw-preset-tool families <MorphLinks.xml>\n"
                      "claw-preset-tool matrix-info <MorphLinks.xml> <profile>\n"
                      "claw-preset-tool matrix <MorphLinks.xml> <profile> [--actor-weight-raw NPC0..100] (NAME<TAB>VALUE lines on stdin)\n"

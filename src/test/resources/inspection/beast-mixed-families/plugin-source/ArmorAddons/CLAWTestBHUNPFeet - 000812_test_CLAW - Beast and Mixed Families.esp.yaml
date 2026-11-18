@@ -1,0 +1,18 @@
+FormKey: 000812:test_CLAW - Beast and Mixed Families.esp
+EditorID: CLAWTestBHUNPFeet
+BodyTemplate:
+  FirstPersonFlags:
+  - Feet
+  ArmorType: Clothing
+  ActsLike44: True
+Race: 013746:Skyrim.esm
+Priority:
+  Male: 0
+  Female: 0
+WeightSliderEnabled:
+  Male: False
+  Female: True
+Unknown2: 23
+WorldModel:
+  Female:
+    File: actors\test_CLAW\beast-mixed\bhunp\femalefeet_1.nif

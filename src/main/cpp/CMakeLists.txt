@@ -124,6 +124,10 @@ if(CLAW_BUILD_TESTS)
     add_executable(claw-body-family-tests "${CLAW_TEST_SOURCE_DIR}/BodyFamilyBindingsTests.cpp")
     target_link_libraries(claw-body-family-tests PRIVATE claw-preset-core)
     add_test(NAME claw-body-family COMMAND claw-body-family-tests)
+    add_test(NAME claw-body-family-cli COMMAND "${CMAKE_COMMAND}"
+        "-DTOOL=$<TARGET_FILE:claw-preset-tool>"
+        "-DFIXTURE_DIR=${CMAKE_CURRENT_BINARY_DIR}/body-family-cli"
+        -P "${CLAW_TEST_SOURCE_DIR}/BodyFamilyCli.cmake")
     add_executable(claw-anatomy-v4-tests "${CLAW_TEST_SOURCE_DIR}/AnatomyV4Tests.cpp")
     target_link_libraries(claw-anatomy-v4-tests PRIVATE claw-preset-core)
     add_test(NAME claw-anatomy-v4 COMMAND claw-anatomy-v4-tests "${CLAW_REPOSITORY_ROOT}/src/main/resources/profiles/MorphLinks.xml")

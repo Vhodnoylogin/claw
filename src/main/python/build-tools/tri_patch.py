@@ -64,8 +64,12 @@ def offsets(data):
                 if key in result:
                     raise ValueError("duplicate vertex")
                 result[key] = Offset(position, scale, packed)
-    # Extensions are deliberately unsupported: never silently reinterpret them.
-    if cursor != len(view):
+    # BodySlide writes a uint16 UV-shape count after the position records,
+    # including zero. Accept only that exact empty section, preserving its bytes.
+    # Nonempty UV sections remain unsupported. Official reader/writer, lines104-107/220-222:
+    # https://github.com/ousnius/BodySlide-and-Outfit-Studio/blob/c72e2fd8b832e7ebb21e3eb29cf78e01f0afe0e4/src/files/TriFile.cpp
+    remaining = len(view) - cursor
+    if remaining and (remaining != 2 or bytes(view[cursor:]) != b'\x00\x00'):
         raise ValueError("unsupported TRIP trailing data")
     return result
 

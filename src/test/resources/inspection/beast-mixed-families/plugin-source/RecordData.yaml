@@ -1,0 +1,13 @@
+SpriggitSource:
+  PackageName: Spriggit.Yaml.Skyrim
+  Version: 0.41
+ModKey: test_CLAW - Beast and Mixed Families.esp
+GameRelease: SkyrimSE
+ModHeader:
+  Stats:
+    Version: 1.7
+  Author: CLAW nonshipping test source
+  Description: 'TEST SOURCE ONLY: six disabled persistent human-origin refs; body and FaceGen assets must be prepared separately. Not ready to stage.'
+  MasterReferences:
+  - Master: Skyrim.esm
+    FileSize: 0

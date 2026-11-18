@@ -1,0 +1,15 @@
+FormKey: 000820:test_CLAW - Beast and Mixed Families.esp
+EditorID: CLAWTestBHUNPSkin
+BodyTemplate:
+  FirstPersonFlags:
+  - Body
+  - Hands
+  - Feet
+  ArmorType: Clothing
+  ActsLike44: True
+Race: 013746:Skyrim.esm
+Armature:
+- 000810:test_CLAW - Beast and Mixed Families.esp
+- 000811:test_CLAW - Beast and Mixed Families.esp
+- 000812:test_CLAW - Beast and Mixed Families.esp
+- 0CDD87:Skyrim.esm

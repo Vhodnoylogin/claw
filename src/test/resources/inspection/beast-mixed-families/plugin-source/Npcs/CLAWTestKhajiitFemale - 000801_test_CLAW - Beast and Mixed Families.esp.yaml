@@ -1,0 +1,29 @@
+FormKey: 000801:test_CLAW - Beast and Mixed Families.esp
+EditorID: CLAWTestKhajiitFemale
+Configuration:
+  Flags:
+  - Female
+  - AutoCalcStats
+  Level:
+    MutagenObjectType: NpcLevel
+    Level: 10
+  CalcMinLevel: 10
+  CalcMaxLevel: 10
+  SpeedMultiplier: 100
+  DispositionBase: 50
+Race: 013745:Skyrim.esm
+AIData:
+  EnergyLevel: 50
+Class: 013176:Skyrim.esm
+Name:
+  TargetLanguage: English
+  Value: TEST CLAWTestKhajiitFemale
+PlayerSkills:
+  Health: 100
+  Stamina: 100
+  GearedUpWeapons: 1
+NAM5: 0
+Height: 1
+Weight: 50
+FaceMorph:
+  ChinNarrowVsWide: 0.2

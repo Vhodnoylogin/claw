@@ -1,0 +1,6 @@
+<BodyFamilyBindings schemaVersion="1">
+  <Bind sex="female" mesh="actors/character/character assets/femalebody_0.nif" profile="CLAW.CBBE.2.0.3.Geometry1" />
+  <Bind sex="female" mesh="actors/character/character assets/femalebody_1.nif" profile="CLAW.CBBE.2.0.3.Geometry1" />
+  <Bind sex="female" mesh="actors/test_CLAW/beast-mixed/bhunp/femalebody_0.nif" profile="CLAW.BHUNP.3.34.AdvancedV4" />
+  <Bind sex="female" mesh="actors/test_CLAW/beast-mixed/bhunp/femalebody_1.nif" profile="CLAW.BHUNP.3.34.AdvancedV4" />
+</BodyFamilyBindings>

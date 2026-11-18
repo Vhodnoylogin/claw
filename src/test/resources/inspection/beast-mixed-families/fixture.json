@@ -1,0 +1,40 @@
+{
+  "schema": "claw-beast-mixed-source-fixture/1",
+  "status": "NONSHIPPING_SOURCE_REQUIRES_EXTERNAL_ASSETS",
+  "plugin": "test_CLAW - Beast and Mixed Families.esp",
+  "cell": "032AE7:Skyrim.esm",
+  "referenceFlags": 3072,
+  "automaticEnable": false,
+  "installed": false,
+  "gameValidated": false,
+  "actors": [
+    {"npcLocalId": "000800", "referenceLocalId": "000900", "editorId": "CLAWTestKhajiitMale", "sex": "male", "raceLocalId": "013745", "weight": 50, "faceSlots": [0, 0, 0, -0.6, 0], "storagePosition": [-554, 1893, 6650]},
+    {"npcLocalId": "000801", "referenceLocalId": "000901", "editorId": "CLAWTestKhajiitFemale", "sex": "female", "raceLocalId": "013745", "weight": 50, "faceSlots": [0, 0, 0, 0.2, 0], "storagePosition": [-224, 1893, 6650]},
+    {"npcLocalId": "000802", "referenceLocalId": "000902", "editorId": "CLAWTestArgonianMale", "sex": "male", "raceLocalId": "013740", "weight": 50, "faceSlots": [0, 0.6, 0, 0, 0.8], "storagePosition": [106, 1893, 6650]},
+    {"npcLocalId": "000803", "referenceLocalId": "000903", "editorId": "CLAWTestArgonianFemale", "sex": "female", "raceLocalId": "013740", "weight": 50, "faceSlots": [0, -0.2, 0, 0, 0], "storagePosition": [436, 1893, 6650]},
+    {"npcLocalId": "000804", "referenceLocalId": "000904", "editorId": "CLAWTestMixedCBBE", "sex": "female", "raceLocalId": "013746", "weight": 50, "faceSlots": [0, 0, 0, 0, 0], "storagePosition": [-554, 2213, 6650], "expectedProfile": "CLAW.CBBE.2.0.3.Geometry1", "skin": "race-inherited"},
+    {"npcLocalId": "000805", "referenceLocalId": "000905", "editorId": "CLAWTestMixedBHUNP", "sex": "female", "raceLocalId": "013746", "weight": 50, "faceSlots": [0, 0, 0, 0, 0], "storagePosition": [-224, 2213, 6650], "expectedProfile": "CLAW.BHUNP.3.34.AdvancedV4", "skin": "000820:test_CLAW - Beast and Mixed Families.esp"}
+  ],
+  "customSkin": {
+    "localId": "000820",
+    "raceLocalId": "013746",
+    "bodySlotMask": 140,
+    "externalWolfAddon": "0CDD87:Skyrim.esm",
+    "addons": [
+      {"localId": "000810", "editorId": "CLAWTestBHUNPBody", "slotMask": 4, "part": "body", "model": "actors/test_CLAW/beast-mixed/bhunp/femalebody_1.nif"},
+      {"localId": "000811", "editorId": "CLAWTestBHUNPHands", "slotMask": 8, "part": "hands", "model": "actors/test_CLAW/beast-mixed/bhunp/femalehands_1.nif"},
+      {"localId": "000812", "editorId": "CLAWTestBHUNPFeet", "slotMask": 128, "part": "feet", "model": "actors/test_CLAW/beast-mixed/bhunp/femalefeet_1.nif"}
+    ],
+    "assetsIncluded": false,
+    "texturesIncluded": false,
+    "firstPersonModelsIncluded": false,
+    "requiredExternalPreparation": [
+      "Separately accounted ordinary CBBE body, hands, feet and compatible textures at the race skin's actual winning paths, with BodySlide Build Morphs output.",
+      "Independently generated BHUNP 3.34 Advanced Ver4 body, hands and feet endpoint NIFs, matching TRI/BODYTRI and UNP-compatible shader materials/textures at all unique test paths. No CBBE hand/foot fallback is provided.",
+      "Authored race/sex-compatible head parts and generated FaceGen/tint assets for these six new bases before visual/head acceptance; no external NPC faces are copied.",
+      "Exact active-profile race/skin/ARMA and actual NIF/TRI/material readback, including separate Khajiit/Argonian hands, feet and tails.",
+      "Installed CLAW must win the external 0CDD87:Skyrim.esm NakedTorsoWerewolfBeast ARMA override and its actual wolf resources; the explicit NPC skin must retain a race-compatible wolf addon after transformation.",
+      "Both female profiles in MorphLinks.xml, actual matrix inputs and a shared-name nonzero plus supported-zero control, compatible clothing output, and fresh disabled-reference/save custody."
+    ]
+  }
+}

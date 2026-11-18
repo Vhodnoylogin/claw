@@ -52,6 +52,30 @@ remains motion-physics follow-up, female breast work, VR body/contacts, optional
 anatomy and final artistic review. Nexus removal/restoration is separate from
 local development; no new public release is authorized by this resume.
 
+The next 18 November development slice adds a reproducible six-base test fixture,
+explicit custom-skin wolf routing, the native `body-family` setup diagnostic and
+standard BodySlide empty-UV-section compatibility in the strict TRI helper.
+Source/record checks and private unique-path BHUNP preparation are complete;
+actual installed SE lifecycle acceptance remains open. Three two-actor semantic
+plans were prepared for Polygon. A missing qualified SE platform is a tooling
+preparation boundary, not a demonstrated CLAW failure or permission to launch
+outside Polygon. Keep source selection, installed resource identity and gameplay
+acceptance separate.
+
+Later on18 November the owner explicitly made this chat the sole game operator
+and stopped further Polygon contact. Complete the existing preparation barrier
+with independent settlement, then run the bounded tests here with the same
+native custody, startup, snapshot/restoration and evidence requirements. Prepared
+plans and an installed DLL still do not count as actual game acceptance.
+
+The current-v4 [breast attachment audit](breast-attachment-audit.md) now measures
+collar and coat-root offsets across combined morphs and controlled poses. A
+limited-training weight fit regressed other states and was rejected. An expanded
+private fit improved one six-vertex card without measured protected-state
+regressions, but its whole-belly benefit is small and the candidate is not shipped.
+Continue full-state attachment work and game correspondence; static offset,
+fade-policy, posed drift and actual rendered separation are different findings.
+
 ### Completed release scope — owner update, 13 November
 
 The 13 November scope was CLAW motion physics and the verified 0.10.0 release.
