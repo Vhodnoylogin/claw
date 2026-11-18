@@ -56,17 +56,26 @@ The next 18 November development slice adds a reproducible six-base test fixture
 explicit custom-skin wolf routing, the native `body-family` setup diagnostic and
 standard BodySlide empty-UV-section compatibility in the strict TRI helper.
 Source/record checks and private unique-path BHUNP preparation are complete;
-actual installed SE lifecycle acceptance remains open. Three two-actor semantic
-plans were prepared for Polygon. A missing qualified SE platform is a tooling
-preparation boundary, not a demonstrated CLAW failure or permission to launch
-outside Polygon. Keep source selection, installed resource identity and gameplay
-acceptance separate.
+three two-actor lifecycle plans were prepared. Subsequent direct SE checks passed
+both sexes of Khajiit/Argonian and a declared simultaneous CBBE/BHUNP skin setup:
+twenty steps and eight complete matrix observations per case. The retained first
+mixed attempt failed on unavailable FaceData in the all-zero Nord fixture;
+correcting the authored fixture preserved the assertions and passed the next
+case. See src/test/docs/development-20261118.md for exact pins, failed preparation
+attempts and limits. Nonzero human-morph bases, actual rendered resources and
+arbitrary body swaps remain distinct from this numerical lifecycle evidence.
 
 Later on18 November the owner explicitly made this chat the sole game operator
 and stopped further Polygon contact. Complete the existing preparation barrier
 with independent settlement, then run the bounded tests here with the same
 native custody, startup, snapshot/restoration and evidence requirements. Prepared
 plans and an installed DLL still do not count as actual game acceptance.
+
+The owner clarified that prohibiting unsupported individual-body mods means
+withholding a compatibility promise, not actively disabling them. Do not turn
+this limited compatibility work into universal body classification. Preserve
+the single default per sex and use explicit data bindings only for known paths;
+an authored fixture does not qualify a third-party follower.
 
 The current-v4 [breast attachment audit](breast-attachment-audit.md) now measures
 collar and coat-root offsets across combined morphs and controlled poses. A

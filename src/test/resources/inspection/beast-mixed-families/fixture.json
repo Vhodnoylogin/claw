@@ -12,8 +12,8 @@
     {"npcLocalId": "000801", "referenceLocalId": "000901", "editorId": "CLAWTestKhajiitFemale", "sex": "female", "raceLocalId": "013745", "weight": 50, "faceSlots": [0, 0, 0, 0.2, 0], "storagePosition": [-224, 1893, 6650]},
     {"npcLocalId": "000802", "referenceLocalId": "000902", "editorId": "CLAWTestArgonianMale", "sex": "male", "raceLocalId": "013740", "weight": 50, "faceSlots": [0, 0.6, 0, 0, 0.8], "storagePosition": [106, 1893, 6650]},
     {"npcLocalId": "000803", "referenceLocalId": "000903", "editorId": "CLAWTestArgonianFemale", "sex": "female", "raceLocalId": "013740", "weight": 50, "faceSlots": [0, -0.2, 0, 0, 0], "storagePosition": [436, 1893, 6650]},
-    {"npcLocalId": "000804", "referenceLocalId": "000904", "editorId": "CLAWTestMixedCBBE", "sex": "female", "raceLocalId": "013746", "weight": 50, "faceSlots": [0, 0, 0, 0, 0], "storagePosition": [-554, 2213, 6650], "expectedProfile": "CLAW.CBBE.2.0.3.Geometry1", "skin": "race-inherited"},
-    {"npcLocalId": "000805", "referenceLocalId": "000905", "editorId": "CLAWTestMixedBHUNP", "sex": "female", "raceLocalId": "013746", "weight": 50, "faceSlots": [0, 0, 0, 0, 0], "storagePosition": [-224, 2213, 6650], "expectedProfile": "CLAW.BHUNP.3.34.AdvancedV4", "skin": "000820:test_CLAW - Beast and Mixed Families.esp"}
+    {"npcLocalId": "000804", "referenceLocalId": "000904", "editorId": "CLAWTestMixedCBBE", "sex": "female", "raceLocalId": "013746", "weight": 50, "faceSlots": [0, 0, 0, 0.125, 0], "storagePosition": [-554, 2213, 6650], "expectedProfile": "CLAW.CBBE.2.0.3.Geometry1", "skin": "race-inherited"},
+    {"npcLocalId": "000805", "referenceLocalId": "000905", "editorId": "CLAWTestMixedBHUNP", "sex": "female", "raceLocalId": "013746", "weight": 50, "faceSlots": [0, 0, 0, -0.125, 0], "storagePosition": [-224, 2213, 6650], "expectedProfile": "CLAW.BHUNP.3.34.AdvancedV4", "skin": "000820:test_CLAW - Beast and Mixed Families.esp"}
   ],
   "customSkin": {
     "localId": "000820",

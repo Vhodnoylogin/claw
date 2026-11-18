@@ -1,8 +1,10 @@
 # Per-actor body families
 
 This development candidate adds optional explicit skin-path bindings. It is not
-part of released 0.10.0, has no mixed-body gameplay qualification yet, and does
-not change the installer into a multiple-choice body selector.
+part of released 0.10.0 and does not change the installer into a multiple-choice
+body selector. A declared CBBE/BHUNP two-actor numerical lifecycle passed in SE;
+its exact scope and remaining limits are in the
+[18 November verification](../../test/docs/development-20261118.md).
 
 ## Why different bodies can coexist
 
@@ -17,6 +19,22 @@ follower and a CBBE population can coexist. BodySlide project presence or an act
 ESP alone does not establish which family an actor actually uses. SKEE values
 are actor contributions, not a reliable body-family identifier: a zero slider is
 still a valid input and some families share names with different meanings.
+
+Standalone bodies are a real compatibility case: the
+[Bijin AIO De-Standalone author's description](https://www.nexusmods.com/skyrimspecialedition/mods/72957)
+explains replacing Bijin's individual bodies/textures with the shared defaults.
+The authored CLAW fixture reproduces the separate-skin mechanism; it is not a
+tested compatibility patch for Bijin or a claim that every follower uses it.
+
+There is no universal body-family identifier supplied by this adapter. A common
+reader handles NPC/race skins, while data declares their known model paths.
+Mods that replace a loaded scene graph without updating those records need a
+different observed-resource adapter. Even a known path can contain a different
+user-generated NIF/TRI; bindings therefore declare compatibility rather than
+proving file contents. Actual TRI morph inventory could support a future family
+classifier, but stored RaceMenu values, shared morph names and filename guesses
+do not establish one. Do not promise universal detection or require a separate
+hardcoded implementation for every ordinary custom-skin follower.
 
 An explicit NPC skin also needs a compatible werewolf ARMA in its armature if
 that skin remains selected after transformation. Human-only Nord addons cannot
@@ -89,9 +107,13 @@ prove which resources win in a manager, or change an actor's stored assignment.
 
 Native tests exercise default/custom selection, shared zero-capable inputs,
 case/path identity, ambiguity, malformed files and preserved copied matrices.
-They do not establish installed-game selection. Before offering installer mixed
-mode, test simultaneous CBBE/3BA and BHUNP actors with independently verified
+Source tests alone do not establish installed-game selection. The declared SE
+case verifies automatic CBBE/BHUNP selection, human/trait/weight retention and
+native parity through transformation, save/load and return. It does not promise
+compatibility with arbitrary individual-body mods. Before offering installer
+mixed mode, also test CBBE/3BA and BHUNP actors with independently verified
 skin/NIF/TRI identities through human capture, transformation, model refresh,
-save/load and return. Include initially-wolf, unavailable/zero morph, manual
+save/load and return, including nonzero human morph bases. Include initially-wolf,
+unavailable/zero morph, manual
 override and body-change cases. Confirm source preservation and exactly one
 applied projection for each actor.

@@ -1,7 +1,8 @@
 # CLAW development checks — 18 November 2026
 
-This is offline development evidence after `7a8b535`, not a released installer,
-new in-game acceptance, or a claim that the Nexus page has been restored.
+This records development after `7a8b535`, including separately identified source,
+installation and direct SE game checks. It is not a released installer or a
+claim that the Nexus page has been restored.
 Living Physique, Morphbench and Bridge remain under their original chats.
 
 ## Source body-family preparation
@@ -13,7 +14,7 @@ sources, missing optional data, absent defaults and damaged bindings. The
 actual game translation units/headers remain identical to the previously built
 universal development DLL; this slice adds a setup tool, not another DLL API.
 
-The authored fixture compiles into a 3,974-byte ESP with SHA-256
+The first authored fixture compiled into a 3,974-byte ESP with SHA-256
 `ae2d3193efaad2f56e3ef3afd263c82c12370b2b46797f54fab748e8e11138e2`.
 Official Spriggit compilation/serialization/rebuild is byte identical. Six own
 human bases and six persistent disabled references cover Khajiit/Argonian of
@@ -96,12 +97,11 @@ The generated backup was retained externally and its exact original preimage
 restored under the native mutex. No successful API mutation was replayed.
 
 The owner subsequently changed coordination: this CLAW chat now operates its
-own game tests and must not contact Polygon. Existing reservation/restoration
-guards still apply. Current installed FSMP bodies belong to the shipped motion
-stack; the separately audited current-v4 carrier and private fits are not installed.
+own game tests and must not contact Polygon. Existing restoration guards still
+apply. Cold preparation replaced the earlier installed FSMP assets with all
+twelve exact final 0.10.0 motion resources in the own development overlay. The
+separately audited current-v4 carrier and private fits remain uninstalled.
 Installed source identity is not actual actor, rendering or physics acceptance.
-The three semantic plans remain unrun at this checkpoint; startup, factual
-subject checks, restoration and final analysis still need actual game evidence.
 
 ## First direct game attempt
 
@@ -114,8 +114,8 @@ encoding finding, not failed body-family acceptance.
 
 The retained game handle separately observed exit`0xC0000005` during cleanup;
 no own quit or forced-stop request was recorded. Its cause is not established.
-Restoration completed without errors. One physical start, zero factual subject
-checks; the female/mixed cases remain unrun. Subsequent cold preparation added
+Restoration completed without errors. At that checkpoint there was one physical
+start and zero factual subject checks. Subsequent cold preparation added
 the two missing authored coat matrix/mapping files to the own runtime mod, after
 the log identified their absence. No third-party payload was changed.
 
@@ -126,3 +126,94 @@ samples with no regression above1e-8. Controlled-P1 squared residual improves
 30.33% at that root/4.69% over the belly layer. It remains uninstalled and needs
 composition/engine correspondence. The wider eight-card tradeoff candidate is
 rejected:1,838 samples worsen, including one combined-state increase of0.108.
+
+## Tool preparation and direct game qualification
+
+Six preparatory physical starts are retained separately from subject acceptance:
+five unsuccessful preparatory attempts, then one successful provider smoke test.
+The first attempt above is included in those six, rather than added again.
+They exposed a narrow abandoned-read classification gap, an incorrect fixture
+full-plugin index, a missing authored NPC persistence extension, and an invalid
+primitive deadline. Each failed attempt remains evidence. There was no replay
+of a successful mutating operation within an attempt.
+
+The private provider composition corrects UTF8 only for the known global scalar
+`Game.GetGameSettingString` binding, retains the authored NPC identity/freeze/
+serialization extension, and leaves unrelated string conversion unchanged.
+The private executor preserves existing startup classification and deadlines;
+it recognizes only the known abandoned-before-start read annotation and forwards
+the original remaining deadline into each guarded morph call. No source in the
+independent Autotest, DevBench or Observer checkout was changed.
+
+Smoke run `20261118-145926-ccc30c` passed two persistent NPC fixtures, frozen
+visual-state custody, six own-key positive SKEE writes, independent key and
+aggregate readback, and a real save/load with native identity remapping. It made
+no CLAW evaluator/getter/mutator call. Normal game exit, restoration, collection
+and heartbeat checks passed. This qualifies the selected SE tool composition,
+not a tool release, VR, rendering, or CLAW physics.
+
+## Beast-race lifecycle acceptance
+
+The unchanged development DLL has SHA256
+`06349b46461aa28454f8824c3f37f0c8f7d3a9ae6fba19c4950c9b47d3500f9b`.
+Every direct case checks sixty actual native VFS winners immediately before its
+single launch, uses a fresh FHD SE session and restores its original environment.
+
+| Case | Run | Source families | Result |
+|---|---|---|---|
+| Male Khajiit and Argonian | `20261118-150550-c2a632` | HIMBO 5.8 | All twenty steps passed |
+| Female Khajiit and Argonian | `20261118-151520-dbbeb5` | CBBE 2.0.3 | All twenty steps passed |
+
+Each case has eight complete matrix observations: both humans, both wolves,
+both loaded wolves and both returned humans. All thirty male or thirty-one
+female public outputs match the native calculation, with zero mismatches.
+Selected family, human source values, six available stature/face inputs and
+weight survive transformation and the actual owned save/load. The actors return
+to their respective original races. Both runs exit normally with code zero,
+complete restoration/collection without errors, and stop their healthy heartbeat.
+
+This establishes the declared source-family and numerical lifecycle for four
+ordinary beast-race actors. The cases do not add nonzero human-morph basis
+coverage, inspect rendered heads/tails, qualify vampire variants or arbitrary
+runtime mesh swaps, or prove physical motion. Raw results and the derived
+`analysis-latest.json` remain under
+`Builds/claw-development-20261118/direct-game-preparation-06/`.
+
+## Separate CBBE/BHUNP lifecycle acceptance
+
+The first mixed attempt, `20261118-152559-67818c`, correctly selected CBBE but
+failed its complete-input assertion: the two synthetic Nord bases had entirely
+zero NAM9 fields and the engine exposed no five-slot FaceData. Zero mismatches
+alone did not establish complete parity. This failed attempt exited normally,
+restored and collected without errors; it remains retained.
+
+The corrected source authors one signed chin-width control per Nord (`+.125`
+and `-.125`), retaining the supported zero slots. Official structural readback
+and byte-identical Spriggit roundtrip passed. The new 3,974-byte ESP has SHA256
+`60289098faa191bb0d9d7fac414d51ad78615cf3dfe6f5449ded54588c90657b`;
+only two bytes differ from the previous fixture. No subject DLL, matrix, tool
+provider, scenario or assertion changed. Cold staging replaced only this own
+fixture after verifying all previous installed and source-profile pins.
+
+Run `20261118-153040-776f06` passed all twenty mixed-case steps. The ordinary
+CBBE actor and separate-skin BHUNP actor selected `CLAW.CBBE.2.0.3.Geometry1`
+and `CLAW.BHUNP.3.34.AdvancedV4` automatically, without an explicit family-bind
+call. Eight complete observations match all thirty-one public outputs with zero
+mismatches; source, traits, weight and family persist through transformation,
+actual save/load and human return. Exit code zero, restoration, collection and
+healthy heartbeat shutdown all passed.
+
+The cumulative record contains ten physical starts: six preparatory/provider
+starts, three successful subject cases and the retained failed mixed-fixture
+attempt. The earlier unexplained `0xC0000005` exit is not relabeled as fixed.
+`Builds/claw-development-20261118/DIRECT-FAMILY-ACCEPTANCE.json` pins all ten raw
+results and the twenty-four complete accepted matrix observations.
+
+This qualifies only the declared skin-path dispatch and numerical lifecycle.
+Human BodySlide inputs in these three subject cases remain zero; new nonzero
+basis, loaded-resource-path, rendered skin/head, clothing and arbitrary body-swap
+acceptance are not claimed. The development fixture is not a compatibility patch
+for any third-party follower. The installer remains single-select per sex;
+arbitrary individual-body mods have no compatibility promise. The owner clarified
+that this unsupported status is the intended meaning of prohibiting their use,
+not a requirement to detect or disable another mod at runtime.

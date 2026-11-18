@@ -36,6 +36,16 @@ authored race/sex head parts and generate these bases' FaceGen/tints before any
 visual/head acceptance. Static NAM9 fields do not establish engine FaceData
 availability, root-face-NPC identity, likeness, coat colour or successful loading.
 
+The mixed Nord controls each include one nonzero chin-width scalar (`+.125` and
+`-.125`). The first installed mixed-body attempt with entirely zero NAM9 fields
+selected CBBE correctly but exposed unavailable engine FaceData; a scenario
+requiring complete numerical inputs correctly refused that observation. The
+current controls preserve supported zero slots while making that preparation
+boundary explicit. Do not infer availability from the presence of NAM9 alone or
+weaken a complete-input assertion to conceal a missing input. See the separately
+dated [development evidence](../../../docs/development-20261118.md) for actual
+attempts and their limits.
+
 The custom female Nord skin declares three female-only, weight-enabled ARMA:
 000810 body slot32, 000811 hands slot33 and 000812 feet slot37. Their independent
 third-person paths begin `actors/test_CLAW/beast-mixed/bhunp/`. It deliberately

@@ -26,4 +26,5 @@ PlayerSkills:
 NAM5: 0
 Height: 1
 Weight: 50
-FaceMorph: {}
+FaceMorph:
+  ChinNarrowVsWide: -0.125
