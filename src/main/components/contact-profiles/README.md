@@ -31,6 +31,13 @@ pose envelope at the same slot count by occupying more space. A tighter
 pose-dependent result needs evaluated bone transforms, the current TRI vector
 and observations of contact in the same provider frame.
 
+The enclosing fit reserves its two temporary projection arrays for the
+known support size. A paired offline benchmark measured 6–12% less CPU
+time for the complete fit on the tested machine. All 45,360 capsules
+across 504 inputs stayed bit-for-bit identical. The benchmark covers the
+worker calculation in the experimental host. Engine contact work and
+frame time have yet to be measured.
+
 Tests are under `src/test/components/contact-profiles/`. Native numerical parity
 and successful compilation are separate from game acceptance. HIGGS, PLANCK,
 Havok hand contact, posed geometry and actual provider consumption still require

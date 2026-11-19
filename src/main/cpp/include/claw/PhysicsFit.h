@@ -81,6 +81,8 @@ inline Capsule Fit(const std::vector<Vec3>& points, double padding=0.0001, const
     for(std::size_t i=0;i<3;++i)if(std::abs(std::abs(axis[i])-maximumComponent)<=1e-10){largest=i;break;}
     if (axis[largest]<0) for (auto& v:axis) v=-v;
     std::vector<double> along,radial;
+    along.reserve(points.size());
+    radial.reserve(points.size());
     double radius=0.;
     for (const auto& p:points) {
         const auto relative=add(p,centre,-1.);
