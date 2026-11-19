@@ -422,3 +422,62 @@ VR45 `98f54335463b1b8c1767209dff08cad3f67d7555458d4b47c0dca5d9b3cb0a8e`
 and VR46 `56e427c68bc59a9b9577670e3437899d5caed5239ddf4db9d9f6822f43e0b50f`.
 Accounting after VR46 is 74 Skyrim starts, 32 VR starts and 40 VR platform
 attempts.
+
+## Clean payload and first-person diagnostic controls
+
+VR47 `20261120-013132-968fb6` had a ready world body. V3 sampled the raw
+weapon state as 0. A typed `Actor.IsWeaponDrawn` read 1.466 seconds later
+returned true, so the additional DrawWeapon call was never sent. These
+different instants do not establish a native enum discrepancy. The owned
+test exited 0 and restored its snapshots. The independent receipt digest
+is `4d0f77ddd1169a476bb171b44eb1d0ada28d666088d816a201f74a25470dd1c4`.
+
+The complete seven-member VR Body ZIP was tested with the exact ESP and
+both namespaced NIF/TRI families. Two preparation attempts initially
+refused on MO2 line-ending representation, before the game started.
+Their original profiles and staged files were restored. The startup
+validator now compares the exact logical modlist through MO2's CRLF
+serialization, while keeping the activation, order and locked-file
+checks. Only the disposable profile disabled the old diagnostic mod.
+The stock XP32 skeleton and all remaining enabled mods were retained.
+
+VR49 `20261120-014929-420d9a` checked 32 actual positive VFS winners,
+including all seven ZIP files. Native resolve and origins confirmed
+loose absence of both the disabled marker ESP and its legacy hands NIF.
+One ordinary transformation produced a third-person slot-2 clone, but the
+clone contained only one engine-named geometry. The four CLAW roles were
+absent, CLAW returned status 4, and the morph oracle was not evaluated.
+The namespaced archive is insufficient in this profile. The stock packed
+asset remains outside the loose VFS absence claim. The game exited 0 and
+replay checked 108 restored files, four temporary directories, 232 cold
+files and 30 original VFS winners. Receipt SHA-256
+`7dd56204855bb6cc9803eefab6735778bf76093c44455cf8b9a95ec419ca639b`.
+
+The stock werewolf script calls `Game.ForceThirdPerson()` and then
+`Game.ShowFirstPersonGeometry(false)` during the transformation. VR50
+`20261120-015426-e043c2` used the accepted current-alias control and called
+only the typed `Game.ShowFirstPersonGeometry(true)` once after both
+transition effects cleared. Two same-owner V3 captures retained the active
+third-person body and identical slots, geometry names and mesh-local flags.
+The first-person routes still contained four RaceMenu overlays. V3 does
+not inspect parent-node culling or prove headset rendering. The later
+scenario readiness check and archived calibration did not qualify.
+The game exited 0 and 116 files restored. Receipt SHA-256
+`06a586c1060743d9c72e6e3c6902485da73bd5aabd7e1dcb65f1e1419a481cea`.
+
+## FSMP dependency and event handshake in VR
+
+VR48 `20261120-014613-3d1cca` loaded the exact FSMP 4.1.1 No AVX DLL,
+the Menu Framework DLL from the 3.18 archive (internal log version 3.14)
+and the VR observer, with VR Address Library 0.293.0. The same process
+verified the public startup interface 2.0.0 and two fresh `ReadState`
+snapshots, separated by about 1.175 seconds. Both pre and post counts
+stayed zero while that fresh human scene had no authored wolf test actor.
+Provider callback advancement and CLAW motion remain separate checks.
+
+No actor or model command was issued and the Bullet object window was
+idle. Exit code 0 and 143 file snapshots, 231 cold files, 29 original
+and 72 staged VFS entries were reconciled independently. The exact
+restoration receipt lives under
+`Builds/claw-vr-fsmp-provider-verification-20261120` and has SHA-256
+`50b60beab17f7d97b44f4b18ba24adcc84046a1894199499fa3e1648d2fab99b`.

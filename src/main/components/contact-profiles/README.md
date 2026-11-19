@@ -38,6 +38,14 @@ across 504 inputs stayed bit-for-bit identical. The benchmark covers the
 worker calculation in the experimental host. Engine contact work and
 frame time have yet to be measured.
 
+
+A follow-up tried fixed-size field bookkeeping, one array of paired
+projections and symmetric covariance accumulation. The first two together
+changed the measured worker median by 0.4–1.3%. Symmetric covariance ran
+2–10% slower on the same bank. Every variant agreed bitwise across all
+504 inputs. The source retains the measured reservation and original
+arithmetic.
+
 Tests are under `src/test/components/contact-profiles/`. Native numerical parity
 and successful compilation are separate from game acceptance. HIGGS, PLANCK,
 Havok hand contact, posed geometry and actual provider consumption still require
