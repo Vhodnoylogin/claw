@@ -120,6 +120,16 @@ games exited normally with exact file restoration. Neither obtained CPU point da
 or requested FHeavy, so CPU-buffer/ABI qualification remains open. Historical
 failure receipts and build-source preimages stay outside Git.
 
+A later same-build case retained eight renderer refusals across advancing
+engine frames. The diagnostic build adds an optional `rendererBusy` object to
+that specific terminal `ReadState` refusal. It records the callback and engine
+main thread IDs, the two typed renderer-lock offsets, and up to twelve stack
+frames. Resolved Skyrim SE and SKSE frames include module-relative addresses.
+The diagnostic is tied to the original request, load epoch and deadline. It
+does not consult the lock's internal fields, acquire the lock again, read
+vertex buffers after refusal or identify the lock owner. SDK accessor agreement
+is not independent runtime layout proof.
+
 The remaining separately admitted gate is actual CPU-buffer qualification:
 neutral versus fixed FHeavy, current TRI-predicted deltas, support/unchanged-point
 controls, root/epoch/refusal behavior and source/VFS/module admission. A future

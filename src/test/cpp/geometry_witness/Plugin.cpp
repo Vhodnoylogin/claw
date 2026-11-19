@@ -23,12 +23,44 @@ bool sameName(const char* a,const char* b){if(!a||!b)return false;while(*a&&*b){
 void name(char(&out)[64],const char* text){g::require(text,"Missing object name");auto size=strnlen_s(text,64);g::require(size<64,"Object name exceeds bound");std::memcpy(out,text,size+1);}
 using Transform=std::array<float,13>;
 Transform transform(const RE::NiTransform& t){Transform out{};for(unsigned r=0;r<3;++r)for(unsigned c=0;c<3;++c)out[r*3+c]=t.rotate.entry[r][c];out[9]=t.translate.x;out[10]=t.translate.y;out[11]=t.translate.z;out[12]=t.scale;for(auto v:out)g::require(std::isfinite(v),"Nonfinite typed transform");return out;}
+class LockBusy final : public std::runtime_error {
+public:
+    LockBusy(g::LockStage stage, g::LockRole role) : std::runtime_error(g::lockBusyReason(stage, role)) {}
+};
 class TryCritical {
     CRITICAL_SECTION* lock_{};
 public:
-    explicit TryCritical(REX::W32::CRITICAL_SECTION& lock,g::LockStage stage,g::LockRole role){auto* p=reinterpret_cast<CRITICAL_SECTION*>(&lock);g::require(TryEnterCriticalSection(p)!=FALSE,g::lockBusyReason(stage,role));lock_=p;}
+    explicit TryCritical(REX::W32::CRITICAL_SECTION& lock,g::LockStage stage,g::LockRole role){auto* p=reinterpret_cast<CRITICAL_SECTION*>(&lock);if(!TryEnterCriticalSection(p))throw LockBusy(stage,role);lock_=p;}
     ~TryCritical(){if(lock_)LeaveCriticalSection(lock_);}TryCritical(const TryCritical&)=delete;
 };
+Json rendererBusyDiagnostic(RE::BSGraphics::Renderer& renderer) {
+    const auto base = reinterpret_cast<std::uintptr_t>(&renderer);
+    const auto accessor = reinterpret_cast<std::uintptr_t>(&renderer.GetLock());
+    const auto member = reinterpret_cast<std::uintptr_t>(&renderer.GetRendererData().lock);
+    const auto* main = RE::Main::GetSingleton();
+    auto stack = Json::array();
+    std::array<void*, 12> frames{};
+    const auto count = CaptureStackBackTrace(0, static_cast<DWORD>(frames.size()), frames.data(), nullptr);
+    const auto game = GetModuleHandleW(nullptr);
+    const auto skse = GetModuleHandleW(L"skse64_1_7_104.dll");
+    for (unsigned i = 0; i < count; ++i) {
+        MEMORY_BASIC_INFORMATION mapping{};
+        if (!VirtualQuery(frames[i], &mapping, sizeof(mapping)) || mapping.Type != MEM_IMAGE) {
+            stack.push_back({{"module", "unresolved"}});
+            continue;
+        }
+        const char* module = mapping.AllocationBase == game ? "SkyrimSE.exe" :
+                             mapping.AllocationBase == skse ? "skse64_1_7_104.dll" : "other-image";
+        Json row{{"module", module}};
+        if (mapping.AllocationBase == game || mapping.AllocationBase == skse)
+            row["rva"] = reinterpret_cast<std::uintptr_t>(frames[i]) -
+                         reinterpret_cast<std::uintptr_t>(mapping.AllocationBase);
+        stack.push_back(std::move(row));
+    }
+    return {{"callbackThreadId", GetCurrentThreadId()}, {"engineMainThreadId", main ? Json(main->threadID) : Json(nullptr)},
+            {"lockAccessorOffset", accessor - base}, {"lockMemberOffset", member - base},
+            {"sdkAccessorsAgree", accessor == member}, {"stack", std::move(stack)}};
+}
 struct Bone {char name[64]{};Transform local{},world{},bind{};};
 struct Partition {
     unsigned vertices{},triangles{},bones{},bonesPerVertex{};g::Layout layout{};bool vertexMap{},palette{};
@@ -48,7 +80,7 @@ struct MeshLease {
     std::array<RE::NiPointer<RE::NiAVObject>,g::maxBones> bones{};
 };
 struct Context {
-    std::mutex mutex;g::Slot slot;std::string payload,reason;std::atomic<std::uint64_t> epoch{1};std::atomic<bool> loading{false};
+    std::mutex mutex;g::Slot slot;std::string payload,reason;Json rendererBusy;std::atomic<std::uint64_t> epoch{1};std::atomic<bool> loading{false};
     std::uint64_t frequency{},boundRoot{},boundEpoch{};std::uint32_t boundHandle{};
 };
 Context* context{};
@@ -102,7 +134,7 @@ void meshCopy(RE::BSGeometry* geometry,unsigned shapeIndex,Mesh& out,MeshLease& 
     g::require(transform(geometry->local)==out.local&&transform(geometry->world)==out.world,"Geometry pose changed during CPU copy");
     g::require(geometry->GetGeometryRuntimeData().skinInstance.get()==skin.get()&&skin->skinPartition.get()==partition.get()&&skin->skinData.get()==data.get(),"Attached skin lease changed during copy");
 }
-std::unique_ptr<Sample> collect(std::uint32_t form,std::uint32_t base,std::uint64_t epoch,std::uint32_t previousHandle,std::uint64_t previousRoot) {
+std::unique_ptr<Sample> collect(std::uint32_t form,std::uint32_t base,std::uint64_t epoch,std::uint32_t previousHandle,std::uint64_t previousRoot,Json& rendererBusy) {
     auto out=std::make_unique<Sample>();out->started=now();
     auto* actor=RE::TESForm::LookupByID<RE::Actor>(form);g::require(actor&&actor->GetFormID()!=0x14&&actor->Is3DLoaded(),"Selected dynamic actor unavailable");
     auto* npc=actor->GetActorBase();auto* race=actor->GetRace();
@@ -120,13 +152,21 @@ std::unique_ptr<Sample> collect(std::uint32_t form,std::uint32_t base,std::uint6
     g::require(selected[0]&&selected[1],"Required fur_belly/HEAD roles absent");
     auto* renderer=RE::BSGraphics::Renderer::GetSingleton();g::require(renderer,"Renderer lock unavailable");
     std::array<MeshLease,2> leases{}; // Retained only until this main task finishes, never cached/published.
-    {TryCritical rendererLock(renderer->GetLock(),g::LockStage::renderer,g::LockRole::none);
+    bool rendererAcquired=false;
+    try {
+        TryCritical rendererLock(renderer->GetLock(),g::LockStage::renderer,g::LockRole::none);
+        rendererAcquired=true;
         for(unsigned i=0;i<2;++i)meshCopy(selected[i].get(),i,out->meshes[i],leases[i]);
         for(unsigned i=0;i<2;++i){const auto& lease=leases[i];const auto& mesh=out->meshes[i];TryCritical skinLock(lease.skin->lock,g::LockStage::skinBracket,i?g::LockRole::head:g::LockRole::furBelly);
             g::require(selected[i]->GetGeometryRuntimeData().skinInstance.get()==lease.skin.get()&&lease.skin->skinPartition.get()==lease.partition.get()&&lease.skin->skinData.get()==lease.data.get(),"Attached two-mesh lease changed");
             g::require(transform(selected[i]->local)==mesh.local&&transform(selected[i]->world)==mesh.world&&lease.data->GetBoneCount()==mesh.boneCount,"Geometry/bone metadata changed across shared copy");
             for(unsigned b=0;b<mesh.boneCount;++b)g::require(lease.skin->bones[b]==lease.bones[b].get()&&transform(lease.bones[b]->local)==mesh.bones[b].local&&transform(lease.bones[b]->world)==mesh.bones[b].world,"Bone identity/pose changed across two-mesh copy");
         }
+    } catch (const LockBusy&) {
+        if (!rendererAcquired) {
+            try { rendererBusy = rendererBusyDiagnostic(*renderer); } catch (...) {} // Keep the original refusal.
+        }
+        throw;
     }
     g::Lease before{form,base,race->GetFormID(),out->handle,epoch,out->rootKey};
     g::Lease after{actor->GetFormID(),actor->GetActorBase()?actor->GetActorBase()->GetFormID():0,actor->GetRace()?actor->GetRace()->GetFormID():0,actor->GetHandle().native_handle(),context->epoch.load(),reinterpret_cast<std::uintptr_t>(actor->Get3D(false))};
@@ -164,25 +204,29 @@ Json payload(const Sample& sample,std::uint32_t serial,std::uint32_t nonce,std::
 Json envelope(const char* status){return {{"schema","claw-cpu-geometry-cache/1"},{"status",status},{"requestSerial",context->slot.serial},{"nonce",context->slot.nonce},{"pid",GetCurrentProcessId()},
     {"loadEpoch",context->slot.epoch},{"cachedImmutable",true},{"timeMeaning","capture time, not current read time"}};}
 void task(std::uint32_t serial,std::uint32_t form,std::uint32_t base,std::uint32_t nonce,std::uint64_t epoch,std::uint32_t handle,std::uint64_t root) {
-    std::string text,reason;std::uint32_t actualHandle=0;std::uint64_t actualRoot=0;
+    std::string text,reason;Json rendererBusy;std::uint32_t actualHandle=0;std::uint64_t actualRoot=0;
     try{{std::lock_guard lock(context->mutex);g::require(context->slot.begin(serial,context->epoch.load(),now(),context->loading.load()),"Queued sample expired or world changed before start");}
-        auto sample=collect(form,base,epoch,handle,root);actualHandle=sample->handle;actualRoot=sample->rootKey;text=payload(*sample,serial,nonce,epoch).dump();g::require(text.size()<=256*1024,"Immutable response exceeds bound");
+        auto sample=collect(form,base,epoch,handle,root,rendererBusy);actualHandle=sample->handle;actualRoot=sample->rootKey;text=payload(*sample,serial,nonce,epoch).dump();g::require(text.size()<=256*1024,"Immutable response exceeds bound");
     }catch(const std::exception& e){reason=e.what();}
-    std::lock_guard lock(context->mutex);const bool ok=context->slot.finish(serial,context->epoch.load(),now(),reason.empty()&&!context->loading.load());
+    std::lock_guard lock(context->mutex);const auto currentEpoch=context->epoch.load();const auto finished=now();const bool loading=context->loading.load();
+    const bool current=context->slot.begin(serial,currentEpoch,finished,loading);
+    const bool ok=context->slot.finish(serial,currentEpoch,finished,reason.empty()&&!loading);
+    context->rendererBusy=current&&!ok?std::move(rendererBusy):Json{};
     context->payload=ok?std::move(text):std::string{};context->reason=ok?std::string{}:reason.empty()?"Sample finished after original deadline/world change":reason;
     if(ok){context->boundHandle=actualHandle;context->boundRoot=actualRoot;context->boundEpoch=epoch;}
 }
 std::string capture(RE::StaticFunctionTag*,std::int32_t formBits,std::int32_t baseBits,std::int32_t nonce) {
     std::lock_guard lock(context->mutex);auto form=std::bit_cast<std::uint32_t>(formBits),base=std::bit_cast<std::uint32_t>(baseBits);auto epoch=context->epoch.load();
     if(context->loading.load()||!g::sameBoundEpoch(context->boundEpoch,epoch)||!context->slot.request(form,base,static_cast<std::uint32_t>(nonce),epoch,now(),context->frequency*5)){auto out=envelope("refused");out["reason"]="Busy, consumed nonce, wrong fixed actor/base, changed bound world or sample bound";return out.dump();}
-    auto serial=context->slot.serial;auto handle=context->boundHandle;auto root=context->boundRoot;context->payload.clear();context->reason.clear();
+    auto serial=context->slot.serial;auto handle=context->boundHandle;auto root=context->boundRoot;context->payload.clear();context->reason.clear();context->rendererBusy=nullptr;
     try{SKSE::GetTaskInterface()->AddTask([=]{task(serial,form,base,static_cast<std::uint32_t>(nonce),epoch,handle,root);});}
     catch(...){context->slot.poisoned=true;context->reason="Queue outcome unavailable; process refuses further captures";}
     return envelope(context->slot.pending&&!context->slot.poisoned?"pending":"refused").dump();
 }
 bool validSerial(int serial){return serial>0&&static_cast<unsigned>(serial)==context->slot.serial&&context->slot.epoch==context->epoch.load()&&!context->loading.load();}
 std::string readState(RE::StaticFunctionTag*,std::int32_t serial){std::lock_guard lock(context->mutex);if(!validSerial(serial)){auto out=envelope("refused");out["reason"]="Stale serial/world";return out.dump();}
-    auto out=envelope(context->slot.poisoned?"refused":context->slot.pending?(now()<context->slot.deadline?"pending":"refused"):context->slot.ready?"ready":"refused");out["reason"]=context->reason;out["bytes"]=context->payload.size();out["chunks"]=(context->payload.size()+4095)/4096;return out.dump();}
+    auto out=envelope(context->slot.poisoned?"refused":context->slot.pending?(now()<context->slot.deadline?"pending":"refused"):context->slot.ready?"ready":"refused");out["reason"]=context->reason;out["bytes"]=context->payload.size();out["chunks"]=(context->payload.size()+4095)/4096;
+    if(!context->rendererBusy.is_null())out["rendererBusy"]=context->rendererBusy;return out.dump();}
 std::string readChunk(RE::StaticFunctionTag*,std::int32_t serial,std::int32_t index){std::lock_guard lock(context->mutex);if(!validSerial(serial)||!context->slot.ready||index<0||std::size_t(index)*4096>=context->payload.size())return {};return context->payload.substr(std::size_t(index)*4096,4096);}
 bool papyrus(RE::BSScript::IVirtualMachine* vm){if(!vm)return false;vm->RegisterFunction("Capture","CLAWGeometryWitness",capture);vm->RegisterFunction("ReadState","CLAWGeometryWitness",readState);vm->RegisterFunction("ReadChunk","CLAWGeometryWitness",readChunk);return true;}
 void message(SKSE::MessagingInterface::Message* m){if(!m)return;if(m->type==SKSE::MessagingInterface::kPreLoadGame){context->loading.store(true);++context->epoch;}
@@ -190,6 +234,6 @@ void message(SKSE::MessagingInterface::Message* m){if(!m)return;if(m->type==SKSE
     else if(m->type==SKSE::MessagingInterface::kPostLoadGame)context->loading.store(!claw::mayActivateWorld(claw::WorldStart::postLoadGame,m->dataLen,reinterpret_cast<std::uintptr_t>(m->data)));}
 bool supported(const SKSE::QueryInterface* s){return s&&!s->IsEditor()&&s->RuntimeVersion()==SKSE::RUNTIME_SSE_1_7_104&&s->SKSEVersion()>=REL::Version{2,3,1,0}.pack();}
 }
-extern "C" __declspec(dllexport) constinit SKSE::PluginVersionData SKSEPlugin_Version=[]{SKSE::PluginVersionData v;v.PluginVersion({0,0,1,0});v.PluginName("CLAWGeometryWitness");v.AuthorName("CLAW contributors");v.versionIndependenceEx=SKSE::PluginVersionData::kVersionIndependentEx_AddressLibraryV5;v.compatibleVersions[0]=SKSE::RUNTIME_SSE_1_7_104.pack();v.MinimumRequiredXSEVersion({2,3,1,0});return v;}();
-extern "C" __declspec(dllexport) bool SKSEPlugin_Query(const SKSE::QueryInterface* s,SKSE::PluginInfo* info){if(!info)return false;info->infoVersion=SKSE::PluginInfo::kVersion;info->name="CLAWGeometryWitness";info->version=1;return supported(s);}
+extern "C" __declspec(dllexport) constinit SKSE::PluginVersionData SKSEPlugin_Version=[]{SKSE::PluginVersionData v;v.PluginVersion({0,0,2,0});v.PluginName("CLAWGeometryWitness");v.AuthorName("CLAW contributors");v.versionIndependenceEx=SKSE::PluginVersionData::kVersionIndependentEx_AddressLibraryV5;v.compatibleVersions[0]=SKSE::RUNTIME_SSE_1_7_104.pack();v.MinimumRequiredXSEVersion({2,3,1,0});return v;}();
+extern "C" __declspec(dllexport) bool SKSEPlugin_Query(const SKSE::QueryInterface* s,SKSE::PluginInfo* info){if(!info)return false;info->infoVersion=SKSE::PluginInfo::kVersion;info->name="CLAWGeometryWitness";info->version=2;return supported(s);}
 extern "C" __declspec(dllexport) bool SKSEPlugin_Load(const SKSE::LoadInterface* s){if(!supported(s))return false;try{SKSE::Init(s,{.log=false});LARGE_INTEGER frequency{};if(!QueryPerformanceFrequency(&frequency)||frequency.QuadPart<=0||!SKSE::GetTaskInterface()||!SKSE::GetPapyrusInterface()||!SKSE::GetMessagingInterface())return false;context=new Context;context->frequency=frequency.QuadPart;return SKSE::GetPapyrusInterface()->Register(papyrus)&&SKSE::GetMessagingInterface()->RegisterListener(message);}catch(...){return false;}}
