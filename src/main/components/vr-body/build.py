@@ -14,7 +14,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[4]
 HERE = Path(__file__).resolve().parent
-sys.path[:0] = [str(ROOT/'src/main/python/vr'), str(ROOT/'src/main/python/build-tools')]
+sys.path[:0] = [str(HERE), str(ROOT/'src/main/python/vr'), str(ROOT/'src/main/python/build-tools')]
 import body_resource as resource
 import head_split
 import head_isolation as isolation
@@ -22,7 +22,7 @@ import neck_bounds
 import breast_rig as rig
 import morph_quality
 
-NAMESPACE = 'Meshes/Actors/WerewolfBeast/CLAW/FirstPerson'
+from vr_dispatch import NAMESPACE, resource_paths
 REFERENCE_ENTRY = 'meshes/actors/character/character assets/1stperson_werewolf_hands.nif'
 LIMITS = dict(isolation.LIMITS)
 BOX_PAD = 1e-8
@@ -30,13 +30,6 @@ BOX_PAD = 1e-8
 
 def dump(path, value):
     Path(path).write_text(json.dumps(value, indent=2, allow_nan=False)+'\n', encoding='utf8')
-
-
-def resource_paths(sex, endpoint=None):
-    if sex not in ('female', 'male') or (endpoint is not None and (type(endpoint) is not int or endpoint not in (0, 1))):
-        raise ValueError('Explicit sex and endpoint0/1 required')
-    base = f'{NAMESPACE}/{sex}'
-    return f'{base}/Body.tri' if endpoint is None else f'{base}/Body_{endpoint}.nif'
 
 
 def bodytri_path(sex):

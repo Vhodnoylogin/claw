@@ -19,6 +19,20 @@ breast support. Its authored install manifest leaves every native dispatch probe
 disabled. Offline file, skin and finite-pose checks do not qualify camera, IK,
 sex/weight selection or live first-person behavior.
 
+`vr_dispatch.py` builds a diagnostic-only companion ESP from the same authored
+werewolf armor addon as CLAW. Give it an explicit male, female, or both-sex
+model-range setting. The ESP keeps the world meshes and uses the namespaced
+resources for the first-person record paths. Its binary readback checks the
+paths, race, slot, range bytes and declared CLAW master.
+
+```text
+python src/main/components/vr-body/vr_dispatch.py --disable-range male --out <new-external-dir>
+```
+
+The staged record control showed male world-body attachment with the male
+range disabled. Native selection of the first-person record paths and the
+female range setting require their own game evidence.
+
 Start from the retained [VR body design](../../docs/vr-body.md),
 [head policy](../../docs/vr-head-policy.md) and
 [loaded-graph notes](../../docs/vr-loaded-graphs.md). Shared matrix mathematics
