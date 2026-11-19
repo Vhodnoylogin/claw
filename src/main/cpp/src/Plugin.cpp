@@ -143,6 +143,10 @@ std::uint64_t saveNamespace{};
 std::uint64_t nextIdentity{1};
 std::atomic<std::uint64_t> epoch{};
 std::atomic<bool> enabled{}, scanPending{};
+bool vrRuntime{}; // Fixed before callback/worker registration; no engine reads on the worker.
+std::mutex initialWorldMutex;
+claw::InitialWorldPolicy initialWorld;
+claw::InitialWorldCheck initialWorldLastCheck{claw::InitialWorldCheck::disarmed};
 const SKSE::TaskInterface* tasks{};
 IBodyMorphInterface* morphs{};
 IOverrideInterface* appearanceOverrides{};
@@ -1181,11 +1185,109 @@ void scan() {
     collectPins();
 }
 
+void disarmInitialWorld(claw::InitialWorldDisarm reason, bool invalidateWorld = false) {
+    bool changed{};
+    {
+        std::lock_guard lock(initialWorldMutex);
+        changed = initialWorld.disarm(reason);
+        if (invalidateWorld) { enabled = false; ++epoch; }
+    }
+    if (vrRuntime && changed) SKSE::log::info("CLAW initial VR world fallback disarmed: {}", claw::initialWorldName(reason));
+}
+
+// Caller owns actor-state mutex. Both authoritative NewGame and the initial VR
+// fallback create exactly this fresh session; neither uses post-load state.
+void resetNewGameSession() {
+    states.clear(); requestChannels.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = newNamespace(); nextIdentity = 1;
+    physicsSessionAuthorized = false; physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
+    obodySourcePopulationEnabled = false;
+}
+
+void notifyLoaded(std::uint64_t token);
+
+claw::InitialWorldObservation initialWorldObservation(std::uint64_t token) {
+    // Called only in an SKSE main task, outside actor-state/policy locks. UI
+    // lookups may acquire engine locks and must not run under either mutex.
+    claw::InitialWorldObservation result;
+    result.epoch = token; result.vr = vrRuntime;
+    if (auto* ui = RE::UI::GetSingleton()) {
+        result.uiAvailable = true;
+        result.blockedMenu = ui->GameIsPaused() || ui->IsModalMenuOpen();
+        for (const auto menu : {"Main Menu", "Loading Menu", "RaceSex Menu", "MessageBoxMenu",
+                               "CalibrationOptionMenu", "LoadWaitSpinner", "Mist Menu", "Fader Menu", "Console"})
+            if (ui->IsMenuOpen(menu)) result.blockedMenu = true;
+    }
+    result.worldRoot = reinterpret_cast<std::uintptr_t>(RE::Main::WorldRootNode());
+    if (auto* player = RE::PlayerCharacter::GetSingleton()) {
+        result.player = reinterpret_cast<std::uintptr_t>(player);
+        result.playerForm = player->GetFormID();
+        result.playerRoot = reinterpret_cast<std::uintptr_t>(player->Is3DLoaded() ? player->Get3D(false) : nullptr);
+        if (auto* cell = player->GetParentCell()) {
+            result.cell = reinterpret_cast<std::uintptr_t>(cell); result.cellForm = cell->GetFormID();
+            result.cellAttached = cell->IsAttached();
+            const auto* editor = cell->GetFormEditorID();
+            result.cellIdentified = editor && *editor;
+            result.playroom = result.cellIdentified && std::string_view(editor) == "VRPlayroom01";
+        }
+    }
+    return result;
+}
+
+std::optional<std::uint64_t> tryInitialWorld(std::uint64_t token) {
+    if (!vrRuntime) return {};
+    std::uint64_t revision{};
+    bool inspect{};
+    {
+        std::lock_guard lock(initialWorldMutex);
+        revision = initialWorld.revision();
+        inspect = initialWorld.pending() && initialWorld.stage() == claw::InitialWorldStage::complete;
+    }
+    claw::InitialWorldObservation observed;
+    observed.epoch = token;
+    if (inspect) observed = initialWorldObservation(token);
+    claw::InitialWorldCheck result;
+    bool report{};
+    {
+        std::lock_guard lock(initialWorldMutex);
+        result = initialWorld.observe(observed, revision, !enabled && token == epoch);
+        report = result != initialWorldLastCheck;
+        initialWorldLastCheck = result;
+    }
+    if (report) SKSE::log::info("CLAW initial VR world check: {} epoch={} player={:08X} cell={:08X}",
+        claw::initialWorldName(result), token, observed.playerForm, observed.cellForm);
+    if (result != claw::InitialWorldCheck::ready) return {};
+
+    // Refresh all engine predicates before taking our locks. Commit then checks
+    // the original queued epoch and menu revision again; getters never activate.
+    const auto refreshed = initialWorldObservation(token);
+    std::uint64_t activeEpoch{};
+    {
+        std::lock_guard stateLock(mutex);
+        std::lock_guard policyLock(initialWorldMutex);
+        if (initialWorld.commit(refreshed, revision, !enabled && token == epoch)) {
+            resetNewGameSession();
+            enabled = true; activeEpoch = ++epoch;
+        }
+    }
+    if (!activeEpoch) {
+        SKSE::log::info("CLAW initial VR world commit refused: epoch/menu/world changed");
+        return {};
+    }
+    SKSE::log::info("CLAW initial VR world activated after matching observations: epoch={} player={:08X} cell={:08X}",
+        activeEpoch, refreshed.playerForm, refreshed.cellForm);
+    notifyLoaded(activeEpoch);
+    return activeEpoch;
+}
+
 void queueScan() {
-    if (!tasks || !enabled || scanPending.exchange(true)) return;
+    bool probe{};
+    if (vrRuntime && !enabled) { std::lock_guard lock(initialWorldMutex); probe = initialWorld.pending(); }
+    if (!tasks || (!enabled && !probe) || scanPending.exchange(true)) return;
     const auto token = epoch.load();
     tasks->AddTask([token] {
-        if (enabled && token == epoch) scan();
+        auto activeToken = token;
+        if (!enabled && token == epoch) if (const auto activated = tryInitialWorld(token)) activeToken = *activated;
+        if (enabled && activeToken == epoch) scan();
         scanPending = false;
     });
 }
@@ -1208,8 +1310,28 @@ void queueActor(RE::FormID id, bool force = false) {
 class Events final : public RE::BSTEventSink<RE::TESObjectLoadedEvent>,
                      public RE::BSTEventSink<RE::TESSwitchRaceCompleteEvent>,
                      public RE::BSTEventSink<SKSE::NiNodeUpdateEvent>,
-                     public RE::BSTEventSink<SKSE::ModCallbackEvent> {
+                     public RE::BSTEventSink<SKSE::ModCallbackEvent>,
+                     public RE::BSTEventSink<RE::MenuOpenCloseEvent> {
 public:
+    RE::BSEventNotifyControl ProcessEvent(const RE::MenuOpenCloseEvent* event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*) override {
+        // Event payload -> pure history only. Engine readiness is read by the
+        // existing timer's main task, never by this callback or the timer thread.
+        if (vrRuntime && event && (event->menuName == "Main Menu" || event->menuName == "Loading Menu")) {
+            claw::InitialWorldStage stage;
+            claw::InitialWorldDisarm reason;
+            bool changed{};
+            {
+                std::lock_guard lock(initialWorldMutex);
+                const auto revision = initialWorld.revision();
+                initialWorld.menu(event->menuName == "Main Menu" ? claw::InitialWorldMenu::main : claw::InitialWorldMenu::loading, event->opening);
+                changed = initialWorld.revision() != revision;
+                stage = initialWorld.stage(); reason = initialWorld.disarmReason();
+            }
+            if (changed) SKSE::log::info("CLAW initial VR world menu: {} fallback={}",
+                claw::initialWorldName(stage), claw::initialWorldName(reason));
+        }
+        return RE::BSEventNotifyControl::kContinue;
+    }
     RE::BSEventNotifyControl ProcessEvent(const RE::TESObjectLoadedEvent* event, RE::BSTEventSource<RE::TESObjectLoadedEvent>*) override {
         if (event) queueActor(event->formID, true);
         return RE::BSEventNotifyControl::kContinue;
@@ -1288,7 +1410,8 @@ void save(SKSE::SerializationInterface* interface) {
 }
 
 void revert(SKSE::SerializationInterface*) {
-    enabled = false; ++epoch;
+    disarmInitialWorld(claw::InitialWorldDisarm::revert, true);
+    SKSE::log::info("CLAW lifecycle serialization-revert epoch={}", epoch.load());
     {
         std::lock_guard lock(mutex);
         claw::appearance::runtime.reset();
@@ -1300,7 +1423,8 @@ void revert(SKSE::SerializationInterface*) {
 }
 
 void load(SKSE::SerializationInterface* interface) {
-    enabled = false; ++epoch;
+    disarmInitialWorld(claw::InitialWorldDisarm::serializationLoad, true);
+    SKSE::log::info("CLAW lifecycle serialization-load epoch={}", epoch.load());
     std::lock_guard lock(mutex);
     claw::appearance::runtime.reset();
     states.clear(); requestChannels.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = 0; nextIdentity = 1;
@@ -2143,9 +2267,8 @@ std::filesystem::path dataDirectory() {
 }
 std::filesystem::path presetDirectory() { return dataDirectory() / claw::presetRelativePath; }
 
-void notifyLoaded() {
+void notifyLoaded(std::uint64_t token) {
     if (!tasks) return;
-    const auto token = epoch.load();
     tasks->AddTask([token] {
         if (!enabled || token != epoch) return;
         if (auto* source = SKSE::GetModCallbackEventSource()) {
@@ -2160,11 +2283,21 @@ void notifyLoaded() {
 }
 
 void message(SKSE::MessagingInterface::Message* event) {
+    if (!event) return;
     using Type = SKSE::MessagingInterface;
+    // Disarm before logging or other potentially blocking work, including when
+    // a notification arrives before DataLoaded/menu registration.
+    if (event->type == Type::kPreLoadGame) disarmInitialWorld(claw::InitialWorldDisarm::preLoad, true);
+    else if (event->type == Type::kNewGame) disarmInitialWorld(claw::InitialWorldDisarm::authoritativeWorld, true);
+    else if (event->type == Type::kPostLoadGame) {
+        const bool success = claw::mayActivateWorld(claw::WorldStart::postLoadGame, event->dataLen, reinterpret_cast<std::uintptr_t>(event->data));
+        disarmInitialWorld(success ? claw::InitialWorldDisarm::authoritativeWorld : claw::InitialWorldDisarm::refusedPostLoad, !success);
+    }
+    SKSE::log::info("CLAW lifecycle SKSE message={} length={} value={:X} epoch={} enabled={}",
+        event->type, event->dataLen, reinterpret_cast<std::uintptr_t>(event->data), epoch.load(), enabled.load());
     switch (event->type) {
     case Type::kPostPostLoad: exchange(); exchangeOBodyReadiness(); break;
     case Type::kPreLoadGame:
-        enabled = false; ++epoch;
         {
             std::lock_guard lock(mutex);
             requestChannels.clear(); // Pool keeps pins until main-task collection.
@@ -2224,6 +2357,13 @@ void message(SKSE::MessagingInterface::Message* event) {
         }
         if (auto* source = SKSE::GetNiNodeUpdateEventSource()) source->AddEventSink(&events);
         if (auto* source = SKSE::GetModCallbackEventSource()) source->AddEventSink(&events);
+        if (vrRuntime) {
+            if (auto* ui = RE::UI::GetSingleton()) ui->AddEventSink<RE::MenuOpenCloseEvent>(&events);
+            else SKSE::log::warn("CLAW initial VR world menu observation unavailable: UI missing at data-loaded");
+            std::lock_guard lock(initialWorldMutex);
+            SKSE::log::info("CLAW initial VR world fallback at data-loaded: stage={} disarm={}",
+                claw::initialWorldName(initialWorld.stage()), claw::initialWorldName(initialWorld.disarmReason()));
+        }
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
         startPhysicsWorker();
 #endif
@@ -2232,12 +2372,9 @@ void message(SKSE::MessagingInterface::Message* event) {
         });
         break;
     case Type::kNewGame:
-        enabled = false; ++epoch;
         {
             std::lock_guard lock(mutex);
-            states.clear(); requestChannels.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = newNamespace(); nextIdentity = 1;
-            physicsSessionAuthorized = false; physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
-            obodySourcePopulationEnabled = false;
+            resetNewGameSession();
         }
         [[fallthrough]];
     case Type::kPostLoadGame:
@@ -2245,16 +2382,20 @@ void message(SKSE::MessagingInterface::Message* event) {
             event->dataLen, reinterpret_cast<std::uintptr_t>(event->data))) {
             // Retain state for safe later recovery, but admit no work or Loaded
             // notification after a failed/malformed load-completion message.
-            enabled = false; ++epoch;
             SKSE::log::warn("CLAW world activation refused: saved game did not load successfully");
             queuePinCollection();
             break;
         }
         {
-            std::lock_guard lock(mutex);
-            enabled = true; ++epoch;
+            std::uint64_t activeEpoch{};
+            {
+                std::lock_guard lock(mutex);
+                enabled = true; activeEpoch = ++epoch;
+            }
+            SKSE::log::info("CLAW authoritative world activated: message={} epoch={}", event->type, activeEpoch);
+            queueScan(); notifyLoaded(activeEpoch);
         }
-        queueScan(); notifyLoaded(); break;
+        break;
     default: break;
     }
 }
@@ -2298,6 +2439,7 @@ extern "C" __declspec(dllexport) bool SKSEPlugin_Load(const SKSE::LoadInterface*
             REL::Module::IsAE() != (target->family == claw::RuntimeFamily::ae) ||
             REL::Module::IsSE() != (target->family == claw::RuntimeFamily::se)) return false;
         SKSE::log::info("Universal CommonLib candidate runtime {} / SKSE {:08X}; engine qualification is separate", target->game.string(), skse->SKSEVersion());
+        vrRuntime = target->family == claw::RuntimeFamily::vr;
         tasks = SKSE::GetTaskInterface();
         const auto* serial = SKSE::GetSerializationInterface();
         if (!tasks || !serial || !SKSE::GetPapyrusInterface() || !SKSE::GetMessagingInterface()) return false;

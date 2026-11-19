@@ -77,6 +77,12 @@ this limited compatibility work into universal body classification. Preserve
 the single default per sex and use explicit data bindings only for known paths;
 an authored fixture does not qualify a third-party follower.
 
+On19 November the owner confirmed this support boundary: arbitrary standalone
+NPC/follower bodies remain unsupported by default. Known configurations require
+explicit tested compatibility; shared filenames or RaceMenu morph values cannot
+establish a universal family identifier. Do not continue classifier or installer
+multiselect work on this basis. The Bijin result keeps its exact tested scope.
+
 The current-v4 [breast attachment audit](breast-attachment-audit.md) now measures
 collar and coat-root offsets across combined morphs and controlled poses. A
 limited-training weight fit regressed other states and was rejected. An expanded

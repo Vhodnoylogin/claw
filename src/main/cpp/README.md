@@ -152,6 +152,15 @@ The preset directory is resolved relative to the actual game executable, not
 the launcher's working directory. After new-game/post-load readiness a task emits
 the `CLAWDistribution_Loaded` mod event for the optional menu bootstrap.
 
+The initial VR world may omit the quest-specific SKSE NewGame notification.
+A one-shot fallback then requires the observed Main Menu/loading transition and
+two matching main-task observations of a loaded player, attached non-playroom
+cell and world root. Epoch and menu revision are checked again at commit.
+Any preload, serialization load/revert or refused post-load permanently disarms
+this fallback; menu events and DataLoaded never rearm it. Ordinary successful
+SKSE lifecycle notifications remain authoritative. Offline tests do not qualify
+the fallback or body behavior in a running VR game.
+
 Each actor reference gets an identity inside a randomized save namespace. A
 stable FNV-1a selector in independent mode chooses among sorted presets of the
 correct sex; the actual assignment is saved, so adding presets never rerolls
