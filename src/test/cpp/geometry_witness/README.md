@@ -130,6 +130,17 @@ does not consult the lock's internal fields, acquire the lock again, read
 vertex buffers after refusal or identify the lock owner. SDK accessor agreement
 is not independent runtime layout proof.
 
+Actual TEST SE run `20261119-161714-927048` retained one typed refusal from
+this build. Both lock offsets were `0x27F0`. The callback thread ID was
+37280 and the engine's recorded main thread ID was 35192. The stack included
+the installed SKSE DLL and game executable. The first game return RVA `0x65A3E1`
+matches the end of SKSE's second task-pool hook call at `0x65A3DC`. This observation rules out treating
+the existing callback label as proof of main-thread affinity. It does not
+identify the lock owner or establish which phase would allow a safe read.
+Neutral coefficients, exact fixture disposal and profile restoration were
+verified. No vertex sample or FHeavy request followed. See the external
+`claw-cpu-geometry-qualification-20261119/renderer-diagnostic-01` evidence.
+
 The remaining separately admitted gate is actual CPU-buffer qualification:
 neutral versus fixed FHeavy, current TRI-predicted deltas, support/unchanged-point
 controls, root/epoch/refusal behavior and source/VFS/module admission. A future

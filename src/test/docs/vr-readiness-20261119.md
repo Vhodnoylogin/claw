@@ -106,6 +106,26 @@ exited0, and independent replay verified99 snapshot preimages,231 cold pins,
 must investigate the complete shipped transformation route, rather than repeat
 the same rebuild or weaken required-model availability.
 
+## Fresh Realm quest state in VR25
+
+Run `20261119-162431-7701ae` completed all 15 startup and self-test observations.
+The read-only C00 probe verified the initial owned human player, then read the
+quest at stage 0. The player was outside the Companions faction. The typed
+answers were `IsStarting=true`, `IsRunning=false`, `IsStopped=false`, and
+`IsStopping=false`. This disproves the scenario's assumption of a stopped C00
+at that point in this fixture. The controller stopped before calling
+`GetIndexFromRadiantQuest`. The actual initialized property values, including
+the original race and first-transformation flag, remain unverified.
+
+No body or quest mutation was issued, and no transformation was attempted.
+The game exited with code 0; 99 snapshot preimages, 231 cold files and 29 cold
+VFS winners were independently checked, and the temporary profile was archived
+and removed. Accounting at this boundary is 49 actual Skyrim starts, 14 actual
+VR starts and 19 VR platform attempts. Continue by establishing a suitable
+natural fixture or source-supported lifecycle observation before another
+transformation diagnostic. No quest setter or weaker body requirement follows
+from this result.
+
 ## Retained evidence
 
 External paths below are relative to `D:/Skyrim VR Modding/Builds/`; no runtime payload is stored in this record.
@@ -119,4 +139,5 @@ External paths below are relative to `D:/Skyrim VR Modding/Builds/`; no runtime 
 - VR18 replay: `claw-case18-review-20261119/result-review-02-root-replay/ROOT-VR18-INDEPENDENT-RESULT-RESTORATION.json`.
 - VR20 replay: `claw-case20-review-20261119/result-review-02-root-replay/ROOT-VR20-INDEPENDENT-RESULT-RESTORATION.json`.
 - VR22 replay: `claw-case22-review-20261119/result-review-02-root-replay/ROOT-VR22-INDEPENDENT-RESULT-RESTORATION.json` (SHA256 `6b2c88c955c0a648a161153a52ae0d06177c85bebbaa31527cb4e3f9497a403c`).
+- VR25 replay: `claw-agent-workflow-20261119/vr25-root-restoration.json`.
 - Shipped-script analysis: `claw-vr20-transformation-analysis-20261119-01/{REPORT.md,ANALYSIS.json,BSA-EXTRACTION.json}`.
