@@ -27,6 +27,12 @@ constexpr auto lifetime = std::chrono::seconds(3);
 constexpr std::size_t diagnosticMaxObjects = 4096, diagnosticMaxGeometries = 128;
 constexpr std::size_t diagnosticMaxChildLinks = 2 * diagnosticMaxObjects;
 constexpr std::size_t modelPathLimit = 260;
+constexpr std::size_t maxShapeDetailsPerRoot = 16;
+constexpr std::size_t shapeNameLimit = 64;
+constexpr std::array<const char*, 12> vrRouteNames = {
+    "playerWorld", "room", "heightOffset", "headset", "leftWand", "rightWand",
+    "leftMeleeOffset", "rightMeleeOffset", "leftHand", "rightHand", "leftClavicle", "rightClavicle"
+};
 
 struct Refusal : std::runtime_error { using std::runtime_error::runtime_error; };
 
@@ -88,12 +94,33 @@ View view(RE::Actor& actor, bool firstPerson) {
 struct Routes {
     std::array<Object*, 3> roots;
     std::array<View, 2> views;
+    std::array<Object*, vrRouteNames.size()> vrRoots;
     bool operator==(const Routes&) const = default;
 };
 
-Routes routes(RE::Actor& actor) {
-    return {{actor.Get3D(), actor.Get3D(false), actor.Get3D(true)},
-            {view(actor, false), view(actor, true)}};
+Routes routes(RE::PlayerCharacter& actor) {
+    Routes result{{actor.Get3D(), actor.Get3D(false), actor.Get3D(true)},
+                  {view(actor, false), view(actor, true)}, {}};
+    if (const auto* vr = actor.GetVRNodeData()) {
+        result.vrRoots = {vr->PlayerWorldNode.get(), vr->RoomNode.get(), vr->HeightOffsetNode.get(),
+                         vr->HmdNode.get(), vr->LeftWandNode.get(), vr->RightWandNode.get(),
+                         vr->LeftMeleeWeaponOffsetNode.get(), vr->RightMeleeWeaponOffsetNode.get(),
+                         vr->NPCLHnd.get(), vr->NPCRHnd.get(),
+                         vr->NPCLClv.get(), vr->NPCRClv.get()};
+    }
+    return result;
+}
+
+Json describeGeometry(RE::BSGeometry& shape) {
+    const auto* name = shape.name.c_str();
+    Json result = {{"name", name ? std::string(name, strnlen_s(name, shapeNameLimit)) : ""},
+                   {"type", shape.GetType().underlying()}, {"appCulled", shape.GetAppCulled()}};
+    if (const auto* tri = shape.AsTriShape()) {
+        const auto& data = tri->GetTrishapeRuntimeData();
+        result["vertices"] = data.vertexCount;
+        result["triangles"] = data.triangleCount;
+    }
+    return result;
 }
 
 class Inventory {
@@ -133,11 +160,15 @@ public:
             roles[role] = RE::BSFixedString{claw::targetModelRoles[role].data()};
         for (std::size_t index = 0; index < leases.size(); ++index) {
             require(Clock::now() < deadline, "capture expired");
+            Json geometryDetails = Json::array();
             const auto actual = claw::collectTargetModel<
                 diagnosticMaxObjects, diagnosticMaxGeometries, diagnosticMaxChildLinks>(
                 leases[index].get(), [&](Object* object) {
                 require(Clock::now() < deadline, "capture expired during graph walk");
-                claw::TargetModelObject item{object->AsGeometry() != nullptr};
+                auto* geometry = object->AsGeometry();
+                claw::TargetModelObject item{geometry != nullptr};
+                if (geometry && geometryDetails.size() < maxShapeDetailsPerRoot)
+                    geometryDetails.push_back(describeGeometry(*geometry));
                 const auto match = std::find(roles.begin(), roles.end(), object->name);
                 if (match != roles.end()) item.role = static_cast<std::size_t>(match - roles.begin());
                 return item;
@@ -151,6 +182,9 @@ public:
                               {"geometries", actual.geometries}, {"childLinks", actual.childLinks},
                               {"collection", static_cast<unsigned>(actual.collection)},
                               {"roleObjects", actual.roleObjects}, {"roleGeometries", actual.roleGeometries},
+                              {"geometryDetails", std::move(geometryDetails)},
+                              {"geometryDetailsComplete", actual.collection == claw::TargetModelCollection::complete &&
+                                  actual.geometries <= maxShapeDetailsPerRoot},
                               {"availability", static_cast<unsigned>(claw::targetModelAvailability(actual))}});
         }
         return result;
@@ -172,6 +206,7 @@ Json collect(Clock::time_point deadline) {
     const auto race = id(actor->GetRace());
     const auto base = id(actor->GetActorBase());
     const auto cell = id(actor->GetParentCell());
+    const auto weaponState = actor->GetWeaponState();
     require(handle && race == 0xCDD84 && base && cell, "loaded wolf owner required");
     const auto before = routes(*actor);
     Inventory inventory;
@@ -180,13 +215,18 @@ Json collect(Clock::time_point deadline) {
                   {"firstPerson", inventory.identify(before.roots[2])}};
     Json views = {{"thirdPerson", inventory.summarizeView(before.views[0])},
                   {"firstPerson", inventory.summarizeView(before.views[1])}};
+    Json vrRoots = Json::object();
+    for (std::size_t i = 0; i < before.vrRoots.size(); ++i)
+        vrRoots[vrRouteNames[i]] = inventory.identify(before.vrRoots[i]);
     auto rootDetails = inventory.summarizeRoots(deadline);
     require(RE::PlayerCharacter::GetSingleton() == actor && actor->GetHandle() == handle &&
                 id(actor->GetRace()) == race && id(actor->GetActorBase()) == base &&
                 id(actor->GetParentCell()) == cell && actor->Is3DLoaded() &&
-                before == routes(*actor), "player or model route changed during capture");
+                before == routes(*actor) && actor->GetWeaponState() == weaponState,
+                "player or model route changed during capture");
     return {{"actor", 0x14}, {"race", race}, {"base", base}, {"cell", cell},
-            {"roots", std::move(roots)}, {"views", std::move(views)},
+            {"roots", std::move(roots)}, {"views", std::move(views)}, {"vrRoots", std::move(vrRoots)},
+            {"weaponState", static_cast<unsigned>(weaponState)},
             {"roles", claw::targetModelRoles}, {"distinctRoots", std::move(rootDetails)}};
 }
 
@@ -233,7 +273,7 @@ public:
 
 private:
     static Json reply(std::int32_t nonce, const char* status, const char* reason = "") {
-        return {{"schema", "claw-vr-model-topology/2"}, {"pid", GetCurrentProcessId()},
+        return {{"schema", "claw-vr-model-topology/3"}, {"pid", GetCurrentProcessId()},
                 {"nonce", nonce}, {"status", status}, {"reason", reason}};
     }
 
@@ -250,7 +290,7 @@ private:
             auto response = reply(nonce, "ready");
             response["epoch"] = generation;
             response["sample"] = collect(expires);
-            captured = response.dump();
+            captured = response.dump(-1, ' ', true, Json::error_handler_t::replace);
             require(captured.size() <= 32768, "capture byte limit");
         } catch (const Refusal& error) {
             captured = reply(nonce, "refused", error.what()).dump();

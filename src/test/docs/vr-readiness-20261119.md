@@ -342,3 +342,39 @@ and independently reconciled in all three cases. Their retained receipts
 are VR36, VR37 and VR38 `PRELAUNCH-RESTORATION.json` in
 `claw-agent-workflow-20261119`. The successful paired game observations
 bring accounting to 67 Skyrim starts, 25 VR starts and 33 platform attempts.
+
+## VRIK controls and rebuilt companion at high source weight
+
+VR40 `20261120-004252-a3cc28` confirmed the new executor's exact Windows
+parent-lifetime recovery on two late SteamVR child processes. Skyrim
+started and exited normally. The Root Builder plan still expected the
+source modlist and stopped before actor checks when the owned clone added
+VRIK. VR41 `20261120-005157-1e5040` projected that one modlist edit into
+the expected plan. All 17 Root Builder file winners stayed the same.
+The active VRIK 0.8.8 variant passed world-body attachment. Its first-person
+graphs and slots still lacked the diagnostic role and marker evidence.
+
+VR42 `20261120-005709-fbcc65` also staged the official XP32 Vanilla-tail
+skeleton in the temporary profile. The male world model applied. The
+first-person marker still did not qualify. The temporary archive's
+character height offset changed from the pre-scenario 4.0 to 1.0 by
+shutdown. A direct runtime calibration and first-person conclusion remain
+open. The original profile stayed intact and independent replay verified
+115 snapshots, 253 cold files and 47 staged VFS entries.
+
+VR43 `20261120-010730-2cc57d` used the actual compiled
+`CLAW - VR Body.esp` with both range bytes clear. The temporary profile
+activated the real companion at regular plugin index 11 and disabled
+the test marker ESP. The owned player changed from weight 75 to 100
+before one normal transformation. The human weight refreshed to 1, the
+wolf used the same source weight, and the third-person body and all four
+geometry roles attached. All 11 weight-only morph values matched the
+independent installed matrix oracle, including ArmGirth .5,
+LegCalfGirth .375 and TorsoGirth .25. It exited 0. Independent replay
+matched 102 snapshots, 231 cold files, 29 cold and 33 staged VFS entries.
+Receipt SHA-256 `a1e43b6cd743d2b0b6b642497f9354d32f5e643964ea8458f65a532585610433`.
+
+This result qualifies the tested player's world model and weight
+calculation with the rebuilt companion. First-person model selection,
+rendering and contact still have separate acceptance work. Accounting
+after VR43 is 71 Skyrim starts, 29 VR starts and 37 platform attempts.

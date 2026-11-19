@@ -18,6 +18,14 @@ and permits up to 48 distinct roots. The witness allows 4096 objects, 128 geomet
 graph, independently from the original application bounds. A capture reports
 the selected model path and whether a part handle is present. The handle is
 never dereferenced. A load transition invalidates cached replies.
+
+Schema 3 also inventories the typed player VR world, room, height,
+headset, wand, melee-offset, hand and clavicle roots. A capture records
+the raw weapon state and checks it again at the end of the same task. Each
+graph includes a bounded list of geometry names, types, local application
+cull flags and available triangle-shape vertex/triangle counts. The details
+are limited to 16 entries per graph and carry a completeness flag.
+
 The game paths are read-only. Graph membership and matching observations do
 not establish rendered geometry, continuous attachment or applied physics.
 
