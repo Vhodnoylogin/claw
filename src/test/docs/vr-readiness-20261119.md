@@ -57,6 +57,55 @@ VR18 preserved all99 snapshots,231 cold pins and30 staged VFS observations; its 
 The exact retained SkyrimVR handle exited0; the executor returned1. Aggregate termination fields remain null.
 Cumulative factual accounting after VR18:42 actual Skyrim starts,10 actual VR starts,15 VR platform attempts.
 
+## Bounded model observation in VR20
+
+Packet19 was refused during admission, before any execution intent or game start:
+two wrapper pins included an extra `bytes` field that the unchanged strict validator rejects.
+Packet20 corrects that metadata and adds complete-freeze validation controls; no runtime guard was weakened.
+
+Run `20261119-122313-478b43` retains the original status4 failure.
+Eleven complete status/error pairs span27.078 seconds inside the original30-second interval;
+the diagnostic stops partial at that deadline without starting a twelfth pair.
+One fresh geometry audit reports29 human-named surfaces while the actor race is wolf.
+Two later typed-empty caches remain unknown. Six dual-view snapshots each report all18
+requested role/marker nodes not found. These observations do not establish rendered pixels,
+root-pointer equivalence or permanently absent geometry.
+
+Only the original two setters ran; there was no human return or unknown mutation.
+The retained game exited0;99 snapshot preimages,231 cold pins and30 VFS entries restored.
+Accounting after VR20 is43 actual starts,11 actual VR starts and16 platform attempts.
+The shipped VR transformation scripts also prepare beast state, camera, controls, FX and animation
+around `SetRace`; this primitive fixture does not qualify that complete route.
+A separately declared mesh-rebuild probe can test rebuild sensitivity, without changing
+CLAW's model requirement or substituting for a normal-transformation check.
+
+## Single mesh-rebuild probe in VR22
+
+Packet21 remained offline: review found that its private post-command unloaded-state
+reader needed exact integer checks for the handle and load generation. Packet22
+adds those checks without changing the production observer or general command guards.
+Its36 current controls passed before execution; historical364 controls belong to
+the separately retained packet20 proof and are not added to that count.
+
+Run `20261119-130412-7ea102` retains the original status4 failure. Three native
+commands completed knowingly: weight, race and exactly one `QueueNiNodeUpdate`.
+Two fresh `IsOnMount=false` observations guarded the queued update. Native
+completion does not prove that the scene graph was rebuilt.
+
+One complete pre-Queue status/error pair and eight complete post-Queue pairs
+reported4. A further read exhausted its remaining31ms budget; that read timeout
+does not replace the original model-availability failure. Three typed-empty audit
+caches remain unknown; all108 requested nodes across six dual-view snapshots
+were not found. Eight post-Queue identity observations reported loaded3D with the
+same exact typed actor identity. None establishes rendered wolf geometry.
+
+No human return, unknown mutation or Queue retry occurred. The retained game
+exited0, and independent replay verified99 snapshot preimages,231 cold pins,
+30 staged VFS entries and the archived/removed temporary profile. Accounting is
+44 actual Skyrim starts,12 VR starts and17 VR platform attempts. Further work
+must investigate the complete shipped transformation route, rather than repeat
+the same rebuild or weaken required-model availability.
+
 ## Retained evidence
 
 External paths below are relative to `D:/Skyrim VR Modding/Builds/`; no runtime payload is stored in this record.
@@ -68,3 +117,6 @@ External paths below are relative to `D:/Skyrim VR Modding/Builds/`; no runtime 
 - Original VR18: `claw-vr-readiness-20261119/current-case-18-preparation/runtime/runs/20261119-113913-ada828/` (`result.json`, `state.json`, `steps.jsonl`, `evidence/CLAWDistribution.log`).
 - VR17 replay: `claw-case17-review-20261119/result-review-02-root-replay/ROOT-VR17-INDEPENDENT-RESULT-RESTORATION.json`.
 - VR18 replay: `claw-case18-review-20261119/result-review-02-root-replay/ROOT-VR18-INDEPENDENT-RESULT-RESTORATION.json`.
+- VR20 replay: `claw-case20-review-20261119/result-review-02-root-replay/ROOT-VR20-INDEPENDENT-RESULT-RESTORATION.json`.
+- VR22 replay: `claw-case22-review-20261119/result-review-02-root-replay/ROOT-VR22-INDEPENDENT-RESULT-RESTORATION.json` (SHA256 `6b2c88c955c0a648a161153a52ae0d06177c85bebbaa31527cb4e3f9497a403c`).
+- Shipped-script analysis: `claw-vr20-transformation-analysis-20261119-01/{REPORT.md,ANALYSIS.json,BSA-EXTRACTION.json}`.
