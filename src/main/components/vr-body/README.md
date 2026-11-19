@@ -29,6 +29,10 @@ paths, race, slot, range bytes and declared CLAW master.
 python src/main/components/vr-body/vr_dispatch.py --disable-range male --out <new-external-dir>
 ```
 
+Pass `--resources <body-candidate-dir>` to make a separate MO2 test archive.
+The command reopens the archive and checks the companion ESP and six
+namespaced NIF/TRI assets against their exact source hashes.
+
 Separate one-byte controls showed world-body attachment for each sex with
 its range disabled at the tested source weight. The combined override
 compiles and passes binary readback. Native selection of the first-person

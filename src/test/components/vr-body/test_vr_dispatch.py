@@ -44,3 +44,21 @@ class DispatchControls(unittest.TestCase):
         self.assertIn("ModKey: CLAW - VR Body.esp\n",data)
         self.assertNotIn("  - Small\n",data)
         self.assertIn("  - Master: Skyrim.esm\n    FileSize: 0\n  - Master: CLAW.esp\n",data)
+
+    def test_assembly_layout_preserves_the_exact_first_person_namespace(self):
+        files = {
+            dispatch.resource_paths(sex, endpoint): "a" * 64
+            for sex in dispatch.SEXES for endpoint in (None, 0, 1)
+        }
+        manifest = {
+            "schemaVersion": 1, "component": "CLAW/vr-body", "files": files,
+            "worldOverrides": [], "skeletonFiles": [], "textureFiles": [],
+        }
+        self.assertEqual(dispatch.resource_layout(manifest), files)
+        for invalid in (
+            {**manifest, "skeletonFiles": ["skeleton.nif"]},
+            {**manifest, "files": {**files, "textures/body.dds": "a" * 64}},
+            {**manifest, "files": {name: "bad" for name in files}},
+        ):
+            with self.subTest(manifest=invalid), self.assertRaises(ValueError):
+                dispatch.resource_layout(invalid)

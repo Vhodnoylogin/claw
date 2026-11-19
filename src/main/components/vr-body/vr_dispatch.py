@@ -3,10 +3,13 @@ from __future__ import annotations
 
 import argparse
 from contextlib import closing
+import hashlib
 import json
 from pathlib import Path
 import re
+import shutil
 import sys
+import zipfile
 
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -26,6 +29,50 @@ def resource_paths(sex, endpoint=None):
 
 def armor_path(sex):
     return resource_paths(sex, 1).removeprefix("Meshes/").replace("/", "\\")
+
+
+def resource_layout(manifest):
+    """Accept only the authored first-person assets emitted by the body builder."""
+    expected = {resource_paths(sex, endpoint) for sex in SEXES for endpoint in (None, 0, 1)}
+    if (not isinstance(manifest, dict) or type(manifest.get("schemaVersion")) is not int or manifest["schemaVersion"] != 1
+            or manifest.get("component") != "CLAW/vr-body"
+            or any(manifest.get(field) != [] for field in ("worldOverrides", "skeletonFiles", "textureFiles"))):
+        raise ValueError("Expected the independent CLAW first-person resource manifest")
+    files = manifest.get("files")
+    if (not isinstance(files, dict) or set(files) != expected
+            or any(not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha) for sha in files.values())):
+        raise ValueError("Expected the six checked first-person asset paths and hashes")
+    return files
+
+
+def assemble(esp, resource_candidate, archive):
+    from body_resource import read_json, sha256
+
+    candidate = Path(resource_candidate).resolve(strict=True)
+    manifest = candidate / "install-manifest.json"
+    manifest_sha = sha256(manifest)
+    files = resource_layout(read_json(manifest))
+    assets = []
+    for relative, digest in sorted(files.items()):
+        source = candidate / "resources" / relative
+        if source.resolve(strict=True) != source or sha256(source) != digest:
+            raise ValueError("Mismatched first-person resource " + relative)
+        assets.append((relative, source))
+    payload = {ADDON: sha256(esp), **files}
+    with zipfile.ZipFile(archive, "x", compression=zipfile.ZIP_DEFLATED) as writer:
+        for relative, source in [(ADDON, esp), *assets]:
+            entry = zipfile.ZipInfo(relative)
+            entry.compress_type = zipfile.ZIP_DEFLATED
+            with source.open("rb") as content, writer.open(entry, "w") as target:
+                shutil.copyfileobj(content, target)
+    with zipfile.ZipFile(archive) as opened:
+        if set(opened.namelist()) != set(payload) or any(
+                hashlib.sha256(opened.read(name)).hexdigest() != digest for name, digest in payload.items()):
+            raise ValueError("Assembled VR archive differs from its authored payload")
+    if sha256(manifest) != manifest_sha:
+        raise ValueError("First-person manifest changed during assembly")
+    return {"archive": archive.name, "archiveSha256": sha256(archive),
+            "resourceManifestSha256": manifest_sha, "payloadSha256": payload}
 
 
 def replace_once(text, pattern, replacement, description):
@@ -90,14 +137,15 @@ def verify_record(esp, disabled):
                 "firstPersonRecordModels": paths}
 
 
-def build(output, disabled, *, compiler=None):
+def build(output, disabled, *, compiler=None, resource_candidate=None):
     sys.path[:0] = [str(ROOT/"src/main/python/vr"), str(ROOT/"src/main/python/build-tools")]
     from body_resource import safe_output, sha256
     from plugin import Spriggit, WRAPPER
 
     disabled = frozenset(disabled)
     inputs = [BASE/"ArmorAddons"/ARMATURE, BASE/"RecordData.yaml", BASE/"spriggit-meta.json"]
-    output = safe_output(output, inputs)
+    resource_inputs = [Path(resource_candidate) / "install-manifest.json"] if resource_candidate is not None else []
+    output = safe_output(output, [*inputs, *resource_inputs])
     originals = [p.read_text(encoding="utf-8-sig") for p in inputs]
     source = armor_source(originals[0], disabled)
     header = addon_header(originals[1])
@@ -122,6 +170,8 @@ def build(output, disabled, *, compiler=None):
     receipt = {"status":"VR_DISPATCH_CANDIDATE", "platform":"SkyrimVR",
                "baseInputSha256":pins, "addon":ADDON, "addonSha256":sha256(esp),
                "bytes":esp.stat().st_size, "runtimeQualified":False, **result}
+    if resource_candidate is not None:
+        receipt.update(assemble(esp, resource_candidate, output / (Path(ADDON).stem + ".zip")))
     (output/"dispatch-build.json").write_text(json.dumps(receipt,indent=2)+"\n",encoding="utf-8")
     return receipt
 
@@ -130,9 +180,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--disable-range", choices=SEXES, action="append", required=True)
     parser.add_argument("--spriggit", type=Path)
+    parser.add_argument("--resources", type=Path, help="Body candidate directory with install-manifest.json")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
-    print(json.dumps(build(args.out,args.disable_range,compiler=args.spriggit)))
+    print(json.dumps(build(args.out,args.disable_range,compiler=args.spriggit,resource_candidate=args.resources)))
 
 
 if __name__ == "__main__":
