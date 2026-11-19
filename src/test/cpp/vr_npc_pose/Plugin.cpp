@@ -1,0 +1,465 @@
+// Test-only observation of one dynamic NPC's attached third-person graph.
+#include <RE/Skyrim.h>
+#include <SKSE/SKSE.h>
+#include <Windows.h>
+#include <nlohmann/json.hpp>
+#include "LeasePolicy.h"
+#include "claw/RuntimeSupport.h"
+#include "claw/WorldStartPolicy.h"
+#include <atomic>
+#include <bit>
+#include <chrono>
+#include <memory>
+#include <mutex>
+#include <stdexcept>
+#include <string_view>
+#include <unordered_set>
+#include <vector>
+
+#if !defined(SKYRIM_CROSS_VR)
+#error Build with the same cross-runtime CommonLib ABI as the CLAW DLL.
+#endif
+
+namespace {
+using Json = nlohmann::json;
+using Object = RE::NiAVObject;
+using Pin = RE::NiPointer<Object>;
+using Clock = std::chrono::steady_clock;
+using Path = std::vector<Pin>;
+using claw::npc_pose::Transform;
+
+constexpr auto name = "CLAWVRNpcPose";
+constexpr auto schema = "claw-vr-npc-pose/1";
+constexpr auto maxLifetime = std::chrono::seconds(12);
+constexpr std::size_t maxObjects = 4096, maxLinks = 8192, maxDepth = 64;
+constexpr RE::FormID beastRace = 0xCDD84;
+constexpr std::array nodeNames{
+    "NPC EarL [EarL]Bone01", "NPC EarL [EarL]Bone02", "NPC EarR [EarR]Bone01", "NPC EarR [EarR]Bone02",
+    "TailBone01", "TailBone02", "TailBone03", "TailBone04", "TailBone05",
+    "NPC Head [Head]", "Tails", "NPC Root [Root]"
+};
+
+struct Fixture {
+    RE::FormID actor{}, base{}, cell{}, addon{};
+    std::uint32_t handle{};
+    bool operator==(const Fixture&) const = default;
+};
+
+void require(bool condition, const char* reason) {
+    if (!condition) throw std::runtime_error(reason);
+}
+
+std::uint64_t qpc() {
+    LARGE_INTEGER value{};
+    require(QueryPerformanceCounter(&value) && value.QuadPart > 0, "QPC unavailable");
+    return static_cast<std::uint64_t>(value.QuadPart);
+}
+
+RE::FormID form(const RE::TESForm* value) { return value ? value->GetFormID() : 0; }
+
+Json pose(const RE::NiTransform& value) {
+    Transform copied;
+    for (std::size_t row = 0; row < 3; ++row)
+        for (std::size_t column = 0; column < 3; ++column)
+            copied.rotation[row * 3 + column] = value.rotate.entry[row][column];
+    copied.translation = {value.translate.x, value.translate.y, value.translate.z};
+    copied.scale = value.scale;
+    require(claw::npc_pose::finite(copied), "nonfinite pose or nonpositive scale");
+    return {{"rotationRowMajor", copied.rotation}, {"translation", copied.translation}, {"scale", copied.scale}};
+}
+
+bool childOf(Object& child, Object& parent) {
+    if (child.parent != &parent) return false;
+    auto* branch = parent.AsNode();
+    if (!branch) return false;
+    std::size_t matches{}, links{};
+    for (const auto& entry : branch->GetChildren()) {
+        if (++links > maxLinks) return false;
+        if (entry.get() == &child) ++matches;
+    }
+    return matches == 1;
+}
+
+Path ownedPath(Object& start, Object& root) {
+    Path result{Pin(&start)};
+    while (result.back().get() != &root) {
+        require(result.size() < maxDepth, "scene ancestry limit");
+        auto* parent = result.back()->parent;
+        require(parent && childOf(*result.back(), *parent), "object outside its actor root");
+        for (const auto& entry : result) require(entry.get() != parent, "scene ancestry cycle");
+        result.emplace_back(parent);
+    }
+    return result;
+}
+
+bool attached(const Path& path) {
+    for (std::size_t i = 1; i < path.size(); ++i)
+        if (!childOf(*path[i - 1], *path[i])) return false;
+    return !path.empty();
+}
+
+std::array<Object*, nodeNames.size()> findNodes(Object& root) {
+    std::array<Object*, nodeNames.size()> result{};
+    std::vector<Object*> pending{&root};
+    std::unordered_set<Object*> seen;
+    std::size_t links{};
+    while (!pending.empty()) {
+        auto* object = pending.back();
+        pending.pop_back();
+        require(seen.insert(object).second && seen.size() <= maxObjects, "scene repeated object or object limit");
+        const auto* rawName = object->name.c_str();
+        const std::string_view nodeName(rawName ? rawName : "");
+        for (std::size_t i = 0; i < nodeNames.size(); ++i) {
+            if (nodeName != nodeNames[i]) continue;
+            require(!result[i], "required node name is ambiguous");
+            result[i] = object;
+        }
+        if (auto* branch = object->AsNode()) {
+            for (const auto& child : branch->GetChildren()) {
+                require(++links <= maxLinks, "scene child-link limit");
+                if (child) pending.push_back(child.get());
+            }
+        }
+    }
+    for (const auto* node : result) require(node && node != &root, "required child node absent");
+    return result;
+}
+
+// Created, observed and destroyed only by SKSE main-thread tasks.
+class Scene {
+public:
+    explicit Scene(const Fixture& expected) : fixture(expected) {
+        auto* reference = RE::TESForm::LookupByID<RE::Actor>(fixture.actor);
+        require(reference, "dynamic NPC not found");
+        handle = reference->GetHandle();
+        actorIdentity = handle.get();
+        require(actorIdentity.get() == reference && validActor(*reference), "initial NPC identity or fixture mismatch");
+        const auto& actor = actorIdentity;
+        root = Pin(actor->Get3D(false));
+        require(root && root->parent, "third-person root unattached");
+        rootParent = Pin(root->parent);
+        biped = actor->GetBiped(false);
+        require(biped && biped->root && biped->actorRef.native_handle() == fixture.handle,
+                "third-person biped owner absent or mismatched");
+        bipedRootPath = ownedPath(*biped->root, *root);
+        const auto& slot = biped->objects[RE::BIPED_OBJECTS::kBody];
+        item = form(slot.item);
+        require(item && form(slot.addon) == fixture.addon && slot.partClone,
+                "expected active third-person body slot, addon or clone absent");
+        clonePath = ownedPath(*slot.partClone, *root);
+        require(clonePath.size() >= 2, "body clone is not a child of the actor world root");
+        const auto observed = findNodes(*root);
+        for (std::size_t i = 0; i < nodes.size(); ++i) nodes[i] = ownedPath(*observed[i], *root);
+        check();
+    }
+
+    Json snapshot() const {
+        check();
+        const auto observed = findNodes(*root);
+        Json rows = Json::array();
+        for (std::size_t i = 0; i < nodeNames.size(); ++i) {
+            const auto& path = nodes[i];
+            require(observed[i] == path[0].get(), "required bone replaced");
+            rows.push_back({{"name", nodeNames[i]}, {"local", pose(path[0]->local)},
+                            {"world", pose(path[0]->world)}, {"parentWorld", pose(path[1]->world)}});
+        }
+        Json result{{"nodes", std::move(rows)}, {"rootWorld", pose(root->world)},
+                    {"bodyCloneWorld", pose(clonePath[0]->world)}, {"bodyItem", item}};
+        check();
+        return result;
+    }
+
+private:
+    bool validActor(RE::Actor& actor) const {
+        const auto* base = actor.GetActorBase();
+        return form(&actor) == fixture.actor && form(base) == fixture.base &&
+               actor.GetHandle().native_handle() == fixture.handle && form(actor.GetParentCell()) == fixture.cell &&
+               form(actor.GetRace()) == beastRace && form(base->race) == beastRace &&
+               static_cast<std::uint32_t>(base->GetSex()) == 0 && base->weight == 50.0f &&
+               actor.Is3DLoaded() && !actor.IsDeleted() && !actor.IsDisabled() && !actor.IsDead();
+    }
+
+    void check() const {
+        const auto actor = handle.get();
+        require(actor && actor.get() == actorIdentity.get() && validActor(*actor), "NPC handle or fixture changed");
+        require(actor->Get3D(false) == root.get() && childOf(*root, *rootParent),
+                "third-person root replaced or detached");
+        require(actor->GetBiped(false).get() == biped.get() && biped->root == bipedRootPath[0].get() &&
+                biped->actorRef.native_handle() == fixture.handle && attached(bipedRootPath), "third-person biped changed");
+        const auto& slot = biped->objects[RE::BIPED_OBJECTS::kBody];
+        require(form(slot.item) == item && form(slot.addon) == fixture.addon &&
+                slot.partClone.get() == clonePath[0].get() && attached(clonePath), "third-person body attachment changed");
+        for (const auto& node : nodes) require(attached(node), "required bone ancestry changed");
+    }
+
+    Fixture fixture;
+    RE::ActorHandle handle;
+    RE::NiPointer<RE::Actor> actorIdentity;
+    Pin root, rootParent;
+    RE::BSTSmartPointer<RE::BipedAnim> biped;
+    RE::FormID item{};
+    Path bipedRootPath, clonePath;
+    std::array<Path, nodeNames.size()> nodes;
+};
+
+class Witness final : public RE::BSTEventSink<RE::TESObjectLoadedEvent> {
+public:
+    bool setup() {
+        LARGE_INTEGER ticks{};
+        if (!QueryPerformanceFrequency(&ticks) || ticks.QuadPart <= 0) return false;
+        frequency = ticks.QuadPart;
+        timer = CreateThreadpoolTimer(expire, this, nullptr);
+        return timer != nullptr;
+    }
+
+    void closeTimer() { CloseThreadpoolTimer(timer); }
+
+    void registerUnloads() {
+        if (auto* source = RE::ScriptEventSourceHolder::GetSingleton()) {
+            source->AddEventSink<RE::TESObjectLoadedEvent>(this);
+            std::lock_guard lock(mutex);
+            unloadsObserved = true;
+        }
+    }
+
+    void world(bool available) {
+        std::lock_guard lock(mutex);
+        worldReady = available;
+        ++epoch;
+        if (active() || unreleased()) queueRetirement("world changed");
+    }
+
+    std::string begin(std::int32_t requested, const Fixture& expected) {
+        std::lock_guard lock(mutex);
+        if (requested <= 0 || !claw::npc_pose::validFixture(
+                expected.actor, expected.base, expected.handle, expected.cell, expected.addon))
+            return response("refused", requested, 0, "positive nonce and exact dynamic NPC fixture required").dump();
+        if (nonce)
+            return nonce == requested && fixture == expected && sequence == 0
+                ? readCurrent() : response("refused", requested, 0, "one NPC pose lease per process").dump();
+        if (!worldReady || !unloadsObserved)
+            return response("refused", requested, 0, "loaded world or unload observer unavailable").dump();
+
+        nonce = requested;
+        fixture = expected;
+        watched.store(fixture.actor);
+        leaseEpoch = epoch;
+        deadline = Clock::now() + maxLifetime;
+        // The deadline is enforced in each API/task. The one-shot watchdog also retires an abandoned lease.
+        ULARGE_INTEGER due{};
+        due.QuadPart = static_cast<ULONGLONG>(-130000000LL);
+        FILETIME relative{due.LowPart, due.HighPart};
+        SetThreadpoolTimer(timer, &relative, 0, 0);
+        queueSample();
+        return readCurrent();
+    }
+
+    std::string sample(std::int32_t requested, std::int32_t index) {
+        std::lock_guard lock(mutex);
+        if (requested != nonce || !nonce || std::string_view(status) != "ready" || expired() ||
+            !claw::npc_pose::nextSample(index, sequence))
+            return response("refused", requested, index, "no ready lease or invalid next sequence").dump();
+        sequence = index;
+        queueSample();
+        return readCurrent();
+    }
+
+    std::string read(std::int32_t requested, std::int32_t index) {
+        std::lock_guard lock(mutex);
+        if (!nonce || requested != nonce || index != sequence)
+            return response("refused", requested, index, "unknown lease or sequence").dump();
+        return readCurrent();
+    }
+
+    std::string end(std::int32_t requested) {
+        std::lock_guard lock(mutex);
+        if (!nonce || requested != nonce) return response("refused", requested, 0, "unknown lease").dump();
+        if (active()) queueRetirement(expired() ? "lease expired" : nullptr);
+        else if (unreleased()) queueRetirement(reason);
+        return readCurrent();
+    }
+
+    RE::BSEventNotifyControl ProcessEvent(const RE::TESObjectLoadedEvent* event,
+                                          RE::BSTEventSource<RE::TESObjectLoadedEvent>*) override {
+        if (event && !event->loaded && event->formID == watched.load()) {
+            unloaded.store(true);
+            try { SKSE::GetTaskInterface()->AddTask([this] { abortUnloaded(); }); }
+            catch (...) {} // Flag already poisons every sample; watchdog still owns retirement.
+        }
+        return RE::BSEventNotifyControl::kContinue;
+    }
+
+private:
+    static void CALLBACK expire(PTP_CALLBACK_INSTANCE, void* context, PTP_TIMER) {
+        auto& witness = *static_cast<Witness*>(context);
+        std::lock_guard lock(witness.mutex);
+        if (witness.active() || witness.unreleased()) witness.queueRetirement("lease expired");
+    }
+
+    bool active() const { return std::string_view(status) == "ready" || std::string_view(status) == "pending"; }
+    bool unreleased() const { return std::string_view(status) == "refused" && bool(scene); }
+    bool expired() const { return Clock::now() >= deadline; }
+
+    Json response(const char* state, std::int32_t requested, std::int32_t index, const char* why = nullptr) const {
+        Json out{{"schema", schema}, {"status", state}, {"nonce", requested}, {"sequence", index},
+                 {"pid", GetCurrentProcessId()}, {"qpcFrequency", frequency}};
+        if (why) out["reason"] = why;
+        return out;
+    }
+
+    std::string readCurrent() const {
+        if (active() && (expired() || unloaded.load()))
+            return response("refused", nonce, sequence, expired() ? "lease expired" : "NPC unloaded").dump();
+        if (std::string_view(status) == "ready") return result;
+        return response(status, nonce, sequence, reason).dump();
+    }
+
+    void failedQueue() {
+        // Refuse every further sample. If a task was accepted despite the exception, it may retire the pins.
+        status = "refused";
+        reason = "SKSE main-task queue failed; release not confirmed";
+        result.clear();
+    }
+
+    void queueSample() {
+        const auto index = sequence;
+        status = "pending";
+        result.clear();
+        try { SKSE::GetTaskInterface()->AddTask([this, index] { capture(index); }); }
+        catch (...) { failedQueue(); }
+    }
+
+    void queueRetirement(const char* why) {
+        status = "retiring";
+        reason = why;
+        result.clear();
+        try {
+            SKSE::GetTaskInterface()->AddTask([this] {
+                std::lock_guard lock(mutex);
+                retire(reason);
+            });
+        } catch (...) { failedQueue(); }
+    }
+
+    void abortUnloaded() {
+        std::lock_guard lock(mutex);
+        if (active() || unreleased()) retire("NPC unloaded");
+    }
+
+    void retire(const char* why) {
+        scene.reset(); // Engine ownership is released only in a main task.
+        watched.store(0);
+        SetThreadpoolTimer(timer, nullptr, 0, 0);
+        result.clear();
+        reason = why;
+        status = why ? "refused" : "ended";
+    }
+
+    void capture(std::int32_t index) {
+        std::lock_guard lock(mutex);
+        if (unreleased()) retire(reason);
+        if (std::string_view(status) != "pending" || index != sequence) return;
+        try {
+            require(leaseEpoch == epoch && worldReady && !expired() && !unloaded.load(), "NPC pose lease invalidated");
+            const auto first = qpc();
+            if (!scene) scene = std::make_unique<Scene>(fixture);
+            auto sample = scene->snapshot();
+            const auto last = qpc();
+            require(first <= last && !expired() && !unloaded.load(), "NPC pose expired or unloaded during sample");
+            sample.update({{"phase", "skse_main_thread_task"}, {"threadID", GetCurrentThreadId()},
+                {"qpcBegin", first}, {"qpcEnd", last}, {"loadEpoch", leaseEpoch}, {"rootToken", nonce},
+                {"actor", fixture.actor}, {"base", fixture.base}, {"runtimeHandle", fixture.handle},
+                {"cell", fixture.cell}, {"bodyAddon", fixture.addon}, {"sex", 0}, {"weight", 50},
+                {"race", beastRace}, {"view", "third_person"}});
+            auto out = response("ready", nonce, index);
+            out["sample"] = std::move(sample);
+            result = out.dump();
+            status = "ready";
+        } catch (const std::exception& error) {
+            refusal = error.what();
+            retire(refusal.c_str());
+        } catch (...) { retire("NPC pose snapshot failed"); }
+    }
+
+    std::mutex mutex;
+    std::unique_ptr<Scene> scene;
+    PTP_TIMER timer{};
+    std::uint64_t frequency{}, epoch{1}, leaseEpoch{};
+    Clock::time_point deadline{};
+    std::atomic<RE::FormID> watched{};
+    std::atomic<bool> unloaded{};
+    bool worldReady{}, unloadsObserved{};
+    Fixture fixture;
+    std::int32_t nonce{}, sequence{};
+    const char* status{"idle"};
+    const char* reason{};
+    std::string result, refusal;
+};
+
+Witness* witness; // SKSE registration and the bounded watchdog share process lifetime.
+
+std::string begin(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t actor, std::int32_t base,
+                  std::int32_t handle, std::int32_t cell, std::int32_t addon) {
+    return witness->begin(nonce, {std::bit_cast<std::uint32_t>(actor), std::bit_cast<std::uint32_t>(base),
+        std::bit_cast<std::uint32_t>(cell), std::bit_cast<std::uint32_t>(addon), std::bit_cast<std::uint32_t>(handle)});
+}
+std::string sample(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t index) { return witness->sample(nonce, index); }
+std::string read(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t index) { return witness->read(nonce, index); }
+std::string end(RE::StaticFunctionTag*, std::int32_t nonce) { return witness->end(nonce); }
+
+bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
+    if (!vm) return false;
+    vm->RegisterFunction("BeginNpc", name, begin);
+    vm->RegisterFunction("SampleNpc", name, sample);
+    vm->RegisterFunction("ReadNpc", name, read);
+    vm->RegisterFunction("EndNpc", name, end);
+    return true;
+}
+
+void message(SKSE::MessagingInterface::Message* data) {
+    if (!data) return;
+    using Message = SKSE::MessagingInterface;
+    switch (data->type) {
+    case Message::kDataLoaded: witness->registerUnloads(); break;
+    case Message::kPreLoadGame: witness->world(false); break;
+    case Message::kNewGame: witness->world(true); break;
+    case Message::kPostLoadGame:
+        witness->world(claw::mayActivateWorld(claw::WorldStart::postLoadGame, data->dataLen,
+                                              reinterpret_cast<std::uintptr_t>(data->data)));
+        break;
+    }
+}
+
+bool supported(const SKSE::QueryInterface* skse) {
+    if (!skse) return false;
+    const auto* target = claw::runtimeTargetFromQuery(skse->RuntimeVersion(), skse->SKSEVersion(), skse->IsEditor());
+    return target && target->family == claw::RuntimeFamily::vr;
+}
+}
+
+extern "C" __declspec(dllexport) bool SKSEPlugin_Query(const SKSE::QueryInterface* skse, SKSE::PluginInfo* info) {
+    if (!info) return false;
+    *info = {SKSE::PluginInfo::kVersion, name, 1};
+    return supported(skse);
+}
+
+extern "C" __declspec(dllexport) bool SKSEPlugin_Load(const SKSE::LoadInterface* skse) {
+    if (!supported(skse)) return false;
+    try {
+        SKSE::Init(skse, {.log = false});
+        auto* papyrus = SKSE::GetPapyrusInterface();
+        auto* messages = SKSE::GetMessagingInterface();
+        if (!SKSE::GetTaskInterface() || !papyrus || !messages) return false;
+        auto value = std::make_unique<Witness>();
+        if (!value->setup()) return false;
+        witness = value.get();
+        if (!messages->RegisterListener(message)) {
+            value->closeTimer();
+            witness = nullptr;
+            return false;
+        }
+        // After the listener is registered its context must survive even if VM registration refuses.
+        value.release();
+        return papyrus->Register(registerPapyrus);
+    } catch (...) { return false; }
+}
