@@ -1,10 +1,12 @@
 cmake_minimum_required(VERSION 3.25)
-project(CLAWFSMPWitness VERSION 0.0.3 LANGUAGES CXX)
+project(CLAWFSMPWitness VERSION 0.0.4 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(claw-fsmp-witness-tests WitnessTests.cpp)
 if(MSVC)
   target_compile_options(claw-fsmp-witness-tests PRIVATE /W4 /permissive- /UNDEBUG)
+  # Test cases keep many full frames by value; this affects the test EXE only.
+  target_link_options(claw-fsmp-witness-tests PRIVATE /STACK:8388608)
 endif()
 enable_testing()
 add_test(NAME claw-fsmp-witness-pure COMMAND claw-fsmp-witness-tests)

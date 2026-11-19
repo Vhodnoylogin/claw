@@ -12,6 +12,50 @@ ObjectFrame frame(std::uint64_t when=100) {
  for(std::uint32_t i=0;i<f.count;++i){auto& o=f.objects[i];o.key=100+i;o.rigidBody=true;o.flags=i?0:1;o.inverseMass=i?20.f:0.f;o.world[0]=o.world[4]=o.world[8]=1;o.world[9]=float(i);}
  return f;
 }
+struct FakeBody;
+struct FakeEdge {
+ FakeBody *a{},*b{};int type{12};
+ const FakeBody& getRigidBodyA() const {return *a;}
+ const FakeBody& getRigidBodyB() const {return *b;}
+};
+struct FakeBody {
+ std::array<FakeEdge*,65> refs{};int count{},countCalls{},refCalls{};bool change{};
+ int getNumConstraintRefs(){return count+(change&&countCalls++?1:0);}
+ FakeEdge* getConstraintRef(int i){++refCalls;return refs[i];}
+};
+void constraintTests() {
+ auto f=std::make_unique<ObjectFrame>();auto bodies=std::make_unique<std::array<FakeBody,128>>();
+ auto setup=[&](unsigned count=3){*f=frame();f->count=count;*bodies={};
+  for(unsigned i=0;i<count;++i){f->objects[i].key=reinterpret_cast<std::uintptr_t>(&(*bodies)[i]);f->objects[i].rigidBody=true;}
+ };
+ int reads=0;auto capture=[&]{incidentConstraints(*f,[&](unsigned i){return &(*bodies)[i];},[&](FakeEdge* e,ConstraintPose& row){
+  ++reads;row.type=e->type;row.enabled=true;row.damping[0]=.4f;return true;
+ });};
+ setup();FakeEdge edge{&(*bodies)[0],&(*bodies)[1]};(*bodies)[0].count=(*bodies)[1].count=1;
+ (*bodies)[0].refs[0]=(*bodies)[1].refs[0]=&edge;capture();
+ assert(f->constraintFailure==ConstraintFailure::none&&f->constraintCount==1&&reads==1);
+ assert(f->constraints[0].bodyA==1&&f->constraints[0].bodyB==2&&f->constraints[0].damping[0]==.4f);
+ auto w=std::make_unique<ObjectWindow>();auto s=std::make_unique<WindowSnapshot>();assert(w->request(77,2));w->pre(*f);
+ f->qpc=101;w->post(*f);assert(w->copy(*s)&&s->constraintCount==1&&s->constraints[0].damping[0]==.4f&&s->pairedSteps==1);
+ f->qpc=103;f->constraints[0].damping[0]=0;w->pre(*f);assert(w->copy(*s)&&s->failure==WindowFailure::constraintChanged);
+ setup();(*bodies)[0].count=65;capture();assert(f->constraintFailure==ConstraintFailure::referenceOverflow&&(*bodies)[0].refCalls==0);
+ setup();(*bodies)[0].count=-1;capture();assert(f->constraintFailure==ConstraintFailure::referenceOverflow);
+ setup();(*bodies)[0].count=1;capture();assert(f->constraintFailure==ConstraintFailure::nullReference);
+ setup();edge={&(*bodies)[1],&(*bodies)[2]};(*bodies)[0].count=1;(*bodies)[0].refs[0]=&edge;
+ int before=reads;capture();assert(f->constraintFailure==ConstraintFailure::notIncident&&reads==before);
+ setup();FakeBody outside;edge={&(*bodies)[0],&outside};(*bodies)[0].count=1;(*bodies)[0].refs[0]=&edge;
+ before=reads;capture();assert(f->constraintFailure==ConstraintFailure::invalidEndpoint&&reads==before);
+ setup();edge={&(*bodies)[0],&(*bodies)[1]};(*bodies)[0].count=1;(*bodies)[0].refs[0]=&edge;(*bodies)[0].change=true;
+ capture();assert(f->constraintFailure==ConstraintFailure::referencesChanged);
+ setup();edge={&(*bodies)[0],&(*bodies)[1],11};(*bodies)[0].count=1;(*bodies)[0].refs[0]=&edge;capture();
+ assert(f->constraintCount==1&&f->constraints[0].type==11&&f->constraintFailure==ConstraintFailure::none);
+ setup(6);auto edges=std::make_unique<std::array<FakeEdge,257>>();
+ for(unsigned i=0;i<edges->size();++i){const auto b=i/64;(*edges)[i]={&(*bodies)[b],&(*bodies)[b+1]};auto& body=(*bodies)[b];body.refs[body.count++]=&(*edges)[i];}
+ before=reads;capture();assert(f->constraintFailure==ConstraintFailure::uniqueOverflow&&f->constraintCount==256&&reads-before==256);
+ auto bad=std::make_unique<ObjectWindow>();assert(bad->request(78,2));bad->pre(*f);
+ assert(bad->copy(*s)&&s->failure==WindowFailure::constraintRefused&&s->constraintFailure==ConstraintFailure::uniqueOverflow);
+ std::cout<<"v4 incident traversal: endpoint membership/incidence, dedup, per-body/unique bounds, changed references/config and unsupported type passed\n";
+}
 void dynamicsTests() {
  auto w=std::make_unique<ObjectWindow>();auto s=std::make_unique<WindowSnapshot>();assert(w->request(5,2));
  auto pre=frame(100),post=frame(101);pre.dt=post.dt=.02f;
@@ -90,6 +134,28 @@ void objectTests() {
  assert((s->failure==WindowFailure::none&&s->pairedSteps==900)||s->failure==WindowFailure::callbackDropped||s->failure==WindowFailure::unpaired);
  std::cout<<"object window: 900-step cap, idempotent nonce, extrema/first delta, malformed inputs, membership/epoch/metadata/timing and contention passed\n";
 }
+void frameBufferTests() {
+ using namespace claw::witness;
+ auto buffer=std::make_unique<ObjectFrameBuffer>();
+ auto window=std::make_unique<ObjectWindow>();assert(window->request(33,2));
+ bool consumed=false,nestedConsumed=false;
+ assert(buffer->capture([](ObjectFrame& frame) noexcept {
+     frame.objects.back().key=123;frame.constraints.back().key=456;
+     frame.constraintCount=7;frame.constraintFailure=ConstraintFailure::nullReference;frame.qpc=99;
+ },[&](const ObjectFrame& frame) noexcept {
+     consumed=true;assert(frame.qpc==99);
+     const bool entered=buffer->capture([](ObjectFrame&) noexcept {},[&](const ObjectFrame&) noexcept {nestedConsumed=true;});
+     assert(!entered);window->captureDropped();
+ }));
+ assert(consumed&&!nestedConsumed);
+ assert(buffer->capture([](ObjectFrame&) noexcept {},[](const ObjectFrame& frame) noexcept {
+     assert(!frame.objects.back().key&&!frame.constraints.back().key&&!frame.constraintCount&&!frame.qpc);
+     assert(frame.constraintFailure==ConstraintFailure::none);
+ }));
+ auto snapshot=std::make_unique<WindowSnapshot>();assert(window->copy(*snapshot));
+ assert(snapshot->dropped==1&&snapshot->failure==WindowFailure::callbackDropped);
+ std::cout<<"scratch frame: reset, nested contention refusal and visible window drop passed\n";
+}
 int main() {
  using namespace claw::witness;
  assert(compatible({2,0,0},{3,24,0}));
@@ -102,5 +168,5 @@ int main() {
  for(int i=0;i<4;i++)threads.emplace_back([&]{for(int j=0;j<10000;j++)parallel.record(.02f,j+1,3);});
  for(auto& t:threads)t.join();a=parallel.read();assert(a.coherent&&a.count+a.droppedEvents==40000&&a.invalidEvents==0&&a.lastThreadId==3);
  std::cout<<"witness ABI, finite values, coherent publication and bounded contention checks passed\n";
- objectTests();dynamicsTests();
+ objectTests();dynamicsTests();constraintTests();frameBufferTests();
 }

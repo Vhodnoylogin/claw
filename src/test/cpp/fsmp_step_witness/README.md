@@ -43,9 +43,73 @@ Zero counts are valid diagnostic data, never a simulation PASS. A positive
 post-step delta proves provider-global completed events, not target body motion,
 correct reset behavior, writeback visibility, contacts or parameter correspondence.
 
+## v4 incident constraint observation (offline candidate)
+
+The current source emits `claw-fsmp-step-witness/4`, window `schemaVersion:4`
+and plugin version0.0.4. Historical schema2 and schema3 readers/captures remain
+supported with their exact original pose shapes. Extra constraint fields cannot
+promote an old version; mixed-version comparison refuses.
+
+Inside the provider callback, traversal starts only from each public rigid-body
+constraint-reference list. It allows64 references per body and256 unique edges
+over the existing128-object catalogue (at most8192 reference lookups). Duplicate
+references copy an edge once. Every endpoint must be a rigid body in that same
+callback catalogue, and each reference must be incident to its enumerating body.
+Nulls, bounds, changing reference counts, nonfinite parameters and later changes
+to the edge set, endpoints, type, enabled state or copied configuration refuse
+the whole window. Overflow never truncates into accepted evidence. No world scan,
+userPointer read, setter, const_cast, raw-offset access or retained pointer is used.
+
+`objectWindow.incidentConstraints.constraints` contains opaque edge tokens,
+`bodyAToken`/`bodyBToken`, public `type` and `enabled`, and a `spring2` record
+for type12. Its six-element arrays use **linear xyz, then angular xyz**:
+`lowerLimit`, `upperLimit`, `springEnabled`, `stiffness`, `damping`, `stopERP`,
+`stiffnessLimited` and `dampingLimited`. Values are configured motor fields,
+not measured impulses or effective solver coefficients. Free axes can have
+upper<lower; locked axes can have equal limits. No limit ordering is invented.
+Initial-Pre configuration is retained and required to remain identical at every
+captured Pre/Post; it is not a parameter trajectory. Callback timestamps and
+window pairing remain the existing witnesses.
+
+One process-lifetime scratch buffer holds the complete callback frame. Its
+nonblocking capture gate rejects reentry and publishes a window drop; it never
+shares a partially filled frame. Each capture clears the fixed rows in place,
+without a complete-frame return value, callback allocation or wait. This avoids
+putting the enlarged object/constraint arrays on the provider worker's stack.
+The native controls cover tail-field reset, nested refusal and visible drops.
+
+The block status is `not_started` before capture, `observed` after a complete
+bounded enumeration, `unsupported` when any other constraint type is present,
+or `refused` on failure. An unsupported edge retains public endpoints/type/enabled,
+has `status:unsupported_type` and `spring2:null`; it never fabricates Spring2
+parameters. The pure reader permits inspecting a separately supported edge in
+such a catalogue. A target checker must establish its own unique directed
+endpoint association. An observed empty catalogue proves only that these public
+lists yielded no edges; it is not a physics or parameter-binding PASS.
+
+The ABI gate is qualified for the exact retained provider PDB, not arbitrary
+Bullet3.25. All19 transitive headers match its source checksums. The official
+Spring2 header alone does **not** match: the retained FSMP vcpkg overlay's seven
+header transformations and CRLF bytes reproduce PDB SHA256
+`bf4636d9f9c1c84ae6114d59b89b29da4f2acb63237d89f28a0198f675defbda`.
+The public motor/reference readers are semantically read-only but omit const
+qualification in that exact SDK. The provider already supplies mutable body
+pointers; returned motor pointers are immediately held as const. MSVC layout
+and getter assembly confirm TypedConstraint80, Spring2 1664, translational motor352
+and rotational motor96 bytes, with the typed base at offset0 and matching public
+fields. No Bullet library is linked. Evidence, external headers, solver source
+and candidate build are under `Builds/claw-constraint-observer-20261119/`.
+
+This candidate is offline only. Portable traversal/collector tests and strict
+schema reader tests cover bounds, deduplication, membership, unsupported types,
+immutable configuration and historical v2/v3. MSVC pure tests reserve8MiB stack
+for their many full-frame value fixtures; that setting affects only the test
+EXE, not the witness DLL or provider. No install, game test or changed damping
+acceptance follows from these source checks. The prior damping gate stays failed.
+
 ## v3 observer-only dynamics extension
 
-The current test source emits `claw-fsmp-step-witness/3`, window
+The historical v3 test source emits `claw-fsmp-step-witness/3`, window
 `schemaVersion:3` and plugin version0.0.3. It adds observations without changing
 ReadState/BeginWindow signatures or adding a hook, simulation write or actuator.
 The historical build-02 DLL, PEX and schema2 actual captures remain immutable.

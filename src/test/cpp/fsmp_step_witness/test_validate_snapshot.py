@@ -32,6 +32,65 @@ def v3_window():
    p.update(linearVelocity=[0.,-1.,0.],angularVelocity=[-.25,0.,0.],inverseLocalInertia=[10.,0.,10.])
  return w
 
+def v4_window():
+ w=v3_window();w['schemaVersion']=4
+ second=copy.deepcopy(w['objects'][0]);second['token']=2;w['objects'].append(second);w['objectCount']=2
+ p={'lowerLimit':[-1.,-1.,-1.,0.,0.,0.],'upperLimit':[1.,1.,1.,0.,0.,0.],
+    'springEnabled':[True,True,True,False,False,False],'stiffness':[50.,50.,50.,0.,0.,0.],
+    'damping':[0.,.4,.4,0.,0.,0.],'stopERP':[.2]*6,'stiffnessLimited':[True]*6,'dampingLimited':[True]*6}
+ w['incidentConstraints']={'status':'observed','scope':v.CONSTRAINT_SCOPE,'axisOrder':v.CONSTRAINT_AXES,
+    'perBodyReferenceLimit':64,'uniqueConstraintCapacity':256,'constraintCount':1,'failureCode':0,
+    'constraints':[{'token':1,'bodyAToken':1,'bodyBToken':2,'type':12,'enabled':True,'status':'spring2','spring2':p}]}
+ return w
+
+class V4Tests(unittest.TestCase):
+ def test_full_six_axis_readout_and_legacy_versions(self):
+  w=v4_window();self.assertIs(v.validate_window(w,2),w)
+  d=fixture();d['schema']='claw-fsmp-step-witness/4';d['sample']['objectWindow']=w
+  self.assertEqual(v.parse(json.dumps(d))['sample']['objectWindow']['incidentConstraints'],w['incidentConstraints'])
+  v.validate_window(v3_window(),2);v.validate_window(window(),2)
+ def test_unsupported_type_is_explicit_and_does_not_erase_supported_edge(self):
+  w=v4_window();c=w['incidentConstraints'];edge=copy.deepcopy(c['constraints'][0])
+  edge.update(token=2,type=11,status='unsupported_type',spring2=None)
+  c.update(status='unsupported',constraintCount=2);c['constraints'].append(edge)
+  v.validate_window(w,2)
+  self.assertEqual(c['constraints'][0]['spring2']['damping'][0],0.)
+  edge['spring2']={}
+  with self.assertRaises(ValueError):v.validate_window(w,2)
+ def test_empty_initial_catalog_and_not_started_have_distinct_status(self):
+  w=v4_window();c=w['incidentConstraints'];c.update(constraintCount=0,constraints=[]);v.validate_window(w,2)
+  w.update(status='armed',pairedSteps=0,objectCount=0,objects=[],awaitingPost=False,
+     minimumPairedHostTimeStep=None,summedPairedHostTimeStep=0.)
+  c['status']='not_started';v.validate_window(w,2)
+  c['status']='observed'
+  with self.assertRaises(ValueError):v.validate_window(w,2)
+ def test_missing_or_unversioned_joint_evidence_refused(self):
+  for version in (None,2,3):
+   w=v4_window()
+   if version is None:del w['schemaVersion']
+   else:w['schemaVersion']=version
+   with self.subTest(version=version),self.assertRaises(ValueError):v.validate_window(w,2)
+  w=v4_window();del w['incidentConstraints']
+  with self.assertRaises(ValueError):v.validate_window(w,2)
+ def test_endpoints_type_support_flags_bounds_and_pointer_leaks_refused(self):
+  for field,value in [('bodyAToken',0),('bodyBToken',3),('bodyAToken',True),('type',True),
+     ('type',11),('status','unsupported_type'),('enabled',1),('key',12345)]:
+   w=v4_window();w['incidentConstraints']['constraints'][0][field]=value
+   with self.subTest(field=field,value=value),self.assertRaises(ValueError):v.validate_window(w,2)
+  for field,value in [('status','refused'),('constraintCount',257),('perBodyReferenceLimit',65),
+      ('uniqueConstraintCapacity',True),('failureCode',1),('scope','latest approximate state')]:
+   w=v4_window();w['incidentConstraints'][field]=value
+   with self.subTest(field=field),self.assertRaises(ValueError):v.validate_window(w,2)
+  w=v4_window();w['objects'][1]['initialPre']['rigidBody']=False
+  for key in v.DYNAMICS_FIELDS:w['objects'][1]['initialPre'][key]=None
+  with self.assertRaises(ValueError):v.validate_window(w,2)
+ def test_parameters_are_exact_finite_six_axis_arrays_and_bool_flags(self):
+  for field,value in [('lowerLimit',[0]*5),('upperLimit',[0]*7),('stiffness',[float('inf')]*6),
+     ('damping',[False]*6),('stopERP',None),('springEnabled',[1]*6),('stiffnessLimited',[None]*6),
+     ('dampingLimited',[False]*5),('key',[0]*6)]:
+   w=v4_window();w['incidentConstraints']['constraints'][0]['spring2'][field]=value
+   with self.subTest(field=field),self.assertRaises(ValueError):v.validate_window(w,2)
+
 class V3Tests(unittest.TestCase):
  def test_explicit_v3_parse_and_direct_window_keep_exact_dynamics(self):
   w=v3_window();self.assertIs(v.validate_window(w,2,71),w)

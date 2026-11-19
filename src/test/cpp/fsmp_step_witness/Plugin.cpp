@@ -5,6 +5,7 @@
 #include <nlohmann/json.hpp>
 #include <PluginAPI.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
+#include <BulletDynamics/ConstraintSolver/btGeneric6DofSpring2Constraint.h>
 #include "Witness.h"
 #include "ObjectWindow.h"
 #include <algorithm>
@@ -26,13 +27,17 @@ static_assert(BT_BULLET_VERSION==325);
 static_assert(sizeof(btScalar)==4&&sizeof(btVector3)==16&&alignof(btVector3)==16);
 static_assert(sizeof(btTransform)==64&&sizeof(btCollisionObject)==384&&sizeof(btRigidBody)==784);
 static_assert(sizeof(btAlignedObjectArray<btCollisionObject*>)==32);
+static_assert(sizeof(btTypedConstraint)==80&&sizeof(btGeneric6DofSpring2Constraint)==1664);
+static_assert(sizeof(btTranslationalLimitMotor2)==352&&sizeof(btRotationalLimitMotor2)==96);
+static_assert(D6_SPRING_2_CONSTRAINT_TYPE==12);
 std::uint64_t qpc() noexcept { LARGE_INTEGER v{};return QueryPerformanceCounter(&v)?v.QuadPart:0; }
 ObjectWindow objectWindow; // Fixed process-lifetime storage; no external pointer identities.
+claw::witness::ObjectFrameBuffer frameBuffer;
 std::atomic<std::uint64_t> eventEpoch{1};
-ObjectFrame objectFrame(const btAlignedObjectArray<btCollisionObject*>& objects,float dt) noexcept {
-    ObjectFrame out;out.qpc=qpc();out.thread=GetCurrentThreadId();out.epoch=eventEpoch.load();out.dt=dt;
+void objectFrame(ObjectFrame& out,const btAlignedObjectArray<btCollisionObject*>& objects,float dt) noexcept {
+    out.qpc=qpc();out.thread=GetCurrentThreadId();out.epoch=eventEpoch.load();out.dt=dt;
     const int count=objects.size();
-    if(count<0||count>static_cast<int>(claw::witness::objectCapacity)){out.count=claw::witness::objectCapacity+1;return out;}
+    if(count<0||count>static_cast<int>(claw::witness::objectCapacity)){out.count=claw::witness::objectCapacity+1;return;}
     out.count=static_cast<std::uint32_t>(count);
     for(int i=0;i<count;++i) {
         const btCollisionObject* object=objects[i];auto& row=out.objects[i];
@@ -50,14 +55,46 @@ ObjectFrame objectFrame(const btAlignedObjectArray<btCollisionObject*>& objects,
         }
     }
     std::sort(out.objects.begin(),out.objects.begin()+out.count,[](const auto& a,const auto& b){return a.key<b.key;});
-    return out;
+    claw::witness::incidentConstraints(out,[&](std::uint32_t i) noexcept {
+        // Mutable pointer is already supplied by the provider; no const_cast.
+        auto* object=objects[static_cast<int>(i)];return object?btRigidBody::upcast(object):nullptr;
+    },[](btTypedConstraint* edge,claw::witness::ConstraintPose& row) noexcept {
+        const btTypedConstraint* base=edge;
+        row.type=base->getConstraintType();row.enabled=base->isEnabled();
+        if(row.type!=D6_SPRING_2_CONSTRAINT_TYPE)return true; // Explicit unsupported payload.
+        // Type tag, exact PDB-matched header and base-at-zero layout qualify this cast.
+        auto* spring=static_cast<btGeneric6DofSpring2Constraint*>(edge);
+        const auto* linear=spring->getTranslationalLimitMotor(); // Public nonmutating SDK reader.
+        if(!linear)return false;
+        for(int axis=0;axis<3;++axis) {
+            row.lowerLimit[axis]=linear->m_lowerLimit[axis];row.upperLimit[axis]=linear->m_upperLimit[axis];
+            row.springEnabled[axis]=linear->m_enableSpring[axis];
+            row.stiffness[axis]=linear->m_springStiffness[axis];row.damping[axis]=linear->m_springDamping[axis];
+            row.stopERP[axis]=linear->m_stopERP[axis];
+            row.stiffnessLimited[axis]=linear->m_springStiffnessLimited[axis];row.dampingLimited[axis]=linear->m_springDampingLimited[axis];
+            const auto* angular=spring->getRotationalLimitMotor(axis);
+            if(!angular)return false;
+            const int j=axis+3;row.lowerLimit[j]=angular->m_loLimit;row.upperLimit[j]=angular->m_hiLimit;
+            row.springEnabled[j]=angular->m_enableSpring;row.stiffness[j]=angular->m_springStiffness;
+            row.damping[j]=angular->m_springDamping;row.stopERP[j]=angular->m_stopERP;
+            row.stiffnessLimited[j]=angular->m_springStiffnessLimited;row.dampingLimited[j]=angular->m_springDampingLimited;
+        }
+        for(const auto* values:{&row.lowerLimit,&row.upperLimit,&row.stiffness,&row.damping,&row.stopERP})
+            for(float value:*values)if(!std::isfinite(value))return false;
+        return true;
+    });
+}
+void captureFrame(const btAlignedObjectArray<btCollisionObject*>& objects,float dt,bool pre) noexcept {
+    if(!frameBuffer.capture([&](ObjectFrame& frame) noexcept {objectFrame(frame,objects,dt);},
+        [pre](const ObjectFrame& frame) noexcept {if(pre)objectWindow.pre(frame);else objectWindow.post(frame);}))
+        objectWindow.captureDropped();
 }
 struct Context;
 struct Pre final:RE::BSTEventSink<hdt::PreStepEvent> {
     EventCounter events;
     RE::BSEventNotifyControl ProcessEvent(const hdt::PreStepEvent* event,RE::BSTEventSource<hdt::PreStepEvent>*) override {
         events.record(event?event->timeStep:0,qpc(),GetCurrentThreadId());
-        if(event&&objectWindow.requested())objectWindow.pre(objectFrame(event->objects,event->timeStep));
+        if(event&&objectWindow.requested())captureFrame(event->objects,event->timeStep,true);
         return RE::BSEventNotifyControl::kContinue;
     }
 };
@@ -65,7 +102,7 @@ struct Post final:RE::BSTEventSink<hdt::PostStepEvent> {
     EventCounter events;
     RE::BSEventNotifyControl ProcessEvent(const hdt::PostStepEvent* event,RE::BSTEventSource<hdt::PostStepEvent>*) override {
         events.record(event?event->timeStep:0,qpc(),GetCurrentThreadId());
-        if(event&&objectWindow.requested())objectWindow.post(objectFrame(event->objects,event->timeStep));
+        if(event&&objectWindow.requested())captureFrame(event->objects,event->timeStep,false);
         return RE::BSEventNotifyControl::kContinue;
     }
 };
@@ -88,7 +125,7 @@ Json eventJson(const claw::witness::EventSample& s) {
             {"coherent",s.coherent},{"invalidEvents",s.invalidEvents},{"droppedEvents",s.droppedEvents}};
 }
 Json envelope(const char* status,int serial) {
-    return {{"schema","claw-fsmp-step-witness/3"},{"status",status},{"requestSerial",serial},
+    return {{"schema","claw-fsmp-step-witness/4"},{"status",status},{"requestSerial",serial},
             {"provider",context->provider},{"pid",GetCurrentProcessId()},{"qpcFrequency",context->frequency}};
 }
 Json poseJson(const claw::witness::ObjectPose& pose) {
@@ -104,7 +141,7 @@ Json windowJson() {
     const auto& s=*window;
     if(s.nonce&&s.epoch!=context->loadEpoch.load())return {{"status","refused"},{"reason","window load epoch changed"},{"nonce",s.nonce},{"loadEpoch",s.epoch}};
     const char* status=s.failure!=claw::witness::WindowFailure::none?"refused":!s.nonce?"idle":!s.started?"armed":s.complete?"complete":"collecting";
-    Json out={{"schemaVersion",3},{"status",status},{"nonce",s.nonce},{"loadEpoch",s.epoch},{"coherent",s.coherent},
+    Json out={{"schemaVersion",4},{"status",status},{"nonce",s.nonce},{"loadEpoch",s.epoch},{"coherent",s.coherent},
         {"objectCapacity",claw::witness::objectCapacity},{"pairedStepLimit",claw::witness::pairedStepLimit},
         {"objectCount",s.count},{"pairedSteps",s.pairedSteps},{"failureCode",static_cast<unsigned>(s.failure)},
         {"callbackDrops",s.dropped},{"firstPreQpc",s.firstPreQpc},{"lastPreQpc",s.lastPreQpc},{"lastPostQpc",s.lastPostQpc},
@@ -123,6 +160,21 @@ Json windowJson() {
         object["firstNonzeroPair"]=r.firstNonzeroStep?Json{{"pre",poseJson(r.firstNonzeroPre)},{"post",poseJson(r.firstNonzeroPost)}}:Json(nullptr);
         out["objects"].push_back(std::move(object));
     }
+    Json edges=Json::array();bool unsupported=false;
+    for(std::uint32_t i=0;i<s.constraintCount;++i) {
+        const auto& c=s.constraints[i];const bool supported=c.type==D6_SPRING_2_CONSTRAINT_TYPE;
+        unsupported|=!supported;
+        Json parameters=supported?Json{{"lowerLimit",c.lowerLimit},{"upperLimit",c.upperLimit},
+            {"springEnabled",c.springEnabled},{"stiffness",c.stiffness},{"damping",c.damping},{"stopERP",c.stopERP},
+            {"stiffnessLimited",c.stiffnessLimited},{"dampingLimited",c.dampingLimited}}:Json(nullptr);
+        edges.push_back({{"token",i+1},{"bodyAToken",c.bodyA},{"bodyBToken",c.bodyB},{"type",c.type},
+            {"enabled",c.enabled},{"status",supported?"spring2":"unsupported_type"},{"spring2",std::move(parameters)}});
+    }
+    out["incidentConstraints"]={{"status",s.failure!=claw::witness::WindowFailure::none?"refused":!s.started?"not_started":unsupported?"unsupported":"observed"},
+        {"scope","initial-pre configuration; identical at every captured callback"},
+        {"axisOrder","linear xyz; angular xyz"},{"perBodyReferenceLimit",claw::witness::constraintRefsPerBodyLimit},
+        {"uniqueConstraintCapacity",claw::witness::constraintCapacity},{"constraintCount",s.constraintCount},
+        {"failureCode",static_cast<unsigned>(s.constraintFailure)},{"constraints",std::move(edges)}};
     return out;
 }
 void refuse(const char* reason) {
@@ -157,7 +209,7 @@ void snapshot(int serial,std::uint64_t epoch) noexcept {
     }
 }
 std::string readState(RE::StaticFunctionTag*,std::int32_t requested) {
-    if(!context)return R"({"schema":"claw-fsmp-step-witness/3","status":"refused","reason":"context unavailable"})";
+    if(!context)return R"({"schema":"claw-fsmp-step-witness/4","status":"refused","reason":"context unavailable"})";
     std::lock_guard lock(context->mutex);
     if(context->providerState.load(std::memory_order_acquire)!=2) {
         auto out=envelope("refused",requested);out["reason"]="provider startup/version unavailable";return out.dump();
@@ -181,9 +233,9 @@ std::string readState(RE::StaticFunctionTag*,std::int32_t requested) {
     return out.dump();
 }
 std::string beginWindow(RE::StaticFunctionTag*,std::int32_t nonce) {
-    if(!context)return R"({"schema":"claw-fsmp-step-witness/3","status":"refused","reason":"context unavailable"})";
+    if(!context)return R"({"schema":"claw-fsmp-step-witness/4","status":"refused","reason":"context unavailable"})";
     std::lock_guard lock(context->mutex);
-    Json out={{"schema","claw-fsmp-step-witness/3"},{"nonce",nonce},{"status","refused"}};
+    Json out={{"schema","claw-fsmp-step-witness/4"},{"nonce",nonce},{"status","refused"}};
     if(nonce<=0||context->providerState.load(std::memory_order_acquire)!=2){out["reason"]="positive nonce/ready provider required";return out.dump();}
     if(context->beginNonce&&context->beginNonce!=nonce){out["reason"]="different nonce refused; one window per process";return out.dump();}
     if(!context->beginNonce) {
@@ -242,12 +294,12 @@ bool supported(const SKSE::QueryInterface* s) {
 }
 }
 extern "C" __declspec(dllexport) constinit SKSE::PluginVersionData SKSEPlugin_Version=[] {
-    SKSE::PluginVersionData v;v.PluginVersion({0,0,3,0});v.PluginName("CLAWFSMPWitness");v.AuthorName("CLAW contributors");
+    SKSE::PluginVersionData v;v.PluginVersion({0,0,4,0});v.PluginName("CLAWFSMPWitness");v.AuthorName("CLAW contributors");
     v.versionIndependenceEx=SKSE::PluginVersionData::kVersionIndependentEx_AddressLibraryV5;
     v.compatibleVersions[0]=SKSE::RUNTIME_SSE_1_7_104.pack();v.MinimumRequiredXSEVersion({2,3,1,0});return v;
 }();
 extern "C" __declspec(dllexport) bool SKSEPlugin_Query(const SKSE::QueryInterface* s,SKSE::PluginInfo* info) {
-    if(!info)return false;info->infoVersion=SKSE::PluginInfo::kVersion;info->name="CLAWFSMPWitness";info->version=3;return supported(s);
+    if(!info)return false;info->infoVersion=SKSE::PluginInfo::kVersion;info->name="CLAWFSMPWitness";info->version=4;return supported(s);
 }
 extern "C" __declspec(dllexport) bool SKSEPlugin_Load(const SKSE::LoadInterface* s) {
     if(!supported(s))return false;

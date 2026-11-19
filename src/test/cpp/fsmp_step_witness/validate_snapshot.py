@@ -1,9 +1,11 @@
 """Pure reader for the single native witness JSON contract; no tools/files/game."""
 import json,math
 
-SCHEMAS={'claw-fsmp-step-witness/2':2,'claw-fsmp-step-witness/3':3}
+SCHEMAS={'claw-fsmp-step-witness/2':2,'claw-fsmp-step-witness/3':3,'claw-fsmp-step-witness/4':4}
 DYNAMICS_FIELDS={'linearVelocity','angularVelocity','inverseLocalInertia'}
 HOST_DT_SCOPE='completed-provider-callback-pairs; not Bullet substeps or integrated simulated time'
+CONSTRAINT_SCOPE='initial-pre configuration; identical at every captured callback'
+CONSTRAINT_AXES='linear xyz; angular xyz'
 
 def integer(value,low=0):return type(value) is int and value>=low
 def number(value):return type(value) in (int,float) and math.isfinite(value)
@@ -47,13 +49,13 @@ def parse(text,serial=None):
     return value
 
 def pose(value,version=2):
-    if type(version) is not int or version not in (2,3):raise ValueError('Pose schema version unavailable')
-    fields={'world','rigidBody','inverseMass','flags'} | (DYNAMICS_FIELDS if version==3 else set())
+    if type(version) is not int or version not in (2,3,4):raise ValueError('Pose schema version unavailable')
+    fields={'world','rigidBody','inverseMass','flags'} | (DYNAMICS_FIELDS if version>=3 else set())
     if not isinstance(value,dict) or set(value)!=fields:raise ValueError('Pose schema unavailable')
     world=value['world']
     if not isinstance(world,list) or len(world)!=12 or not all(number(v) for v in world):raise ValueError('Finite 3x3 basis + xyz required')
     if type(value['rigidBody']) is not bool or not number(value['inverseMass']) or value['inverseMass']<0 or not integer(value['flags']):raise ValueError('Mass/flags unavailable')
-    if version==3:
+    if version>=3:
         for field in DYNAMICS_FIELDS:
             vector=value[field]
             if not value['rigidBody']:
@@ -64,14 +66,52 @@ def pose(value,version=2):
                 raise ValueError('Nonnegative inverse local inertia required')
     return value
 
+def incident_constraints(value,rows,started):
+    fields={'status','scope','axisOrder','perBodyReferenceLimit','uniqueConstraintCapacity','constraintCount','failureCode','constraints'}
+    if (not isinstance(value,dict) or set(value)!=fields or value.get('scope')!=CONSTRAINT_SCOPE
+        or value.get('axisOrder')!=CONSTRAINT_AXES or type(value.get('perBodyReferenceLimit')) is not int
+        or value.get('perBodyReferenceLimit')!=64 or type(value.get('uniqueConstraintCapacity')) is not int
+        or value.get('uniqueConstraintCapacity')!=256 or type(value.get('failureCode')) is not int
+        or value.get('failureCode')!=0 or not integer(value.get('constraintCount'))
+        or value['constraintCount']>256):raise ValueError('Incident constraints refused/unavailable')
+    edges=value['constraints']
+    if not isinstance(edges,list) or len(edges)!=value['constraintCount']:raise ValueError('Incident catalog size unavailable')
+    if not started:
+        if value['status']!='not_started' or edges:raise ValueError('Unstarted incident evidence unavailable')
+        return value
+    unsupported=False
+    parameter_fields={'lowerLimit','upperLimit','springEnabled','stiffness','damping','stopERP','stiffnessLimited','dampingLimited'}
+    for i,edge in enumerate(edges):
+        if (not isinstance(edge,dict) or set(edge)!={'token','bodyAToken','bodyBToken','type','enabled','status','spring2'}
+            or type(edge['token']) is not int or edge['token']!=i+1 or not integer(edge['type'])
+            or type(edge['enabled']) is not bool):raise ValueError('Incident edge metadata unavailable')
+        for field in ('bodyAToken','bodyBToken'):
+            t=edge[field]
+            if not integer(t,1) or t>len(rows) or rows[t-1]['initialPre']['rigidBody'] is not True:
+                raise ValueError('Incident endpoint outside rigid-body catalog')
+        p=edge['spring2']
+        if edge['type']!=12:
+            unsupported=True
+            if edge['status']!='unsupported_type' or p is not None:raise ValueError('Unsupported incident type fabricated')
+        else:
+            if edge['status']!='spring2' or not isinstance(p,dict) or set(p)!=parameter_fields:raise ValueError('Spring2 public state unavailable')
+            for field in parameter_fields:
+                a=p[field];boolean=field in ('springEnabled','stiffnessLimited','dampingLimited')
+                if (not isinstance(a,list) or len(a)!=6
+                    or not all(type(x) is bool if boolean else number(x) for x in a)):
+                    raise ValueError('Finite six-axis Spring2 parameter/flags required')
+    if value['status']!=('unsupported' if unsupported else 'observed'):raise ValueError('Incident support status mismatched')
+    return value
+
 def validate_window(w,epoch,nonce=None,*,version=None):
     if not isinstance(w,dict) or w.get('status') not in ('idle','armed','collecting','complete'):raise ValueError('Window refused/incoherent/unavailable')
     declared=w.get('schemaVersion',2) # Missing is historical v2 ONLY; never infer from extra fields.
-    if type(declared) is not int or declared not in (2,3) or (version is not None and version!=declared):
+    if type(declared) is not int or declared not in (2,3,4) or (version is not None and version!=declared):
         raise ValueError('Window schema version unavailable/mismatched')
     version=declared
     if version==2 and any(k in w for k in ('minimumPairedHostTimeStep','summedPairedHostTimeStep','timeStepStatisticsScope')):
         raise ValueError('v3 host statistics require explicit v3 window')
+    if version<4 and 'incidentConstraints' in w:raise ValueError('Incident constraints require explicit v4 window')
     if (w.get('coherent') is not True or w.get('objectCapacity')!=128 or w.get('pairedStepLimit')!=900
         or not integer(w.get('nonce')) or not integer(w.get('loadEpoch'))
         or w.get('callbackDrops')!=0 or type(w.get('callbackDrops')) is not int
@@ -80,7 +120,7 @@ def validate_window(w,epoch,nonce=None,*,version=None):
         or not integer(w.get('objectCount')) or not 0<=w['objectCount']<=128
         or type(w.get('awaitingPost')) is not bool):raise ValueError('Window bounds/failure unavailable')
     if nonce is not None and w['nonce']!=nonce:raise ValueError('Window nonce changed')
-    if version==3:
+    if version>=3:
         minimum,total=w.get('minimumPairedHostTimeStep'),w.get('summedPairedHostTimeStep')
         if w.get('timeStepStatisticsScope')!=HOST_DT_SCOPE or not number(total) or total<0:
             raise ValueError('Completed host-pair time-step statistics unavailable')
@@ -127,6 +167,7 @@ def validate_window(w,epoch,nonce=None,*,version=None):
             a,b=pose(pair.get('pre'),version),pose(pair.get('post'),version)
             if a['world']==b['world']:raise ValueError('Nonzero pair has zero delta')
         elif row.get('firstNonzeroPair') is not None:raise ValueError('Unexpected first pair')
+    if version==4:incident_constraints(w.get('incidentConstraints'),rows,w['status'] in ('collecting','complete'))
     return w
 
 def compare(first,second):
