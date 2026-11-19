@@ -378,3 +378,47 @@ This result qualifies the tested player's world model and weight
 calculation with the rebuilt companion. First-person model selection,
 rendering and contact still have separate acceptance work. Accounting
 after VR43 is 71 Skyrim starts, 29 VR starts and 37 platform attempts.
+
+## Legacy alias control and complete weight-100 pair
+
+VR44 `20261120-011406-295719` and VR45 `20261120-011743-c45812` retained
+the same male scenario, VRIK and the same XP32 Vanilla-tail reference
+skeleton. The only staged asset difference was the loose
+`Meshes/Actors/character/character assets/1stperson_werewolf_hands.nif`.
+Both recorded weapon state 0 (sheathed). With the current CLAW alias, the
+third-person slot 2 clone contained 22 geometries and applied the four CLAW
+roles. With the unmodified reference headless alias, that clone contained
+five geometries with the reference shape names and lacked all four roles;
+CLAW returned status 4. The selected third-person ARMA path still reported
+`MaleBodyWereWolf_1.NIF` in both cases. This identifies where the substituted
+asset was observed in this precise setup, independent of its name or the
+selected ARMA metadata.
+
+Both explicit first-person trees contained the same four RaceMenu hand
+overlays. Headset and wand routes contained the same UI or controller
+geometry; the separate hand, clavicle and melee-offset routes contained no
+geometry. The broad PlayerWorld inventory hit its cap. Skinned triangle and
+vertex counts in the wolf clone were zero in this readback; the five-shape
+attribution uses complete names and the single file change. Neither run
+established a first-person wolf mesh or what reached the headset. The
+temporary calibration archive changed from 4.0 to 1.0 in each run. Source
+profile bytes stayed intact. Both games exited 0 and replay matched 116
+snapshots, 253 cold files, 30 cold and 47 staged VFS entries.
+
+VR46 `20261120-012329-f1920d` ran the corresponding female high-weight
+control with the same compiled companion as VR43. A fresh female player
+changed to weight 100 before one normal spell. The transfer retained source
+and final weight 1 and matched all 11 independently computed coefficients.
+The active third-person slot used `FemaleBodyWereWolf_1.NIF` with the four
+required roles. Exit code was 0; replay matched 103 snapshots, 232 cold
+files, 30 cold and 34 staged VFS entries. The diagnostic profile still
+provided a loose legacy alias from its enabled marker mod, even though the
+marker ESP was inactive. A full companion archive run with that mod absent
+is a separate check.
+
+Retained independent receipts under `Builds/claw-agent-workflow-20261119`
+are VR44 `8075feaaf255336f7cc35379b417665403c9d49c0022b5315a51112e36c06021`,
+VR45 `98f54335463b1b8c1767209dff08cad3f67d7555458d4b47c0dca5d9b3cb0a8e`
+and VR46 `56e427c68bc59a9b9577670e3437899d5caed5239ddf4db9d9f6822f43e0b50f`.
+Accounting after VR46 is 74 Skyrim starts, 32 VR starts and 40 VR platform
+attempts.
