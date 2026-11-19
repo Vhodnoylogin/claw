@@ -111,6 +111,11 @@ body classifier or promise all custom-skin mods. Static human bodies still have
 only weight/available-trait coverage. The dated record distinguishes the initial
 unpatched observations, private patch, two tested NPCs and untested configurations.
 
+A compatibility setup for a verified static body should select a weight/trait-only
+profile. Stored RaceMenu keys do not establish working human deformations merely
+because the installer calls the mesh CBBE or UNP. The adapter does not check TRI
+capability at runtime; verifying that capability remains part of declaring support.
+
 ## Check a compatibility installation offline
 
 The development `claw-preset-tool` uses the same catalog and binding policy as
