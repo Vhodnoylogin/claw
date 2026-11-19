@@ -9,6 +9,7 @@
 session.jsonl
 *.bak-*
 /.claude/
+/.agent/
 
 # Compiled code, plugins and packaged products belong in release assets.
 *.dll

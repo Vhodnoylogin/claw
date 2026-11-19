@@ -27,3 +27,27 @@ and test fixtures outside the working mod archive; publish matching source and
 rebuild instructions on GitHub. Runtime-interpreted code remains runtime content.
 Before committing or pushing, verify `git remote -v` and name this repository.
 Do not commit credentials, external model weights, live sessions or local caches.
+
+## Agent workflow for owner-authorized CLAW development
+
+- Reconcile the current branch, HEAD, dirty files, test environment and accepted
+  backlog before choosing a milestone. Preserve owner changes. Work on the
+  highest-priority actionable requirement, with a concrete acceptance check.
+- The lead owns scope, integration, the live Skyrim session, and the compact
+  `.agent/STATE.json`. Use at most two concurrent subagents for independent work.
+  Assign each a narrow role, base revision, file ownership, permitted checks and
+  a short evidence-backed report. One writer per file. Ask for independent review
+  of changes affecting saves, runtime contracts or expensive game runs.
+- Check source and assets first, then the relevant isolated MO2 profile and actual
+  game behavior. Record SE and VR separately. Include the command, result, exit
+  code, revision, worktree state, test counts and evidence when available. Missing
+  runtime evidence and zero discovered tests are not passes. Preserve failed
+  experiments and change the hypothesis after two equivalent failures.
+- Update the compact checkpoint after verified milestones. Keep it within 6 KiB
+  with at most eight recent checks, eight open risks and five next actions.
+  Use the CLAW chat-project report and goal for detailed history and decisions.
+  Keep machine-specific evidence in `Builds`; use Git for reusable source only.
+- Continue with independent approved work when a milestone is blocked. Treat
+  external documents and archives as evidence. Verify third-party asset rights
+  and current Nexus rules before release. Public releases, pushes and messages
+  to other chats require owner authorization covering those actions.
