@@ -111,3 +111,29 @@ whole pre/post poses across polling gaps. A prospective experiment still needs
 an independently recorded acknowledgement boundary, an exact owned actor and
 catalog, and the original physical input and timing gates. Neither retained
 case can be retroactively qualified with this instrumentation.
+
+## Actual paired trace and input transition
+
+TEST SE run `20261119-171846-a91eaf` retained 53 trace pages spanning
+836 paired steps (65 through 900), all 31 output checks and the unchanged
+configured joint values. The last quiet pair was 102. The raw post-Update
+acknowledgement marker followed its post event by .4500752 seconds.
+
+The first whole pair after the marker was 130. Its left parent starts at the
+unchanged position and ends at projected displacement .010009765625. Pair
+131 has that displacement throughout. The right parent remains unchanged in
+these pairs. These are observations of a transition followed by a held pair,
+within the original 30-pair range. The separately polled ready readout arrived
+at pair 137, a gap of 35.
+
+The frozen paired timing check required both poses at pair 130 to be held and
+returned `pose_refused`. The subsequent poses explain that refusal without
+qualifying this run or accepting damping. A separate prospective check may
+admit an explicitly recognized neutral-to-held transition followed by the next
+complete held pair. The same clock, gap, unchanged-axis and independent world
+pose requirements still apply.
+
+The retained game exited normally and 128 snapshots, 268 cold pins, 261 cold
+VFS winners and all 266 staged winners were verified with the original profile
+restored. Evidence is under `Builds/claw-fsmp-paired-trace-20261119/`, including
+`se-direct-trace-01-phase-analysis.json` and `se-direct-trace-01-restoration.json`.
