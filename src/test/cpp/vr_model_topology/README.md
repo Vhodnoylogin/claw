@@ -22,4 +22,9 @@ not establish rendered geometry, continuous attachment or applied physics.
 The initial offline build produced the DLL and PEX. The local build receipt
 is under Builds/claw-vr-model-topology-20261119/build-02, SHA-256
 544932afc4afc9852e61a6c7eec6ed689998f80f3f46c55517cd9745e8444832.
-The witness has not yet been staged or run in Skyrim VR.
+The first isolated VR run reached its 15 baseline checks but SKSEVR
+rejected the witness query before any transformation. The installed loader's
+version carries a VR subtype nibble. The witness now uses CLAW's existing
+runtime-target check and keeps the exact VR-family filter. The fixed binary
+compiled with the same SDK and its own companion PEX. Its first game
+qualification is recorded separately from the build.

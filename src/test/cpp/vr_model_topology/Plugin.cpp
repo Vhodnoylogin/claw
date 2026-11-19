@@ -3,6 +3,7 @@
 #include <SKSE/SKSE.h>
 #include <Windows.h>
 #include <nlohmann/json.hpp>
+#include "../../../main/cpp/include/claw/RuntimeSupport.h"
 #include "../../../main/cpp/include/claw/TargetModelAvailability.h"
 #include "../../../main/cpp/include/claw/WorldStartPolicy.h"
 #include <chrono>
@@ -274,8 +275,9 @@ void message(SKSE::MessagingInterface::Message* data) {
 }
 
 bool supported(const SKSE::QueryInterface* skse) {
-    return skse && !skse->IsEditor() && skse->RuntimeVersion() == SKSE::RUNTIME_VR_1_4_15 &&
-           skse->SKSEVersion() >= REL::Version{2, 0, 12, 0}.pack();
+    if (!skse) return false;
+    const auto* target = claw::runtimeTargetFromQuery(skse->RuntimeVersion(), skse->SKSEVersion(), skse->IsEditor());
+    return target && target->family == claw::RuntimeFamily::vr;
 }
 }
 

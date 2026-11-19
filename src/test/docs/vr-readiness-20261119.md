@@ -240,3 +240,35 @@ External paths below are relative to `D:/Skyrim VR Modding/Builds/`; no runtime 
 - VR28 replay: `claw-agent-workflow-20261119/VR28-INDEPENDENT-RESULT-RESTORATION.json` (SHA256 `aed2e6e296286318cbf30b5c4877318f2389793f0a561e992d839377c9e4ff6a`).
 - VR28 graph and effects review: `claw-vr28-audit-analysis-20261119/EVIDENCE.json` (SHA256 `7043b51086d73df3d0a26699c5895f16bc0bef49b51d02317f84cdf20cf2999c`).
 - VR29 replay: `claw-agent-workflow-20261119/VR29-INDEPENDENT-RESULT-RESTORATION.json` (SHA256 `eccef5ef7ced8cf089bf651b592fdaf49c0b6b9a4cdf7abfe4401abc7568616e`).
+
+
+## Same-task graph and biped observation
+
+VR30 20261119-233016-be40bc ran the 15 baseline checks and stopped before
+a body command. SKSEVR 2.0.12 reported the witness incompatible at query;
+its runtime integer encodes the VR subtype in the final nibble. Reusing
+CLAW's existing query normalization retained the VR-only filter and fixed
+the witness load.
+
+VR31 20261119-233721-ed1bea used the repaired probe with all five mapped
+DLLs verified and the same normal spell. After the two transition effects
+were observed inactive, the default and explicit third-person roots
+aliased. Their complete 124-object tree contained three geometries and none
+of the four required wolf roles. The distinct third-person biped root also
+had three geometries and zero target roles. Across active and buffered
+clones of both views only third-person slot 2 retained a naked-skin
+registration (item CDD86, addon CDD87). Its clone was absent. The first-person
+root and biped root exceeded the 512-object diagnostic cap. Those first-person
+inventory results are incomplete. Changing the selected Get3D overload cannot
+explain the missing third-person roles in this sample.
+
+The original model-availability failure remains status 4. Both runs used
+their retained game handles to establish exit code 0. Independent restoration
+reconciled 101 snapshots, 231 cold resources and 29 cold / 32 staged VFS
+entries per run. No visible wolf model or game contact result follows from
+this graph observation.
+
+Local VR31 receipt SHA-256 7b2f96d6b8c1636c3002d55039138b80b26a5986785c5ee7d80b6dc8c094aafb. The next separate diagnostic distinguishes
+the selected CDD87 model path and whether a model handle is present, and
+collects a strictly bounded deeper first-person topology. No fallback
+selection or unsupported model-attachment intervention is enabled.

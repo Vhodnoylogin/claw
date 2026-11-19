@@ -224,3 +224,36 @@ independently restored before considering A2.
 Local proof closure SHA-256 is
 0a9bf6169019c5b1def3c1ff47074857739098185cc8509785dac072755c9f1a.
 The original B evidence and classification remain unchanged.
+
+
+## Controlled SE damping contrast completed
+
+The prospectively qualified and independently restored runs were A1
+20261119-175222-fe1399, B 20261119-231416-2c38fa and A2
+20261119-233430-9790f3. The authored left linear damping X returned from
+zero to its original 0.4 in A2. Exact A1 and A2 XML bytes match; B changes
+one setting. All three use the same female Khajiit fixture and scoped input.
+
+| Run | Damping X | Sampled displacement RMS | Outward engineering interval |
+| --- | ---: | ---: | --- |
+| A1 | 0.4 | 0.000454076696 | [0, 0.000942363728] |
+| B | 0 | 0.003935816805 | [0.003447526770, 0.004424106840] |
+| A2 | 0.4 | 0.000605067162 | [0.000116779326, 0.001093354999] |
+
+The original contrast inequalities pass. The result qualifies the
+effect of this configured parameter on the sampled control response in SE.
+Rendered skin, other joints, VR contact and general physics fidelity remain
+separate acceptance work. The result is below an actual continuous waveform
+or calibrated solver-accuracy claim. No fitted physics setting shipped.
+
+The first A2 staging packet refused before a game start because its expected
+XML length retained B's 9543 bytes. The following actual run ended normally
+and restored with an unknown recorded action intent after the derived
+controller incorrectly renamed an internal group B readback key. The
+successful packet derives XML size and hash from its actual baseline bytes
+and leaves the original association and readback source bytes unchanged.
+
+Authoritative local comparison:
+Builds/claw-fsmp-paired-trace-20261119/aba-followup-02/ACTUAL-COMPARISON.json,
+SHA-256 e2d53190beb6c4469a9b15e6e5f4b39bae209ba73130f10c7a4e6d78bb203490. Three exact evaluation and restoration records are
+pinned inside. The full device/runtime result is not embedded here.
