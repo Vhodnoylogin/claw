@@ -151,6 +151,28 @@ restored snapshots, 231 cold files, 29 original and 30 staged VFS winners, and
 archive and removal of the temporary profile. Accounting at this boundary is
 51 Skyrim starts, 15 VR starts and 20 VR platform attempts.
 
+## Normal spell pipeline and model refusal in VR27
+
+Run `20261119-173455-e84bf1` observed fresh C00 stage 1 and exact CR01 index 1
+in the same owned process. The original guards then admitted the declared
+ActorBase weight-0 assignment and one vanilla Beast Form cast. Both commands
+returned known completions. No quest commands or inverse actor mutation were
+sent by the test.
+
+The first two pipeline samples showed human race, quest stage 0 and CLAW
+status 5. The observed werewolf race appeared at stage 1 with loaded 3D.
+The tracking quest advanced to stage 10, confirming that the normal spell
+pipeline reached StartTracking. Both werewolf samples returned CLAW status 4
+with the required roles body, head, claws and fur_tailtip missing. The
+unchanged model gate refused and ended the scenario. This records the roles
+missing from CLAW's selected model observation at those points. Rendered wolf
+geometry and first-person body behavior remain unverified.
+
+The retained handle exited normally. Independent replay verified restoration
+of 99 snapshots, 231 cold files, 29 original and 30 staged VFS winners, and
+archive and removal of the temporary profile. Accounting advanced to 53 Skyrim
+starts, 16 VR starts and 21 VR platform attempts.
+
 ## Retained evidence
 
 External paths below are relative to `D:/Skyrim VR Modding/Builds/`; no runtime payload is stored in this record.
@@ -166,4 +188,5 @@ External paths below are relative to `D:/Skyrim VR Modding/Builds/`; no runtime 
 - VR22 replay: `claw-case22-review-20261119/result-review-02-root-replay/ROOT-VR22-INDEPENDENT-RESULT-RESTORATION.json` (SHA256 `6b2c88c955c0a648a161153a52ae0d06177c85bebbaa31527cb4e3f9497a403c`).
 - VR25 replay: `claw-agent-workflow-20261119/vr25-root-restoration.json`.
 - VR26 replay: `claw-agent-workflow-20261119/VR26-INDEPENDENT-RESULT-RESTORATION.json` (SHA256 `4af35f1f54f55df8de7ceec1b53aaf402af49ed8ef081f1dce3918a46b56b96e`).
+- VR27 replay: `claw-agent-workflow-20261119/VR27-INDEPENDENT-RESULT-RESTORATION.json` (SHA256 `dbe03faa18e1d3d8f0b6104e6fa65ca0a901343dba24a68e13e82581e5498444`).
 - Shipped-script analysis: `claw-vr20-transformation-analysis-20261119-01/{REPORT.md,ANALYSIS.json,BSA-EXTRACTION.json}`.
