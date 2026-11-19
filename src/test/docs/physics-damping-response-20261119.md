@@ -137,3 +137,26 @@ The retained game exited normally and 128 snapshots, 268 cold pins, 261 cold
 VFS winners and all 266 staged winners were verified with the original profile
 restored. Evidence is under `Builds/claw-fsmp-paired-trace-20261119/`, including
 `se-direct-trace-01-phase-analysis.json` and `se-direct-trace-01-restoration.json`.
+
+## Prospectively qualified A1 baseline
+
+Run `20261119-175222-fe1399` used the separately pinned transition-aware
+protocol and the original configuration with both joints at linear-X damping
+.4. The last quiet pair was 100. The left displacement arrived during pair
+122 and held throughout pair 123, a 23-pair gap. Genuine normal-clock
+ReadStates at pairs 100 and 128 bracketed both callbacks of the held pair.
+The independent WORLD readback and all original pose checks passed.
+
+The measured bins use real ReadState pairs [169,188,207], [227,246,264] and
+[282,301,319]. The maximum scored gap including bin boundaries is 20.
+The equal-bin RMS is .000454076696 and the engineering uncertainty bound
+is .000488287031, below the unchanged .0005 cap. The engineering interval
+reaches zero. The 837-row trace verifies the held-pair geometry and clock
+anchor. Its rows do not enter the measured bins.
+
+The timing-only runtime retained its original classification. A separate
+prospectively pinned evaluator validated the raw captures after normal exit
+and restoration and qualified the sampled A1 baseline. The A/B/A comparison
+and damping effect remain unqualified. Evidence:
+`Builds/claw-fsmp-paired-trace-20261119/se-a1-measurement-01-evaluation.json`,
+SHA256 `5d08fa115a3cb34d906c6ae7956fdebef3187b114a051c37d9b18589a8f4e96c`.
