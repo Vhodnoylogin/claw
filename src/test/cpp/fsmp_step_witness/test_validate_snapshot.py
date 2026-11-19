@@ -44,6 +44,20 @@ def v4_window():
  return w
 
 class V4Tests(unittest.TestCase):
+ def test_vr_uses_v4_windows_and_has_no_se_pause_authority(self):
+  def vr(serial,count,time):
+   value=fixture(serial,count,time);value['schema']=v.VR_SCHEMA
+   sample=value['sample']
+   for field in v.ENGINE_FIELDS:del sample[field]
+   sample.update(engineStateAvailable=False,objectWindow=v4_window())
+   return value
+  a,b=vr(1,0,100),vr(2,41,250)
+  self.assertEqual(v.compare(v.parse(json.dumps(a)),v.parse(json.dumps(b)))['postStepDelta'],41)
+  for field,value in (('engineStateAvailable',True),('engineStateAvailable',0),('mainFreezeTime',False),
+                      ('objectWindow',v3_window())):
+   changed=copy.deepcopy(b);changed['sample'][field]=value
+   with self.subTest(field=field,value=value),self.assertRaises(ValueError):v.parse(json.dumps(changed))
+  with self.assertRaises(ValueError):v.compare(v.parse(json.dumps(a)),v.parse(json.dumps(fixture(2,41,250))))
  def test_full_six_axis_readout_and_legacy_versions(self):
   w=v4_window();self.assertIs(v.validate_window(w,2),w)
   d=fixture();d['schema']='claw-fsmp-step-witness/4';d['sample']['objectWindow']=w

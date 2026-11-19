@@ -1,7 +1,11 @@
 """Pure reader for the single native witness JSON contract; no tools/files/game."""
 import json,math
 
-SCHEMAS={'claw-fsmp-step-witness/2':2,'claw-fsmp-step-witness/3':3,'claw-fsmp-step-witness/4':4}
+VR_SCHEMA='claw-fsmp-step-witness-vr/1'
+SCHEMAS={'claw-fsmp-step-witness/2':2,'claw-fsmp-step-witness/3':3,'claw-fsmp-step-witness/4':4,VR_SCHEMA:4}
+ENGINE_FLAGS=('mainFreezeTime','mainFreezeNextFrame','mainGameActive','uiPaused','worldRootPresent','worldCameraPresent')
+ENGINE_TIMERS=('timerRealDelta','timerDelta','engineMultiplier')
+ENGINE_FIELDS={'mainThreadIdRaw','timerPauseCount',*ENGINE_FLAGS,*ENGINE_TIMERS}
 DYNAMICS_FIELDS={'linearVelocity','angularVelocity','inverseLocalInertia'}
 HOST_DT_SCOPE='completed-provider-callback-pairs; not Bullet substeps or integrated simulated time'
 CONSTRAINT_SCOPE='initial-pre configuration; identical at every captured callback'
@@ -20,6 +24,18 @@ def read_json(text):
     if type(value) is not dict:raise ValueError('Expected a JSON object')
     return value
 
+def engine_state(sample, schema):
+    if schema == VR_SCHEMA:
+        if sample.get('engineStateAvailable') is not False or ENGINE_FIELDS.intersection(sample):
+            raise ValueError('VR witness cannot supply SE engine fields')
+        return
+    if not integer(sample.get('mainThreadIdRaw')) or not integer(sample.get('timerPauseCount')):
+        raise ValueError('SE thread/pause witness unavailable')
+    if not all(type(sample.get(field)) is bool for field in ENGINE_FLAGS):
+        raise ValueError('Native Boolean unavailable')
+    if not all(number(sample.get(field)) for field in ENGINE_TIMERS):
+        raise ValueError('Native finite timer unavailable')
+
 def parse(text,serial=None):
     value=read_json(text)
     if (value.get('schema') not in SCHEMAS or value.get('status') not in ('pending','ready')
@@ -37,14 +53,10 @@ def parse(text,serial=None):
     if serial is not None and value['requestSerial']!=serial:raise ValueError('Request serial changed')
     if value['status']=='pending':return value
     s=value.get('sample',{})
-    if (s.get('phase')!='skse_main_thread_task' or s.get('physicsPhase')!='not_synchronized'
+    if (not isinstance(s,dict) or s.get('phase')!='skse_main_thread_task' or s.get('physicsPhase')!='not_synchronized'
         or not integer(s.get('loadEpoch'),1) or not integer(s.get('sampledQpc'),1)
-        or not integer(s.get('sampledThreadId'),1) or not integer(s.get('mainThreadIdRaw'))):raise ValueError('Snapshot phase/identity unavailable')
-    for field in ('mainFreezeTime','mainFreezeNextFrame','mainGameActive','uiPaused','worldRootPresent','worldCameraPresent'):
-        if type(s.get(field)) is not bool:raise ValueError('Native Boolean unavailable')
-    if not integer(s.get('timerPauseCount')):raise ValueError('Timer pause count unavailable')
-    for field in ('timerRealDelta','timerDelta','engineMultiplier'):
-        if not number(s.get(field)):raise ValueError('Native finite timer unavailable')
+        or not integer(s.get('sampledThreadId'),1)):raise ValueError('Snapshot phase/identity unavailable')
+    engine_state(s,value['schema'])
     for side in ('pre','post'):
         e=s.get(side,{})
         if (e.get('coherent') is not True or not all(integer(e.get(k)) for k in ('count','lastQpc','lastThreadId','invalidEvents','droppedEvents'))

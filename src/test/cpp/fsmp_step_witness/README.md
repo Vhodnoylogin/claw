@@ -10,7 +10,9 @@ collector.
 The VR `ReadState` response uses `claw-fsmp-step-witness-vr/1`. It provides
 the sample clock, load epoch, callback counters and the same optional object
 window. It reports `engineStateAvailable: false`. The SE timer, world-camera
-and pause-state fields require a separate VR engine observation. Provider
+and pause-state fields require a separate VR engine observation. The shared
+Python reader validates the same version-4 window and refuses SE-only fields
+in VR samples. It compares counter growth only within one runtime schema. Provider
 load and advancing callbacks are independent of the game's model, motion
 writeback and contact.
 
