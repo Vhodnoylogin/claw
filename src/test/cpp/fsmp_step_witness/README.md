@@ -1,5 +1,19 @@
 # Read-only FSMP step witness (nonshipping test component)
 
+The native build defaults to the existing SE 1.7.104 observer. Compile the
+same source with `CLAW_FSMP_WITNESS_VR=1` and the CLAW runtime include
+directory for Skyrim VR 1.4.15 with SKSEVR 2.0.12 or later. The VR build uses
+the normalized SKSE query version and legacy Query/Load exports. Both builds
+use the same Papyrus declaration, provider ABI, callback reader and object
+collector.
+
+The VR `ReadState` response uses `claw-fsmp-step-witness-vr/1`. It provides
+the sample clock, load epoch, callback counters and the same optional object
+window. It reports `engineStateAvailable: false`. The SE timer, world-camera
+and pause-state fields require a separate VR engine observation. Provider
+load and advancing callbacks are independent of the game's model, motion
+writeback and contact.
+
 This standalone test DLL does not hook, patch or modify a provider, actor, rig,
 camera, clock, configuration, render state or Bullet object. It observes the
 existing FSMP public pre/post-step events. It is not part of runtime CMake or

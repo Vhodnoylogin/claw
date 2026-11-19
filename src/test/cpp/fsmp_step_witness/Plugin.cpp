@@ -8,6 +8,9 @@
 #include <BulletDynamics/ConstraintSolver/btGeneric6DofSpring2Constraint.h>
 #include "Witness.h"
 #include "ObjectWindow.h"
+#if defined(CLAW_FSMP_WITNESS_VR)
+#include "claw/RuntimeSupport.h"
+#endif
 #include <algorithm>
 #include <limits>
 #include <memory>
@@ -16,6 +19,11 @@
 
 namespace {
 using Json=nlohmann::json;
+#if defined(CLAW_FSMP_WITNESS_VR)
+constexpr auto witnessSchema = "claw-fsmp-step-witness-vr/1";
+#else
+constexpr auto witnessSchema = "claw-fsmp-step-witness/4";
+#endif
 using claw::witness::EventCounter;
 using claw::witness::ObjectFrame;
 using claw::witness::ObjectWindow;
@@ -125,8 +133,11 @@ Json eventJson(const claw::witness::EventSample& s) {
             {"coherent",s.coherent},{"invalidEvents",s.invalidEvents},{"droppedEvents",s.droppedEvents}};
 }
 Json envelope(const char* status,int serial) {
-    return {{"schema","claw-fsmp-step-witness/4"},{"status",status},{"requestSerial",serial},
+    return {{"schema",witnessSchema},{"status",status},{"requestSerial",serial},
             {"provider",context->provider},{"pid",GetCurrentProcessId()},{"qpcFrequency",context->frequency}};
+}
+std::string noContext() {
+    return Json{{"schema",witnessSchema},{"status","refused"},{"reason","context unavailable"}}.dump();
 }
 Json poseJson(const claw::witness::ObjectPose& pose) {
     // key is intentionally omitted. Tokens are 1-based positions in the fixed catalog.
@@ -184,6 +195,13 @@ void refuse(const char* reason) {
 void snapshot(int serial,std::uint64_t epoch) noexcept {
     Json result;
     try {
+#if defined(CLAW_FSMP_WITNESS_VR)
+        const auto sampleQpc=qpc();
+        if(!sampleQpc||epoch!=context->loadEpoch.load())throw std::runtime_error("sample clock or load epoch unavailable");
+        result={{"phase","skse_main_thread_task"},{"physicsPhase","not_synchronized"},
+            {"loadEpoch",epoch},{"sampledQpc",sampleQpc},{"sampledThreadId",GetCurrentThreadId()},
+            {"engineStateAvailable",false}};
+#else
         auto* main=RE::Main::GetSingleton();auto* timer=RE::BSTimer::GetSingleton();auto* ui=RE::UI::GetSingleton();
         if(!main||!timer||!ui||epoch!=context->loadEpoch.load())throw std::runtime_error("world singleton/load epoch unavailable or changed");
         const auto& data=main->GetRuntimeData();
@@ -195,12 +213,14 @@ void snapshot(int serial,std::uint64_t epoch) noexcept {
             {"timerRealDelta",timer->realTimeDelta},{"timerDelta",timer->delta},
             {"engineMultiplier",RE::BSTimer::QGlobalTimeMultiplier()},
             {"worldRootPresent",RE::Main::WorldRootNode()!=nullptr},
-            {"worldCameraPresent",RE::Main::WorldRootCamera()!=nullptr},
-            {"pre",eventJson(context->pre.events.read())},{"post",eventJson(context->post.events.read())},
-            {"objectWindow",windowJson()}};
+            {"worldCameraPresent",RE::Main::WorldRootCamera()!=nullptr}};
         if(!std::isfinite(timer->realTimeDelta)||!std::isfinite(timer->delta)||
            !std::isfinite(RE::BSTimer::QGlobalTimeMultiplier())||!result["sampledQpc"].get<std::uint64_t>())
             throw std::runtime_error("invalid timer/QPC witness");
+#endif
+        result["pre"]=eventJson(context->pre.events.read());
+        result["post"]=eventJson(context->post.events.read());
+        result["objectWindow"]=windowJson();
     } catch(const std::exception& e) { result={{"refused",true},{"reason",e.what()}}; }
       catch(...) { result={{"refused",true},{"reason","snapshot exception"}}; }
     std::lock_guard lock(context->mutex);
@@ -209,7 +229,7 @@ void snapshot(int serial,std::uint64_t epoch) noexcept {
     }
 }
 std::string readState(RE::StaticFunctionTag*,std::int32_t requested) {
-    if(!context)return R"({"schema":"claw-fsmp-step-witness/4","status":"refused","reason":"context unavailable"})";
+    if(!context)return noContext();
     std::lock_guard lock(context->mutex);
     if(context->providerState.load(std::memory_order_acquire)!=2) {
         auto out=envelope("refused",requested);out["reason"]="provider startup/version unavailable";return out.dump();
@@ -233,9 +253,9 @@ std::string readState(RE::StaticFunctionTag*,std::int32_t requested) {
     return out.dump();
 }
 std::string beginWindow(RE::StaticFunctionTag*,std::int32_t nonce) {
-    if(!context)return R"({"schema":"claw-fsmp-step-witness/4","status":"refused","reason":"context unavailable"})";
+    if(!context)return noContext();
     std::lock_guard lock(context->mutex);
-    Json out={{"schema","claw-fsmp-step-witness/4"},{"nonce",nonce},{"status","refused"}};
+    Json out={{"schema",witnessSchema},{"nonce",nonce},{"status","refused"}};
     if(nonce<=0||context->providerState.load(std::memory_order_acquire)!=2){out["reason"]="positive nonce/ready provider required";return out.dump();}
     if(context->beginNonce&&context->beginNonce!=nonce){out["reason"]="different nonce refused; one window per process";return out.dump();}
     if(!context->beginNonce) {
@@ -330,14 +350,22 @@ void skseMessage(SKSE::MessagingInterface::Message* message) {
         eventEpoch.store(context->loadEpoch.fetch_add(1)+1);
 }
 bool supported(const SKSE::QueryInterface* s) {
+#if defined(CLAW_FSMP_WITNESS_VR)
+    if(!s)return false;
+    const auto* target=claw::runtimeTargetFromQuery(s->RuntimeVersion(),s->SKSEVersion(),s->IsEditor());
+    return target&&target->family==claw::RuntimeFamily::vr;
+#else
     return s&&!s->IsEditor()&&s->RuntimeVersion()==SKSE::RUNTIME_SSE_1_7_104&&s->SKSEVersion()>=REL::Version{2,3,1,0}.pack();
+#endif
 }
 }
+#if !defined(CLAW_FSMP_WITNESS_VR)
 extern "C" __declspec(dllexport) constinit SKSE::PluginVersionData SKSEPlugin_Version=[] {
     SKSE::PluginVersionData v;v.PluginVersion({0,0,5,0});v.PluginName("CLAWFSMPWitness");v.AuthorName("CLAW contributors");
     v.versionIndependenceEx=SKSE::PluginVersionData::kVersionIndependentEx_AddressLibraryV5;
     v.compatibleVersions[0]=SKSE::RUNTIME_SSE_1_7_104.pack();v.MinimumRequiredXSEVersion({2,3,1,0});return v;
 }();
+#endif
 extern "C" __declspec(dllexport) bool SKSEPlugin_Query(const SKSE::QueryInterface* s,SKSE::PluginInfo* info) {
     if(!info)return false;info->infoVersion=SKSE::PluginInfo::kVersion;info->name="CLAWFSMPWitness";info->version=5;return supported(s);
 }
