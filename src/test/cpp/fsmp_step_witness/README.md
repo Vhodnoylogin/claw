@@ -100,12 +100,17 @@ and rotational motor96 bytes, with the typed base at offset0 and matching public
 fields. No Bullet library is linked. Evidence, external headers, solver source
 and candidate build are under `Builds/claw-constraint-observer-20261119/`.
 
-This candidate is offline only. Portable traversal/collector tests and strict
+Portable traversal/collector tests and strict
 schema reader tests cover bounds, deduplication, membership, unsupported types,
 immutable configuration and historical v2/v3. MSVC pure tests reserve8MiB stack
 for their many full-frame value fixtures; that setting affects only the test
 EXE, not the witness DLL or provider. No install, game test or changed damping
 acceptance follows from these source checks. The prior damping gate stays failed.
+
+The separate [19 November actual SE check](../../docs/fsmp-configured-parameters-20261119.md)
+qualifies configured values for two associated target joints using the scratch
+build, with normal teardown and full restoration. It preserves the failed
+damping response and does not extend that observation to arbitrary rigs or VR.
 
 ## v3 observer-only dynamics extension
 

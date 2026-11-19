@@ -214,6 +214,11 @@ markers remain provisional: mandatory full source/target audits cannot be
 replaced by retained-input predictions. This is numerical/storage evidence,
 not rendered body deformation or a universal body-family classifier.
 
+The [configured-parameter check](docs/fsmp-configured-parameters-20261119.md)
+records a separate schema4 FSMP result: the intended two joints received the
+source-derived coefficients, while the original damping-response gate still
+failed. Configured values and observed motion are separate acceptance claims.
+
 ## Private CPU geometry observation
 
 The standalone [geometry witness](cpp/geometry_witness/README.md) is a
