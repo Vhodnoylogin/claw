@@ -26,6 +26,14 @@ graph includes a bounded list of geometry names, types, local application
 cull flags and available triangle-shape vertex/triangle counts. The details
 are limited to 16 entries per graph and carry a completeness flag.
 
+Schema 4 adds the local application cull flag for each observed root, then
+reads up to 16 parent cull flags in nearest-first order. A known set flag
+is reported even if the remaining chain is incomplete. A clear chain
+requires reaching its end. Depth limits and cycles remain explicit.
+The same task rechecks parent identities and flags and records the raw
+live camera state ID when available. Pointer identities stay in the task.
+The pure chain traversal is covered by `claw-vr-root-cull` in CTest.
+
 The game paths are read-only. Graph membership and matching observations do
 not establish rendered geometry, continuous attachment or applied physics.
 

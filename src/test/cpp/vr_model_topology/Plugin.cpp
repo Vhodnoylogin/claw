@@ -1,5 +1,6 @@
 // Test-only VR scene-graph observation. No model mutation or render hooks.
 #include <RE/Skyrim.h>
+#include "CullObservation.h"
 #include <SKSE/SKSE.h>
 #include <Windows.h>
 #include <nlohmann/json.hpp>
@@ -7,7 +8,9 @@
 #include "../../../main/cpp/include/claw/TargetModelAvailability.h"
 #include "../../../main/cpp/include/claw/WorldStartPolicy.h"
 #include <chrono>
+#include <cstddef>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <vector>
 
@@ -29,6 +32,7 @@ constexpr std::size_t diagnosticMaxChildLinks = 2 * diagnosticMaxObjects;
 constexpr std::size_t modelPathLimit = 260;
 constexpr std::size_t maxShapeDetailsPerRoot = 16;
 constexpr std::size_t shapeNameLimit = 64;
+constexpr std::size_t ancestorDepthLimit = 16;
 constexpr std::array<const char*, 12> vrRouteNames = {
     "playerWorld", "room", "heightOffset", "headset", "leftWand", "rightWand",
     "leftMeleeOffset", "rightMeleeOffset", "leftHand", "rightHand", "leftClavicle", "rightClavicle"
@@ -123,6 +127,42 @@ Json describeGeometry(RE::BSGeometry& shape) {
     return result;
 }
 
+static_assert(offsetof(RE::NiAVObject, parent) == 0x30);
+static_assert(offsetof(RE::TESCamera, currentState) == 0x28);
+static_assert(offsetof(RE::TESCameraState, id) == 0x18);
+
+using Cull = claw::vr_diagnostic::CullObservation<Object, ancestorDepthLimit>;
+
+Cull collectCull(const Object& root) {
+    return claw::vr_diagnostic::observeCull<ancestorDepthLimit>(root,
+        [](const Object& object) -> const Object* { return object.parent; },
+        [](const Object& object) { return object.GetAppCulled(); });
+}
+
+Json describeCull(const Cull& observation) {
+    using claw::vr_diagnostic::ParentEnd;
+    Json ancestors = Json::array();
+    for (std::size_t i = 0; i < observation.ancestorCount; ++i)
+        ancestors.push_back(observation.ancestorFlags[i]);
+    const auto effective = observation.effective();
+    const char* end = observation.end == ParentEnd::complete ? "complete" :
+        observation.end == ParentEnd::depthLimit ? "depth_limit" : "cycle";
+    return {{"root", observation.rootFlag}, {"ancestors", std::move(ancestors)},
+            {"end", end}, {"effective", effective ? Json(*effective) : Json(nullptr)}};
+}
+
+struct CameraObservation {
+    const RE::TESCameraState* state{};
+    std::optional<std::uint32_t> id;
+    bool operator==(const CameraObservation&) const = default;
+};
+
+CameraObservation readCamera() {
+    const auto* camera = RE::PlayerCamera::GetSingleton();
+    const auto* state = camera ? camera->currentState.get() : nullptr;
+    return {state, state ? std::optional<std::uint32_t>(static_cast<std::uint32_t>(state->id)) : std::nullopt};
+}
+
 class Inventory {
 public:
     std::size_t identify(Object* object) {
@@ -155,11 +195,14 @@ public:
 
     Json summarizeRoots(Clock::time_point deadline) const {
         Json result = Json::array();
+        std::vector<Cull> culling;
+        culling.reserve(leases.size());
         std::array<RE::BSFixedString, claw::targetModelRoles.size()> roles;
         for (std::size_t role = 0; role < roles.size(); ++role)
             roles[role] = RE::BSFixedString{claw::targetModelRoles[role].data()};
         for (std::size_t index = 0; index < leases.size(); ++index) {
             require(Clock::now() < deadline, "capture expired");
+            culling.push_back(collectCull(*leases[index]));
             Json geometryDetails = Json::array();
             const auto actual = claw::collectTargetModel<
                 diagnosticMaxObjects, diagnosticMaxGeometries, diagnosticMaxChildLinks>(
@@ -181,11 +224,16 @@ public:
             result.push_back({{"id", index + 1}, {"objects", actual.objects},
                               {"geometries", actual.geometries}, {"childLinks", actual.childLinks},
                               {"collection", static_cast<unsigned>(actual.collection)},
+                              {"appCull", describeCull(culling.back())},
                               {"roleObjects", actual.roleObjects}, {"roleGeometries", actual.roleGeometries},
                               {"geometryDetails", std::move(geometryDetails)},
                               {"geometryDetailsComplete", actual.collection == claw::TargetModelCollection::complete &&
                                   actual.geometries <= maxShapeDetailsPerRoot},
                               {"availability", static_cast<unsigned>(claw::targetModelAvailability(actual))}});
+        }
+        for (std::size_t index = 0; index < leases.size(); ++index) {
+            require(Clock::now() < deadline, "capture expired during parent verification");
+            require(collectCull(*leases[index]) == culling[index], "root parent chain or app-cull changed during capture");
         }
         return result;
     }
@@ -209,6 +257,7 @@ Json collect(Clock::time_point deadline) {
     const auto weaponState = actor->GetWeaponState();
     require(handle && race == 0xCDD84 && base && cell, "loaded wolf owner required");
     const auto before = routes(*actor);
+    const auto camera = readCamera();
     Inventory inventory;
     Json roots = {{"default", inventory.identify(before.roots[0])},
                   {"thirdPerson", inventory.identify(before.roots[1])},
@@ -222,11 +271,12 @@ Json collect(Clock::time_point deadline) {
     require(RE::PlayerCharacter::GetSingleton() == actor && actor->GetHandle() == handle &&
                 id(actor->GetRace()) == race && id(actor->GetActorBase()) == base &&
                 id(actor->GetParentCell()) == cell && actor->Is3DLoaded() &&
-                before == routes(*actor) && actor->GetWeaponState() == weaponState,
-                "player or model route changed during capture");
+                before == routes(*actor) && actor->GetWeaponState() == weaponState && camera == readCamera(),
+                "player, model route, or camera changed during capture");
     return {{"actor", 0x14}, {"race", race}, {"base", base}, {"cell", cell},
             {"roots", std::move(roots)}, {"views", std::move(views)}, {"vrRoots", std::move(vrRoots)},
             {"weaponState", static_cast<unsigned>(weaponState)},
+            {"cameraStateId", camera.id ? Json(*camera.id) : Json(nullptr)},
             {"roles", claw::targetModelRoles}, {"distinctRoots", std::move(rootDetails)}};
 }
 
@@ -273,7 +323,7 @@ public:
 
 private:
     static Json reply(std::int32_t nonce, const char* status, const char* reason = "") {
-        return {{"schema", "claw-vr-model-topology/3"}, {"pid", GetCurrentProcessId()},
+        return {{"schema", "claw-vr-model-topology/4"}, {"pid", GetCurrentProcessId()},
                 {"nonce", nonce}, {"status", status}, {"reason", reason}};
     }
 
