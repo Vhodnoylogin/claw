@@ -540,3 +540,33 @@ Automatic selection, simultaneous actors and first-person rendering are
 still open. The exit code was 0. Restoration reconciled 110 files, four
 temporary directories, 233 cold files and 31 original VFS winners.
 Receipt SHA-256 `c3cd4b23df89ca0301c2faf350b39da7cdbffaa28233d092278551c0a5661b2f`.
+
+## Registered NPC physics and the camera transition control
+
+VR55 `20261120-022441-2dbd2e` ran the VR-specific Observer query and
+placed one nonpersistent owned fixture after a complete 12-actor census.
+The same dynamic actor `FF000863` retained its male werewolf base
+`0B000800` and engine handle 1112352 across four increasing samples.
+The third-person tree had the thirteen required objects, including nine
+driven ear and tail bones. FSMP's typed API reported the exact
+`SKSE/Plugins/hdtSkinnedMeshConfigs/CLAW/CLAWMotionMale.xml` registration.
+The global pre/post counters advanced by 41 each in the measured interval.
+The first human baseline had zero advancement. No anonymous Bullet object
+window was armed, so target movement, writeback and contacts remain open.
+
+SkyrimVR exited with `0xC0000005` after the scenario completed. Retained
+handle and Windows Application event 102793 agree on the process and
+exception. The fault address was `SkyrimVR.exe+0xE3ED1D`. The cleanup path
+queues `qqq` and may also post `WM_CLOSE`. The evidence cannot attribute
+the exception to either path or to FSMP. All 144 snapshots, six temporary
+directories, 46 staged paths and 73 native VFS observations reconciled.
+Receipt SHA-256 `7ab6d8a9ff0bdc88dab33af3a65c13ee23a7acdfd187aaf1d0042ce4f47f5d3d`.
+
+VR56 `20261120-023337-716fc2` changed the one-action camera experiment
+to typed `Game.ForceFirstPerson()` after stock transformation. Both V4
+captures retained raw camera state 9, the same first-person root cull,
+the same biped routes, and the three complete world-body routes. The
+typed call returned `None` once. No native transition was observed.
+The outer carrier classification and archived calibration still refused
+qualification. Exit code 0 and all 116 snapshot preimages matched.
+Receipt SHA-256 `31e93286b625154d0e77c020ab5ce6d07bc67b54da7c21b456eab4e59dc57aab`.
