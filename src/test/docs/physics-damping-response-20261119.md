@@ -181,6 +181,28 @@ VFS winners and 266 staged winners were independently verified. The temporary
 profile was archived and removed. Evidence in
 `Builds/claw-fsmp-paired-trace-20261119/`:
 `se-b-measurement-01-restoration.json` (SHA256
-`028d4c5bb7f9446983cc20aec595caef2bbfcb19ff5414e322f99c6496a52c3`)
+`028d4c5bb7f9446983cc20aec595caef2bbcfcb19ff5414e322f99c6496a52c3`)
 and `se-b-measurement-01-evaluation.json` (SHA256
 `8a5bdc703fcfec7cd6db3e18871c24da4dcc475381a6b4907a247301675a7bd5`).
+
+### Whole-window rotation diagnosis
+
+The trial's original enclosure for the left driver was .004087797480 radians.
+The maximum actual pose in the paired trace was .003501208875 radians, but
+the trace starts at pair 66. The parent basis was constant in the complete
+900-pair extrema. Pair-by-pair angles alone cannot cover the omitted prefix.
+
+The test-only fixed-parent bound operates on all 900 retained post-step
+extrema. It bounds the rotation in the world basis before converting to an
+angle and includes the measured orthogonality defect of the parent and
+rest matrices. Its outward bounds are .003501306547 for the left driver
+and .000010442852 for the right. The exact test against .004 uses a lower
+bound on the sine threshold. Reversed or nonfinite extrema and a varying
+parent are refused by this method. The diagnostic improves the enclosure
+without changing the angular limit. It neither reclassifies the retained B
+failure nor scores any B, A2 or physics contrast. A future measurement
+must name and pin the method before running with the same physical limits.
+
+The reproducible read-only replay is
+`Builds/claw-fsmp-paired-trace-20261119/se-b-fixed-parent-rotation-diagnostic.json`,
+SHA256 `ec858de973e0c2c98168b89a642e82dead28ccc745ade8c9f8c539a3858404e4`.
