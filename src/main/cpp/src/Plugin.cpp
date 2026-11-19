@@ -57,7 +57,7 @@ namespace {
 // object-layout accessors and Papyrus bindings. This explicit candidate list is
 // a load boundary, not a claim that all listed engines passed game tests.
 const claw::RuntimeTarget* runtimeTarget(const SKSE::QueryInterface* skse) {
-    return skse ? claw::runtimeTarget(skse->RuntimeVersion(), skse->SKSEVersion(), skse->IsEditor()) : nullptr;
+    return skse ? claw::runtimeTargetFromQuery(skse->RuntimeVersion(), skse->SKSEVersion(), skse->IsEditor()) : nullptr;
 }
 
 // CommonLib 3.7 enumerates references; 9.1 enumerates nullable pointers.

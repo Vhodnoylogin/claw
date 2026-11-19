@@ -24,4 +24,13 @@ inline constexpr const RuntimeTarget* runtimeTarget(REL::Version game, std::uint
         if (game == target.game && skse >= target.minimumSKSE.pack()) return &target;
     return nullptr;
 }
+inline constexpr const RuntimeTarget* runtimeTargetFromQuery(REL::Version game, std::uint32_t skse, bool editor = false) {
+    // SKSEVR 2.0.12 MAKE_EXE_VR_VERSION encodes 1.4.15 as 0x010400F1:
+    // its final nibble is the VR subtype, not the executable's file build.
+    // CommonLib preserves that nibble in QueryInterface::RuntimeVersion(),
+    // while its canonical RUNTIME_VR_1_4_15 and Module file version use build0.
+    // Normalize only this exact ABI encoding; unknown versions/subtypes refuse.
+    if (game == REL::Version{1, 4, 15, 1}) game = SKSE::RUNTIME_VR_1_4_15;
+    return runtimeTarget(game, skse, editor);
+}
 }

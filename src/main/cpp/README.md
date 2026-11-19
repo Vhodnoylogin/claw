@@ -343,6 +343,12 @@ runtime family. Address Library V5 capability and CommonLib's variable-struct
 compatibility declaration describe mechanisms, not completed game acceptance.
 No unrestricted future-version promise is made.
 
+The legacy SKSEVR2.0.12 query encodes1.4.15 as `0x010400F1`, where the final
+nibble is a VR subtype. The query adapter maps only that exact encoding to the
+canonical file version1.4.15.0; subsequent module/family checks stay unchanged.
+The regression exercises the actual SDK query ABI, including subtype, editor,
+minimum-SKSE and unknown-version refusals.
+
 The helper defaults to the installed VS2026 generator, accepts `-CMakeExe` and
 `-Generator`, rejects source/live/archive output locations, and never installs or
 runs tests or the game. It produces `src/main/cpp/Release/CLAWDistribution.dll`
