@@ -521,3 +521,22 @@ observer query must use the actual VR schema and separately verify the
 owned target. The environment exited 0 and restored 144 files and six
 created directories. Receipt SHA-256
 `223b941088fa65c4cda626d199a59c194d97f6902ea97572a6e95d49b55e172b`.
+
+## Female world-body carrier at the same legacy path
+
+VR54 `20261120-021827-f56de9` used the complete seven-member VR Body ZIP,
+an owned female source and the exact authored female `_1` NIF staged at
+the legacy hands filename. The old marker ESP was absent in the native
+VFS. All 34 staged positive VFS observations passed. The actual slot-2
+clone contained 21 geometries and 22 objects with all four CLAW roles.
+The first 16 names reported by the bounded observer matched the authored
+female NIF in order. This distinguishes it from the 22-geometry male
+carrier while retaining the independent 11-coefficient weight-100 oracle.
+
+Together, VR51 and VR54 establish the tested male and female mappings
+with a matching asset installed at the same legacy path. Each run used
+a separate disposable profile with a single fixed winner at that path.
+Automatic selection, simultaneous actors and first-person rendering are
+still open. The exit code was 0. Restoration reconciled 110 files, four
+temporary directories, 233 cold files and 31 original VFS winners.
+Receipt SHA-256 `c3cd4b23df89ca0301c2faf350b39da7cdbffaa28233d092278551c0a5661b2f`.
