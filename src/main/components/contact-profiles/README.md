@@ -17,6 +17,20 @@ reuses the VR allocation. Its measured skin escape failed acceptance; it is
 experimental and is never selected by the default builder. Improving a distance
 metric alone does not establish valid contact coverage.
 
+A later single-slot study shortened the capsule for part of `TailBone02`.
+Its static and sampled union distances improved for both sexes. In the
+withheld compound tail bend, however, the assigned skin exceeded the
+capsule by .201 female and .193 male, up from .028 and .027 respectively.
+A pose-envelope fit trained on rest and two separate transverse bends still
+exceeded the capsule by .129 and .119 on that holdout. The source profile
+therefore retains its original fit and slot allocation.
+
+These comparisons reconstruct skin from the exact NIF binds, packed weights
+and TRI deltas. Their poses are synthetic. A rigid capsule can cover a measured
+pose envelope at the same slot count by occupying more space. A tighter
+pose-dependent result needs evaluated bone transforms, the current TRI vector
+and observations of contact in the same provider frame.
+
 Tests are under `src/test/components/contact-profiles/`. Native numerical parity
 and successful compilation are separate from game acceptance. HIGGS, PLANCK,
 Havok hand contact, posed geometry and actual provider consumption still require
