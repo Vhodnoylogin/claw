@@ -409,8 +409,11 @@ VR46 `20261120-012329-f1920d` ran the corresponding female high-weight
 control with the same compiled companion as VR43. A fresh female player
 changed to weight 100 before one normal spell. The transfer retained source
 and final weight 1 and matched all 11 independently computed coefficients.
-The active third-person slot used `FemaleBodyWereWolf_1.NIF` with the four
-required roles. Exit code was 0; replay matched 103 snapshots, 232 cold
+The active third-person slot reported `FemaleBodyWereWolf_1.NIF` and all
+four roles. Its 22 geometries and 23 objects match the later male alias
+control, while the authored female variant has 21 geometries. This V2 run
+qualifies female source and coefficients only. The actual female mesh
+needs a named geometry comparison. Exit code was 0; replay matched 103 snapshots, 232 cold
 files, 30 cold and 34 staged VFS entries. The diagnostic profile still
 provided a loose legacy alias from its enabled marker mod, even though the
 marker ESP was inactive. A full companion archive run with that mod absent
@@ -481,3 +484,40 @@ and 72 staged VFS entries were reconciled independently. The exact
 restoration receipt lives under
 `Builds/claw-vr-fsmp-provider-verification-20261120` and has SHA-256
 `50b60beab17f7d97b44f4b18ba24adcc84046a1894199499fa3e1648d2fab99b`.
+
+## One-file restoration of male body and VR root-cull observation
+
+VR51 `20261120-020000-4b654d` repeated the complete private ZIP control.
+The profile still disabled the diagnostic mod. The only additional stage
+file was the unchanged current authored male carrier at
+`Meshes/Actors/character/character assets/1stperson_werewolf_hands.nif`.
+All 33 positive resource observations and native absence of the old ESP
+passed. V3 established the complete 22-geometry default/third-person
+body. Source weight 100 and all 11 typed morph outputs passed. This is a
+verified legacy path dependency for the tested male player. The fixed
+path offers no automatic sex split and does not select the namespaced
+first-person geometry by itself. Reconciliation matched 109 files, four
+scoped directories, 232 cold and 30 cold VFS entries, with game exit 0.
+Receipt SHA-256 `78b1c2409fc40db26b3de735d9b94ca22f0bdc9bd6943807e80f62756293d3ff`.
+
+VR53 `20261120-021423-9e4553` repeated the single Show(true) diagnostic
+with V4 under the same tested current-alias VRIK profile. The exact typed
+command returned once after the ordinary transformation effects cleared.
+The same-owner samples agreed on a raw camera state ID of 9 and the
+complete first-person actor root cull chain. Its own app-cull flag was set
+before and after. The first-person biped root inherited that exclusion;
+the default/third-person world clone remained present and unculled at
+the sampled roots. The first-person geometry and slots agreed. The
+later original scenario deadline and archived calibration still refused
+qualification. Scoped comparison and game exit 0 were verified
+independently, including 116 snapshot preimages. Receipt SHA-256
+`44b0e2a79f843d3dc045a5d0b1388fcc8a482150c0a0b2fd30dafabdc32e57e2`.
+
+The first male NPC FSMP pilot, VR52 `20261120-020517-e0bdbe`, rechecked
+the load and baseline callback counts. The ordinary fixture registered
+at base `0x0B000800`. Its VR observer request refused the SE-style
+`actors` field before any PlaceAtMe, window or gameplay operation. The
+observer query must use the actual VR schema and separately verify the
+owned target. The environment exited 0 and restored 144 files and six
+created directories. Receipt SHA-256
+`223b941088fa65c4cda626d199a59c194d97f6902ea97572a6e95d49b55e172b`.
