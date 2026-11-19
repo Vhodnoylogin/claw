@@ -126,6 +126,31 @@ natural fixture or source-supported lifecycle observation before another
 transformation diagnostic. No quest setter or weaker body requirement follows
 from this result.
 
+## Natural initializer and CR01 lookup in VR26
+
+The shipped C00 stage-0 fragment calls `SetUpCompanions`. It waits 60 seconds
+outside menu mode before finishing initialization and setting stage 1.
+The earlier probes read C00 before 54 seconds of total process lifetime.
+
+Run `20261119-171248-516f18` retained the original fresh Realm fixture and used
+one bounded read-only wait. It recorded 16 complete groups at starting stage 0.
+The first stage-1 observation arrived 32.43 seconds after the first probe read.
+Two consecutive groups confirmed running stage 1, outside menu mode and the
+Companions faction. A single typed `GetIndexFromRadiantQuest(CR01)` returned
+integer 1, and a final same-owner observation confirmed the same state.
+The 15 self-tests and 20 four-module observations passed.
+
+This confirms natural initialization and one bound property in this test.
+The fixture did not issue a body or quest command, acquire the Beast Form power,
+or attempt transformation. A future normal-spell diagnostic can use the
+observed stage-1 state as its precondition while keeping model acceptance
+and the transformation pipeline as separate runtime observations.
+
+The retained game handle exited with code 0. Independent replay verified 99
+restored snapshots, 231 cold files, 29 original and 30 staged VFS winners, and
+archive and removal of the temporary profile. Accounting at this boundary is
+51 Skyrim starts, 15 VR starts and 20 VR platform attempts.
+
 ## Retained evidence
 
 External paths below are relative to `D:/Skyrim VR Modding/Builds/`; no runtime payload is stored in this record.
@@ -140,4 +165,5 @@ External paths below are relative to `D:/Skyrim VR Modding/Builds/`; no runtime 
 - VR20 replay: `claw-case20-review-20261119/result-review-02-root-replay/ROOT-VR20-INDEPENDENT-RESULT-RESTORATION.json`.
 - VR22 replay: `claw-case22-review-20261119/result-review-02-root-replay/ROOT-VR22-INDEPENDENT-RESULT-RESTORATION.json` (SHA256 `6b2c88c955c0a648a161153a52ae0d06177c85bebbaa31527cb4e3f9497a403c`).
 - VR25 replay: `claw-agent-workflow-20261119/vr25-root-restoration.json`.
+- VR26 replay: `claw-agent-workflow-20261119/VR26-INDEPENDENT-RESULT-RESTORATION.json` (SHA256 `4af35f1f54f55df8de7ceec1b53aaf402af49ed8ef081f1dce3918a46b56b96e`).
 - Shipped-script analysis: `claw-vr20-transformation-analysis-20261119-01/{REPORT.md,ANALYSIS.json,BSA-EXTRACTION.json}`.
