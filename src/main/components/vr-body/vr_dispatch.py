@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import shutil
 import sys
+import xml.etree.ElementTree as ET
 import zipfile
 
 
@@ -18,6 +19,8 @@ ADDON = "CLAW - VR Body.esp"
 ARMATURE = "NakedTorsoWerewolfBeast - 0CDD87_Skyrim.esm.yaml"
 NAMESPACE = "Meshes/Actors/WerewolfBeast/CLAW/FirstPerson"
 SEXES = ("male", "female")
+LEGACY_ALIAS = "Meshes/Actors/character/character assets/1stperson_werewolf_hands.nif"
+FIXED_PROFILE_NAME = "CLAW VR Body - Fixed Profile Diagnostic"
 
 
 def resource_paths(sex, endpoint=None):
@@ -45,28 +48,78 @@ def resource_layout(manifest):
     return files
 
 
-def assemble(esp, resource_candidate, archive):
+def fixed_profile_xml(shared, alternatives):
+    def encode(root):
+        ET.indent(root)
+        return ET.tostring(root, encoding="utf-8", xml_declaration=True) + b"\n"
+
+    config = ET.Element("config", {
+        "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+        "xsi:noNamespaceSchemaLocation": "http://qconsulting.ca/fo3/ModConfig5.0.xsd",
+    })
+    ET.SubElement(config, "moduleName").text = FIXED_PROFILE_NAME
+    required = ET.SubElement(config, "requiredInstallFiles")
+    for destination, source in shared.items():
+        ET.SubElement(required, "file", source=source, destination=destination, priority="0")
+    steps = ET.SubElement(config, "installSteps", order="Explicit")
+    step = ET.SubElement(steps, "installStep", name="Choose the player mesh for this MO2 profile")
+    groups = ET.SubElement(step, "optionalFileGroups", order="Explicit")
+    group = ET.SubElement(groups, "group", name="Fixed legacy mesh for this profile", type="SelectExactlyOne")
+    plugins = ET.SubElement(group, "plugins", order="Explicit")
+    for sex, source in alternatives.items():
+        plugin = ET.SubElement(plugins, "plugin", name=f"{sex.capitalize()} player profile")
+        ET.SubElement(plugin, "description").text = (
+            f"Close Skyrim VR first. Use the fixed {sex} player mesh in a disposable MO2 test profile. "
+            "Reinstall and restart to switch."
+        )
+        files = ET.SubElement(plugin, "files")
+        ET.SubElement(files, "file", source=source, destination=LEGACY_ALIAS, priority="0")
+        descriptor = ET.SubElement(plugin, "typeDescriptor")
+        ET.SubElement(descriptor, "type", name="Optional")
+
+    info = ET.Element("fomod")
+    ET.SubElement(info, "Name").text = FIXED_PROFILE_NAME
+    ET.SubElement(info, "Version").text = "Diagnostic"
+    ET.SubElement(info, "Description").text = "Private CLAW diagnostic for a disposable MO2 Skyrim VR profile."
+    return {"fomod/ModuleConfig.xml": encode(config), "fomod/info.xml": encode(info)}
+
+
+def assemble(esp, resource_candidate, archive, *, fixed_profile_fomod=False):
     from body_resource import read_json, sha256
 
     candidate = Path(resource_candidate).resolve(strict=True)
     manifest = candidate / "install-manifest.json"
     manifest_sha = sha256(manifest)
     files = resource_layout(read_json(manifest))
-    assets = []
+    assets = {ADDON: (esp, sha256(esp))}
     for relative, digest in sorted(files.items()):
         source = candidate / "resources" / relative
         if source.resolve(strict=True) != source or sha256(source) != digest:
             raise ValueError("Mismatched first-person resource " + relative)
-        assets.append((relative, source))
-    payload = {ADDON: sha256(esp), **files}
+        assets[relative] = (source, digest)
+    metadata = {}
+    if fixed_profile_fomod:
+        shared = {destination: f"shared/{destination}" for destination in assets}
+        alternatives = {sex: f"profiles/{sex}/{Path(LEGACY_ALIAS).name}" for sex in SEXES}
+        members = {source: assets[destination] for destination, source in shared.items()}
+        members.update({source: assets[resource_paths(sex, 1)] for sex, source in alternatives.items()})
+        metadata = fixed_profile_xml(shared, alternatives)
+    else:
+        members = assets
+    payload = {name: digest for name, (_, digest) in members.items()}
+    payload.update({name: hashlib.sha256(raw).hexdigest() for name, raw in metadata.items()})
     with zipfile.ZipFile(archive, "x", compression=zipfile.ZIP_DEFLATED) as writer:
-        for relative, source in [(ADDON, esp), *assets]:
+        for relative, (source, _) in members.items():
             entry = zipfile.ZipInfo(relative)
             entry.compress_type = zipfile.ZIP_DEFLATED
             with source.open("rb") as content, writer.open(entry, "w") as target:
                 shutil.copyfileobj(content, target)
+        for relative, raw in metadata.items():
+            entry = zipfile.ZipInfo(relative)
+            entry.compress_type = zipfile.ZIP_DEFLATED
+            writer.writestr(entry, raw)
     with zipfile.ZipFile(archive) as opened:
-        if set(opened.namelist()) != set(payload) or any(
+        if len(opened.namelist()) != len(payload) or set(opened.namelist()) != set(payload) or any(
                 hashlib.sha256(opened.read(name)).hexdigest() != digest for name, digest in payload.items()):
             raise ValueError("Assembled VR archive differs from its authored payload")
     if sha256(manifest) != manifest_sha:
@@ -137,12 +190,14 @@ def verify_record(esp, disabled):
                 "firstPersonRecordModels": paths}
 
 
-def build(output, disabled, *, compiler=None, resource_candidate=None):
+def build(output, disabled, *, compiler=None, resource_candidate=None, fixed_profile_fomod=False):
+    disabled = frozenset(disabled)
+    if fixed_profile_fomod and (disabled != frozenset(SEXES) or resource_candidate is None):
+        raise ValueError("--fixed-profile-fomod requires both sexes range-disabled and --resources")
     sys.path[:0] = [str(ROOT/"src/main/python/vr"), str(ROOT/"src/main/python/build-tools")]
     from body_resource import safe_output, sha256
     from plugin import Spriggit, WRAPPER
 
-    disabled = frozenset(disabled)
     inputs = [BASE/"ArmorAddons"/ARMATURE, BASE/"RecordData.yaml", BASE/"spriggit-meta.json"]
     resource_inputs = [Path(resource_candidate) / "install-manifest.json"] if resource_candidate is not None else []
     output = safe_output(output, [*inputs, *resource_inputs])
@@ -171,7 +226,11 @@ def build(output, disabled, *, compiler=None, resource_candidate=None):
                "baseInputSha256":pins, "addon":ADDON, "addonSha256":sha256(esp),
                "bytes":esp.stat().st_size, "runtimeQualified":False, **result}
     if resource_candidate is not None:
-        receipt.update(assemble(esp, resource_candidate, output / (Path(ADDON).stem + ".zip")))
+        archive_name = FIXED_PROFILE_NAME if fixed_profile_fomod else Path(ADDON).stem
+        receipt.update(assemble(esp, resource_candidate, output / (archive_name + ".zip"),
+                                fixed_profile_fomod=fixed_profile_fomod))
+    if fixed_profile_fomod:
+        receipt.update({"archiveMode": "fixed-profile-fomod", "legacyAlias": LEGACY_ALIAS})
     (output/"dispatch-build.json").write_text(json.dumps(receipt,indent=2)+"\n",encoding="utf-8")
     return receipt
 
@@ -181,9 +240,12 @@ def main():
     parser.add_argument("--disable-range", choices=SEXES, action="append", required=True)
     parser.add_argument("--spriggit", type=Path)
     parser.add_argument("--resources", type=Path, help="Body candidate directory with install-manifest.json")
+    parser.add_argument("--fixed-profile-fomod", action="store_true",
+                        help="Private MO2 diagnostic with a fixed male or female legacy mesh selection")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
-    print(json.dumps(build(args.out,args.disable_range,compiler=args.spriggit,resource_candidate=args.resources)))
+    print(json.dumps(build(args.out, args.disable_range, compiler=args.spriggit, resource_candidate=args.resources,
+                           fixed_profile_fomod=args.fixed_profile_fomod)))
 
 
 if __name__ == "__main__":

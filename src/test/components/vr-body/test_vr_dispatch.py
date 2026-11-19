@@ -1,10 +1,15 @@
-"""Portable checks for the VR CDD87 source derivation."""
+"""Portable checks for VR CDD87 derivation and archive projection."""
+import hashlib
+import json
 from pathlib import Path
 import sys
+from tempfile import TemporaryDirectory
 import unittest
+import xml.etree.ElementTree as ET
+from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[4]
-sys.path.insert(0, str(ROOT/"src/main/components/vr-body"))
+sys.path[:0] = [str(ROOT/"src/main/components/vr-body"), str(ROOT/"src/main/python/vr")]
 import vr_dispatch as dispatch
 
 
@@ -62,3 +67,61 @@ class DispatchControls(unittest.TestCase):
         ):
             with self.subTest(manifest=invalid), self.assertRaises(ValueError):
                 dispatch.resource_layout(invalid)
+
+    def test_fixed_profile_requires_both_ranges_and_resource_candidate(self):
+        for sexes, resources in (({"male"}, Path("unused")), (set(dispatch.SEXES), None)):
+            with self.subTest(sexes=sexes, resources=resources), self.assertRaisesRegex(
+                    ValueError, "requires both sexes range-disabled and --resources"):
+                dispatch.build(Path("unused"), sexes, resource_candidate=resources, fixed_profile_fomod=True)
+
+    def test_archive_choices_only_change_the_fixed_alias(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            esp = root/dispatch.ADDON
+            esp.write_bytes(b"synthetic compiled ESP")
+            assets = {dispatch.ADDON: esp.read_bytes()}
+            hashes = {}
+            for sex in dispatch.SEXES:
+                for endpoint in (None, 0, 1):
+                    relative = dispatch.resource_paths(sex, endpoint)
+                    asset = root/"resources"/relative
+                    asset.parent.mkdir(parents=True, exist_ok=True)
+                    assets[relative] = relative.encode()
+                    asset.write_bytes(assets[relative])
+                    hashes[relative] = hashlib.sha256(assets[relative]).hexdigest()
+            (root/"install-manifest.json").write_text(json.dumps({
+                "schemaVersion": 1, "component": "CLAW/vr-body", "files": hashes,
+                "worldOverrides": [], "skeletonFiles": [], "textureFiles": [],
+            }), encoding="utf-8")
+
+            direct = root/"direct.zip"
+            fixed = root/"fixed.zip"
+            repeated = root/"repeated.zip"
+            dispatch.assemble(esp, root, direct)
+            receipt = dispatch.assemble(esp, root, fixed, fixed_profile_fomod=True)
+            dispatch.assemble(esp, root, repeated, fixed_profile_fomod=True)
+            self.assertEqual(fixed.read_bytes(), repeated.read_bytes())
+            with ZipFile(direct) as archive:
+                self.assertEqual(archive.namelist(), [dispatch.ADDON, *sorted(hashes)])
+                self.assertEqual({name: archive.read(name) for name in archive.namelist()}, assets)
+
+            with ZipFile(fixed) as archive:
+                self.assertEqual(len(archive.namelist()), 11)
+                self.assertEqual(receipt["payloadSha256"], {
+                    name: hashlib.sha256(archive.read(name)).hexdigest() for name in archive.namelist()
+                })
+                config = ET.fromstring(archive.read("fomod/ModuleConfig.xml"))
+                required = config.findall("requiredInstallFiles/file")
+                self.assertEqual(len(required), 7)
+                self.assertEqual({
+                    node.attrib["destination"]: archive.read(node.attrib["source"]) for node in required
+                }, assets)
+                group, = config.findall("installSteps/installStep/optionalFileGroups/group")
+                self.assertEqual(group.attrib["type"], "SelectExactlyOne")
+                choices = group.findall("plugins/plugin")
+                self.assertEqual([choice.attrib["name"] for choice in choices],
+                                 ["Male player profile", "Female player profile"])
+                for sex, choice in zip(dispatch.SEXES, choices):
+                    alias, = choice.findall("files/file")
+                    self.assertEqual(alias.attrib["destination"], dispatch.LEGACY_ALIAS)
+                    self.assertEqual(archive.read(alias.attrib["source"]), assets[dispatch.resource_paths(sex, 1)])

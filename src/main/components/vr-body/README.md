@@ -33,6 +33,22 @@ Pass `--resources <body-candidate-dir>` to make a separate MO2 test archive.
 The command reopens the archive and checks the companion ESP and six
 namespaced NIF/TRI assets against their exact source hashes.
 
+For a private comparison in a disposable MO2 profile, explicitly opt in to
+the fixed-profile FOMOD and disable both model ranges.
+
+```text
+python src/main/components/vr-body/vr_dispatch.py --disable-range male --disable-range female --resources <body-candidate-dir> --fixed-profile-fomod --out <new-external-dir>
+```
+
+With Skyrim VR closed, choose exactly one player mesh for that profile. The
+installer maps the selected authored `Body_1.nif` to the legacy mesh path and
+installs the same seven common files for either choice. Switching the
+profile's mesh requires reinstalling the variant and restarting Skyrim VR.
+The default archive keeps its seven original members. This opt-in archive is
+for diagnostics. The two installed layouts have matching game evidence from
+direct profile staging. The interactive installer, automatic runtime sex
+selection and hardware/view behavior remain unverified.
+
 Separate one-byte controls showed world-body attachment for each sex with
 its range disabled at the tested source weight. The combined override
 compiles and passes binary readback. Native selection of the first-person

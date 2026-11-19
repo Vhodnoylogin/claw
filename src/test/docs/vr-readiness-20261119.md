@@ -570,3 +570,18 @@ typed call returned `None` once. No native transition was observed.
 The outer carrier classification and archived calibration still refused
 qualification. Exit code 0 and all 116 snapshot preimages matched.
 Receipt SHA-256 `31e93286b625154d0e77c020ab5ce6d07bc67b54da7c21b456eab4e59dc57aab`.
+
+## Clean male package selection
+
+VR57 `20261120-023808-544b5a` staged the eight exact files selected by the
+male profile's diagnostic FOMOD recipe. The seven common files matched
+VR51. The only changed in-game bytes were the loose alias, which now
+contained the original authored NIF without a diagnostic marker.
+The male body retained the same 22 geometries and 23 objects, all four
+CLAW roles and all eleven weight-100 expected coefficients. The other
+FOMOD choice has the same eight-file layout and female content as VR54.
+This is native VFS validation of selected files with the game closed for
+staging. The interactive MO2 wizard and dynamic sex routing are separate.
+The game exited 0 and all 109 snapshots and 33 native VFS observations
+reconciled. Receipt SHA-256
+`2b8e547c692a7baacfd84c31bf2a5a3b7a63d3f7836fdecc9e402cf220d8089b`.
