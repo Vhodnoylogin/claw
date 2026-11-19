@@ -206,3 +206,21 @@ must name and pin the method before running with the same physical limits.
 The reproducible read-only replay is
 `Builds/claw-fsmp-paired-trace-20261119/se-b-fixed-parent-rotation-diagnostic.json`,
 SHA256 `ec858de973e0c2c98168b89a642e82dead28ccc745ade8c9f8c539a3858404e4`.
+
+
+## Checkpoint for a prospective repeat
+
+The revised 0.004-radian screen prefers the original bound and accepts the
+exact world-space Frobenius bound only for an exactly fixed parent. Six local
+controls cover equality of the earlier A1 result, failures when the parent
+changes or the exact limit is exceeded, and preservation of the position
+limits. The original B result remains refused. Replaying its retained data
+with the new screen produced a diagnostic RMS of 0.004098943502223942 and
+representation bound of 0.0004882902943502341, with all remaining original
+gates holding. This retrospective calculation is diagnostic only. A new B
+sample must qualify prospectively under the pinned proof, then be
+independently restored before considering A2.
+
+Local proof closure SHA-256 is
+0a9bf6169019c5b1def3c1ff47074857739098185cc8509785dac072755c9f1a.
+The original B evidence and classification remain unchanged.
