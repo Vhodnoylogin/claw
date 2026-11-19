@@ -1,5 +1,13 @@
 # Per-actor body families
 
+**Support policy:** arbitrary standalone NPC/follower bodies are unsupported by
+default. CLAW cannot reliably infer CBBE, BHUNP or UNP from a path or stored
+RaceMenu values. Such bodies require an explicitly declared and tested
+compatibility setup, including their human morph resources and werewolf skin
+routing. Passing the Bijin case below does not extend support to other Bijin
+installer variants or other standalone-body mods. The ordinary installer keeps
+one default body family per sex; it does not automatically combine families.
+
 This development candidate adds optional explicit skin-path bindings. It is not
 part of released 0.10.0 and does not change the installer into a multiple-choice
 body selector. A declared CBBE/BHUNP two-actor numerical lifecycle passed in SE;

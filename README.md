@@ -91,6 +91,9 @@ resources and build morphs for that body. The BHUNP choice requires BHUNP 3.34
 Advanced Ver4, Build Morphs output and a compatible UNP skin, with that body's own
 dependencies installed separately. Replacement bodies are required only for their
 selected matrices; Vanilla and classic UNP body deformation use weight; no nonexistent UNP BodySlide sliders are invented.
+Standalone NPC/follower bodies are unsupported by default. They require an
+explicit, tested compatibility setup; CLAW does not universally identify their
+body family. See [per-actor body families](src/main/docs/mixed-body-families.md).
 Keep Elegant Werewolf Replacer as the credited base dependency. Install a compatible XP32 skeleton,
 runtime-matched SKSE, RaceMenu/SKEE, Address Library and Microsoft Visual C++ x64
 runtime. OBody and its own requirements apply when automatic preset distribution
