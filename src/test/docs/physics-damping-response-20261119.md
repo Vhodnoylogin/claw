@@ -64,3 +64,35 @@ It grants no physics acceptance. Unset evidence visibly skips; required,
 explicitly missing or altered evidence fails. Raw opening/held/final observations,
 rest frames, input hashes and final-packet extraction line/offset stay in the
 external bundle; game assets and machine-specific source paths are excluded.
+
+## Later single-left input diagnostic
+
+TEST SE run `20261119-160523-4877f8` retained all 900 provider pairs,
+verified the original configured joint parameters and returned normally.
+The final quiet sample and first post-update sample were pairs 93 and 126.
+The 33-pair gap improved on the earlier 39 but still exceeded the unchanged
+30-pair limit. The runtime measurement remained inconclusive. Independent
+arithmetic on the retained poses shows the relocated actor brought all
+off-axis float32 bounds inside ±0.0005. This did not rescore the rejected input.
+Raw timing, exact transforms and restoration evidence remain in
+`Builds/claw-damping-resume-20261119/`.
+
+`src/test/papyrus/CLAWTestFsmpPulse.psc` is a separate, nonshipping test
+actuator for a future prospective diagnostic. It makes one ordered Papyrus
+call for the original single-left .01 input, stored-value verification, and
+scoped Update. The script admits only a loaded disposable female fixture in
+QASmoke and refuses a pre-existing position at the reserved test key. It checks
+the actor again before the getter and before Update. It does not remove keys
+or use a right-hand actuator.
+
+The host must validate the exact owned actor and scene root, inspect the
+reserved `CLAW.Test.FSMP.Damping.Step` key, persist a single intent before dispatch, and verify independent
+post-call world and solver readbacks. A typed 0 means no Add, 1 means Add
+returned but Update was withheld, and 2 means Update returned. A returned 2
+does not prove physical movement or an atomic input. A partial or unknown
+result must quarantine the owned fixture. Never mark it applied or issue a
+compensating Update. Known-success cleanup removes only the reserved test key.
+No production DLL, runtime assets, or test witness API depend on the script.
+The local build passed the Papyrus compiler against the installed SE imports
+and the four declared SKEE signatures. Actual dispatch, timing and readback
+of this new actuator are still unverified.
