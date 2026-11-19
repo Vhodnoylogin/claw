@@ -14,8 +14,10 @@ declaration as its companion. This component is outside the release build.
 
 Capture takes an increasing positive nonce and queues one SKSE task. Read
 polls that nonce without queuing work. A capture expires after three seconds
-and permits up to 48 distinct roots. Individual graphs retain CLAW's object,
-geometry and child-link bounds. A load transition invalidates cached replies.
+and permits up to 48 distinct roots. The witness allows 4096 objects, 128 geometries and 8192 child links per
+graph, independently from the original application bounds. A capture reports
+the selected model path and whether a part handle is present. The handle is
+never dereferenced. A load transition invalidates cached replies.
 The game paths are read-only. Graph membership and matching observations do
 not establish rendered geometry, continuous attachment or applied physics.
 

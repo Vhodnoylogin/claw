@@ -29,24 +29,28 @@ struct TargetModelObservation {
 // same walker is exercised with ordinary fake graphs without engine headers.
 // Children must stop enumerating when push returns false. Repeated pointers
 // fail closed, so malformed cycles/aliases cannot produce a partial success.
-template<class Object, class Describe, class Children>
+template<std::size_t maxObjects = targetModelMaxObjects,
+         std::size_t maxGeometries = targetModelMaxGeometries,
+         std::size_t maxChildLinks = targetModelMaxChildLinks,
+         class Object, class Describe, class Children>
 TargetModelObservation collectTargetModel(Object* root, Describe&& describe, Children&& children) {
+    static_assert(maxObjects > 0 && maxGeometries > 0 && maxChildLinks > 0);
     TargetModelObservation result;
     if (!root) return result;
     result.rootPresent = true;
-    std::array<Object*, targetModelMaxObjects> pending{}, visited{};
+    std::array<Object*, maxObjects> pending{}, visited{};
     std::size_t queued{1}; pending[0] = root;
     while (queued) {
         auto* object = pending[--queued];
         if (std::find(visited.begin(), visited.begin() + result.objects, object) != visited.begin() + result.objects) {
             result.collection = TargetModelCollection::repeatedObject; return result;
         }
-        if (result.objects == targetModelMaxObjects) {
+        if (result.objects == maxObjects) {
             result.collection = TargetModelCollection::objectLimit; return result;
         }
         visited[result.objects++] = object;
         const auto actual = describe(object);
-        if (actual.geometry && ++result.geometries > targetModelMaxGeometries) {
+        if (actual.geometry && ++result.geometries > maxGeometries) {
             result.collection = TargetModelCollection::geometryLimit; return result;
         }
         if (actual.role && *actual.role < targetModelRoles.size()) {
@@ -56,7 +60,7 @@ TargetModelObservation collectTargetModel(Object* root, Describe&& describe, Chi
         if (!children(object, [&](Object* child) {
             // Count empty child slots too: a sparse/malformed child table must
             // not bypass the work bound while contributing no queued objects.
-            if (++result.childLinks > targetModelMaxChildLinks) return false;
+            if (++result.childLinks > maxChildLinks) return false;
             if (!child) return true;
             if (queued == pending.size()) return false;
             pending[queued++] = child;

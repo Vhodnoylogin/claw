@@ -24,6 +24,9 @@ constexpr std::size_t slotCount = RE::BIPED_OBJECTS::kTotal;
 constexpr std::size_t maximumRoots = 48;
 constexpr std::size_t requestLimit = 8;
 constexpr auto lifetime = std::chrono::seconds(3);
+constexpr std::size_t diagnosticMaxObjects = 4096, diagnosticMaxGeometries = 128;
+constexpr std::size_t diagnosticMaxChildLinks = 2 * diagnosticMaxObjects;
+constexpr std::size_t modelPathLimit = 260;
 
 struct Refusal : std::runtime_error { using std::runtime_error::runtime_error; };
 
@@ -34,6 +37,8 @@ void require(bool condition, const char* reason) {
 struct Slot {
     Object* clone{};
     RE::FormID item{}, addon{};
+    std::string modelPath;
+    bool partHandlePresent{};
     bool operator==(const Slot&) const = default;
 };
 
@@ -50,6 +55,15 @@ struct View {
     }
 };
 
+std::string modelPath(const RE::TESModel* model) {
+    if (!model) return {};
+    const auto* value = model->GetModel();
+    if (!value) return {};
+    const auto length = strnlen_s(value, modelPathLimit);
+    require(length < modelPathLimit, "selected biped model path exceeds diagnostic bound");
+    return std::string(value, length);
+}
+
 Slots slots(const RE::BIPOBJECT (&source)[slotCount]) {
     Slots copy;
     for (std::size_t index = 0; index < slotCount; ++index) {
@@ -58,6 +72,8 @@ Slots slots(const RE::BIPOBJECT (&source)[slotCount]) {
             part.partClone.get(),
             part.item ? part.item->GetFormID() : 0,
             part.addon ? part.addon->GetFormID() : 0,
+            modelPath(part.part),
+            bool(part.partHandle),
         };
     }
     return copy;
@@ -96,9 +112,11 @@ public:
         Json result = Json::array();
         for (std::size_t index = 0; index < values.size(); ++index) {
             const auto& slot = values[index];
-            if (!slot.clone && !slot.item && !slot.addon) continue;
+            if (!slot.clone && !slot.item && !slot.addon && slot.modelPath.empty() && !slot.partHandlePresent)
+                continue;
             result.push_back({{"slot", index}, {"clone", identify(slot.clone)},
-                              {"item", slot.item}, {"addon", slot.addon}});
+                              {"item", slot.item}, {"addon", slot.addon}, {"modelPath", slot.modelPath},
+                              {"partHandlePresent", slot.partHandlePresent}});
         }
         return result;
     }
@@ -115,7 +133,10 @@ public:
             roles[role] = RE::BSFixedString{claw::targetModelRoles[role].data()};
         for (std::size_t index = 0; index < leases.size(); ++index) {
             require(Clock::now() < deadline, "capture expired");
-            const auto actual = claw::collectTargetModel(leases[index].get(), [&](Object* object) {
+            const auto actual = claw::collectTargetModel<
+                diagnosticMaxObjects, diagnosticMaxGeometries, diagnosticMaxChildLinks>(
+                leases[index].get(), [&](Object* object) {
+                require(Clock::now() < deadline, "capture expired during graph walk");
                 claw::TargetModelObject item{object->AsGeometry() != nullptr};
                 const auto match = std::find(roles.begin(), roles.end(), object->name);
                 if (match != roles.end()) item.role = static_cast<std::size_t>(match - roles.begin());
@@ -212,7 +233,7 @@ public:
 
 private:
     static Json reply(std::int32_t nonce, const char* status, const char* reason = "") {
-        return {{"schema", "claw-vr-model-topology/1"}, {"pid", GetCurrentProcessId()},
+        return {{"schema", "claw-vr-model-topology/2"}, {"pid", GetCurrentProcessId()},
                 {"nonce", nonce}, {"status", status}, {"reason", reason}};
     }
 

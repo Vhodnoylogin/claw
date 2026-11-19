@@ -15,8 +15,9 @@ struct Node {
     std::vector<Node*> children;
 };
 
+template<std::size_t maxObjects = claw::targetModelMaxObjects>
 claw::TargetModelObservation sample(Node* root) {
-    return claw::collectTargetModel(root, [](Node* node) {
+    return claw::collectTargetModel<maxObjects>(root, [](Node* node) {
         claw::TargetModelObject result{node->geometry};
         for (std::size_t i = 0; i < claw::targetModelRoles.size(); ++i) {
             // Fake the provider's case-insensitive identity without engine calls.
@@ -74,6 +75,9 @@ void boundedTraversal() {
     auto result = sample(chain.data());
     assert(result.objects == claw::targetModelMaxObjects && result.collection == C::objectLimit);
     assert(claw::targetModelAvailability(result) == A::indeterminate);
+    const auto extended = sample<4096>(chain.data());
+    assert(extended.objects == chain.size() && extended.collection == C::complete);
+    assert(sample(chain.data()).collection == C::objectLimit);
     assert(claw::targetModelDiagnostic(result).find("object limit") != std::string::npos);
     Node wide{"world"};
     for (auto& node : chain) wide.children.push_back(&node);

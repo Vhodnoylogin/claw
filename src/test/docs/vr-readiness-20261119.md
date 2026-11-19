@@ -272,3 +272,41 @@ Local VR31 receipt SHA-256 7b2f96d6b8c1636c3002d55039138b80b26a5986785c5ee7d80b6
 the selected CDD87 model path and whether a model handle is present, and
 collects a strictly bounded deeper first-person topology. No fallback
 selection or unsupported model-attachment intervention is enabled.
+
+
+## Selected asset and complete first-person inventory
+
+VR32 20261119-234734-c8f341 retained the same post-effect wolf slot and
+identified its actual selected model path as
+Actors/WerewolfBeast/Character Assets/MaleBodyWereWolf_1.NIF. The part handle
+and clone were both absent. All four graph trees completed at the expanded
+diagnostic limit, including the two 695/693-object first-person trees. No
+CLAW role was present in any route. The temporary five payload files and
+101 profile/overwrite snapshots were restored and independently verified.
+Receipt SHA-256 09da4445e133621a30a29b0d0a9b504e6d6b0098b64159ae8da9f6cae0018283.
+
+The active CDD87 ARMA candidate differs from the stock Skyrim VR record in
+the two model-range bytes: the installed marker uses 02 for male and female
+where the stock record uses 00. A new private test changes only the male
+byte to 00, keeping the selected paths, resource bytes and actor workflow.
+No product weight-slider setting is changed by the test.
+
+VR33 `20261119-235435-9a052a` changed only the male range byte (`02` to
+`00`) in the test ARMA. The normal spell again reached stage 10. The male
+world model applied, and five successive model checks returned status 2.
+The post-apply diagnostic stayed inconclusive on the first-person marker.
+
+VR34 `20261120-000411-f3725a` repeated that result and used one read-only
+snapshot after two samples observed both transition effects inactive. All
+four roles were present in the default/third-person graph and the third-person
+slot 2 clone. The first-person roots completed without any of those roles;
+the first-person active and buffered slot lists were empty. The engine still
+selected the same third-person `_1` model path. This qualifies male world-body
+attachment under the tested byte change. The first-person model, HMD rendering,
+female selection and other weights need separate tests.
+
+Both games exited normally. Independent replay matched 102 snapshots, 231
+cold files, 29 cold and 32 staged VFS entries each time. Accounting after VR34
+is 65 Skyrim starts, 23 Skyrim VR starts and 28 VR platform attempts. Local
+receipt SHA-256 values are `39271c47455d6c7000cbfc403ef5ea43d7cdcbbef1b0e69a5ddf08993681f88c`
+and `4eade9d30ac60996f2ad6c8666a119954b836b6be27d8dd77f62be586da647e5`.
