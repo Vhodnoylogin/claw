@@ -173,6 +173,29 @@ of 99 snapshots, 231 cold files, 29 original and 30 staged VFS winners, and
 archive and removal of the temporary profile. Accounting advanced to 53 Skyrim
 starts, 16 VR starts and 21 VR platform attempts.
 
+## Early normal-route geometry audit in VR28
+
+Run `20261119-175652-947fba` used the same normal spell and retained the first
+status 4. One additional read-only audit finished within its two-second cap.
+At 8.94 seconds after the Cast request, the selected graph's inventory held
+only `pBloodStrings03`, `pBloodBigSpray03` and `pBloodDrops10`. All 18 requested
+names were absent in each explicit observer view before and after the audit.
+The observations bound the same actor, cell and loaded-3D identity. These
+observations cannot classify a later graph or its rendered body.
+
+The three geometries match names in the vanilla BloodSprayWerewolfEat01
+resource. The audit does not expose their actual attachment or lifetime.
+At that time the main and visual effects were still within their nominal
+10- and 15-second durations. CLAW already requests automatic refreshes
+on a two-second scan, as well as from load, race and node events. If more
+evidence is needed, the next diagnostic should distinguish the post-effect
+graph within the original window without issuing another refresh.
+
+The retained game exited normally. Independent verification checked 99
+restored snapshots, 231 cold files, 29 original and 30 staged VFS winners
+and the temporary profile archive and removal. Accounting advances to
+55 Skyrim starts, 17 VR starts and 22 VR platform attempts.
+
 ## Retained evidence
 
 External paths below are relative to `D:/Skyrim VR Modding/Builds/`; no runtime payload is stored in this record.
@@ -190,3 +213,5 @@ External paths below are relative to `D:/Skyrim VR Modding/Builds/`; no runtime 
 - VR26 replay: `claw-agent-workflow-20261119/VR26-INDEPENDENT-RESULT-RESTORATION.json` (SHA256 `4af35f1f54f55df8de7ceec1b53aaf402af49ed8ef081f1dce3918a46b56b96e`).
 - VR27 replay: `claw-agent-workflow-20261119/VR27-INDEPENDENT-RESULT-RESTORATION.json` (SHA256 `dbe03faa18e1d3d8f0b6104e6fa65ca0a901343dba24a68e13e82581e5498444`).
 - Shipped-script analysis: `claw-vr20-transformation-analysis-20261119-01/{REPORT.md,ANALYSIS.json,BSA-EXTRACTION.json}`.
+- VR28 replay: `claw-agent-workflow-20261119/VR28-INDEPENDENT-RESULT-RESTORATION.json` (SHA256 `aed2e6e296286318cbf30b5c4877318f2389793f0a561e992d839377c9e4ff6a`).
+- VR28 graph and effects review: `claw-vr28-audit-analysis-20261119/EVIDENCE.json` (SHA256 `7043b51086d73df3d0a26699c5895f16bc0bef49b51d02317f84cdf20cf2999c`).
