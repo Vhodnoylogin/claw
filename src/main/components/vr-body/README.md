@@ -29,9 +29,10 @@ paths, race, slot, range bytes and declared CLAW master.
 python src/main/components/vr-body/vr_dispatch.py --disable-range male --out <new-external-dir>
 ```
 
-The staged record control showed male world-body attachment with the male
-range disabled. Native selection of the first-person record paths and the
-female range setting require their own game evidence.
+Separate one-byte controls showed world-body attachment for each sex with
+its range disabled at the tested source weight. The combined override
+compiles and passes binary readback. Native selection of the first-person
+record paths and additional source weights still require game evidence.
 
 Start from the retained [VR body design](../../docs/vr-body.md),
 [head policy](../../docs/vr-head-policy.md) and

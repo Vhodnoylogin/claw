@@ -310,3 +310,35 @@ cold files, 29 cold and 32 staged VFS entries each time. Accounting after VR34
 is 65 Skyrim starts, 23 Skyrim VR starts and 28 VR platform attempts. Local
 receipt SHA-256 values are `39271c47455d6c7000cbfc403ef5ea43d7cdcbbef1b0e69a5ddf08993681f88c`
 and `4eade9d30ac60996f2ad6c8666a119954b836b6be27d8dd77f62be586da647e5`.
+
+## Female range-byte control
+
+VR35 `20261120-001841-bf28a4` created a fresh female player with one
+player-base sex flag in the private alternate-start overlay. Fifteen
+self-tests completed, including the typed sex readback. With the original
+female CDD87 range byte `02`, the engine selected the expected female
+world path. Status remained 4, the slot had no clone and all complete
+graphs lacked the four wolf geometry roles.
+
+VR39 `20261120-003926-2ae912` used the same female fixture, body assets,
+test marker paths and workflow. The ARMA differs by only the female
+range byte (`02` to `00`); the male byte is `02` in both. The corrected
+test executor additionally records exact Windows SteamVR launcher exit
+time to handle a pre-game startup race. The female beast returned status
+2 with empty error and the same selected female world path. The default
+and explicit third-person graphs and active slot 2 clone each contained
+the complete body, head, claws and tail-tip set. The first-person marker
+stayed inconclusive.
+
+Independent replay verified exit code 0 and 103 snapshot, 232 cold-file,
+30 cold VFS and 33 post-staging checks for both games. Female baseline
+receipt SHA-256 `52ace7c96309188e319cbdabe064dffef06ea5a0898eb0fb7b6c16b612c26315`.
+Female range-disabled receipt SHA-256
+`253b7b9cc62e79eb006fc77ae431aa15affd7b7b10ce34406231ee5c65519d85`.
+
+Three attempts stopped during the earlier SteamVR process-start handoff,
+before Skyrim or either body action. The test environment was restored
+and independently reconciled in all three cases. Their retained receipts
+are VR36, VR37 and VR38 `PRELAUNCH-RESTORATION.json` in
+`claw-agent-workflow-20261119`. The successful paired game observations
+bring accounting to 67 Skyrim starts, 25 VR starts and 33 platform attempts.
