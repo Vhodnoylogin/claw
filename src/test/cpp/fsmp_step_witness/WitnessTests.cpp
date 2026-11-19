@@ -156,6 +156,52 @@ void frameBufferTests() {
  assert(snapshot->dropped==1&&snapshot->failure==WindowFailure::callbackDropped);
  std::cout<<"scratch frame: reset, nested contention refusal and visible window drop passed\n";
 }
+void traceTests() {
+ auto window=std::make_unique<ObjectWindow>();
+ auto page=std::make_unique<TracePage>();
+ auto observation=[&](std::uint64_t at) {
+  auto result=frame(at);result.count=5;
+  for(std::uint32_t i=3;i<result.count;++i) {
+   result.objects[i]=result.objects[1];result.objects[i].key=100+i;
+   result.objects[i].world[9]=float(i);
+  }
+  result.objects[4].rigidBody=false;
+  return result;
+ };
+ const TraceTokens tokens{3,1,4,2};
+ assert(window->request(61,2));
+ assert(!window->armTrace(61,2,tokens));
+ window->pre(observation(100));
+ assert(!window->armTrace(62,2,tokens)&&!window->armTrace(61,3,tokens));
+ assert(!window->armTrace(61,2,{1,1,2,3})&&!window->armTrace(61,2,{1,2,3,5}));
+ assert(!window->armTrace(61,2,{0,2,3,4})&&!window->armTrace(61,2,{1,2,3,6}));
+ assert(window->armTrace(61,2,tokens)&&!window->armTrace(61,2,{1,2,3,4}));
+ assert(window->copyTrace(61,2,0,*page)==TraceRead::notComplete);
+ window->post(observation(101)); // Its pre callback preceded the arm.
+ for(std::uint32_t i=1;i<pairedStepLimit;++i) {
+  auto pre=observation(100+3*i),post=observation(101+3*i);
+  post.objects[2].world[9]+=float(i);
+  post.objects[3].angularVelocity[0]=float(i);
+  window->pre(pre);window->post(post);
+ }
+ assert(window->copyTrace(61,2,0,*page)==TraceRead::ready);
+ assert(page->tokens==tokens&&page->count==tracePageCapacity&&page->total==899&&page->firstPair==2);
+ const auto& first=page->samples[0];
+ assert(first.pair==2&&first.preQpc==103&&first.postQpc==104&&first.timeStep==.016f);
+ assert(first.pre[0].world[9]==2.f&&first.post[0].world[9]==3.f&&first.post[2].angularVelocity[0]==1.f);
+ for(std::size_t i=0;i<tokens.size();++i)assert(!first.pre[i].key&&!first.post[i].key);
+ assert(window->copyTrace(61,2,898,*page)==TraceRead::ready&&page->offset==898&&page->count==1);
+ assert(page->samples[0].pair==900&&page->samples[0].post[0].world[9]==901.f);
+ assert(window->copyTrace(61,2,899,*page)==TraceRead::refused);
+ assert(window->copyTrace(62,2,0,*page)==TraceRead::refused&&window->copyTrace(61,3,0,*page)==TraceRead::refused);
+ window->captureDropped();
+ assert(window->copyTrace(61,2,0,*page)==TraceRead::refused);
+ auto changed=std::make_unique<ObjectWindow>();assert(changed->request(71,2));
+ changed->pre(observation(100));changed->post(observation(101));assert(changed->armTrace(71,2,tokens));
+ auto wrong=observation(103);wrong.epoch=3;changed->pre(wrong);
+ assert(changed->copyTrace(71,2,0,*page)==TraceRead::refused);
+ std::cout<<"paired trace: 900-step cap, completed-only pages, exact tokens, no pre-arm frame, epoch and drop rejection passed\n";
+}
 int main() {
  using namespace claw::witness;
  assert(compatible({2,0,0},{3,24,0}));
@@ -168,5 +214,5 @@ int main() {
  for(int i=0;i<4;i++)threads.emplace_back([&]{for(int j=0;j<10000;j++)parallel.record(.02f,j+1,3);});
  for(auto& t:threads)t.join();a=parallel.read();assert(a.coherent&&a.count+a.droppedEvents==40000&&a.invalidEvents==0&&a.lastThreadId==3);
  std::cout<<"witness ABI, finite values, coherent publication and bounded contention checks passed\n";
- objectTests();dynamicsTests();constraintTests();frameBufferTests();
+ objectTests();dynamicsTests();constraintTests();frameBufferTests();traceTests();
 }

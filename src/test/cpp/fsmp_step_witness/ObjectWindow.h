@@ -1,8 +1,10 @@
 #pragma once
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cmath>
 #include <cstdint>
+#include <memory>
 
 namespace claw::witness {
 constexpr std::size_t objectCapacity=128;
@@ -127,6 +129,22 @@ struct WindowSnapshot {
     ConstraintFailure constraintFailure{};
     std::array<ConstraintPose,constraintCapacity> constraints{};
 };
+
+inline constexpr std::size_t traceBodyCount = 4;
+inline constexpr std::size_t tracePageCapacity = 16;
+using TraceTokens = std::array<std::uint32_t, traceBodyCount>;
+struct TraceSample {
+    std::uint32_t pair{};
+    std::uint64_t preQpc{}, postQpc{};
+    float timeStep{};
+    std::array<ObjectPose, traceBodyCount> pre{}, post{};
+};
+struct TracePage {
+    TraceTokens tokens{};
+    std::uint32_t firstPair{}, total{}, offset{}, count{};
+    std::array<TraceSample, tracePageCapacity> samples{};
+};
+enum class TraceRead { ready, notComplete, refused, busy };
 // One fixed-memory, one-window collector. Main tasks may copy under a try-gate;
 // callbacks NEVER wait, allocate, call engine APIs, or retain a Bullet pointer.
 class ObjectWindow {
@@ -134,6 +152,12 @@ class ObjectWindow {
     std::atomic<std::uint64_t> requestedNonce{},requestedEpoch{},dropped{};
     std::atomic<bool> finished{};
     WindowSnapshot state{};
+    struct Trace {
+        TraceTokens tokens{};
+        std::uint32_t firstPair{}, count{};
+        std::array<TraceSample, pairedStepLimit> samples{};
+    };
+    std::unique_ptr<Trace> trace;
     bool enter() noexcept {
         if(!gate.test_and_set(std::memory_order_acquire))return true;
         dropped.fetch_add(1,std::memory_order_relaxed);return false;
@@ -243,8 +267,62 @@ public:
         if(!state.pairedSteps||frame.dt<state.minimumPairedHostTimeStep)state.minimumPairedHostTimeStep=frame.dt;
         state.summedPairedHostTimeStep+=static_cast<double>(frame.dt);
         ++state.pairedSteps;state.lastPostQpc=frame.qpc;state.lastPostThread=frame.thread;state.awaitingPost=false;
+        if(trace&&state.pairedSteps>=trace->firstPair) {
+            auto& sample=trace->samples[trace->count++];
+            sample.pair=state.pairedSteps;
+            sample.preQpc=state.lastPreQpc;
+            sample.postQpc=state.lastPostQpc;
+            sample.timeStep=frame.dt;
+            for(std::size_t i=0;i<traceBodyCount;++i) {
+                const auto& body=state.objects[trace->tokens[i]-1];
+                sample.pre[i]=body.lastPre;
+                sample.post[i]=body.lastPost;
+                sample.pre[i].key=sample.post[i].key=0;
+            }
+        }
         if(state.pairedSteps==pairedStepLimit){state.complete=true;finished.store(true,std::memory_order_release);}
         leave();
+    }
+    bool armTrace(std::uint64_t nonce, std::uint64_t epoch, TraceTokens tokens) {
+        if(!nonce||!epoch||!requested())return false;
+        // Allocation is performed by the consumer before it acquires the gate.
+        auto candidate=std::make_unique<Trace>();
+        if(gate.test_and_set(std::memory_order_acquire))return false;
+        const auto admitted=[&] {
+            if(trace||!state.started||state.complete||state.failure!=WindowFailure::none||
+               state.nonce!=nonce||state.epoch!=epoch||dropped.load())return false;
+            for(std::size_t i=0;i<tokens.size();++i) {
+                if(!tokens[i]||tokens[i]>state.count||!state.objects[tokens[i]-1].initialPre.rigidBody)return false;
+                for(std::size_t j=0;j<i;++j)if(tokens[j]==tokens[i])return false;
+            }
+            // If a pre callback is already in, begin with the next full pair.
+            const auto first=state.pairedSteps+(state.awaitingPost?2u:1u);
+            if(first>pairedStepLimit)return false;
+            candidate->tokens=tokens;
+            candidate->firstPair=first;
+            trace=std::move(candidate);
+            return true;
+        }();
+        leave();
+        return admitted;
+    }
+    TraceRead copyTrace(std::uint64_t nonce, std::uint64_t epoch, std::uint32_t offset, TracePage& out) noexcept {
+        if(gate.test_and_set(std::memory_order_acquire))return TraceRead::busy;
+        const auto result=[&] {
+            if(!trace||state.nonce!=nonce||state.epoch!=epoch||state.failure!=WindowFailure::none||dropped.load())
+                return TraceRead::refused;
+            if(!state.complete)return TraceRead::notComplete;
+            if(offset>=trace->count||trace->firstPair+trace->count-1!=pairedStepLimit)return TraceRead::refused;
+            out.tokens=trace->tokens;
+            out.firstPair=trace->firstPair;
+            out.total=trace->count;
+            out.offset=offset;
+            out.count=std::min<std::uint32_t>(tracePageCapacity,out.total-offset);
+            for(std::uint32_t i=0;i<out.count;++i)out.samples[i]=trace->samples[offset+i];
+            return TraceRead::ready;
+        }();
+        leave();
+        return result;
     }
     bool copy(WindowSnapshot& out) noexcept {
         if(gate.test_and_set(std::memory_order_acquire))return false;

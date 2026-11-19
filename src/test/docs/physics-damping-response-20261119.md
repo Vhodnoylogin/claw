@@ -94,5 +94,20 @@ result must quarantine the owned fixture. Never mark it applied or issue a
 compensating Update. Known-success cleanup removes only the reserved test key.
 No production DLL, runtime assets, or test witness API depend on the script.
 The local build passed the Papyrus compiler against the installed SE imports
-and the four declared SKEE signatures. Actual dispatch, timing and readback
-of this new actuator are still unverified.
+and the four declared SKEE signatures. TEST SE run `20261119-162944-d16c69`
+returned typed 2. Its quiet pairs were 60, 79 and 94, with the first post-call
+native read at pair 144. The 50-pair gap (.8313188 seconds) exceeded the same
+30-pair limit. Host observation saw .66246 seconds before the typed return and
+.18593 seconds from that return to the ready native read. These host intervals
+do not measure time spent inside individual Papyrus operations. The compound
+call did not reduce the observed gap. The result remains inconclusive.
+The reserved key was removed during known cleanup, all 31 outputs stayed exact,
+and the same 900-pair window, normal game exit and custody were verified.
+The raw timing and restoration receipts are under
+`Builds/claw-damping-resume-20261119/a1-compound-01/` and alongside it.
+
+A separate [paired pose trace](../cpp/fsmp_step_witness/README.md) can preserve
+whole pre/post poses across polling gaps. A prospective experiment still needs
+an independently recorded acknowledgement boundary, an exact owned actor and
+catalog, and the original physical input and timing gates. Neither retained
+case can be retroactively qualified with this instrumentation.

@@ -205,3 +205,22 @@ objects that cannot be uniquely associated stay unqualified. Bullet motion plus
 zero engine-observer motion isolates a downstream binding/writeback/visibility
 boundary; it does not by itself prove engine overwrite. Nonzero local engine
 transforms are not required by the provider, which writes WORLD fields only.
+# Optional paired pose trace
+
+Version 0.0.5 adds a separate observation to the existing single 900-pair
+window. Once that window has a stable object catalog, `ArmTrace` takes the
+exact nonce and four distinct rigid-body tokens. It allocates bounded storage
+on the consumer side. Provider callbacks never allocate, wait or retain a
+provider pointer. A pair whose pre callback preceded the arm is skipped.
+
+`ReadTrace(nonce, offset)` returns up to 16 consecutive complete pre/post pairs
+from the same completed window, including QPC bounds, host timestep and the
+four ordered poses. Nonces, load epochs, callback drops, incomplete windows
+and catalog or constraint failures remain explicit refusal boundaries.
+The original `ReadState` API and schema are unchanged.
+
+The trace records what the provider observed. It has no input-application
+marker and cannot decide that a matching pose was caused by a particular
+write. A prospective test must establish the actuator boundary separately
+before using the trace to qualify a held sample. Earlier results retain their
+original criteria and outcomes.

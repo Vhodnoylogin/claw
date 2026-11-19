@@ -254,9 +254,49 @@ std::string beginWindow(RE::StaticFunctionTag*,std::int32_t nonce) {
     if(!context->beginReason.empty())out["reason"]=context->beginReason;
     return out.dump();
 }
+bool armTrace(RE::StaticFunctionTag*,std::int32_t nonce,std::int32_t first,std::int32_t second,std::int32_t third,std::int32_t fourth) {
+    if(!context||context->providerState.load(std::memory_order_acquire)!=2||
+       nonce<=0||first<=0||second<=0||third<=0||fourth<=0)return false;
+    try {
+        return objectWindow.armTrace(nonce,context->loadEpoch.load(),{
+            static_cast<std::uint32_t>(first),static_cast<std::uint32_t>(second),
+            static_cast<std::uint32_t>(third),static_cast<std::uint32_t>(fourth)});
+    } catch(...) {return false;}
+}
+std::string readTrace(RE::StaticFunctionTag*,std::int32_t nonce,std::int32_t offset) {
+    Json result={{"schema","claw-fsmp-paired-trace/1"},{"status","refused"},{"nonce",nonce},
+                 {"pid",GetCurrentProcessId()},{"qpcFrequency",context?context->frequency:0}};
+    if(!context||context->providerState.load(std::memory_order_acquire)!=2||nonce<=0||offset<0)return result.dump();
+    const auto epoch=context->loadEpoch.load();
+    result["loadEpoch"]=epoch;
+    auto page=std::make_unique<claw::witness::TracePage>();
+    const auto status=objectWindow.copyTrace(nonce,epoch,static_cast<std::uint32_t>(offset),*page);
+    if(status!=claw::witness::TraceRead::ready) {
+        result["status"]=status==claw::witness::TraceRead::busy?"busy":
+            status==claw::witness::TraceRead::notComplete?"not_complete":"refused";
+        return result.dump();
+    }
+    Json samples=Json::array();
+    for(std::uint32_t i=0;i<page->count;++i) {
+        const auto& row=page->samples[i];
+        Json pre=Json::array(),post=Json::array();
+        for(std::size_t j=0;j<row.pre.size();++j) {
+            pre.push_back(poseJson(row.pre[j]));
+            post.push_back(poseJson(row.post[j]));
+        }
+        samples.push_back({{"pair",row.pair},{"preQpc",row.preQpc},{"postQpc",row.postQpc},
+                           {"hostTimeStep",row.timeStep},{"pre",std::move(pre)},{"post",std::move(post)}});
+    }
+    if(epoch!=context->loadEpoch.load()||context->providerState.load(std::memory_order_acquire)!=2)return result.dump();
+    result.update({{"status","ready"},{"tokens",page->tokens},{"firstPair",page->firstPair},
+                   {"total",page->total},{"offset",page->offset},{"samples",std::move(samples)}});
+    return result.dump();
+}
 bool papyrus(RE::BSScript::IVirtualMachine* vm) {
     if(!vm)return false;vm->RegisterFunction("ReadState","CLAWFSMPWitness",readState);
-    vm->RegisterFunction("BeginWindow","CLAWFSMPWitness",beginWindow);return true;
+    vm->RegisterFunction("BeginWindow","CLAWFSMPWitness",beginWindow);
+    vm->RegisterFunction("ArmTrace","CLAWFSMPWitness",armTrace);
+    vm->RegisterFunction("ReadTrace","CLAWFSMPWitness",readTrace);return true;
 }
 void providerMessage(SKSE::MessagingInterface::Message* message) {
     if(!message||!context||!message->sender||_stricmp(message->sender,"hdtSMP64")!=0)return;
@@ -294,12 +334,12 @@ bool supported(const SKSE::QueryInterface* s) {
 }
 }
 extern "C" __declspec(dllexport) constinit SKSE::PluginVersionData SKSEPlugin_Version=[] {
-    SKSE::PluginVersionData v;v.PluginVersion({0,0,4,0});v.PluginName("CLAWFSMPWitness");v.AuthorName("CLAW contributors");
+    SKSE::PluginVersionData v;v.PluginVersion({0,0,5,0});v.PluginName("CLAWFSMPWitness");v.AuthorName("CLAW contributors");
     v.versionIndependenceEx=SKSE::PluginVersionData::kVersionIndependentEx_AddressLibraryV5;
     v.compatibleVersions[0]=SKSE::RUNTIME_SSE_1_7_104.pack();v.MinimumRequiredXSEVersion({2,3,1,0});return v;
 }();
 extern "C" __declspec(dllexport) bool SKSEPlugin_Query(const SKSE::QueryInterface* s,SKSE::PluginInfo* info) {
-    if(!info)return false;info->infoVersion=SKSE::PluginInfo::kVersion;info->name="CLAWFSMPWitness";info->version=4;return supported(s);
+    if(!info)return false;info->infoVersion=SKSE::PluginInfo::kVersion;info->name="CLAWFSMPWitness";info->version=5;return supported(s);
 }
 extern "C" __declspec(dllexport) bool SKSEPlugin_Load(const SKSE::LoadInterface* s) {
     if(!supported(s))return false;

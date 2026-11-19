@@ -9,7 +9,7 @@ CONSTRAINT_AXES='linear xyz; angular xyz'
 
 def integer(value,low=0):return type(value) is int and value>=low
 def number(value):return type(value) in (int,float) and math.isfinite(value)
-def parse(text,serial=None):
+def read_json(text):
     def pairs(items):
         out={}
         for key,value in items:
@@ -17,6 +17,11 @@ def parse(text,serial=None):
             out[key]=value
         return out
     value=json.loads(text,object_pairs_hook=pairs,parse_constant=lambda x:(_ for _ in ()).throw(ValueError('Nonfinite JSON')))
+    if type(value) is not dict:raise ValueError('Expected a JSON object')
+    return value
+
+def parse(text,serial=None):
+    value=read_json(text)
     if (value.get('schema') not in SCHEMAS or value.get('status') not in ('pending','ready')
         or not integer(value.get('requestSerial'),1) or not integer(value.get('pid'),1)
         or not integer(value.get('qpcFrequency'),1) or value.get('provider',{}).get('status')!='ready'
