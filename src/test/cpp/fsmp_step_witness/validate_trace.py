@@ -1,5 +1,8 @@
 """Check a completed trace against the corresponding final witness snapshot."""
-from validate_snapshot import integer, number, parse, pose, read_json
+if __package__:
+    from .validate_snapshot import integer, number, parse, pose, read_json
+else:
+    from validate_snapshot import integer, number, parse, pose, read_json
 
 
 PAGE_FIELDS = {'schema', 'status', 'nonce', 'pid', 'qpcFrequency', 'loadEpoch',
