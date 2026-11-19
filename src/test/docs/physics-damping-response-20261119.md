@@ -160,3 +160,27 @@ and restoration and qualified the sampled A1 baseline. The A/B/A comparison
 and damping effect remain unqualified. Evidence:
 `Builds/claw-fsmp-paired-trace-20261119/se-a1-measurement-01-evaluation.json`,
 SHA256 `5d08fa115a3cb34d906c6ae7956fdebef3187b114a051c37d9b18589a8f4e96c`.
+
+## Single-setting B trial: rotation bound refused
+
+TEST SE run `20261119-181503-de24fa` changed only the left joint's linear-X
+damping from .4 to 0. The controller retained the full 900-pair window,
+79 ready ReadStates and all 31 post-response values. The older polled input
+gap was 34 pairs from quiet 103 to readout 137. The prospective independent
+trace analysis identified the transition at 132 and the complete held pair
+at 133, at the unchanged limit of 30 pairs.
+
+The frozen offline evaluator then refused the trial at its .004 whole-window
+relative-rotation enclosure. This leaves the sampled B measurement, the
+A/B/A contrast and damping effect unqualified. A2 remains conditional on
+a qualified B. The refusal itself does not identify whether true rotation
+or uncertainty in its representation exceeded the range.
+
+The retained game exited normally. All 128 snapshots, 268 cold pins, 261 cold
+VFS winners and 266 staged winners were independently verified. The temporary
+profile was archived and removed. Evidence in
+`Builds/claw-fsmp-paired-trace-20261119/`:
+`se-b-measurement-01-restoration.json` (SHA256
+`028d4c5bb7f9446983cc20aec595caef2bbfcb19ff5414e322f99c6496a52c3`)
+and `se-b-measurement-01-evaluation.json` (SHA256
+`8a5bdc703fcfec7cd6db3e18871c24da4dcc475381a6b4907a247301675a7bd5`).
