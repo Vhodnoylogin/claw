@@ -1309,6 +1309,17 @@ first-person rendering and the equipment round trip remain unverified.
 Typed retirement and native exit 0 completed, and the original 50 staged
 paths and 78 VFS routes reconciled.
 
+Run 152559 used the same stock armor and the ordered SKSE snapshots
+without assuming one OS thread. `GetWornForm` reported empty, marker,
+then empty, with an inventory count of one throughout. On removal,
+the active slot emptied, the buffered slot retained a bare `skinned`
+flag, and its item, addon, path, texture, handle and clone all cleared.
+The actor graph returned from 214 to its original 213 objects. The
+original test's strict buffered-flag gate remains failed. A separate
+replay confirmed retirement of the actual slot resources and clone,
+including stable other slots and the untouched player. Native exit 0
+and complete restoration were independently verified.
+
 ### SKSE task queue ownership
 
 VR run 144023 accepted the typed FSMP probe request and then refused it
