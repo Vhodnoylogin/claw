@@ -1256,3 +1256,13 @@ The exact submitted palette was still absent or incompatible in native eye
 readback. This negative result does not identify which image criterion failed.
 The independent control verified all 23 restored files and zero game starts.
 The limited virtual render path remains unqualified even for the control scene.
+
+The 135451 partition-specific check passed in Skyrim VR. It read the four
+vertices, two ordered triangles, vertex map, matching one-bone skin links
+and four exact unit weights from the loaded marker and its independent
+clone. Both maintained their authored zero inline counts. The live player
+and NPC graph structure was unchanged. The observer opened and retired
+once, the game exited normally, and all 49 staged paths/77 live VFS entries
+were reconciled. This qualifies the detached resource read for that marker.
+An actor-graph attachment, skin rebinding to the actor, first-person dispatch
+and hardware rendering remain separate work.
