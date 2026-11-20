@@ -1384,6 +1384,25 @@ fields, so the following motion case needs the exact integration
 duration and pre-step control diagnostics. Native and Bridge exit were
 both 0 with 146 restored files and 76 verified VFS wins.
 
+Run 161213 returned the typed refusal `native_solver_would_integrate_multiple_steps`
+for one private P1 request. The native worker supplied a 29.000 ms frame interval
+and a 16.667 ms fixed tick. Under the stock FSMP loop the residual 12.333 ms is
+above its integration cutoff, so this frame needs two substeps. The response
+recorded zero force additions. Mechanical preconditions evaluated after this
+timing gate remain unverified for that request. The passive association, normal
+retirement and native exit 0 still passed. The independent terminal reconciled
+146 preimages, 48 staged paths and 76 VFS winners. Its SHA-256 is
+`bfcb876d165b52547f270340ca370b651c89fed1e793d3cb36b3efdf73d52d74`.
+
+A separate offline bench used the same pinned Bullet binaries, Spring2 settings
+and archived actor pose. For 25–40 ms cases, it applied one bounded central force
+to the left role, retained it through the actual stock substeps and cleared at
+the end. The sampled left-axis contrast was 0.050–0.061 units with zero change
+at the right control. Longer intervals in the bench could exceed the original
+0.065-unit acceptance band. The offline receipt SHA-256 is
+`7c9a218d5baedd622bf30021a5ccf1f41ddb42fff25c1052959ffd24dab89d52`.
+A controlled two-substep game response remains to be measured.
+
 ### Stock male first-person armor model route
 
 The private route probe changed only male `MOD4` in the diagnostic armor
