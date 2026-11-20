@@ -156,18 +156,33 @@ def dependencies(pynifly=None, morphbench=None):
     mb = mb.resolve(strict=True)
     if mb.is_file():
         mb = mb.parent
-    required = [addon / 'pyn/pynifly.py', addon / 'NiflyDLL.dll', addon / 'tri/tripfile.py', mb / 'morphbench/nifpatch.py']
-    if not all(p.is_file() for p in required):
+    mb_source = next((root for root in (mb / 'src/main', mb) if (root / 'morphbench/nifpatch.py').is_file()), None)
+    required = [addon / 'pyn/pynifly.py', addon / 'NiflyDLL.dll', addon / 'tri/tripfile.py']
+    if mb_source is None or not all(p.is_file() for p in required):
         raise ValueError('Missing configured PyNifly/Morphbench files')
+    nifpatch = mb_source / 'morphbench/nifpatch.py'
+    required.append(nifpatch)
     sys.path.insert(0, str(addon))
-    sys.path.insert(0, str(mb))
+    sys.path.insert(0, str(mb_source))
     from pyn import pynifly as api
-    from morphbench.nifpatch import NifPatch
+    # The archived reader and current checkout can be used in one process.
+    # Resolve the reader's relative imports without reusing an ambient Morphbench package.
+    reader_digest = sha256(nifpatch)
+    reader_identity = f'{nifpatch.parent}\0{reader_digest}'.encode('utf-8')
+    package = '_claw_vr_morphbench_' + hashlib.sha256(reader_identity).hexdigest()
+    if package not in sys.modules:
+        namespace = importlib.util.spec_from_loader(package, loader=None, is_package=True)
+        namespace.submodule_search_locations = [str(nifpatch.parent)]
+        sys.modules[package] = importlib.util.module_from_spec(namespace)
+    reader = importlib.import_module(package + '.nifpatch')
     api.NifFile.Load(str(addon / 'NiflyDLL.dll'))
     spec = importlib.util.spec_from_file_location('claw_vr_tripfile', addon / 'tri/tripfile.py')
     trip = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(trip)
-    return api, NifPatch, trip.TripFile, {str(p): sha256(p) for p in required}
+    pins = {str(p): sha256(p) for p in required}
+    if pins[str(nifpatch)] != reader_digest:
+        raise ValueError('Morphbench NIF reader changed during dependency loading')
+    return api, reader.NifPatch, trip.TripFile, pins
 
 
 def tri_contract(TripFile, filename, nif, morph_count, *, include_trip=False):

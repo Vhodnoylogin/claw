@@ -8,6 +8,7 @@ import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str((Path(__file__).resolve().parents[4] / 'src/main/python/vr')))
 import body_resource as vr
@@ -156,6 +157,52 @@ class AdmissionTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Unsupported exact input'):
                 vr.build(source, source / 'skeleton.nif', Path(vr.__file__).with_name('profile.json'), output)
             self.assertFalse(output.exists())
+
+
+class DependencyTests(unittest.TestCase):
+    def test_current_and_flat_morphbench_readers_use_the_configured_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory).resolve()
+            repo, addon, current, archive = (base / name for name in ('claw', 'addon', 'morphbench', 'snapshot'))
+            repo.mkdir()
+            for name, code in {
+                'pyn/__init__.py': '',
+                'pyn/pynifly.py': 'class NifFile:\n    Load = staticmethod(lambda path: None)\n',
+                'NiflyDLL.dll': 'fixture',
+                'tri/tripfile.py': 'class TripFile: pass\n',
+            }.items():
+                path = addon / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(code)
+            readers = {}
+            for checkout, source, label in ((current, current / 'src/main', 'current'), (archive, archive, 'archive')):
+                package = source / 'morphbench'
+                package.mkdir(parents=True)
+                (checkout / 'mb.py').write_text('raise AssertionError("launcher ran")\n')
+                (package / '__init__.py').write_text('raise AssertionError("whole application ran")\n')
+                (package / 'marker.py').write_text(f'VALUE = {label!r}\n')
+                reader = package / 'nifpatch.py'
+                reader.write_text('from .marker import VALUE\nclass NifPatch:\n    source = VALUE\n')
+                readers[label] = reader
+            stale = current / 'morphbench/nifpatch.py'
+            stale.parent.mkdir()
+            stale.write_text('raise AssertionError("obsolete flat copy loaded")\n')
+            (repo / 'build.local.json').write_text(json.dumps({'pynifly': str(addon), 'morphbench': '../morphbench/mb.py'}))
+            foreign = SimpleNamespace(NifPatch=object())
+            with patch.object(vr, 'ROOT', repo), patch.object(sys, 'path', sys.path[:]), \
+                    patch.dict(sys.modules, {'morphbench.nifpatch': foreign}):
+                sys.modules.pop('pyn.pynifly', None)
+                sys.modules.pop('pyn', None)
+                for label, source in (('current', None), ('archive', archive), ('archive', archive / 'mb.py')):
+                    with self.subTest(label=label, source=source):
+                        _, selected, _, pins = vr.dependencies(morphbench=source)
+                        reader = readers[label]
+                        self.assertEqual(label, selected.source)
+                        self.assertEqual(reader, Path(sys.modules[selected.__module__].__file__))
+                        self.assertEqual(vr.sha256(reader), pins[str(reader)])
+                readers['current'].write_text('class NifPatch:\n    source = "updated"\n')
+                self.assertEqual('updated', vr.dependencies()[1].source)
+                self.assertIs(foreign, sys.modules['morphbench.nifpatch'])
 
 
 class BodyContractTests(unittest.TestCase):

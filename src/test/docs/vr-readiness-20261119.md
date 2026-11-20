@@ -979,3 +979,52 @@ The three independent local restoration reports are under
 starts, 59 VR starts and 68 SteamVR platform attempts. Controlled P1
 response, stock CBPC emission contrast, HMD image content and dynamic
 first-person sex selection remain unverified.
+
+## Prepared contact and renderer trials
+
+The next P1 trial observes a quiet calibration screen after the startup fade,
+sends one right-trigger press for up to 1.25 seconds and releases it even if
+the observation fails. Acceptance requires the actual Main Menu transition.
+The successful and failed earlier starts used identical archived calibration
+preferences and both recorded driver acknowledgement. Ten offline checks
+cover the revised startup and inherited female actor gates. The new preflight
+found another running Steam application and stopped before writing admission
+or launching MO2, SteamVR or Skyrim. The prepared trial is under
+`Builds/claw-vr-fsmp-p1-startup-20261120/`.
+
+The private CBPC trial uses one disposable male NPC and the stock controller
+sphere at the tail. It verifies placement and attachment, observes four holds
+with approaching, separating, approaching and detached geometry, then checks
+the scoped CBPC events and ordinary teardown independently. Its cadence covers
+the minimum dwell even with a fast observer. All six offline controls pass.
+The trial stages 23 files and requires 50 positive VFS winners and five absent
+competing modules. It is prepared under
+`Builds/claw-vr-cbpc-near-far-20261120/`; the callback comparison is unrun.
+If the installed MO2 API Bridge advertises batch verification, this trial also
+checks all 55 paths together against the exact copied profile and Bridge boot.
+Three offline reply checks cover the profile scope, changed hashes and missing
+providers. The previously installed Bridge still uses the existing per-path
+route. The new Bridge candidate and its batch path await live verification.
+
+Slot 107 still uses its original TailBone01 capsule. A fixed-size translation
+enclosed both VR65 samples that had .517791 units of assigned excess. In three
+independent recorded VR67 samples it increased the sampled outer-surface P95
+distance by .565627 units. Two withheld compound bends also retained assigned
+excess of .080903 and .160943. The candidate failed the coverage and surface
+gate. The retained result under `Builds/claw-contact-slot107-fixed-radius-20261120/`
+has SHA-256 `da6d42765bf999f3168f39aaea6671bed12211e55d7619ac1f62d9313ac53166`.
+
+The new external eye capture used a real D3D11 WARP texture in its offline
+copy and PNG check. A separate paired reader checks live process identity,
+the measured body route, advancing frame observations and held neutral and
+downward views. Its six offline checks include a control with no CLAW world
+roles. Pixels from a Skyrim VR compositor and body visibility still require
+the live run. See `Builds/claw-vr-render-capture-20261120/`.
+
+The VR resource loader now resolves both the current Morphbench source layout
+and historical flat snapshots. It loads the NIF reader from the selected
+source in a private namespace and checks the source digest before and after
+dependency loading. The real current and historical NIF readers opened the
+same 490-block donor. The current VR-body component passed 17 checks, the
+broader VR suite with exact archived resources passed 88 of 89 (one optional
+reference missing), and the existing native Release suite passed 24 checks.
