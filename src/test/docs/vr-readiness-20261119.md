@@ -1418,6 +1418,20 @@ not qualify transfer to the skinned scene or pixels. Terminal SHA-256
 `dd3480ed449eaddea0a259e80d111f0dd08fb381e56aee7536d1e9b346eda88d`,
 replay SHA-256 `fcf88e763f86739319a7e68b0f4092e42fba94ef29f935e0f7ced6e47ae8e3ec`.
 
+Run 164906 confirmed the full two-substep test using the corrected
+scope-field parser. The native solver moved the left joint +0.053481 units;
+the right joint and the same-process passive comparison stayed at zero.
+The ordinary force clear, actor retirement, native exit 0 and complete
+restoration passed. The private writer probe produced no success row.
+Review of the pinned FSMP system showed the stock write loop skips
+kinematic objects. The probe had required virtual writer calls for the
+two kinematic anchors as well as the moving roles. Read-only anchor
+sampling around the normal sync and exact writes for the moving roles
+are separate requirements for its successor. Terminal SHA-256
+`82a707f20626a7e8ff4306ee9249000db5be7080d30626e1889642b837342d5a`,
+motion comparison SHA-256
+`c458f5a6371c3ea326068131228a0e349f4bff94c836856d280aa3c87235a7ef`.
+
 ### Stock male first-person armor model route
 
 The private route probe changed only male `MOD4` in the diagnostic armor
