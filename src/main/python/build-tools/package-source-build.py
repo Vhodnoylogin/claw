@@ -627,6 +627,12 @@ def selection_audit(entries):
         if (len(groups) != 1 or groups[0].get('type') != 'SelectExactlyOne' or len(flags) != 2 or
                 {flag.text for flag in flags} != {'none', 'fsmp'}):
             raise ValueError('Motion requires one mutually exclusive None/Faster HDT-SMP group')
+        options = groups[0].findall('plugins/plugin')
+        mode_defaults = {option.findtext("conditionFlags/flag[@name='physicsMode']"):
+                         option.find('typeDescriptor/type').get('name')
+                         for option in options if option.find('typeDescriptor/type') is not None}
+        if len(options) != 2 or mode_defaults != {'none': 'Recommended', 'fsmp': 'Optional'}:
+            raise ValueError('None must be the default and Faster HDT-SMP must be opt-in')
     if json.loads(entries["00 Base/" + MODEL_SWAP_OVERRIDE]) != []:
         raise ValueError("Elegant model-swap compatibility override must be an empty JSON array")
     audit_external_coats(entries)
@@ -673,6 +679,8 @@ def selection_audit(entries):
                 raise ValueError("Selected body matrices/defaults differ from the independent choices")
             if physics == 'fsmp' and any(not source.startswith(MOTION_PREFIX + 'FSMP/') for name, source in installed.items() if name.endswith('.nif')):
                 raise ValueError('FSMP selection retained an unhooked core model')
+            if physics != 'fsmp' and any(not source.startswith('00 Base/') for name, source in installed.items() if name.endswith('.nif')):
+                raise ValueError('Motion-disabled selection must use the base models')
             if physics != 'fsmp' and any(source.startswith(MOTION_PREFIX + 'FSMP/') for source in installed.values()):
                 raise ValueError('Unselected FSMP payload installed')
             rows.append({"maleFamily": male, "family": family, "obody": host, **({'physics': physics} if motion else {}), "runtimeFiles": len(installed),

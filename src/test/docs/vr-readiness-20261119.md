@@ -1964,3 +1964,29 @@ distinct shutdown result at `0xAB4F26`, Windows record 103021, with all
 values are, respectively,
 `5a86faf8f0d7d9428b923d80fc452f30329fdb97146b7b9db29dd225b720e599`
 and `1e8a71dc9cc3f92caeb042efa78f170377a0710adcdc7b433d51627a3e690825`.
+
+With AI disabled on the disposable subject, run `20261120-214502-d115a0`
+held the EarR capsule for 52 callbacks across 1.5023892 seconds with peak
+endpoint drift of 0.045331 game units. The minimum near and far gaps were
++24.86175 and +22.68365 units. The controller returned to neutral. Windows
+record 103023 independently confirmed the same exit fault. The restoration
+checker verified 141 preimages. Terminal SHA-256
+`08f8f6be5ff27a0171f2edbcaab83afedf54653cb951ef72727a3dd94def9b0a`.
+
+Run `20261120-221447-5f514f` stopped at the initial placement. The subject
+settled 1.05 game units from the target in XY and 12.13 units below the
+expected floor height. The scenario retired the subject before AI disable,
+adaptive correction or any contact operation. The game faulted at the same
+exit offset, Windows record 103027. The verifier restored 141 preimages and
+checked 70 VFS winners. Terminal SHA-256
+`432a25a318c0f47e39132f46768d7a2b5a5fe9e6c2ba9593c047f6517dfb35e7`.
+
+The paired FSMP writer run `20261120-222030-df5772` passed the owned NPC
+fixture, provider lease and retirement. The game exited with code 0, and
+Bridge and the independent process observation agreed. The restoration
+verifier checked 146 preimages and 76 VFS winners. The physics comparison
+remains unqualified. The provider reached the stock writer, recorded all
+four roles in both masks, then emitted `worker_or_sync_clock` at role 2.
+The paired audit found no two complete writer windows. Inspect the ordered
+sync-end clock receipt before another amplitude comparison. Terminal SHA-256
+`1c48eee5a7a5a556b329b6eb827e294859ec23141a34104380d8aecb4c9af0c1`.

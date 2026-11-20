@@ -15,6 +15,10 @@ rebind problem has a provider-supported solution. Compilation, a void callback a
 changes do not prove physics simulation. Establish actual provider state and
 controlled motion in the game; do not mask uncertainty with qualification flags.
 
+Keep each CLAW body and appearance component installable with physics turned
+off. Default to the static model and make optional motion or contact support
+an explicit choice for players.
+
 ## Deferred CBPC actor rebinding
 
 Actual 13 November case142827-3a903c transformed a human NPC successfully, but

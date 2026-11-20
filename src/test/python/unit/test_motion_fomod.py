@@ -130,6 +130,25 @@ class MotionFomodTests(unittest.TestCase):
         altered = dict(entries); altered['fomod/ModuleConfig.xml'] = ET.tostring(config)
         with self.assertRaisesRegex(ValueError, 'mutually exclusive'): self.package.selection_audit(altered)
         choices.set('type', 'SelectExactlyOne')
+        none, fsmp = choices.findall('plugins/plugin/typeDescriptor/type')
+        none.set('name', 'Optional')
+        fsmp.set('name', 'Recommended')
+        altered['fomod/ModuleConfig.xml'] = ET.tostring(config)
+        with self.assertRaisesRegex(ValueError, 'must be opt-in'):
+            self.package.selection_audit(altered)
+        none.set('name', 'Recommended')
+        fsmp.set('name', 'Optional')
+        pattern = next(p for p in config.findall('conditionalFileInstalls/patterns/pattern')
+                       if p.find("dependencies/flagDependency[@flag='physicsMode'][@value='none']") is not None)
+        body = pattern.find('files/file')
+        base_source = body.get('source')
+        moved_source = base_source.replace('00 Base/', 'test misplaced body/', 1)
+        for row in pattern.findall('files/file'):
+            if row.get('source') == base_source:
+                row.set('source', moved_source)
+        altered['fomod/ModuleConfig.xml'] = ET.tostring(config)
+        with self.assertRaisesRegex(ValueError, 'must use the base models'):
+            self.package.selection_audit(altered | {moved_source: entries[base_source]})
         with self.assertRaisesRegex(ValueError, 'known provider'):
             base.reader.resolve_selection(config, entries, native=True, male_family='HIMBO', family='3BA', physics='both')
         with self.assertRaisesRegex(ValueError, 'known provider'):

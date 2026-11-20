@@ -37,8 +37,8 @@ From repository root, default source checks are:
 python build.py test
 ```
 
-The wrapper runs unit, physics and VR suites. It does not run the compiled
-inspection validator or claim integration readiness. Direct suite commands are:
+The wrapper runs unit, physics, VR and contact-profile suites. Run the
+prepared-resource integration and inspection separately. Direct suite commands are:
 
 ```powershell
 python -m unittest discover -s src/test/python/unit -p 'test_*.py'
@@ -87,6 +87,17 @@ The historical FOMOD class additionally requires the exact retained
 This is a historical golden-release test: a newly compiled universal DLL cannot
 be relabelled as that old payload. Reference acquisition and its verification
 are separate prerequisites; no compiled reference is tracked in current main.
+
+The prepared integration also needs these explicit inputs:
+
+- `CLAW_AUTOTEST_SOURCE` points to the selected source checkout containing
+  the `skyrim_autotest` package for the transport fixtures.
+- `CLAW_MATRIX_CAPTURE_CLI` points to the matching native `claw-preset-tool`.
+  Set `CLAW_MATRIX_CAPTURE_CLI_SHA256` to check a reviewed binary pin.
+- The PlayerOnly tests require `CLAW_PLAYERONLY_PACKAGE`,
+  `CLAW_PLAYERONLY_BASELINE`, `CLAW_PLAYERONLY_ELEGANT_ARCHIVE`,
+  `CLAW_PLAYERONLY_PYNIFLY` and `CLAW_PLAYERONLY_NATIVE_DLL`. Use the archived
+  actual packages and external installed dependency inputs listed by the test.
 
 Once the required artifacts are ready:
 
