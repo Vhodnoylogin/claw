@@ -58,6 +58,14 @@ world hand with the installed VRIK profile and in the exact stock
 counterfactual. The headset renderer and dynamic selection of the
 first-person model remain open. See the [VR evidence](../../../test/docs/vr-readiness-20261119.md).
 
+CLAW supplies the werewolf mesh, its skin weights and the morph data. VRIK
+and HIGGS continue to use their normal game interfaces. The scoped VR check
+verified that transforming the player attaches the intended CLAW mesh and
+that the same mesh remains attached across a tracked head pose and return.
+The HIGGS callback supplied the observation point. Detailed ear and tail
+contacts are separate checks of CLAW's authored colliders. A change to those
+colliders does not require repeating the general tracking check.
+
 Start from the retained [VR body design](../../docs/vr-body.md),
 [head policy](../../docs/vr-head-policy.md) and
 [loaded-graph notes](../../docs/vr-loaded-graphs.md). Shared matrix mathematics

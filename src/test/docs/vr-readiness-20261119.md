@@ -1547,3 +1547,36 @@ The raw outer carrier classifier and the final disposable calibration
 check retained their own failures. The independent pose and restoration
 receipt verifies native exit 0, 122 restored preimages and 51 VFS winners.
 Its SHA-256 is `76b3e3529adbf3a3559f95b3d2235595e3c3d210cffd5e48218d229565ad1384`.
+
+The exact male candidate mesh has 22 shape IDs, and the older mesh at
+the same legacy path has 16. The observed shape IDs and cull flags agreed
+with the candidate. The visible `HEAD` geometry comprises 1,310 vertices
+and 2,329 neck and upper-torso triangles, with no positive Head-descendant
+weights. The hidden `head_CLAWHead` geometry has 8,254 vertices and 15,127
+triangles. Both retained the original broad bounds. The shared bound can
+overlap the camera even when its visible triangles are clear of it.
+
+### Fitted CBPC tail region
+
+Run 171930 measured the floor-settled subject and qualified its nominal
+near geometry for fitted male VR slot 106. The CBPC event observer armed.
+The diagnostic NPC pose reader accepted `BeginNpcContact`, then refused
+with `required child node absent`. The reader demanded the complete
+15-bone reference rig. The world observer independently saw `TailBone01`
+on the same subject. The harness had made zero shape calls when it stopped.
+The contact outcome for the fitted capsule remains open. The source profile
+and 123 file preimages restored, with 25 staged paths and 52 verified VFS
+winners. Native shutdown returned 0xC0000005. Terminal SHA-256
+`c9cf7a0bd75236d8449c9d7b3397df0f7b2323c9f578001c96f6a4614c48e73d`.
+
+### Right-ear placement trial
+
+Run 172443 identified the owned wolf and sampled its right ear. Based on
+that sample, the projected destination was 8.63 game units from the old
+reference position in the horizontal plane. The diagnostic limited the
+projection to within 2.0 units of that reference and stopped before
+`SetPosition`, the model lease or the private hand movement. It disposed
+of the actor and observed its unloaded state twice. No contact provider
+operation was issued. Native exit was 0, with 123 restored preimages,
+25 staged paths and 52 verified VFS winners. Terminal SHA-256
+`65dd85fc4000384143d06d21629fdd8278ee17bb1156becb5e000bac22b68521`.
