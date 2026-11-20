@@ -1676,3 +1676,25 @@ neutral, observed the disposable actor unloaded, and restored all 123
 preimages. Native exit was 0. The automatically written Autotest review
 and independent terminal agree. Terminal SHA-256
 `535fe5dbbbf9efff2ffa0a130553060bc6b40f646ce4ae058eb002946ea4d740`.
+
+A replay of the observed EarR transforms tested arbitrary fixed sphere centers
+in three dimensions. For poses 19 and 25, the minimum distance between the
+two capsule centerline segments was 20.20 game units. By the triangle
+inequality, even the best fixed sphere center leaves at least 3.84 units
+of surface separation at one of those poses. All eight recorded windows
+spanning at least five seconds have a pair with positive separation under
+the same bound. The actor root did not move, and the observed ear orientation
+changed. A new fixed controller position cannot cover those recorded poses.
+The next test needs frame-timed pose observations or a verified stationary
+animation covering the required contact windows. Replay SHA-256
+`83e97cb1613854bb074e6cd08d2529eac6cec181bcc334699ae3941943a05599`.
+
+Skyrim Autotest now correlates a retained nonzero exit with Windows Application
+Error Event 1000 using executable path, PID, creation time and exception code.
+Read-only replay matched `SkyrimVR.exe+0xE3ED1D` in runs 173932, 174319 and
+181509. In 173932 and 181509 the tests stopped before shape calls. In 174319
+the capsule was attached and removed with a verified callback sequence.
+The correlation identifies the repeated fault location. Its origin still
+requires independent evidence. The clean SE 182453 and VR 182908 native exits
+have no correlated fault. Replay SHA-256
+`89eee3a385f7a83d8796a2d412fb637695244e05b6cbe6807e46b77690d69c1e`.
