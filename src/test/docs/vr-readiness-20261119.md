@@ -1423,3 +1423,28 @@ Other camera routes, VRIK and HMD rendering require separate measurements.
 The outer carrier classification remained ambiguous. Native
 exit was 0, with 118 restored preimages, 253 cold files and 35 VFS
 winners. No original profile or calibration file changed.
+
+### VRIK/HIGGS world-avatar observer
+
+Run 161540 reached the owned world with VRIK and HIGGS enabled in a disposable
+profile. The inherited mapped-module verifier accepted only the stock set
+and rejected the seven-image backing request before any transformation or
+headset input. Independent restoration matched 122 snapshots, 8 staged files,
+51 VFS winners and 253 cold files. The game exited with 0xC0000005 at
+`SkyrimVR.exe+0xAB4F26` (Application event 102956). This differs from the
+earlier E3ED1D shutdown fault. The terminal SHA-256 is
+`8be4d3bfcecac6f727a4e3050d684248c13fd650f39b029816fd87fcc9c65ede`.
+
+Run 162023 used the corrected exact backing verifier. All 31 reads confirmed
+the sealed seven mapped files. The normal cast reached the applied beast
+status, with both effects clear in same-owner observations at 16.875 and
+19.141 seconds. The first observer Capture was refused before queueing a
+sample. HIGGS supplied its published interface. SKSE did not emit NewGame
+or a load notification for this Realm start, so the private observer's
+initial loading flag could not clear. CLAW's existing independent initial
+VR world fallback reached epoch 1. No virtual headset pulse was requested.
+The disposable profile's archived height offset became 1.0, after reading
+4.0 before the scenario. The source profile and 122 preimages were restored.
+The refusal and calibration discrepancy remain in the original result.
+Native exit was 0. The independent terminal SHA-256 is
+`d31a10db32ec4e08e35ebbd3fe11d435812136000b8929b3108dfd6869888a98`.
