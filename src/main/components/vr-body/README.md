@@ -51,8 +51,12 @@ selection and hardware/view behavior remain unverified.
 
 Separate one-byte controls showed world-body attachment for each sex with
 its range disabled at the tested source weight. The combined override
-compiles and passes binary readback. Native selection of the first-person
-record paths and additional source weights still require game evidence.
+compiles and passes binary readback. The fixed-profile tests observed the
+matching male and female world-body resources and eleven expected
+weight-100 outputs. A virtual controller pulse reached the wolf's named
+world hand with the installed VRIK profile and in the exact stock
+counterfactual. The headset renderer and dynamic selection of the
+first-person model remain open. See the [VR evidence](../../../test/docs/vr-readiness-20261119.md).
 
 Start from the retained [VR body design](../../docs/vr-body.md),
 [head policy](../../docs/vr-head-policy.md) and

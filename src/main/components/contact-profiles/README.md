@@ -31,6 +31,15 @@ pose envelope at the same slot count by occupying more space. A tighter
 pose-dependent result needs evaluated bone transforms, the current TRI vector
 and observations of contact in the same provider frame.
 
+The male VR replay now uses 15 observed bone transforms and the co-sampled
+effective RaceMenu vector. It covers all 32 ear/tail slots. One tail-root
+partition exceeded its rest-fit capsule by .518 owner-local units at both
+sampled poses. Moving that capsule to the pelvis increased the gap. A
+same-pose refit encloses the sampled support. The native feasibility replay
+fits those 32 regions using the same C++ enclosing function, with deduplicated
+skinned points and no engine dependencies. See the
+[replay notes](../../../test/components/contact-profiles/posed-contact.md).
+
 The enclosing fit reserves its two temporary projection arrays for the
 known support size. A paired offline benchmark measured 6–12% less CPU
 time for the complete fit on the tested machine. All 45,360 capsules
@@ -46,8 +55,8 @@ changed the measured worker median by 0.4–1.3%. Symmetric covariance ran
 504 inputs. The source retains the measured reservation and original
 arithmetic.
 
-Tests are under `src/test/components/contact-profiles/`. Native numerical parity
-and successful compilation are separate from game acceptance. HIGGS, PLANCK,
-Havok hand contact, posed geometry and actual provider consumption still require
-their own integration and game evidence. These profiles supply none of those
-features by themselves.
+Tests are under `src/test/components/contact-profiles/`. Provider consumption
+and the effect of nearby hands still need a scoped gameplay check. The CBPC
+test fixture and event witness are ready for a bounded near/far comparison
+with an independently placed and observed NPC. HIGGS and PLANCK remain
+different contact paths.
