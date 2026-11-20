@@ -1444,6 +1444,16 @@ showed no relative change in the pulse step. The same-run solver contrast
 qualified separately. The scene-transfer proof establishes applied node
 positions, while paired scene motion and rendered skin remain open.
 
+The stock writer logs `NiPoint3` float32 coordinates as round-trip decimals.
+Reconstructing the original float32 coordinates before subtracting world
+positions gave 0.053402 game units for left P1 and 0.010809 for right P1.
+Both anchors stayed identical and both dynamic positions matched their
+writer targets. The unchanged 0.01000 right-control ceiling still fails.
+The next comparison needs a passive scene write in the same scene and
+ownership bracket to distinguish background writeback from pulse cross-talk.
+Precision replay SHA-256
+`979f7302bda143d19920dfb839d6ca5f18e29f236894371e941121fbc096c59a`.
+
 The preceding 170319 attempt ended on a DevBench scene-inspection timeout
 before the NPC existed. Owned cleanup restored all inputs. Run 170659
 retained the same provider binary, then completed normal scoped
@@ -1900,3 +1910,30 @@ comparison varies the grace between the console quit request and any native
 window-close fallback. The cause remains open. Independent replay verified
 141 restored snapshots and 70 VFS winners. Terminal SHA-256
 `8a1f166fb04b83462a6c3bdc9f19ed41cccd443fd9be4f2689abaf25250251e3`.
+
+The test-only EarR reach selector requires three disjoint callback windows
+from the same actor, capture and clock. Separately measured near and far
+controller poses bracket the candidate neutral trajectory. The selector
+checks each candidate capsule pose against every calibration observation,
+and reports the measured interval with its worst margins. It rejects
+ambiguous hand positions, changes to the fixed scene controls, and callback
+or clock gaps. The archived neutral-only 205502 capture cannot satisfy the
+independent near/far requirement. The selector issues no engine commands
+and its result measures sampled geometry.
+
+The paired control `20261120-212159-f98b32` preserved the setup and repeated
+the passive 9.734-second interval. The single `qqq` was acknowledged in the
+queue. The retained process handle observed the exit after 6.609 seconds
+within the ten-second grace. Neither a native window-close fallback nor a
+forced stop occurred. The passive scenario passed and the aggregate run
+failed again at `SkyrimVR.exe+0xAB4F26` with exit `0xC0000005`, Windows record
+103013. This fault can occur without a second quit signal. The older
+VRIK/HIGGS run 161540 also hit this offset with a different observer.
+The cause remains open.
+
+The original terminal checker expected two exit observations and refused the
+new third in-grace observation. A separate audit checked the additional
+identity, time, code and raw ledger record, then reran the unchanged checks
+for the two existing stages and rehashed all 141 restored preimages and 70
+VFS winners. Terminal SHA-256
+`e75e7fa6839deb2162016ad85c3eafde98fbd497a34fe1a8529ca518a64e1417`.
