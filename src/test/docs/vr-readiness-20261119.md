@@ -1613,3 +1613,29 @@ at `SkyrimVR.exe+0xE3ED1D` (Application event 102979). All 123 preimages,
 25 staged paths and 52 VFS winners reconciled. This is evidence for one
 fixed capsule in an isolated born-werewolf fixture. Whole-profile fit,
 other regions, transformed humans and routine shutdown remain open.
+
+### Flat profile route and ear measurement limits
+
+In SE run 174916 the engine returned plugin index 12 and the same full
+fixture filename in lowercase. The diagnostic rejected the capitalization.
+The successor used the same whole-name identity and verified the exact
+combined runtime and plugin-local FormID. Run 175553 reached the authored
+flat model identity, matching data script, 52 slots and slot 44 token.
+It observed the ordinary right hand and the actual tail bone. At the
+observed floor, hand height was 7048.47 and segment endpoints 7034.06 and
+7036.97. Even perfect horizontal alignment would leave at least 3.04
+units between the collider surfaces. The scenario disabled the fixture
+without attaching a capsule. Both SE processes exited with code 0 and
+143 snapshots reconciled. Second terminal SHA-256
+`28d57eaa6c801116493d54a4489bb2963a7045508af8d7d24c068207779cda23`.
+
+In VR run 175125 the owned wolf reached the measured destination. The
+same player then displaced 1.82 units with an accompanying change to
+the HMD world transform, and the diagnostic stopped before applying the
+ear capsule. The raw log does not establish why the player moved. The
+captured ear pose also needs at least 7.81 units more vertical reach at
+the original controller height limit. An offline reroute farther from
+the player preserves the archived near and far horizontal controls.
+Vertical alignment for the actual held ear and the provider contact
+remain open. Native exit was 0xC0000005. All 123 snapshots restored.
+Terminal SHA-256 `b2acf25ab6e9476f20b3f2075bb40f01bbba15d3fcbd0b31e00c19df94186e50`.
