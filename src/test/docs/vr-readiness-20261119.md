@@ -1371,6 +1371,19 @@ preimages, 48 staged paths and 76 VFS routes. Bridge 2.3.7 agreed with
 the exact native exit 0. Controlled P1 motion and contact are still
 unqualified by this read-only run.
 
+The passive P1 derivative repeated the same role association in run
+155640. Its FSMP configuration used log level 0, which filters the
+probe's info record. Run 160113 changed only that log level byte to 3.
+The original provider and solver settings otherwise matched. The exact
+worker record joined to the qualified fifteen-role receipt. Left and
+right P1 joint gaps were 0.006196 and 0.009392 game units and the passive
+left-axis and right-magnitude changes were -0.000954 and 0.002072 units.
+The stock force accumulators cleared. The one-step stimulus policy marked
+this frame ineligible. Its point of refusal was outside the recorded
+fields, so the following motion case needs the exact integration
+duration and pre-step control diagnostics. Native and Bridge exit were
+both 0 with 146 restored files and 76 verified VFS wins.
+
 ### Stock male first-person armor model route
 
 The private route probe changed only male `MOD4` in the diagnostic armor
