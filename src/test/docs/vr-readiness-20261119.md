@@ -2030,3 +2030,26 @@ attempts restored 141 snapshots each and recorded a separate nonzero
 game exit. Terminal SHA-256 values are
 `8650704e38b4b6dc872301b5bd57a3c4f642995054dd2a4a1bb5670568d9abb5`
 and `af6e948e4e4e5cbfecf1b136618d04107f67255c3a078000409de707d9abcc4b`.
+
+The same-worker pre-force check in run `20261120-233903-ccb790`
+measured a 0.011241 game-unit offset from the consumed right scene to
+the same frame's original target. The 0.01000 gate refused the active
+request before force. Both joint lengths were within 0.05. Game exit 0
+and all 146 restored snapshots passed independently. The scene
+amplitude comparison remains unqualified. Terminal SHA-256
+`a1cabfe20e4b51bb94807f1207c98fad7e928a84f0b3942e4f520b9de60b045e`.
+
+Run `20261120-234101-f8654b` completed the actual stock CBPC comparison
+on the right EarR capsule, slot 96. Its private fixture held the same
+actor and fitted node steady before adding one capsule. The event witness
+recorded zero qualifying events before addition, then 5 in the near
+window, 0 in the far window, 4 after returning near and 0 after removal.
+An independent replay verified the actor and model leases, actual
+controller poses, native append/detach receipts and observed geometry
+windows. The archived original run passed the subject checks and failed
+the separate game exit with `0xC0000005`. The cold audit verified 141
+restored snapshots and 70 VFS winners. The replay qualifies the observed
+provider events. Exact solver outcomes, haptics and the left ear remain
+open. Replay and custody SHA-256 values are
+`5d17dcc1b393b2da584569e503f7388e5637a9e5668fe7be701abc34672aca91`
+and `5565e73252dfd78d952f69681782e8f3304d1a6e2e822a3d3c5ff11db001b8f3`.

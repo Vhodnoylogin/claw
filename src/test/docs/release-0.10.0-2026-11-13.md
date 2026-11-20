@@ -119,3 +119,32 @@ physics tests and 82 existing VR-source tests (17 skipped). The latter is source
 coverage, not a VR game run. Additional focused actual-transport and witness
 parser/replay checks are recorded with their exact source receipts. No new game
 was launched for the repository test port.
+
+## Exact final 0.10.0 coat runtime recheck, 20 November
+
+TEST SE run `20261120-234804-3f29df` loaded the final archive's native DLL,
+SHA-256 `ccf7718d90f99ebc176b4231566fa6cc1cbbb117741de6e1babe267ab508503b`.
+Two independently observed human-control and transformed NPC pairs
+exercised the automatic original-colour route with Elegant Randomized.
+
+| NPC fixture | Actual human hair RGB8 | Automatic group | Actual selected coat |
+| --- | --- | --- | --- |
+| Runa | 48, 35, 33 | warm-brown | Valley Brown |
+| Edda | 90, 95, 105 | grey | Valley Grey |
+
+For each transformed NPC the live audit confirmed 12 managed material
+surfaces and matched the loaded diffuse resources to the selected DDS paths.
+Manual override was empty. The human control kept its sampled hair colour.
+All four disposable references were disabled and their 3D unloaded. The
+prelaunch VFS audit verified 21 staged inputs and 114 external dependencies.
+The game exited normally with code 0. The postrun audit verified all 464
+file snapshots and removal of the disposable profile. This acceptance covers
+material assignment. Pixel appearance remains a separate check.
+
+The earlier attempt `20261120-234345-2eff8f` stopped before any game process.
+MO2 inserted 23 previously missing installed-mod rows, all disabled, into
+the copied profile while keeping the existing rows and plugin order exact.
+The successful attempt prepopulated only these same disabled rows in its
+own disposable profile and retained the original byte-equality gate. Runtime
+verification SHA-256
+`aac22e6e0d8b22a015f7397148ba6faaeecb92760c5a364630abc9e1b671c752`.
