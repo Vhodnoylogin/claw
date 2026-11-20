@@ -98,6 +98,15 @@ bool attached(const Path& path) {
     return !path.empty();
 }
 
+bool sceneReady(RE::FormID expectedCell) {
+    auto* player = RE::PlayerCharacter::GetSingleton();
+    auto* ui = RE::UI::GetSingleton();
+    auto* cell = player ? player->GetParentCell() : nullptr;
+    return cell && form(cell) == expectedCell && cell->IsAttached() &&
+           form(player) == 0x14 && player->Is3DLoaded() && player->Get3D(false) && ui &&
+           !ui->IsMenuOpen(RE::LoadingMenu::MENU_NAME) && !ui->IsMenuOpen(RE::MainMenu::MENU_NAME);
+}
+
 std::array<Object*, nodeNames.size()> findNodes(Object& root) {
     std::array<Object*, nodeNames.size()> result{};
     std::vector<Object*> pending{&root};
@@ -129,6 +138,7 @@ std::array<Object*, nodeNames.size()> findNodes(Object& root) {
 class Scene {
 public:
     explicit Scene(const Fixture& expected) : fixture(expected) {
+        require(sceneReady(fixture.cell), "loaded player in fixture cell required");
         auto* reference = RE::TESForm::LookupByID<RE::Actor>(fixture.actor);
         require(reference, "dynamic NPC not found");
         handle = reference->GetHandle();
@@ -180,6 +190,7 @@ private:
     }
 
     void check() const {
+        require(sceneReady(fixture.cell), "player left the loaded fixture cell");
         const auto actor = handle.get();
         require(actor && actor.get() == actorIdentity.get() && validActor(*actor), "NPC handle or fixture changed");
         require(actor->Get3D(false) == root.get() && childOf(*root, *rootParent),
@@ -224,7 +235,7 @@ public:
 
     void world(bool available) {
         std::lock_guard lock(mutex);
-        worldReady = available;
+        loading = !available;
         ++epoch;
         if (active() || unreleased()) queueRetirement("world changed");
     }
@@ -237,8 +248,10 @@ public:
         if (nonce)
             return nonce == requested && fixture == expected && sequence == 0
                 ? readCurrent() : response("refused", requested, 0, "one NPC pose lease per process").dump();
-        if (!worldReady || !unloadsObserved)
-            return response("refused", requested, 0, "loaded world or unload observer unavailable").dump();
+        if (loading)
+            return response("refused", requested, 0, "load in progress or failed").dump();
+        if (!unloadsObserved)
+            return response("refused", requested, 0, "unload observer unavailable").dump();
 
         nonce = requested;
         fixture = expected;
@@ -360,7 +373,7 @@ private:
         if (unreleased()) retire(reason);
         if (std::string_view(status) != "pending" || index != sequence) return;
         try {
-            require(leaseEpoch == epoch && worldReady && !expired() && !unloaded.load(), "NPC pose lease invalidated");
+            require(leaseEpoch == epoch && !loading && !expired() && !unloaded.load(), "NPC pose lease invalidated");
             const auto first = qpc();
             if (!scene) scene = std::make_unique<Scene>(fixture);
             auto sample = scene->snapshot();
@@ -388,7 +401,7 @@ private:
     Clock::time_point deadline{};
     std::atomic<RE::FormID> watched{};
     std::atomic<bool> unloaded{};
-    bool worldReady{}, unloadsObserved{};
+    bool loading{}, unloadsObserved{};
     Fixture fixture;
     std::int32_t nonce{}, sequence{};
     const char* status{"idle"};

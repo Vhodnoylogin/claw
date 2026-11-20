@@ -22,6 +22,10 @@ retains the actual actor, third-person root, biped, active body clone and
 required bone paths. Graph membership, exact active slot and ownership are
 checked before and after each read. Missing or detached body slot 2, absent
 or ambiguous nodes, target unload and world changes refuse the lease.
+During an initial VR alternate start, the native NewGame message can be
+absent. Each main task checks the actual loaded player and the same attached
+fixture cell with main/loading menus closed. An observed load in progress
+or failed load remains a separate refusal.
 Each pose provides row-major rotation, translation and scale. The nine
 driven bones, two anchors and root control include both world and local
 transforms plus the actual parent's world transform. No raw pointers leave
