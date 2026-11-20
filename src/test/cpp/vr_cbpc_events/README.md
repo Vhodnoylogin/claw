@@ -28,6 +28,13 @@ near hold can be included. Keep the minimum wall hold in QPC ticks and the
 configured engine collision duration as separate inputs. Missing callbacks
 under those conditions establish a scoped emission observation only.
 
+For the stock left-wand fixture, `cbpc_vr_geometry.admit_holds` consumes the
+same-task VR Observer snapshots of the player, target, tail and both
+controllers. It verifies a stationary actor, nominal overlap/separation,
+an independently observed return and sufficient sampling cadence. Its
+inward-rounded QPC bounds feed `cbpc_event_readback.score`. The geometry
+gate uses scene transforms while the event reader uses CBPC callbacks.
+
 Build the standalone DLL and external PEX with the pinned cross-runtime
 CommonLib and Papyrus toolchain used by the VR pose witness. The portable
 window tests run in the standard CTest suite.

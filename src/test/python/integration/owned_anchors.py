@@ -165,7 +165,7 @@ def dispose_fixture(session, reference, sex, admitted, *, maximum_seconds=8, sle
 
 class OwnedAnchors:
     def __init__(self, reference, sex, key, state, *, observe, receipt, wait, persist, strict=False,
-                 actor_role="disposable-npc", on_quarantine=None):
+                 actor_role="disposable-npc", on_quarantine=None, snapshot=scene.snapshot):
         self.reference, self.sex = scene.actor_reference(reference, actor_role), sex
         self.actor_role = actor_role
         self.names = tuple(dict.fromkeys(scene.anchors(sex).values()))
@@ -174,6 +174,7 @@ class OwnedAnchors:
         self.key, self.state, self.strict = key, state, strict
         self.observe, self.receipt, self.wait, self.persist = observe, receipt, wait, persist
         self.on_quarantine = on_quarantine
+        self.snapshot = snapshot
         self.originals = state.setdefault("anchorOriginals", {})
 
     def _checkpoint(self):
@@ -204,7 +205,7 @@ class OwnedAnchors:
             raise
 
     def _snapshot(self, raw):
-        return scene.snapshot(raw, self.reference, self.sex, actor_role=self.actor_role)
+        return self.snapshot(raw, self.reference, self.sex, actor_role=self.actor_role)
 
     def _args(self, name):
         scene.require(name in self.names, "Only declared mass-zero anchors may be written")
@@ -246,8 +247,8 @@ class OwnedAnchors:
             raise
         return result
 
-    def capture(self):
-        for name in self.names:
+    def capture(self, names=None):
+        for name in self.names if names is None else names:
             self._checkpoint()
             current = self._snapshot(self._observe("anchor-original-" + name))
             keys = self._read("anchor-original-keys-" + name, "NiOverride", "GetNodeTransformKeys", self._args(name))
@@ -271,6 +272,22 @@ class OwnedAnchors:
                     value = self._read("anchor-storage-" + name, "NiOverride", "GetNodeTransformPosition", args)
                     scene.require(scene.max_delta(scene.numbers(value, 3), offset) <= 1e-6, "Own anchor key storage mismatch")
         return commands
+
+    def release_position(self, name):
+        """Remove one held position component, then ask SKEE to apply the undo.
+
+        The caller must independently observe the returned pose under its own
+        runtime contract. An empty SKEE key container can persist after removal.
+        """
+        scene.require(name in self.originals, "Anchor was not captured")
+        args = self._args(name)
+        keys = self._read("undo-anchor-keys-" + name, "NiOverride", "GetNodeTransformKeys", args)
+        scene.require(keys == [self.key], "Exactly one held anchor key required for undo")
+        result = self._mutate("undo-anchor-remove-" + name, "NiOverride", "RemoveNodeTransformPosition",
+                              args + [self.key], "bool")
+        scene.require(result["returned"] is True, "Own anchor position component was not removed")
+        applied = self._mutate("undo-anchor-update-" + name, "NiOverride", "UpdateNodeTransform", args, "none")
+        return {"removed": result, "applied": applied}
 
     def collect_phase(self, phase, spec, baseline, *, sleep=time.sleep, clock=time.perf_counter):
         rows = self.state["pulses"][phase] = {}

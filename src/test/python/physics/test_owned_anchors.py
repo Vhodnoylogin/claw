@@ -167,5 +167,52 @@ class SamplingClockTests(unittest.TestCase):
                 self.assertGreaterEqual(after - before + 1e-12, .19)
 
 
+class ScopedUndoTests(unittest.TestCase):
+    def test_keyed_undo_restores_only_the_captured_left_anchor(self):
+        with tempfile.TemporaryDirectory() as directory:
+            session = Session(directory, sex="female")
+            reference, name = "0xFF001234", "NPC L PreBreast P1"
+            right = "NPC R PreBreast P1"
+            key = "CLAW.FSMPProbe.vr-undo"
+            state, mutations = {}, []
+
+            def observe(label):
+                session.phase(label)
+                return session.tool("inspect", {})
+
+            def receipt(label, script, function, args):
+                if function in ("AddNodeTransformPosition", "UpdateNodeTransform", "RemoveNodeTransformPosition"):
+                    mutations.append((function, args[3]))
+                return session.tool("papyrus", {"script": script, "function": function, "args": args})
+
+            def snapshot(raw, actor, sex, *, actor_role):
+                self.assertEqual((actor, sex, actor_role), (reference, "female", "disposable-npc"))
+                return pulse.probe.snapshot(raw, actor, sex, actor_role=actor_role)
+
+            owned = anchors.OwnedAnchors(reference, "female", key, state, observe=observe,
+                receipt=receipt, wait=lambda *args: None, persist=lambda: None, snapshot=snapshot)
+            owned.capture((name,))
+            self.assertEqual(set(owned.originals), {name})
+            before = snapshot(observe("before"), reference, "female", actor_role="disposable-npc")
+            owned.apply([.01, 0., 0.], (name,))
+            after = snapshot(observe("held"), reference, "female", actor_role="disposable-npc")
+            self.assertNotEqual(before["nodes"][name]["world"], after["nodes"][name]["world"])
+            self.assertEqual(before["nodes"][right], after["nodes"][right])
+
+            session.anchor_keys[name]["Other.Owner"] = [.2, 0., 0.]
+            with self.assertRaisesRegex(ValueError, "Exactly one held anchor key"):
+                owned.release_position(name)
+            self.assertEqual(len(mutations), 2)
+            del session.anchor_keys[name]["Other.Owner"]
+
+            self.assertIs(owned.release_position(name)["removed"]["returned"], True)
+            final = snapshot(observe("restored"), reference, "female", actor_role="disposable-npc")
+            self.assertEqual(final["nodes"][name], before["nodes"][name])
+            self.assertEqual(final["nodes"][right], before["nodes"][right])
+            self.assertIsNone(session.anchor_keys[name][key])
+            self.assertEqual(mutations, [(function, name) for function in
+                ("AddNodeTransformPosition", "UpdateNodeTransform", "RemoveNodeTransformPosition", "UpdateNodeTransform")])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -933,3 +933,49 @@ reads. Continuous world-owner evidence must bracket the held interval.
 The editor shows configured limits and geometry. Comparing its predicted
 waveform to the game would require an equivalent solver and host-time
 and kinematic inputs, which the editor does not currently implement.
+
+## 20 November continuation: controlled test preparation
+
+The paired-trace reader now accepts both native v4 envelope variants. It
+retains the same nonce, epoch, PID, token order and terminal-pose checks.
+The historic SE A1 replay retained 837 complete pairs across 53 pages.
+The new P1 readback test requires an independently bracketed left-anchor
+step and return with a quiet right control. It measures the left driver
+in world and joint coordinates and requires a difference in the same
+provider pre/post pair above the position precision bound. A stale held
+pose with identical pre/post data does not pass. The next fixture uses
+a declared .04 local-unit test input within the .15 authored X limits.
+
+Three new TEST VR sessions exited normally and restored 146 snapshot
+paths, 48 staged paths, 76 VFS winners and six staging directories each.
+
+- `20261120-105559-6e3599` created one disposable actor, whose 3D never
+  became available during the bounded wait. No trace arm or anchor write
+  was forwarded.
+- `20261120-110247-b62204` loaded the female fixture and read its correct
+  FSMP attachment. The test refused before the trace arm because it
+  looked for the XML in Overwrite. The next controller reads and hashes
+  the actual native VFS winner. Offline replay also found motion between
+  the early actor pose and first provider pair. The next controller
+  requires a stable independently observed anchor cohort before arming
+  the original strict two-endpoint association.
+- `20261120-110741-129d76` did not leave the startup calibration menu.
+  The driver consumed each of the four candidate commands and there was
+  no menu transition. No CLAW fixture, trace arm or body write occurred.
+
+The second session confirmed that the owned SkyrimVR process was both
+SteamVR's scene owner and last-frame renderer. The compositor advanced
+from frame 2087 to 2096. Its frame timing reported zero presents in both
+samples. No eye image or visible model content was captured. The stock
+CBPC geometry gate was also checked offline on three retained VR65
+frames. At that position the sphere centres were 215–218 units apart
+with a combined radius of 6.39 units, requiring a closer stationary
+target for the contact trial.
+
+The three independent local restoration reports are under
+`Builds/claw-vr-fsmp-p1-20261120/`,
+`Builds/claw-vr-fsmp-p1-reposition-20261120/` and
+`Builds/claw-vr-fsmp-p1-vfs-20261120/`. Total accounting is 101 Skyrim
+starts, 59 VR starts and 68 SteamVR platform attempts. Controlled P1
+response, stock CBPC emission contrast, HMD image content and dynamic
+first-person sex selection remain unverified.

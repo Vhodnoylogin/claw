@@ -1,8 +1,8 @@
 """Check a completed trace against the corresponding final witness snapshot."""
 if __package__:
-    from .validate_snapshot import integer, number, parse, pose, read_json
+    from .validate_snapshot import SCHEMAS, integer, number, parse, pose, read_json
 else:
-    from validate_snapshot import integer, number, parse, pose, read_json
+    from validate_snapshot import SCHEMAS, integer, number, parse, pose, read_json
 
 
 PAGE_FIELDS = {'schema', 'status', 'nonce', 'pid', 'qpcFrequency', 'loadEpoch',
@@ -14,7 +14,8 @@ PAGE_SIZE = 16
 def parse_trace(pages, final_snapshot, tokens):
     """Return contiguous witnessed pairs. These arrays do not establish causality."""
     snapshot = parse(final_snapshot)
-    if snapshot['schema'] != 'claw-fsmp-step-witness/4' or snapshot['status'] != 'ready':
+    version = SCHEMAS[snapshot['schema']]
+    if version != 4 or snapshot['status'] != 'ready':
         raise ValueError('Expected a completed v4 snapshot')
     window = snapshot['sample']['objectWindow']
     if window['status'] != 'complete' or window['pairedSteps'] != 900:
@@ -59,7 +60,7 @@ def parse_trace(pages, final_snapshot, tokens):
                 if type(pair[moment]) is not list or len(pair[moment]) != 4:
                     raise ValueError('Expected one pose per selected token')
                 for entry, body in zip(pair[moment], selected):
-                    pose(entry, 4)
+                    pose(entry, version)
                     anchor = body['initialPre']
                     if entry['rigidBody'] is not True or (entry['flags'], entry['inverseMass']) != (anchor['flags'], anchor['inverseMass']):
                         raise ValueError('Trace object metadata differs from its catalog')

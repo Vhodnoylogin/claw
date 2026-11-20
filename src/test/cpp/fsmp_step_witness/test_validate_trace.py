@@ -3,6 +3,7 @@ import json
 import unittest
 
 from test_validate_snapshot import fixture, v4_window
+from validate_snapshot import ENGINE_FIELDS, VR_SCHEMA
 from validate_trace import parse_trace
 
 
@@ -43,6 +44,23 @@ class TraceTests(unittest.TestCase):
         rows = self.decode(snapshot, pages)
         self.assertEqual([row['pair'] for row in rows], list(range(884, 901)))
         self.assertNotEqual(rows[-1]['post'][0], rows[-1]['post'][1])
+
+    def test_vr_trace_requires_vr_snapshot_fields_and_the_same_window(self):
+        snapshot, pages = trace_fixture()
+        snapshot['schema'] = VR_SCHEMA
+        sample = snapshot['sample']
+        for field in ENGINE_FIELDS:
+            del sample[field]
+        sample['engineStateAvailable'] = False
+        self.assertEqual(len(self.decode(snapshot, pages)), 17)
+
+        pages[0]['loadEpoch'] += 1
+        with self.assertRaisesRegex(ValueError, 'owner, clock or window'):
+            self.decode(snapshot, pages)
+        pages[0]['loadEpoch'] -= 1
+        sample['mainFreezeTime'] = False
+        with self.assertRaisesRegex(ValueError, 'cannot supply SE engine fields'):
+            self.decode(snapshot, pages)
 
     def test_missing_or_repeated_page_is_not_complete(self):
         snapshot, pages = trace_fixture()
