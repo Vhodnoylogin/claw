@@ -14,6 +14,9 @@ The harness still owns the single spawn, addon pin and fixture provenance.
    `effectiveMorphs`, read twice through RaceMenu's versioned BodyMorph
    interface. The witness requires the same finite values around the pose read.
    It preserves signed and out-of-range values for the caller to validate.
+   `BeginNpcContact` takes the same typed array and adds three required
+   named transforms for the remaining ear and tail support partitions.
+   The two original entry points retain the twelve-node output order.
 2. Call `SampleNpc(nonce, i)` with successive indices 1–16. Poll
    `ReadNpc(nonce, i)` after each request and retain the sample before requesting
    the next index. The lease stops accepting samples 12 seconds after Begin.

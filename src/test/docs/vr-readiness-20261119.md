@@ -706,3 +706,41 @@ byte-identical. The 24 sufficiently observed slots are an offline
 measurement from the native pose. See the contact-profile test notes
 for the measured excess and limits. Observed nonzero morph response,
 a fresh two-pose qualification and live contact remain open.
+
+## Closed VR63b and full ear/tail support in VR65
+
+VR63b `20261120-033854-af922d` repeated the effective morph read with
+two independently verified QPC brackets. The same NPC `FF0008C8`
+returned 31 finite zeros twice and actor weight 50. Actual task threads
+were 37556 and 56168. Explicit EndNpc retirement preceded one owned
+Disable and observations 14/15 of unloaded 3D. Exit0 and complete
+restoration. Receipt SHA-256
+`b582fb711620963da5dd8714164c2077a60569d60b6b123261b75974536192f7`.
+
+VR64 `20261120-034216-6b2349` repeated the controller experiment under
+the stock profile. Native resolution and two complete mapped module
+inventories show VRIK absent. The observed human left wand traveled
+13.99828 game units, while left and right hand movement were .17750 and
+.17405. The two driver commands and independent neutral return were
+confirmed. The wolf pulse was withheld by the previous human-positive
+condition. Third-person world attachment was observed and the outer
+carrier still failed. Exit0 and restored 116/253/30/33, two negative
+VFS routes. Receipt SHA-256
+`c38bdd2e3553f4ec6c8115961987f7f0511ff76358e552241df6a9e0ac47ecf1`.
+
+VR65 `20261120-035112-948956` added the three exact support bones through
+the test-only `BeginNpcContact` entry point. The known `FF0008BE` male
+NPC returned both complete 15-transform snapshots and 31 zero-valued
+morphs, with independently bracketed owner reads 9/10/11. EndNpc then one
+Disable, unload observations 14/15 and exit0 were all confirmed. Receipt
+`62223c67e0f4baa8cca45f7adefea82833ab55e6f4100ae2f4d817a2086396d4`;
+raw typed pose/observer/model archive and input hashes
+`4023ec337c2e07b4cd68e5e207ab1c48c7e1c35d3d44cc851cde40dffb77f14f`.
+The independent offline geometry replay now covers all 32 male ear/tail
+capsules. At both observed poses 13 assigned partitions had vertex
+excess above .01 owner-local units. The largest was .517791 in slot
+107 on TailBone01. An enclosing fit built separately for each observed
+pose restored assigned coverage to floating-point tolerance. This is
+geometric reconstruction from engine observations, with no holdout,
+renderer synchronization or actual contacts. Receipt
+`82f24894a151043156bba61ec7903850d535f071cfab9a4f2f817afa6010b8a5`.

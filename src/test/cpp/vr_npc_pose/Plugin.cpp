@@ -13,6 +13,7 @@
 #include <chrono>
 #include <memory>
 #include <mutex>
+#include <span>
 #include <stdexcept>
 #include <string_view>
 #include <unordered_set>
@@ -35,11 +36,20 @@ constexpr auto schema = "claw-vr-npc-pose/1";
 constexpr auto maxLifetime = std::chrono::seconds(12);
 constexpr std::size_t maxObjects = 4096, maxLinks = 8192, maxDepth = 64;
 constexpr RE::FormID beastRace = 0xCDD84;
+constexpr std::size_t motionNodeCount = 12;
 constexpr std::array nodeNames{
     "NPC EarL [EarL]Bone01", "NPC EarL [EarL]Bone02", "NPC EarR [EarR]Bone01", "NPC EarR [EarR]Bone02",
     "TailBone01", "TailBone02", "TailBone03", "TailBone04", "TailBone05",
-    "NPC Head [Head]", "Tails", "NPC Root [Root]"
+    "NPC Head [Head]", "Tails", "NPC Root [Root]",
+    "NPC Spine2 [Spn2]", "NPC Pelvis [Pelv]", "NPC R Thigh [LThg]"
 };
+
+enum class Scope { motion, effectiveMorphs, earTailSupport };
+
+auto nodeNamesFor(Scope scope) {
+    auto names = std::span<const char* const>(nodeNames);
+    return scope == Scope::earTailSupport ? names : names.first(motionNodeCount);
+}
 
 std::atomic<IBodyMorphInterface*> effectiveSource;
 
@@ -140,7 +150,7 @@ bool sceneReady(RE::FormID expectedCell) {
            !ui->IsMenuOpen(RE::LoadingMenu::MENU_NAME) && !ui->IsMenuOpen(RE::MainMenu::MENU_NAME);
 }
 
-std::array<Object*, nodeNames.size()> findNodes(Object& root) {
+std::array<Object*, nodeNames.size()> findNodes(Object& root, std::span<const char* const> names) {
     std::array<Object*, nodeNames.size()> result{};
     std::vector<Object*> pending{&root};
     std::unordered_set<Object*> seen;
@@ -151,8 +161,8 @@ std::array<Object*, nodeNames.size()> findNodes(Object& root) {
         require(seen.insert(object).second && seen.size() <= maxObjects, "scene repeated object or object limit");
         const auto* rawName = object->name.c_str();
         const std::string_view nodeName(rawName ? rawName : "");
-        for (std::size_t i = 0; i < nodeNames.size(); ++i) {
-            if (nodeName != nodeNames[i]) continue;
+        for (std::size_t i = 0; i < names.size(); ++i) {
+            if (nodeName != names[i]) continue;
             require(!result[i], "required node name is ambiguous");
             result[i] = object;
         }
@@ -163,14 +173,15 @@ std::array<Object*, nodeNames.size()> findNodes(Object& root) {
             }
         }
     }
-    for (const auto* node : result) require(node && node != &root, "required child node absent");
+    for (const auto* node : std::span(result).first(names.size()))
+        require(node && node != &root, "required child node absent");
     return result;
 }
 
-// Created, observed and destroyed only by SKSE main-thread tasks.
+// Created, observed and destroyed only by serialized SKSE engine tasks.
 class Scene {
 public:
-    explicit Scene(const Fixture& expected) : fixture(expected) {
+    Scene(const Fixture& expected, Scope scope) : fixture(expected), names(nodeNamesFor(scope)) {
         require(sceneReady(fixture.cell), "loaded player in fixture cell required");
         auto* reference = RE::TESForm::LookupByID<RE::Actor>(fixture.actor);
         require(reference, "dynamic NPC not found");
@@ -191,26 +202,26 @@ public:
                 "expected active third-person body slot, addon or clone absent");
         clonePath = ownedPath(*slot.partClone, *root);
         require(clonePath.size() >= 2, "body clone is not a child of the actor world root");
-        const auto observed = findNodes(*root);
-        for (std::size_t i = 0; i < nodes.size(); ++i) nodes[i] = ownedPath(*observed[i], *root);
+        const auto observed = findNodes(*root, names);
+        for (std::size_t i = 0; i < names.size(); ++i) nodes[i] = ownedPath(*observed[i], *root);
         check();
     }
 
-    Json snapshot(const std::vector<std::string>& names) const {
+    Json snapshot(const std::vector<std::string>& morphs) const {
         check();
-        auto values = readEffectiveMorphs(*actorIdentity, names);
-        const auto observed = findNodes(*root);
+        auto values = readEffectiveMorphs(*actorIdentity, morphs);
+        const auto observed = findNodes(*root, names);
         Json rows = Json::array();
-        for (std::size_t i = 0; i < nodeNames.size(); ++i) {
+        for (std::size_t i = 0; i < names.size(); ++i) {
             const auto& path = nodes[i];
             require(observed[i] == path[0].get(), "required bone replaced");
-            rows.push_back({{"name", nodeNames[i]}, {"local", pose(path[0]->local)},
+            rows.push_back({{"name", names[i]}, {"local", pose(path[0]->local)},
                             {"world", pose(path[0]->world)}, {"parentWorld", pose(path[1]->world)}});
         }
         Json result{{"nodes", std::move(rows)}, {"rootWorld", pose(root->world)},
                     {"bodyCloneWorld", pose(clonePath[0]->world)}, {"bodyItem", item}};
-        if (!names.empty()) {
-            require(readEffectiveMorphs(*actorIdentity, names) == values, "effective morph vector changed during pose read");
+        if (!morphs.empty()) {
+            require(readEffectiveMorphs(*actorIdentity, morphs) == values, "effective morph vector changed during pose read");
             result["effectiveMorphs"] = std::move(values);
         }
         check();
@@ -238,10 +249,12 @@ private:
         const auto& slot = biped->objects[RE::BIPED_OBJECTS::kBody];
         require(form(slot.item) == item && form(slot.addon) == fixture.addon &&
                 slot.partClone.get() == clonePath[0].get() && attached(clonePath), "third-person body attachment changed");
-        for (const auto& node : nodes) require(attached(node), "required bone ancestry changed");
+        for (const auto& node : std::span(nodes).first(names.size()))
+            require(attached(node), "required bone ancestry changed");
     }
 
     Fixture fixture;
+    std::span<const char* const> names;
     RE::ActorHandle handle;
     RE::NiPointer<RE::Actor> actorIdentity;
     Pin root, rootParent;
@@ -278,16 +291,16 @@ public:
         if (active() || unreleased()) queueRetirement("world changed");
     }
 
-    std::string begin(std::int32_t requested, const Fixture& expected, std::vector<std::string> names = {},
-                      bool requestMorphs = false) {
+    std::string begin(std::int32_t requested, const Fixture& expected, Scope requestedScope,
+                      std::vector<std::string> names = {}) {
         std::lock_guard lock(mutex);
         if (requested <= 0 || !claw::npc_pose::validFixture(
                 expected.actor, expected.base, expected.handle, expected.cell, expected.addon))
             return response("refused", requested, 0, "positive nonce and exact dynamic NPC fixture required").dump();
-        if (requestMorphs && !claw::validPhysicsNames(names))
+        if (requestedScope != Scope::motion && !claw::validPhysicsNames(names))
             return response("refused", requested, 0, "invalid effective morph names").dump();
         if (nonce)
-            return nonce == requested && fixture == expected && sequence == 0 && morphNames == names
+            return nonce == requested && fixture == expected && sequence == 0 && scope == requestedScope && morphNames == names
                 ? readCurrent() : response("refused", requested, 0, "one NPC pose lease per process").dump();
         if (loading)
             return response("refused", requested, 0, "load in progress or failed").dump();
@@ -296,6 +309,7 @@ public:
 
         nonce = requested;
         fixture = expected;
+        scope = requestedScope;
         morphNames = std::move(names);
         watched.store(fixture.actor);
         leaseEpoch = epoch;
@@ -417,7 +431,7 @@ private:
         try {
             require(leaseEpoch == epoch && !loading && !expired() && !unloaded.load(), "NPC pose lease invalidated");
             const auto first = qpc();
-            if (!scene) scene = std::make_unique<Scene>(fixture);
+            if (!scene) scene = std::make_unique<Scene>(fixture, scope);
             auto sample = scene->snapshot(morphNames);
             const auto last = qpc();
             require(first <= last && !expired() && !unloaded.load(), "NPC pose expired or unloaded during sample");
@@ -445,6 +459,7 @@ private:
     std::atomic<bool> unloaded{};
     bool loading{}, unloadsObserved{};
     Fixture fixture;
+    Scope scope{Scope::motion};
     std::vector<std::string> morphNames;
     std::int32_t nonce{}, sequence{};
     const char* status{"idle"};
@@ -456,17 +471,18 @@ Witness* witness; // SKSE registration and the bounded watchdog share process li
 
 std::string begin(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t actor, std::int32_t base,
                   std::int32_t handle, std::int32_t cell, std::int32_t addon) {
-    return witness->begin(nonce, fixtureBits(actor, base, handle, cell, addon));
+    return witness->begin(nonce, fixtureBits(actor, base, handle, cell, addon), Scope::motion);
 }
+template <Scope scope>
 std::string beginWithMorphs(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t actor, std::int32_t base,
                             std::int32_t handle, std::int32_t cell, std::int32_t addon,
-                            std::vector<RE::BSFixedString> input) {
+                            const std::vector<RE::BSFixedString> input) {
     std::vector<std::string> names;
     if (input.size() <= 32) {
         names.reserve(input.size());
         for (const auto& name : input) names.emplace_back(name.c_str() ? name.c_str() : "");
     }
-    return witness->begin(nonce, fixtureBits(actor, base, handle, cell, addon), std::move(names), true);
+    return witness->begin(nonce, fixtureBits(actor, base, handle, cell, addon), scope, std::move(names));
 }
 std::string sample(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t index) { return witness->sample(nonce, index); }
 std::string read(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t index) { return witness->read(nonce, index); }
@@ -475,7 +491,8 @@ std::string end(RE::StaticFunctionTag*, std::int32_t nonce) { return witness->en
 bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     if (!vm) return false;
     vm->RegisterFunction("BeginNpc", name, begin);
-    vm->RegisterFunction("BeginNpcWithMorphs", name, beginWithMorphs);
+    vm->RegisterFunction("BeginNpcWithMorphs", name, beginWithMorphs<Scope::effectiveMorphs>);
+    vm->RegisterFunction("BeginNpcContact", name, beginWithMorphs<Scope::earTailSupport>);
     vm->RegisterFunction("SampleNpc", name, sample);
     vm->RegisterFunction("ReadNpc", name, read);
     vm->RegisterFunction("EndNpc", name, end);
