@@ -1,0 +1,13 @@
+SpriggitSource:
+  PackageName: Spriggit.Yaml.Skyrim
+  Version: 0.41
+ModKey: test_CLAW - VR CBPC Contact Fixture.esp
+GameRelease: SkyrimSE
+ModHeader:
+  Stats:
+    Version: 1.7
+  Author: CLAW physics test fixture
+  Description: 'TEST ONLY: disposable male CBPC contact probe actor base.'
+  MasterReferences:
+  - Master: Skyrim.esm
+    FileSize: 0

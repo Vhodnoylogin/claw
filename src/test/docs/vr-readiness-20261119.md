@@ -816,3 +816,37 @@ Replay source and external input instructions are in
 `src/test/components/contact-profiles/posed-contact.md`. Repo-built
 timing stdout SHA-256
 `3d21d6174abb320e1997e823ac0211639444d522f39168c6a33f962c65b2f133`.
+
+## Actor-scoped CBPC event qualification preparation
+
+The installed TEST VR stock CBPC candidate is 1.7.2 with DLL SHA-256
+`9585f78b2e4f1e09a3a33e1c7789e353caecd368738939b70ecd832b7792d729`.
+Its public typed Papyrus contract has actor-scoped sphere/capsule
+attach and detach. Exact PE and matching PDB expose the paired CBPC
+ModCallback event names; published older source provides event
+payload semantics and their limitations. The event group key refers
+to its first bone, so a whole multi-link group cannot by itself
+assign a collision to an individual link.
+
+The independent test listener and single-NPC test plugin build
+successfully. The listener binds to the exact fixture and selected
+dynamic NPC, then captures a disjoint QPC window with explicit
+sequence and drop counts. Portable test coverage includes wrong
+actor/cell, unavailable source, clock and overflow. The fixture
+has no preplaced references. Compile/runtime bindings and
+stationarity remain independently checked before contact trials.
+The DLL/PEX and ESP are external build outputs. Exact tool/ABI
+pins are retained beside the candidate. Source listener build
+receipt SHA-256 `06a8ff3492fe3dee87637e3d4994e0d8951c605d107740d6aa21babe76195643`
+and authored test ESP verification
+`e41089b636ee41db6c183d6ed8ac346625e0817048ef2b45f0b1c44702753c13`.
+
+The raw same-task VR65 left controller and tail origins were
+215.700–223.091 game units apart. With the checked stock controller
+offset and a prospective isolated sphere pair, a 13.998-unit
+perfectly aligned pulse still leaves at least about 196 units
+between centers in the closest measured case. The existing spawn
+is unsuitable as a positive contact control. The next case needs
+a measurably stationary owned NPC close enough for a separated
+far interval and two qualified near intervals. Silent callback
+intervals alone do not report whether a solver pair was evaluated.
