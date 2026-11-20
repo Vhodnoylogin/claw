@@ -2073,6 +2073,12 @@ Restoration SHA-256
 `4692338dfdea699a44d507406a1c866ac3fa53e5b49a8190ec385d8d1458474f`.
 Independent survey SHA-256
 `c5633039845a6c797c95e741eeb26aeaace15cfa57f99a148460803f6781c97e`.
+The clean offline rebuild completed all 569 native jobs with the actual
+MSVC include marker. Ninja recorded 138 ProviderLease dependencies and
+scheduled recompilation and relinking for a prospective .inl timestamp
+change. The clean image is available for a later live qualification.
+Clean build receipt SHA-256
+`5b2c1aa80c2efc766139a1bc9a93a39885d43c36ca9e6646af4161342f8cfb04`.
 
 The first left-ear slot 91 attempt `20261121-001155-a408a2` used an
 authored fitted left capsule and one separate floor site. Placement
@@ -2081,3 +2087,23 @@ reached that site while the independent player reference moved over
 controller motion or provider operations. Exit `0xC0000005` and all 141
 restored snapshots were recorded separately. Restoration SHA-256
 `a8279a8348a237e1e4878ce56d6862db551a5762ff312e083f2c7453c1a536a9`.
+
+The farther-site left-ear attempt `20261121-002551-bca34c` landed the
+NPC at the planned location. The player moved 1.2065 game units, above
+the original 0.35 bound. The scenario again stopped before AI or
+controller commands and recorded native exit `0xC0000005` separately.
+All 141 snapshots restored. Restoration SHA-256
+`2681ddacdfd89e124454e50eb3c1e4acaab73d629203207bcc03ae01aaa25e73`.
+
+The +5.5-Y site in `20261121-003309-b441e6` preserved the actual player
+position and yielded two settled floor/actor observations. The fresh
+left EarL capsule still lay outside the calibrated two-axis controller
+plane. On both actor snapshots the perpendicular capsule clearance was
+at least 0.951 game units, even allowing arbitrary coordinates in that
+plane. Changing the two endpoints within the same calibration therefore
+cannot establish overlap for those captured poses. The case disabled and
+retired the owned NPC before any controller publication or provider
+contact operation. The separate exit record is `0xC0000005` and all 141
+snapshots restored. Restored and plane-proof SHA-256 values are
+`1e700d220174ef5c4b61a9b119aab3d99daf0d9aa33a1eb5404f794211e56a9a`
+and `a5b64909f6d5246092ffc6593f66edee06fa82cd7f7e1b8a1ee0ec0e180aa75f`.
