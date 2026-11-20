@@ -585,3 +585,39 @@ staging. The interactive MO2 wizard and dynamic sex routing are separate.
 The game exited 0 and all 109 snapshots and 33 native VFS observations
 reconciled. Receipt SHA-256
 `2b8e547c692a7baacfd84c31bf2a5a3b7a63d3f7836fdecc9e402cf220d8089b`.
+
+## NPC model lifetime and two measured poses
+
+VR58 `20261120-024339-bdf469` repeated the exact male FSMP composition
+and bounded the one allowed `Disable(false)` to its new owned NPC. Two
+advancing reads confirmed the same actor was disabled and the body 3D
+was absent. The game exited 0 and restored all 144 snapshots, 46 staged
+paths, six temporary directories and 73 native VFS winners. This control
+separates model unload from restoration and does not prove the cause of
+VR55 or provider deregistration. Receipt SHA-256
+`a957de48c4b83ecc2a731fedb2835f3f324ca8ce9164eb3929b9ef858e63e88d`.
+
+VR59 `20261120-025259-d7185f` loaded the original standalone pose witness.
+It observed the registered NPC via the inherited VR observer, but BeginNpc
+refused before acquiring a lease. EndNpc reported unknown lease. The
+CLAW runtime log confirms the initial VR alternate-start fallback reached
+the expected cell without an authoritative NewGame activation. This run
+later exited with `0xC0000005` at the same `SkyrimVR.exe+0xE3ED1D` offset as
+VR55. It restored all 146 snapshots, 48 staged paths, 75 native VFS
+winners and six temporary directories. Receipt SHA-256
+`e1f67f5121c1e9f717b7fb2de08ad4d9b7bbb8951f23fb663177f3e3e8470be7`.
+
+VR60 `20261120-030241-c232b2` used the witness with a main-task check of
+the current loaded fixture cell. It read two complete third-person poses
+from the same `FF000861` actor, engine handle 1112348, Body item `CDD86`
+and addon `CDD87`. The 12 bone/anchor/control reads retained the same
+opaque root lease, load epoch and task thread. The native pose intervals
+are both inside the corresponding VR observer intervals on the same
+10 MHz QPC clock. The end of the first pose and start of the second are
+0.6768104 seconds apart. The model and body-clone origins were unchanged.
+`EndNpc` confirmed retirement before the sole verified unload. The game
+exited 0 and all 146 snapshots, 48 staged paths, 75 native VFS winners
+and six directories reconciled. These observations establish actor model
+ownership at the measured times. A provider object window and the
+association of anonymous solver objects remain pending. Receipt SHA-256
+`988fdbcc0fcbf225df59b10cd91cd533cc4266e6780b9068075850212ba05aa2`.
