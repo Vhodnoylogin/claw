@@ -8,12 +8,14 @@ import json
 from pathlib import Path
 import re
 import shutil
+import struct
 import sys
 import xml.etree.ElementTree as ET
 import zipfile
 
 
 ROOT = Path(__file__).resolve().parents[4]
+sys.path[:0] = [str(ROOT / "src/main/python/vr"), str(ROOT / "src/main/python/build-tools")]
 BASE = ROOT / "src/main/resources/plugins/CLAW"
 ADDON = "CLAW - VR Body.esp"
 ARMATURE = "NakedTorsoWerewolfBeast - 0CDD87_Skyrim.esm.yaml"
@@ -21,6 +23,8 @@ NAMESPACE = "Meshes/Actors/WerewolfBeast/CLAW/FirstPerson"
 SEXES = ("male", "female")
 LEGACY_ALIAS = "Meshes/Actors/character/character assets/1stperson_werewolf_hands.nif"
 FIXED_PROFILE_NAME = "CLAW VR Body - Fixed Profile Diagnostic"
+COLLISION_BLOCKS = {"NiCollisionData", "NiCollisionObject", "NiCollisionSwitch", "RootCollisionNode"}
+FSMP_HOOK = b"hdt skinned mesh physics object"
 
 
 def resource_paths(sex, endpoint=None):
@@ -46,6 +50,28 @@ def resource_layout(manifest):
             or any(not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha) for sha in files.values())):
         raise ValueError("Expected the six checked first-person asset paths and hashes")
     return files
+
+
+def require_static_nif(data):
+    """Reject active provider bindings and embedded collision in a VR body NIF."""
+    from player_only_materials import Reader, container
+
+    _, middle, types, indices, blocks, _ = container(data)
+    reader = Reader(middle)
+    count, _ = reader.unpack("<II")
+    strings = [reader.string() for _ in range(count)]
+    for index, block in zip(indices, blocks, strict=True):
+        kind = types[index]
+        if kind.casefold().startswith("bhk") or kind in COLLISION_BLOCKS:
+            raise ValueError(f"Static VR body contains collision block {kind}")
+        if kind == "NiStringExtraData":
+            if len(block) != 8:
+                raise ValueError("Unsupported VR body string extra")
+            name, value = struct.unpack("<II", block)
+            if max(name, value) >= len(strings):
+                raise ValueError("Invalid VR body string extra index")
+            if strings[name].strip().lower() == FSMP_HOOK:
+                raise ValueError("Static VR body contains an FSMP binding")
 
 
 def fixed_profile_xml(shared, alternatives):
@@ -94,8 +120,13 @@ def assemble(esp, resource_candidate, archive, *, fixed_profile_fomod=False):
     assets = {ADDON: (esp, sha256(esp))}
     for relative, digest in sorted(files.items()):
         source = candidate / "resources" / relative
-        if source.resolve(strict=True) != source or sha256(source) != digest:
+        if source.resolve(strict=True) != source:
             raise ValueError("Mismatched first-person resource " + relative)
+        data = source.read_bytes()
+        if hashlib.sha256(data).hexdigest() != digest:
+            raise ValueError("Mismatched first-person resource " + relative)
+        if source.suffix == ".nif":
+            require_static_nif(data)
         assets[relative] = (source, digest)
     metadata = {}
     if fixed_profile_fomod:
@@ -194,7 +225,6 @@ def build(output, disabled, *, compiler=None, resource_candidate=None, fixed_pro
     disabled = frozenset(disabled)
     if fixed_profile_fomod and (disabled != frozenset(SEXES) or resource_candidate is None):
         raise ValueError("--fixed-profile-fomod requires both sexes range-disabled and --resources")
-    sys.path[:0] = [str(ROOT/"src/main/python/vr"), str(ROOT/"src/main/python/build-tools")]
     from body_resource import safe_output, sha256
     from plugin import Spriggit, WRAPPER
 

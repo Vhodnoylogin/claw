@@ -21,8 +21,10 @@ import head_isolation as isolation
 import neck_bounds
 import breast_rig as rig
 import morph_quality
+import player_only_materials
+import vr_dispatch
 
-from vr_dispatch import NAMESPACE, resource_paths
+from vr_dispatch import NAMESPACE, require_static_nif, resource_paths
 REFERENCE_ENTRY = 'meshes/actors/character/character assets/1stperson_werewolf_hands.nif'
 LIMITS = dict(isolation.LIMITS)
 BOX_PAD = 1e-8
@@ -271,7 +273,8 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
     out = resource.safe_output(output, inputs)
     api, Patch, Trip, dependencies = resource.dependencies(pynifly, morphbench); TRIP = Trip
     if any(resource.sha256(p) != h for p, h in inputs.items()): raise ValueError('Input changed during dependency loading')
-    sources = [Path(__file__), Path(resource.__file__), Path(head_split.__file__), Path(isolation.__file__), Path(neck_bounds.__file__), Path(rig.__file__), Path(morph_quality.__file__)]
+    sources = [Path(__file__), *(Path(module.__file__) for module in
+               (resource, head_split, isolation, neck_bounds, rig, morph_quality, player_only_materials, vr_dispatch))]
     pins = {**inputs, **dependencies, **{str(p): resource.sha256(p) for p in sources}}
     out.mkdir(parents=True)
     report = {'schemaVersion': 1, 'status': 'building', 'sourceVersion': '0.10.0', 'inputSha256': inputs,
@@ -284,6 +287,8 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
                 raise ValueError('Current0.10 equal-endpoint contract changed; no interpolation assumptions allowed')
             work = out/sex; work.mkdir()
             source = body_root/f'{sex}bodywerewolf_0.nif'; source_tri = body_root/f'{sex}bodywerewolf.tri'
+            source_bytes = source.read_bytes()
+            require_static_nif(source_bytes)
             native = api.NifFile(str(source)); raw = api_trip(source_tri)
             original_fields, _ = morph_quality.decode_fields(source_tri.read_bytes(), raw, {s.name: len(s.verts) for s in native.shapes})
             actual_protected = sorted({m for _, m in original_fields if 'breast' in m.casefold()})
@@ -292,7 +297,7 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
             hidden = sorted([n for n, p in plan.items() if p['action'] == 'head'] + [n+head_split.SUFFIX for n, p in plan.items() if p['action'] == 'split'])
             if hidden != sorted(profile['hiddenShapes']): raise ValueError('Actual anatomical head selection differs from reviewed contract')
             split = work/'split.nif'; tri = work/'split.tri'
-            raw_split, split_receipt = head_split.split_nif(source.read_bytes(), plan, native.nodes)
+            raw_split, split_receipt = head_split.split_nif(source_bytes, plan, native.nodes)
             split.write_bytes(raw_split); tri.write_bytes(head_split.split_trip(source_tri.read_bytes(), plan))
             verified = head_split.verify(api, Trip, source, split, source_tri, tri, plan)
             split_native = api.NifFile(str(split))
@@ -308,6 +313,7 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
             before_paths = {value for s in actual.shapes for key, value in resource.bodytri(s) if key == 'BODYTRI'}
             if len(before_paths) != 1: raise ValueError('First-person source has inconsistent BODYTRI')
             namespaced, path_receipt = namespace_bodytri(bounded.read_bytes(), next(iter(before_paths)), bodytri_path(sex))
+            require_static_nif(namespaced)
             tri_target = out/'resources'/resource_paths(sex); tri_target.parent.mkdir(parents=True, exist_ok=True); tri_target.write_bytes(tri.read_bytes())
             endpoints = {}
             for endpoint in (0, 1):

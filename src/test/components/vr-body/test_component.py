@@ -85,7 +85,9 @@ class NativeCurrentCompositionTests(unittest.TestCase):
             tri = self.root/'resources'/component.resource_paths(sex)
             for endpoint in (0, 1):
                 with self.subTest(sex=sex, endpoint=endpoint):
-                    nif = self.api.NifFile(str(self.root/'resources'/component.resource_paths(sex, endpoint)))
+                    path = self.root/'resources'/component.resource_paths(sex, endpoint)
+                    component.require_static_nif(path.read_bytes())
+                    nif = self.api.NifFile(str(path))
                     receipt = component.verify_first_person(nif, self.Trip, tri, sex, self.profile, self.head)
                     self.assertEqual(receipt['visibleHeadSubtreeWeights'], 0)
                     self.assertEqual(receipt['publicMorphCount'], 31 if sex == 'female' else 30)

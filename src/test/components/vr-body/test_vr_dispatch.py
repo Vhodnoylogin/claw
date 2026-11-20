@@ -2,6 +2,7 @@
 import hashlib
 import json
 from pathlib import Path
+import struct
 import sys
 from tempfile import TemporaryDirectory
 import unittest
@@ -11,6 +12,24 @@ from zipfile import ZipFile
 ROOT = Path(__file__).resolve().parents[4]
 sys.path[:0] = [str(ROOT/"src/main/components/vr-body"), str(ROOT/"src/main/python/vr")]
 import vr_dispatch as dispatch
+
+
+def nif_fixture(label, extra=b"BODYTRI", collision=None):
+    strings = [label, b"BODYTRI", dispatch.FSMP_HOOK]
+    blocks = [("NiNode", struct.pack("<III", 0, 1, 1)),
+              ("NiStringExtraData", struct.pack("<II", strings.index(extra), 0))]
+    if collision:
+        blocks.append((collision, b""))
+    def string(value):
+        return struct.pack("<I", len(value)) + value
+    return (b"Gamebryo File Format, Version 20.2.0.7\n" +
+            struct.pack("<IBIII3BH", 0x14020007, 1, 12, len(blocks), 100, 0, 0, 0, len(blocks)) +
+            b"".join(string(kind.encode("ascii")) for kind, _ in blocks) +
+            b"".join(struct.pack("<H", i) for i in range(len(blocks))) +
+            b"".join(struct.pack("<I", len(data)) for _, data in blocks) +
+            struct.pack("<II", len(strings), max(map(len, strings))) +
+            b"".join(map(string, strings)) + struct.pack("<I", 0) +
+            b"".join(data for _, data in blocks) + struct.pack("<II", 1, 0))
 
 
 class DispatchControls(unittest.TestCase):
@@ -86,7 +105,7 @@ class DispatchControls(unittest.TestCase):
                     relative = dispatch.resource_paths(sex, endpoint)
                     asset = root/"resources"/relative
                     asset.parent.mkdir(parents=True, exist_ok=True)
-                    assets[relative] = relative.encode()
+                    assets[relative] = nif_fixture(relative.encode()) if endpoint is not None else relative.encode()
                     asset.write_bytes(assets[relative])
                     hashes[relative] = hashlib.sha256(assets[relative]).hexdigest()
             (root/"install-manifest.json").write_text(json.dumps({
@@ -125,3 +144,19 @@ class DispatchControls(unittest.TestCase):
                     alias, = choice.findall("files/file")
                     self.assertEqual(alias.attrib["destination"], dispatch.LEGACY_ALIAS)
                     self.assertEqual(archive.read(alias.attrib["source"]), assets[dispatch.resource_paths(sex, 1)])
+
+            target = dispatch.resource_paths("male", 1)
+            manifest = root / "install-manifest.json"
+            initial = json.loads(manifest.read_bytes())
+            for kwargs, error in (({"extra": dispatch.FSMP_HOOK}, "FSMP binding"),
+                                  ({"collision": "bhkRigidBody"}, "collision block"),
+                                  ({"collision": "RootCollisionNode"}, "collision block")):
+                raw = nif_fixture(target.encode(), **kwargs)
+                (root / "resources" / target).write_bytes(raw)
+                initial["files"][target] = hashlib.sha256(raw).hexdigest()
+                manifest.write_text(json.dumps(initial), encoding="utf-8")
+                for fixed_profile in (False, True):
+                    rejected = root / "rejected.zip"
+                    with self.subTest(fixed_profile=fixed_profile, **kwargs), self.assertRaisesRegex(ValueError, error):
+                        dispatch.assemble(esp, root, rejected, fixed_profile_fomod=fixed_profile)
+                    self.assertFalse(rejected.exists())
