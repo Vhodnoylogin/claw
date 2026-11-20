@@ -2129,8 +2129,102 @@ publication sequence from receipts for a later refresh of the same command.
 Replay of `234101` found three exact EarR input receipts at 110 ms since
 publication and one refreshed sequence at 125 ms. The startup release's
 first observed receipt was a refresh after 35.547 seconds. These intervals
-include executor polling and do not measure in-game motion or transport
-latency for the original sequence. Replay of `003309` recorded startup
+include executor polling. In-game motion and original-sequence transport
+latency require independent measurement. Replay of `003309` recorded startup
 input only, consistent with the pre-contact refusal. All 914 Autotest
 unit tests passed. The retained report replay SHA-256 is
 `c375d3553b7c21f461c8267f5dfa26e7519d0816b95cf8f27d9a2c5952d32437`.
+
+The no-force run `20261121-005738-69aaba` instrumented the existing
+FSMP main/update and sync boundaries and the existing prepared-read path.
+It observed 64 snapshots in eight original game update calls on one exact
+female NPC. The nested original sync call left the positions unchanged.
+The stock FSMP sync wrote both P1 world transforms. Before that same outer
+game update returned, both P1 worlds returned to the composition of parent
+and local transforms. The right return measured 0.022714–0.034350 game
+units, with the local transform unchanged all eight times, the parent
+unchanged seven times and both anchor translations unchanged. The next
+seven stock reads confirmed the returned positions. The prepared-read
+boundary showed no transform change or requested reset. This locates the
+passive scene overwrite after nested FSMP sync inside the outer game
+update. Its internal writer, rendered output and active amplitude are
+separate open measurements. The original absolute 0.010 right gate passed
+zero of eight times. The run exited normally and restored 146 snapshots.
+Exact nested replay SHA-256
+`7d737e872516d904cbf444250a2b461291742b32b48470140661f29a470e8a3b`.
+
+Run `20261121-005955-d817a9` established three independent virtual-controller
+translation inputs through native game observations. Measured X/Y/Z gains
+were 70.017306, 70.000000 and 70.003934 game units per metre. The measured
+depth column was `[-23.9453125, 65.78125, 0]`, with an observed return to
+neutral after each +0.025 m probe. No contact provider was armed or modified.
+Calibration passed. The separate native shutdown returned `0xC0000005`; all
+141 snapshots were restored. Independent terminal SHA-256
+`ce10d6c18a6c95f2f44189f19233d8a5fad663687b60d54bd5a28a62d284e9c8`.
+
+The first depth-qualified EarL run `20261121-010234-91364f` remeasured all
+three axes and passed the original geometry admission. It made one scoped
+stock append and one detach for slot 91 with the exact model lease. The
+detached control collected eight ordered frames over 1.4999694 s, short
+of the 1.5000000 s minimum. It stopped before the event witness could seal,
+so the callback contrast remains unqualified. Native shutdown returned
+`0xC0000005` separately. All 141 snapshots and 70 VFS winners were verified.
+Independent terminal SHA-256
+`0fb96e911c93149e9b05ab1f40d786eede9c8f022c14b7a038de90507df96060`.
+
+Run `20261121-010831-46dd0a` paced the same finite read-only windows from
+their producer clock. The original duration, gap, frame-count and contact
+gates remained in force. The independent replay qualified EarL slot 91
+stock CBPC counts of `0 / 5 / 0 / 4 / 0` for the unattached, near, far,
+return and detached windows. Observed capsule surface gaps were -3.459514
+and +10.440370 game units in the attached near and far holds. All five
+sample windows used seven reads, 1.529571–1.559117 s of observed duration,
+and maximum adjacent gaps below 0.296 s. One scoped append and detach, one
+event seal, model-lease retirement and neutral return were corroborated.
+This verifies stock provider events at one left-ear slot. Solver pair
+attribution, physical contact sensation and headset input remain open.
+
+The process independently returned `0xC0000005`, Windows event 103091 at
+`SkyrimVR.exe+0xAB4F26`, after the subject passed. The calibration-only run
+had the same offset in event 103059 with no contact provider operations.
+The no-force FSMP comparison run exited 0. Both replayed ledgers
+show a `qqq` queue acknowledgement. The exit codes differed between test
+compositions. The responsible engine component and role of the collider
+operation remain undetermined. All 141 snapshots and 70 VFS winners were
+verified. Contact/restoration SHA-256
+`072aabb8afa24c2ea78fb2e414e0948bcc653ae03fe3963a3170dc148a689da4`.
+Autotest `fc5cf77` captured the five producer-time summaries from the
+actual ledger. All 915 unit tests passed. The local run review SHA-256 is
+`d51854548304fc2f124b895ebc35d68439d01d2dc654ba0d1e21912a8c286b73`.
+
+Morphbench `623c2e2` opened the exact FSMP case's pinned NIF, TRI, XP32
+skeleton and XML, with eleven range records and 957 static guide lines.
+It exported the original XML unchanged. Changing only left P1 linear-X
+damping from 0.4 to 0 reproduced the exact XML used in the independent
+SE readback `20261119-095533-974424`. Forty-eight configured scalar values
+matched the game readback: both P1 joints, six axes, lower and upper limits,
+damping and stiffness, compared as float32. The original in-game response
+gate remains failed. This comparison establishes the editor-to-runtime settings
+path. Rendered displacement and amplitude remain open.
+Comparison SHA-256
+`745e19e97ceee11413b5669fd1d6a2caf7e60edcd51878f19df4cff95cacc1c4`.
+
+For the fitted ears, Morphbench `623c2e2` reproduced the independently
+observed capsule and wand clearances using the verified game inputs and
+raw node poses. Maximum disagreement was `5.754e-7` game units over 40
+right-ear frames and `6.932e-7` over 35 left-ear frames. Both limits used
+the same offline-to-runtime coordinate comparison. The pre-append and
+post-detach left-ear geometry still overlapped, while the game reported
+zero scoped callbacks; the provider controlled whether the capsule was
+active. EarR replay SHA-256
+`6b65f7a834b9c4bb402e4315ac2e509ddfa51ce038fad305ddd3c885588deeae`.
+EarL replay SHA-256
+`7710020c05f152b63365e4aa96edc82a805f5d3a663862a15a1f4cb909949c89`.
+
+During this comparison the editor incorrectly resolved a shape with a
+missing CBPC role, and skipped explicitly scaled shapes. The reviewed
+Morphbench development change keeps the numeric source editable and
+withholds world placement when the provider's context cannot be
+established. This change keeps the existing public CBPC preview gate.
+The review manifest SHA-256 is
+`5bf7c33557c3fa7bde2f77f0f7dde33771c289c1538b6555fc744303c4406a41`.
