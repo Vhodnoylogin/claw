@@ -1231,3 +1231,28 @@ All 14 owned platform identities were retired. Steam still reported an active
 application immediately after closure. Once Steam reported idle, the same
 restore routine reconciled all 23 preimages. The control advances only the
 platform attempt count. Stereo output under a virtual HMD remains open.
+
+### Same-task FSMP sample and synthetic output
+
+The measured b04 catalogue accepted the original female NPC lease and all 29
+pre/post solver pairs. Its same-main-task reader captured a stable completed
+provider pair and the exact live actor graph. The scene read started
+29.7329 milliseconds after the final provider post. The closest kinematic head
+object differed by 2.309 game units, proving that the two sources could still
+observe different animation poses. The association remained withheld, the
+fixture unloaded, and no trace or stimulus was armed. Native exit was 0.
+
+The stock public FSMP callback supplies objects and the time step but no
+actor-to-bone source mapping. The audited source prepares reads on the main
+thread, consumes each node's world transform in SkyrimBone::readTransform,
+and converts it before setting the kinematic target/velocity. A separately
+reviewed observer at that source seam should bind the consumed transform to
+the owning graph and the subsequent solver pair. Matching timestamps or
+loosening coordinate thresholds cannot supply that ownership.
+
+The revised synthetic SceneApp survived the same owned Room Setup reconnect,
+submitted its own stereo textures and satisfied the scene ownership checks.
+The exact submitted palette was still absent or incompatible in native eye
+readback. This negative result does not identify which image criterion failed.
+The independent control verified all 23 restored files and zero game starts.
+The limited virtual render path remains unqualified even for the control scene.
