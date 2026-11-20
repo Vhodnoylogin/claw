@@ -1698,3 +1698,25 @@ The correlation identifies the repeated fault location. Its origin still
 requires independent evidence. The clean SE 182453 and VR 182908 native exits
 have no correlated fault. Replay SHA-256
 `89eee3a385f7a83d8796a2d412fb637695244e05b6cbe6807e46b77690d69c1e`.
+
+### Flat slot 46 on TailBone03
+
+SE run 185112 selected the fitted flat slot 46 and read the actual right hand,
+wolf root and `TailBone03` in the same engine task. The mapped Sneak tap
+released and the game reported the crouched stance. During samples 21–23
+the actor root stayed fixed and the animated right hand moved 1.247 GU.
+The whole-pose stability gate refused before any CBPC operation. The owned
+actor retired, native exit was 0, and 143 preimages independently agreed.
+Terminal SHA-256 `2fa1bd3c789ef26c91375d677cde37393f4249682ccb379f838fff74c1bf9a02`.
+
+Using the latest observation alone would place the capsule 2.354 GU clear
+of the hand in one of those poses. Replaying all three exact observed poses
+found one permitted floor placement with at least 2.496 GU overlap in each.
+This is geometric feasibility for those samples. Actual sustained overlap,
+provider callbacks and post-detach contrast remain pending. Replay SHA-256
+`9e15ee19bfc5bcd938f084a165ee501455b2dbf3c544899bd6863eebfc123b88`.
+
+The live Autotest review preserved one `gfx` 504 and one explicit startup-read
+abandonment in the New Game menu, plus a later ready queue and exit 0. The
+retained review uses the original transport schema. The successor records a
+local per-request identifier to link the timeout and its exact disposition.

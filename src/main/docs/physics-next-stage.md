@@ -216,3 +216,23 @@ effective-morph/model-update ordering; lifecycle cleanup/reset checks; and node
 traces plus visible ear/tail/P1 motion/contact with negative controls, both sexes,
 weight/morph extremes and return to neutral. Fur following, animated poses,
 scale, HIGGS/PLANCK and close-contact quality receive no new acceptance here.
+
+### CBPC actor graph replacement boundary
+
+The exact tested SE 1.7.3 provider's `NiNodeUpdateEventHandler` queues the
+generic Papyrus `OnNiNodeUpdate` event. The mod-callback handler also dispatches
+Papyrus events. The registered equip handler updates existing simulation Things.
+The SE and VR native interface scripts have the same operations. In the
+original-human transformation trial, the wolf graph selected eleven target
+nodes and CBPC instantiated zero new Things. The provider's fresh-born contact
+success covers a graph that was already the wolf graph at first binding.
+
+A provider-owned rebind needs an actor and graph generation, retirement of the
+old Things before provider workers use the new graph, a fresh bind using the
+current race and root, and fresh rest transforms for that graph. The completion
+readback must identify the actor and generation. CLAW can queue it after the new
+model is applied and then wait for retirement before refreshing contact shapes.
+Keep rest-data invalidation scoped to that binding. The separately qualified
+FSMP installation remains the motion-physics release route. Exact evidence for
+the handler and registration audit has SHA-256
+`6a070863273dc24b098542f2f9c13050d723f010c0b734791e9b73732d40a172`.
