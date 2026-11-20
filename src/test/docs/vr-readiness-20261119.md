@@ -1509,3 +1509,21 @@ was sent. Real camera clearance still needs an observation against the
 verified actor-root path. Native exit was 0 and 122 preimages restored.
 Terminal SHA-256
 `645bfa78bee93bb47cea058c7483b96aea0361dc24af6d0086ca2e92cf039916`.
+
+The corrected exact actor-root validation in 165249 accepted the current
+male world clone in stock active slot 32. Three real PostVrikPostHiggs
+callbacks retained the same actor, asset and epoch. A single owned virtual
+head move and return both received matching driver acknowledgements.
+The observed engine HMD angles were 0, 24.99999 and 0 degrees relative to
+the first neutral pose. The same loaded avatar remained present in all
+three poses. The independent replay reproduced the bound observations.
+
+Eleven head-related shapes were application culled. A visible-candidate
+shape named `HEAD` had a conservative bounding sphere that intersected
+the engine camera's left near ball at all three positions. Its clearance
+margins were approximately -33.39, -37.48 and -33.35 game units. These are
+bounds, so the active triangles and rendered headset views remain open.
+The raw outer carrier classifier and the final disposable calibration
+check retained their own failures. The independent pose and restoration
+receipt verifies native exit 0, 122 restored preimages and 51 VFS winners.
+Its SHA-256 is `76b3e3529adbf3a3559f95b3d2235595e3c3d210cffd5e48218d229565ad1384`.
