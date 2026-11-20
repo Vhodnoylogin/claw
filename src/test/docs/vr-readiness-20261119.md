@@ -744,3 +744,39 @@ pose restored assigned coverage to floating-point tolerance. This is
 geometric reconstruction from engine observations, with no holdout,
 renderer synchronization or actual contacts. Receipt
 `82f24894a151043156bba61ec7903850d535f071cfab9a4f2f817afa6010b8a5`.
+
+## VR66 stock werewolf hand route
+
+VR66 `20261120-035616-9914ee` retains the exact stock actor/profile,
+carrier and observer from VR64. It allows a wolf pulse only after the
+human virtual wand has been independently observed moving and returning
+under the same ownership, even when the human hand does not follow.
+The fresh test again measured limited human skeletal movement:
+13.99828 units at the wand, .43745 left hand and .30957 right hand.
+
+The same stock player's wolf world hand `NPC L Hand [RHnd]` moved
+13.99895 units against the observed 13.99828-unit wand pulse. The
+opposite hand moved .00207. After neutral return, the left/right
+residuals were .00249/.00049, with the wand at its original position.
+All four device commands matched protocol ACKs. The HMD/right
+controller did not move. VRIK was absent from loaded plugins, native
+VFS routes and two-sided mapped-module inventories. VRIK is optional
+for this measured stock werewolf skeletal route; renderer and
+hardware/HMD placement are unverified. The older carrier id gate
+still produced the outer failed candidate status. Exit0 and exact
+restoration were independently verified. Receipt SHA-256
+`3b60445200240d0dd8785686f4fbb89cd8257a8540de4621dbabfb85ca057b9e`.
+
+## Slot107 rigid ownership control
+
+The exact support that escaped in VR65 was replayed with the same
+capsule dimensions and rest placement, carrying it on the pelvis
+instead of TailBone01. Both observed frames worsened from .517791 to
+2.059871 owner-local units. At the original worst vertex 8415, stored
+influences were .31519 pelvis, .51855 TailBone01 and .16614
+TailBone02. The predefined alternate also regressed synthetic
+tail-negative and both combined tail/thigh stress states. This
+experiment rejects rigid re-anchoring to the pelvis. The original
+52/128-slot allocations and runtime geometry are retained. The
+private result SHA-256 is
+`3f8f4f20407774b73849de5db2af9d503b4f74394b1615e7f0a44be2fabecbb1`.
