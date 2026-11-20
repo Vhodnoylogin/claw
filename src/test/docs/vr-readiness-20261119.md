@@ -1789,3 +1789,13 @@ five units across the first move. The relocation estimate needs the
 observed post-move animation field. This run stopped before arming or
 appending. Native exit 0 and 143 preimages restored. Terminal SHA-256
 `0254284871a3ffc194e3047fb6df1d24bcafe2e3c75d37770ba94f928abc6031`.
+
+In 193128 a replay-bounded correction moved the owned fixture about 7.32 GU
+horizontally. Six fresh post-correction samples over 1.847 seconds had overlaps
+between 3.927 and 7.669 GU. The ordinary player's animated right hand still
+travelled about 5.49 GU. The measured sphere pairs bound any shared stationary
+core to at most 0.346 GU, below the 0.75 GU static-core criterion. The next
+test needs a motion-aware hand contact criterion or a verified stable source.
+The case stopped before arming and the provider received no shape calls. It
+retired the fixture and verified exit 0 and 143 restored preimages. Terminal
+SHA-256 `4e11ff7f30d478a61c9efb599fb7925e3dc098f1e8b2794dc2673caf382e6f28`.
