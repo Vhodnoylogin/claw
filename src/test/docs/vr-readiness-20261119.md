@@ -780,3 +780,39 @@ experiment rejects rigid re-anchoring to the pelvis. The original
 52/128-slot allocations and runtime geometry are retained. The
 private result SHA-256 is
 `3f8f4f20407774b73849de5db2af9d503b4f74394b1615e7f0a44be2fabecbb1`.
+
+## VR67 nonzero RaceMenu input and geometry replay
+
+VR67 `20261120-040157-12071a` used the same fifteen-bone contact
+witness and one exact dynamically spawned male NPC `FF000871`. One
+official NiOverride write of the isolated test key changed the
+effective `CLAWHeadEarSize` from zero to .5. One targeted Clear
+returned zero and the keyed getter returned absent. The other 30
+values stayed zero. All three native samples have independent QPC
+brackets from the same owned actor. The test did not request a model
+refresh. EndNpc retired before verified unload 20/21 and exit0.
+146/48/75/6 and cold231+29 restored. Receipt SHA-256
+`9d22ae51374febbe3cb3b2cce11d8b456085e86ff64687c37947d2a162ce7982`.
+
+A numerical counterfactual compared .5 to zero at the exact same
+measured second pose and VFS geometry. The recalculated 16 ear
+capsules all changed; all 16 tail capsules were identical. Maximum
+unordered endpoint displacement was 7.31684 owner-local units and
+maximum absolute radius change was 1.88737. The test establishes
+correct selection and mathematical materialization of the morph
+input. It does not report a changed in-game mesh, host fit delivery
+or contact. Geometry evidence SHA-256
+`261df80ab65b00c1c7eabd8c328ea380eb9345ca9180a27746515d1e957c9d17`.
+
+The optional native numerical replay of the exact VR65 pose input
+uses 1525 unique support vertices and 3292 positive influences for
+2085 memberships across the 32 slots. All 64 fitted capsules matched
+the independent Python coordinates within 4.985e-12. On this machine
+six Release batches took 55.64–63.05 microseconds per reconstruct
+and fit, including 7.08–9.63 microseconds for world-vertex
+reconstruction. These times omit external pose/morph reads,
+projection-cache rebuild, provider work and gameplay overhead.
+Replay source and external input instructions are in
+`src/test/components/contact-profiles/posed-contact.md`. Repo-built
+timing stdout SHA-256
+`3d21d6174abb320e1997e823ac0211639444d522f39168c6a33f962c65b2f133`.

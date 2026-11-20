@@ -63,3 +63,23 @@ The CLAW contact host uses CBPC capsule indices. A prospective internal
 overlap comparison can use its actor/node/duration mod event with the
 same hand path before attach, after one attach and after removal. This
 requires a separately verified provider and exact target ownership.
+
+## Native timing replay
+
+The optional replay uses the exact VR65 native input and geometry result
+recorded in the [VR evidence](../../docs/vr-readiness-20261119.md). It
+extracts packed skin weights and projects the current morph's vertices
+into each influencing bone's bind frame. Shared vertices are skinned
+once. The existing C++ enclosing fitter then consumes each slot's support
+in its owner's local frame. The generated header stays external.
+
+```powershell
+python src/test/components/contact-profiles/export_pose_fit_benchmark.py --native <VR65-NATIVE-INPUTS.json> --geometry <VR65-POSED-GEOMETRY.json> --model <fitted-capsules.json> --out <external-input-directory>
+cmake -S src/test/components/contact-profiles/native-replay -B <external-build-directory> -DCLAW_POSE_BENCH_INPUT_DIR=<external-input-directory>
+cmake --build <external-build-directory> --config Release
+```
+
+Run the resulting `claw_pose_support` executable. It checks all 64 fitted
+capsules against independent replay coordinates before printing separate
+reconstruction and fit timings. Timings omit provider updates, acquisition
+of game state and any model change. The executable is a test target.
