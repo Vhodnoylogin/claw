@@ -1180,3 +1180,33 @@ pose observations. The stationary solver poses in its 29 complete pairs exactly
 matched all four late named node positions. The earlier named sample preceded
 the first pair by .442 seconds. A tighter independently named read inside the
 same capture interval is being prepared. It does not change actuator scope.
+
+### Exact timed FSMP token replay and Bridge startup recovery
+
+Run 131931 collected 35 complete FSMP pre/post pairs. A separate actor task
+spent 244 microseconds wholly inside the window of verified solver observations.
+All four role positions matched the last verified pre/post pair exactly; the
+largest cross-reader rotation difference stayed below 0.0000061. A later pose
+sample moved by 2.38 to 3.24 game units after the window, so the live stimulus
+stayed disarmed. Independent passive replay bound the four tokens to the exact
+actor owner, bone names and last pair, and rejected a changed raw pose. This
+qualifies the passive evidence and leaves a same-task live pose check and a
+controlled stimulus open.
+
+Run 133256 failed in the launch monitor before the private native resource
+case or any Papyrus probe could start. The retained launcher handle had been
+observed, but two complete Bridge context responses differed across a process
+read at SKSE handover. The process certificate was re-observed twice, including
+the exact Bridge boot, copied MO2 profile, loader lifetime, kernel process
+parent and game PID/birth/path. Only the proven test game and existing owned
+runtime were then closed. Skyrim VR exited with code 0. An independent receipt
+rechecked 147 file preimages, 49 staged files, 77 live VFS rows, 231 cold pins,
+nine owned empty directories and the unchanged source profile. No test or
+launch was repeated within this run. The native model case still has no result.
+
+Bridge 2.3.7 exposes live mutation and busy fields in these responses. The
+failed read did not retain individual changed fields. The private startup
+adaptation defers only a context equality failure after both reads have passed
+their normal identity checks. It uses the original deadline and round budget,
+re-runs the full read-side checks and never replays a launch. The installed
+Bridge and previous frozen test packets are unchanged.
