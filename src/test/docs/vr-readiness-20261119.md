@@ -2107,3 +2107,30 @@ contact operation. The separate exit record is `0xC0000005` and all 141
 snapshots restored. Restored and plane-proof SHA-256 values are
 `1e700d220174ef5c4b61a9b119aab3d99daf0d9aa33a1eb5404f794211e56a9a`
 and `a5b64909f6d5246092ffc6593f66edee06fa82cd7f7e1b8a1ee0ec0e180aa75f`.
+
+### Passive scene source and controller receipt follow-up
+
+Reprojection of the exact no-force `000848` provider log included both
+kinematic anchors and both dynamic breast nodes. In all eight windows each
+stock writer started from the same scene position the stock read consumed.
+For each dynamic node, the next frame consumed a different position from
+the previous frame's written position in all seven adjacent pairs. The
+right solver's prior written target remained the next pre-step target in
+all seven pairs. Both anchors and both dynamic nodes also changed their
+shared input plateau at frame five, by 1.075 to 1.111 game units. The
+observed passive motion occurs when FSMP writes its current solver state
+into a scene position that has already changed between its own windows.
+The retained trace establishes that interval and leaves the identity of
+the intervening scene writer unresolved. The four-role analysis SHA-256 is
+`a59b9e1cbce3fde84ce011f94fc1aa65a00d15b642a4e95a028224043fffd21e`.
+
+Skyrim Autotest `d959e6c` separates driver receipts for the original
+publication sequence from receipts for a later refresh of the same command.
+Replay of `234101` found three exact EarR input receipts at 110 ms since
+publication and one refreshed sequence at 125 ms. The startup release's
+first observed receipt was a refresh after 35.547 seconds. These intervals
+include executor polling and do not measure in-game motion or transport
+latency for the original sequence. Replay of `003309` recorded startup
+input only, consistent with the pre-contact refusal. All 914 Autotest
+unit tests passed. The retained report replay SHA-256 is
+`c375d3553b7c21f461c8267f5dfa26e7519d0816b95cf8f27d9a2c5952d32437`.
