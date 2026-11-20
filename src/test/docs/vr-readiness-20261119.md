@@ -1763,6 +1763,15 @@ custom controller calls. The actor retired and 123 files restored. Shutdown
 again returned `0xC0000005` at `SkyrimVR.exe+0xE3ED1D` (record 102993).
 Terminal SHA-256 `ac3f222e10902204505e5386052cdf49abba327f2ef40873adc520b4e7a1e5f1`.
 
+The pinned VR Address Library resolves the witness counter to the graphics
+state's `frameCount` field. Its increments can cross an otherwise serialized
+SKSE pose task. The missed IDs measure graphics label coverage. Solver-step
+coverage requires a separate measurement. The exact pose reads took
+65 microseconds at the median and at most 198 microseconds. The serialized
+SKSE queue can drain at different engine phases, so a shorter polling period
+alone provides no guarantee of a fixed post-update observation point. A
+contact replay needs a proven scene phase or provider-frame measurements.
+
 In SE run 191421 the typical contact fixture passed the pre-arm gate and
 accepted the collector's `Arm`. Its six before-arm samples covered 1.725
 seconds with overlaps at least 1.497 GU. The six post-arm unattached samples
@@ -1771,3 +1780,12 @@ the actual sampled hand moved 3.174 GU, above the harness's 2 GU stability
 limit. CBPC never received an append or detach. Native exit 0 and 143 restored
 preimages were verified. Terminal SHA-256
 `cc6b8de8fbf8bf391b092868944809e792ae42938422ee421587ebb8c03a57ce`.
+
+In 192445 the nominal placement forecast had at least 5.59 GU of
+overlap. After the actor arrived, all eight samples showed separation
+from 0.424 to 2.809 GU. The root orientation was unchanged and the
+measured `TailBone03` position relative to that root shifted by over
+five units across the first move. The relocation estimate needs the
+observed post-move animation field. This run stopped before arming or
+appending. Native exit 0 and 143 preimages restored. Terminal SHA-256
+`0254284871a3ffc194e3047fb6df1d24bcafe2e3c75d37770ba94f928abc6031`.
