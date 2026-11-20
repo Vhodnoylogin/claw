@@ -1743,3 +1743,31 @@ The isolated audit covers ordered pages, matching fixture and epoch, multiple
 serialized drain threads and missing frames splitting a timed interval.
 Live cadence and callback correlation remain open. Native build receipt SHA-256
 `854119007ddda4ad10f7fbb7cdb191d7c2d83506f083464b84e4df8a63771b3d`.
+
+In passive VR run 191107, the loaded prototype crashed while creating the
+first `Begin` reply. CrashLogger's same-PID record and exact DLL disassembly
+trace the null reason passed to JSON's string constructor after timer setup.
+The process exited with code 1. Windows Application Error supplied no matching
+record for that exit. The original executor kept one undisputed dispatch and
+performed no retry. Native fix and serializer regression evidence has SHA-256
+`0881874bd23878503dc7a9f1688271b4e6995938b34b9e0e4e79a98d5e8d1d2d`.
+
+In 191921 the corrected DLL acknowledged one `Begin`, emitted all eight
+immutable pages, and became idle. It recorded 114 distinct engine frames over
+4.940 seconds. Root and neutral wand translations stayed fixed. Between the
+first and last accepted sample there were 55 missing engine IDs, and the
+longest consecutively sampled interval was 0.205 seconds. The captured rows
+show the moving ear and its fitted capsule, while the test's required
+1.5-second consecutive coverage remains open. There were no provider or
+custom controller calls. The actor retired and 123 files restored. Shutdown
+again returned `0xC0000005` at `SkyrimVR.exe+0xE3ED1D` (record 102993).
+Terminal SHA-256 `ac3f222e10902204505e5386052cdf49abba327f2ef40873adc520b4e7a1e5f1`.
+
+In SE run 191421 the typical contact fixture passed the pre-arm gate and
+accepted the collector's `Arm`. Its six before-arm samples covered 1.725
+seconds with overlaps at least 1.497 GU. The six post-arm unattached samples
+covered 1.845 seconds with overlaps at least 1.011 GU. In this second interval
+the actual sampled hand moved 3.174 GU, above the harness's 2 GU stability
+limit. CBPC never received an append or detach. Native exit 0 and 143 restored
+preimages were verified. Terminal SHA-256
+`cc6b8de8fbf8bf391b092868944809e792ae42938422ee421587ebb8c03a57ce`.
