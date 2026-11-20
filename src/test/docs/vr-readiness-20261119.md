@@ -621,3 +621,35 @@ and six directories reconciled. These observations establish actor model
 ownership at the measured times. A provider object window and the
 association of anonymous solver objects remain pending. Receipt SHA-256
 `988fdbcc0fcbf225df59b10cd91cd533cc4266e6780b9068075850212ba05aa2`.
+
+## VR61 actor-associated FSMP ears and tail
+
+VR61 `20261120-031312-b666ab` recorded a public FSMP object window on the
+same 10 MHz QPC timeline as two native poses of one scoped male wolf
+`FF000844`, handle 1112346, Body `CDD86`, addon `CDD87`. The window begins
+after the first completed pose and its last matched Post and readback
+precede the second pose. It contains 28 complete pairs over 0.7946113 s,
+11 rigid objects and nine enabled Spring2 constraints. The provider
+reports the exact effective male motion XML. The restoration receipt
+SHA-256 is `261a63e03e297b52858d38fb192a1ff6e3ab0369f31cbd47204545963d7cfd3b`.
+
+The offline `fsmp_vr_actor_binding` replay uses the pinned source XML,
+the two raw native replies and raw provider frame. The two kinematic
+positions match the model's head and tail anchors exactly at both
+endpoints. Their rotation matrices match within 1e-5 per component.
+Opposite head-local signs distinguish the ear branches, and the
+directed graph covers every declared role and edge. Dynamic inverse mass
+agrees with the source mass at the observed 1.13 scale. The nine Spring2
+limit and damping vectors agree with the XML after scaling the linear
+limits. For the last complete pair the nine parent-local translations
+changed by 0.0064477 to 0.0466536 unscaled game units, measured at Pre and
+Post for each role and its parent. Direct provider actor ownership is
+unavailable. The replay measures one matched solver pair and establishes
+neither rendered motion, quantitative response under controlled
+excitation, nor contact. The raw and computed evidence SHA-256 values
+are `be5a43be5c82607b4ec6b5a3497f2eb1e7eee1839dac61039145e40f29cc73f2`
+and `d87c827bbbddfc1fc0b032e97bd6979a5a9e57b15f94994c41561056eb6df6f8`.
+
+EndNpc completed before the two-sample unload check. The game exited 0.
+Restoration reconciled 146 file snapshots, 48 staged paths, 75 native
+VFS winners and six temporary directories.
