@@ -1473,3 +1473,25 @@ The result records no body clearance. The game exited with code 0 and the
 original profile, 122 snapshots, eight staged paths and 51 VFS winners
 reconciled. Terminal SHA-256
 `d24b912482d1eb5b874e41dda78dfd5ff8799224d8714b442dd0f183666c4560`.
+
+Run 163757 did not start Skyrim. The test heartbeat saw the new SteamVR
+root after the explicit process launch and before ownership registration.
+Normal recovery then lacked the exact exit handle of that short-lived
+root. Independent recovery verified the run-owned room and monitor, closed
+both normally, and confirmed all descendant processes absent. The original
+driver and 122 file preimages were restored. The standard Steam driver
+restore gracefully restarted Steam. The exact new spawn wrapper holds the
+original session lock during launch and registration. Run 164527 used that
+wrapper, reached the subject and exited normally.
+
+The exact VRIK/HIGGS callback in 164527 read body item 0xCDD86 and addon
+0xCDD87 in the active third-person slot 32. The model path matched the
+reviewed male wolf and its clone was an unculled descendant of the loaded
+third-person actor root. The separate biped root did not contain that
+clone. This was the only failed active-slot predicate. The first-person
+root was application culled and its body slots were empty. This exposes
+the private observer's erroneous root assumption before a virtual pose
+was sent. Real camera clearance still needs an observation against the
+verified actor-root path. Native exit was 0 and 122 preimages restored.
+Terminal SHA-256
+`645bfa78bee93bb47cea058c7483b96aea0361dc24af6d0086ca2e92cf039916`.
