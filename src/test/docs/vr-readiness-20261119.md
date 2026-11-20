@@ -889,3 +889,47 @@ restoration. Independent receipt SHA-256
 `7ffe488789079f33b9aba2d4ba299b955070d4b418ce3c647524ed52241ef5f2`,
 raw inputs `da20816197738faf93ee3a92a93c1e3d2ac24af7cef0d02b39fbd8044e65f19d`,
 numerical association `efbcfe47b0eb794953f916ac8d6a5d590b661a29d54b1452728585b695555b0b`.
+
+## Morphbench configuration comparison and next female trial
+
+Morphbench `623c2e28144ad8d4251601e187e51f20aa047fde` imported and
+exported both exact VR61/VR69 XML files byte for byte. The editor exposed
+344 male and 422 female editable fields. All 9 male and 11 female
+constraints reproduced the source limits, damping, stiffness and frame
+selectors used by the corresponding live solver replay. The mass and
+inertia fields matched as well. With the recorded actor frames supplied
+to the editor, every configured linear limit endpoint used its declared
+joint origin and basis. This checks the static projection with observed
+VR frames. Motion amplitude still requires a controlled game measurement.
+
+Changing the left P1 linear damping X from 0.4 to 0.0 in the editor
+changed only that number in the exported female XML. In the completed
+[SE damping comparison](physics-damping-response-20261119.md#controlled-se-damping-contrast-completed),
+that setting was the sole configured difference. The edited VR export
+was checked offline. Local `Builds/claw-morphbench-physics-replay-20261120/`
+retains `REST-FRAME-RESULT.json` SHA-256
+`6fde4f811957feb34a2d63c79cb972eca95598effb23e3da4abcbdda351cc695` and
+`verify_editor_rest_frames.py` SHA-256
+`84a782e2985be8ae8ec313dae468619cf79d7db6975075c2de8af30282a8b2a8`.
+
+The exact VR67 NiOverride metadata exposes `GetNodeTransformKeys`,
+`HasNodeTransformPosition`, `GetNodeTransformPosition`,
+`AddNodeTransformPosition`, `RemoveNodeTransformPosition` and
+`UpdateNodeTransform`. This establishes typed runtime availability.
+Use these in one fresh guarded VR run to qualify the anchor update and
+its undo before measuring P1 amplitude. The SE `CLAWTestFsmpPulse.psc`
+hardcodes a different actor base and cell. Its compiled script must stay
+out of the VR trial. Reuse the existing [owned anchor operations](../python/integration/owned_anchors.py)
+and [paired FSMP trace](../cpp/fsmp_step_witness/README.md#optional-paired-pose-trace)
+after confirming their bindings in that run.
+
+Start with empty transform keys and an observed quiet pair for both
+P1 joints. Map the four trace tokens to the new actor, apply one keyed
+left-anchor step and witness the right anchor as a control. Retain
+the continuous provider pairs, independent world samples, and exact
+removal and return. Require response clearly above measured coordinate
+granularity. The scoped pose lease need only cover its actual native
+reads. Continuous world-owner evidence must bracket the held interval.
+The editor shows configured limits and geometry. Comparing its predicted
+waveform to the game would require an equivalent solver and host-time
+and kinematic inputs, which the editor does not currently implement.
