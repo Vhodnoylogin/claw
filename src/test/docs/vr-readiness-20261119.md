@@ -1049,3 +1049,66 @@ is compared with the existing independent game exit handle when available.
 These diagnostic calls share bounded original phase time and never authorize
 dispatch. The prepared case passed 14 offline checks. Its game observations
 are pending.
+
+## 20 November live follow-up
+
+All six additional TEST VR cases reached the intended SkyrimVR process. The
+latest independently reconciled accounting is 107 Skyrim starts, 65 VR
+starts and 74 SteamVR platform attempts. The retained test profiles and
+staged assets were restored after each case. Two exits returned the Windows
+access-violation code instead of zero. These are separate teardown failures.
+
+- **FSMP P1, 122643.** Bridge 2.3.7 checked 76 game paths, reported no
+  active Qt modal at dispatch and identified the exact SkyrimVR process for
+  the SKSE operation. Its terminal exit code 0 matched the independent
+  process handle. The female NPC loaded and the witness retained 29
+  coherent passive solver pairs. The original association rejected the
+  moving pose bracket before any P1 write.
+- **FSMP association replay.** Independently sampled WorldObserver poses
+  immediately around the solver window uniquely identify head, tail and
+  both P1 parents. Head and ears retain the exact graph checks. The tail's
+  unique five-link chain and exact positions identify the tail anchor;
+  the cross-reader rotation residual is recorded separately. The next
+  frame shows an animated shift, and the new pre-arm check refuses it.
+  The ten offline controls qualify association and refusal only. The
+  actual anchor pulse and its return are still open.
+- **CBPC, 122840 and 123130.** The first run refused a Windows extended-path
+  prefix mismatch on otherwise equal provider backing. With both ordinary
+  and extended paths normalized, the second run reached NPC placement.
+  Destination XY was within half a unit. The NPC settled about 6.7 units
+  below the initial player-height guess. The case stopped before arming.
+  Exit code 0xC0000005 was observed after the shutdown command.
+- **Stock renderer, 123506.** At 16.813 seconds the CLAW status was 2 and
+  one of two transformation effects was still active. The two-sample
+  post-effect topology requirement was not reached. No headset tilt or
+  image capture was attempted. Exit was 0 and all 116 snapshots matched.
+- **RaceMenu attachment, 123854.** The owned female wolf, observer and
+  actual VFS backing were verified. The direct NiOverride.AttachMesh
+  transport returned None despite advertising bool. The observer lease
+  retired, the game exited 0 and the case restored 147 snapshots, 49
+  staged paths and 77 VFS winners. Native completion and geometry remain
+  unknown. The test-only CLAWTestSkeeAttachment.psc uses a Papyrus stack
+  for the two latent calls and returns the completed response as a typed
+  integer. The compiled script must still be tested in a fresh run.
+- **CBPC, 124245.** Actual floor settling and isolated left-controller
+  lowering passed. The test armed the event witness and attached one
+  test sphere. The eight held near frames had 9.04–11.16 units of
+  separation, exceeding the combined 6.39-unit radius while the wand
+  remained fixed. The sphere was detached and the baseline input restored.
+  The game again exited with 0xC0000005 after shutdown. No sustained
+  contact, callback contrast or release contact set is qualified.
+  A phase-aware offline fit including the pre-arm frame retained at least
+  1.73 units of overlap on the nine recorded frames at the same radius
+  and within the original local-offset bound. A fit using only later
+  frames missed the pre-arm control. New trajectories, the far phase and
+  teardown require independent live validation.
+
+The private receipts are under Builds/claw-vr-fsmp-p1-startup-20261120,
+Builds/claw-vr-fsmp-p1-pose-binding-20261120,
+Builds/claw-vr-cbpc-near-far-20261120,
+Builds/claw-vr-cbpc-module-path-20261120,
+Builds/claw-vr-render-qualification-20261120,
+Builds/claw-vr-skee-attachment-case-20261120,
+Builds/claw-vr-cbpc-floor-anchor-20261120 and
+Builds/claw-vr-cbpc-tail-motion-study-20261120. The compiled latent
+attachment fixture and any live output stay outside the mod archive.
