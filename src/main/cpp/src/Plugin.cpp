@@ -312,6 +312,7 @@ void collectPins() {
         it = physicsRoots.erase(it); // Main-task-only root/part retirement; cheap rejection history remains in State.
     }
 }
+// SKSE VR holds its queue lock while running tasks. Call without the state mutex.
 void queuePinCollection() {
     if (tasks) tasks->AddTask([] { std::lock_guard lock(mutex); collectPins(); });
 }
@@ -329,8 +330,11 @@ void quarantine(State& state, std::string error) {
     state.runtimeHandle.reset(); state.cache.clear();
     state.physicsAuthority.reject(claw::PhysicsRejection::identity);
     state.vrBody.reset();
-    queuePinCollection();
     logError(state, std::move(error));
+}
+void quarantineOnTask(State& state, std::string error) {
+    quarantine(state, std::move(error));
+    collectPins();
 }
 void checkRuntimeInstances() {
     for (auto it = states.begin(); it != states.end();) {
@@ -338,7 +342,7 @@ void checkRuntimeInstances() {
         if (!state.runtimeSerial || state.quarantined) { ++it; continue; }
         const auto actor = std::as_const(state.runtimeHandle).get(); // Const resolution; strong temporary lives only in this main task.
         if (!claw::sameRuntimeActor(state.runtimePointer, actor.get(), state.runtimePointer)) {
-            quarantine(state, "runtime actor handle expired or changed; saved assignment quarantined");
+            quarantineOnTask(state, "runtime actor handle expired or changed; saved assignment quarantined");
         } else if (actor->IsDeleted()) {
             if (const auto pin = pins.find(actor.get()); pin != pins.end()) requestChannels.eraseOwner(it->first, pin->second->serial);
             requestChannels.eraseOwner(it->first, state.latestRequest.token.owner);
@@ -347,7 +351,7 @@ void checkRuntimeInstances() {
             it = states.erase(it);
             continue;
         } else if (RE::TESForm::LookupByID<RE::Actor>(it->first) != actor.get()) {
-            quarantine(state, "runtime actor no longer owns saved FormID; assignment quarantined");
+            quarantineOnTask(state, "runtime actor no longer owns saved FormID; assignment quarantined");
         } else if (!actor->Is3DLoaded() || !actor->Get3D()) {
             claw::appearance::runtime.restore(actor.get());
             state.status = Status::unloaded; state.dirty = true;
@@ -444,20 +448,20 @@ State* stateFor(RE::Actor* actor, bool create, bool adoptDefaults = true) {
         auto& state = found->second;
         if (state.quarantined) return &state;
         if (!claw::mayBindRestoredIdentity(state.vmHandle, handle, false)) {
-            quarantine(state, "actor VM deletion identity unavailable or changed; assignment quarantined");
+            quarantineOnTask(state, "actor VM deletion identity unavailable or changed; assignment quarantined");
             return &state;
         }
         if (state.runtimeSerial) {
             const auto witness = std::as_const(state.runtimeHandle).get();
             if (!claw::sameRuntimeActor(state.runtimePointer, witness.get(), actor))
-                quarantine(state, "actor runtime identity conflicts with saved FormID; assignment quarantined");
+                quarantineOnTask(state, "actor runtime identity conflicts with saved FormID; assignment quarantined");
             return &state;
         }
         if (nextRuntimeSerial == std::numeric_limits<std::uint64_t>::max()) return nullptr;
         const auto runtime = actor->GetHandle();
         const auto witness = runtime.get();
         if (!witness || witness.get() != actor) {
-            quarantine(state, "restored runtime actor handle unavailable; assignment quarantined");
+            quarantineOnTask(state, "restored runtime actor handle unavailable; assignment quarantined");
             return &state;
         }
         state.runtimeHandle = runtime; state.runtimePointer = actor; state.runtimeSerial = nextRuntimeSerial++;
@@ -985,7 +989,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     if (!state || state->quarantined || !boundTo(*state, actor)) return;
     if (!observePhysicsContext(actor, *state)) state->physicsAuthority.reject(claw::PhysicsRejection::identity);
     if (actorSex != RE::SEX::kMale && actorSex != RE::SEX::kFemale) {
-        if (state->vrBody) { state->vrBody.reset(); queuePinCollection(); }
+        if (state->vrBody) { state->vrBody.reset(); collectPins(); }
         logError(*state, "actor has no readable NPC sex"); return;
     }
     std::optional<claw::VRBodyLease> vrLease;
@@ -1425,7 +1429,7 @@ void revert(SKSE::SerializationInterface*) {
 void load(SKSE::SerializationInterface* interface) {
     disarmInitialWorld(claw::InitialWorldDisarm::serializationLoad, true);
     SKSE::log::info("CLAW lifecycle serialization-load epoch={}", epoch.load());
-    std::lock_guard lock(mutex);
+    std::unique_lock lock(mutex);
     claw::appearance::runtime.reset();
     states.clear(); requestChannels.clear(); physicsBindings.clear(); physicsRegistrationRequests.clear(); saveNamespace = 0; nextIdentity = 1;
     physicsSessionAuthorized = false; physicsPopulationEnabled = false; physicsPopulationBlocked.clear();
@@ -1530,6 +1534,7 @@ void load(SKSE::SerializationInterface* interface) {
             (!identity || (identity == state->second.identity && seed == claw::appearance::coatSeed(saveNamespace, identity)));
     });
     for (const auto& [id, state] : states) { (void)id; nextIdentity = std::max(nextIdentity, state.identity + 1); }
+    lock.unlock();
     queuePinCollection();
 }
 
@@ -1537,12 +1542,14 @@ void deleted(RE::VMHandle handle) {
     if (!handle || !tasks) return;
     struct Receipt { RE::FormID id; std::uint64_t identity, runtime, requestOwner; RE::ActorHandle witness; RE::Actor* pointer; };
     std::vector<Receipt> receipts;
+    bool quarantined = false;
     {
         std::lock_guard lock(mutex);
         for (auto& [id, state] : states) {
             if (state.vmHandle != handle) continue;
             if (!state.runtimeSerial) {
                 quarantine(state, "deletion receipt for unbound saved identity; assignment quarantined");
+                quarantined = true;
             } else {
                 const auto pin = pins.find(state.runtimePointer);
                 receipts.push_back({id, state.identity, state.runtimeSerial,
@@ -1561,7 +1568,7 @@ void deleted(RE::VMHandle handle) {
         // VM handle format/order is not assumed unique across reuse. A late old
         // receipt cannot retire a live current actor just sharing that VM handle.
         if (actor && actor.get() != receipt.pointer) {
-            quarantine(found->second, "deletion runtime witness changed; saved assignment quarantined"); return;
+            quarantineOnTask(found->second, "deletion runtime witness changed; saved assignment quarantined"); return;
         }
         if (actor && !actor->IsDeleted() && RE::TESForm::LookupByID<RE::Actor>(receipt.id) == actor.get()) return;
         if (receipt.requestOwner) requestChannels.eraseOwner(receipt.id, receipt.requestOwner);
@@ -1570,7 +1577,7 @@ void deleted(RE::VMHandle handle) {
         claw::appearance::runtime.forget(receipt.id);
         states.erase(found);
     });
-    if (!receipts.empty()) queuePinCollection();
+    if (quarantined || !receipts.empty()) queuePinCollection();
 }
 
 enum class Operation { assign, clear, refresh, configureMorphLink, disableMorphLink };
@@ -1692,14 +1699,15 @@ const State* cachedState(RE::Actor* actor) {
 }
 bool requestCoatSurfaceAudit(RE::StaticFunctionTag*, RE::Actor* actor) {
     if (!actor || !tasks || !enabled) return false;
-    std::lock_guard lock(mutex);
+    std::unique_lock lock(mutex);
     const auto* state = cachedState(actor);
     if (!state || state->quarantined || state->status == Status::unloaded) return false;
     auto owner = pinActor(actor); if (!owner) return false;
     const auto id = actor->formID;
     const auto token = claw::appearance::runtime.beginSurfaceAudit(id); if (!token) return false;
     const auto world = epoch.load(), runtime = state->runtimeSerial;
-    tasks->AddTask([id, token, world, runtime, owner = std::move(owner)] {
+    lock.unlock();
+    auto sample = [id, token, world, runtime, owner = std::move(owner)] {
         std::lock_guard lock(mutex);
         const auto cancel = [&] { claw::appearance::runtime.cancelSurfaceAudit(id, token); };
         auto* target = owner->actor.get();
@@ -1709,7 +1717,13 @@ bool requestCoatSurfaceAudit(RE::StaticFunctionTag*, RE::Actor* actor) {
             !claw::mayRunActorRequest(target, RE::TESForm::LookupByID<RE::Actor>(id), target && target->formID == id, !target || target->IsDeleted()) ||
             !target->Is3DLoaded() || !target->Get3D(false)) { cancel(); return; }
         (void)claw::appearance::runtime.sampleSurfaceAudit(target, token);
-    });
+    };
+    try { tasks->AddTask(std::move(sample)); }
+    catch (...) {
+        lock.lock();
+        if (world == epoch) claw::appearance::runtime.cancelSurfaceAudit(id, token);
+        return false;
+    }
     return true;
 }
 RE::BSFixedString coatSurfaceAudit(RE::StaticFunctionTag*, RE::Actor* actor) {
@@ -1828,11 +1842,14 @@ bool configureMorphLink(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedStr
 }
 bool disableMorphLink(RE::StaticFunctionTag*, RE::Actor* actor) { return actorRequest(actor, Operation::disableMorphLink); }
 bool configureMorphFamily(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString profileID) {
-    std::lock_guard lock(mutex);
+    std::unique_lock lock(mutex);
     const auto* profile = morphProfiles.find(profileID.c_str(), claw::Sex::male);
     if (!profile) profile = morphProfiles.find(profileID.c_str(), claw::Sex::female);
     if (!profile) return false;
-    return actorRequest(actor, Operation::configureMorphLink, {}, profile->link, profile->sex);
+    auto link = profile->link;
+    const auto sex = profile->sex;
+    lock.unlock();
+    return actorRequest(actor, Operation::configureMorphLink, {}, std::move(link), sex);
 }
 std::vector<RE::BSFixedString> morphFamilies(RE::StaticFunctionTag*, bool female) {
     std::lock_guard lock(mutex); std::vector<RE::BSFixedString> result;
@@ -1875,15 +1892,17 @@ std::int32_t oBodySourceStatus(RE::StaticFunctionTag*) {
 }
 
 bool requestSourceBootstrap(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t token) {
-    std::lock_guard lock(mutex);
+    std::unique_lock lock(mutex);
     auto* state = sourceCandidateCached(actor, token, false);
     if (!state || !tasks || state->sourceValidationPending || state->sourceReady) return false;
     auto owner = pinActor(actor);
     if (!owner) return false;
     state->sourceValidationPending = true;
+    const auto id = actor->formID;
     const auto world = epoch.load();
     const auto runtime = state->runtimeSerial;
-    tasks->AddTask([owner = std::move(owner), token, world, runtime] {
+    lock.unlock();
+    auto validate = [owner = std::move(owner), token, world, runtime] {
         std::lock_guard lock(mutex);
         auto* actor = owner->actor.get();
         if (world != epoch) return;
@@ -1895,7 +1914,15 @@ bool requestSourceBootstrap(RE::StaticFunctionTag*, RE::Actor* actor, std::int32
         }
         state->sourceReady = true;
         sourceBootstrapEvent(actor, *state, true);
-    });
+    };
+    try { tasks->AddTask(std::move(validate)); }
+    catch (...) {
+        lock.lock();
+        const auto found = states.find(id);
+        if (world == epoch && found != states.end() && found->second.runtimeSerial == runtime &&
+            found->second.sourceToken == static_cast<std::uint32_t>(token)) found->second.sourceValidationPending = false;
+        return false;
+    }
     return true;
 }
 
@@ -1917,7 +1944,8 @@ bool registerPhysics(RE::Actor* actor, std::int32_t generation,
     std::vector<std::string> ordered;
     for (const auto& name : names) ordered.emplace_back(name.c_str());
     if (!claw::validPhysicsNames(ordered)) return false;
-    std::lock_guard lock(mutex);
+    std::string modelName(model.c_str()), evidenceName(evidence.c_str()), session(expectedSession.c_str());
+    std::unique_lock lock(mutex);
     if (!physicsSessionAuthorized || !physicsSessionMatches(expectedSession.c_str()) ||
         (admission == claw::PhysicsAdmission::initialPopulation && !physicsPopulationEnabled)) return false;
     const auto cached = states.find(actor->formID);
@@ -1944,9 +1972,11 @@ bool registerPhysics(RE::Actor* actor, std::int32_t generation,
     if (old != physicsBindings.end()) {
         old->second.ready = false; old->second.observation.invalidate(); // Pending grant cannot publish/append old snapshot.
     }
-    tasks->AddTask([pin = std::move(pin), generation, ordered = std::move(ordered),
-        model = std::string(model.c_str()), evidence = std::string(evidence.c_str()),
-        expectedSession = std::string(expectedSession.c_str()), ticket = *ticket] {
+    const auto id = actor->formID;
+    lock.unlock();
+    auto apply = [pin = std::move(pin), generation, ordered = std::move(ordered),
+        model = std::move(modelName), evidence = std::move(evidenceName),
+        expectedSession = std::move(session), ticket = *ticket] {
         std::lock_guard lock(mutex);
         auto* target = pin->actor.get();
         const auto pending = physicsRegistrationRequests.find(target);
@@ -2006,7 +2036,17 @@ bool registerPhysics(RE::Actor* actor, std::int32_t generation,
             physicsBindings.insert_or_assign(target->GetFormID(), std::move(binding));
         }
         observePhysics(target);
-    });
+    };
+    try { tasks->AddTask(std::move(apply)); }
+    catch (...) {
+        lock.lock();
+        const auto pending = physicsRegistrationRequests.find(actor);
+        if (pending != physicsRegistrationRequests.end() && pending->second == request) {
+            physicsRegistrationRequests.erase(pending);
+            if (const auto found = states.find(id); found != states.end()) found->second.physicsAuthority.cancel(*ticket);
+        }
+        return false;
+    }
     return true;
 }
 
@@ -2024,8 +2064,9 @@ bool physicsRegisterInitial(RE::StaticFunctionTag*, RE::Actor* actor, std::int32
 }
 // Explicit session change revokes all registration authorizations atomically.
 // It does not assert provider reset or revive cleanup authority for any old ledger.
-std::string rotatePhysicsSession(bool authorize) {
-    if (!enabled || !physicsSessionRevision) return {};
+std::string rotatePhysicsSession(bool authorize, std::string_view expectedSession = {}) {
+    std::unique_lock lock(mutex);
+    if (!enabled || !physicsSessionRevision || (!authorize && !physicsSessionMatches(expectedSession))) return {};
     physicsSessionAuthorized = authorize;
     if (authorize) physicsSessionWorld = epoch.load(); // Issued world is immutable until another explicit begin.
     physicsSessionRevision = physicsSessionRevision == std::numeric_limits<std::uint64_t>::max() ? 0 : physicsSessionRevision + 1;
@@ -2041,15 +2082,16 @@ std::string rotatePhysicsSession(bool authorize) {
             state->second.physicsAuthority.suspend();
         binding.active = false; binding.ready = false; binding.observation.invalidate();
     }
+    auto token = physicsSessionToken();
+    lock.unlock();
     queuePinCollection();
-    return physicsSessionToken();
+    return token;
 }
 RE::BSFixedString physicsBeginSession(RE::StaticFunctionTag*) {
-    std::lock_guard lock(mutex); return RE::BSFixedString(rotatePhysicsSession(true));
+    return RE::BSFixedString(rotatePhysicsSession(true));
 }
 RE::BSFixedString physicsEndSession(RE::StaticFunctionTag*, RE::BSFixedString expectedSession) {
-    std::lock_guard lock(mutex);
-    return RE::BSFixedString(physicsSessionMatches(expectedSession.c_str()) ? rotatePhysicsSession(false) : std::string{});
+    return RE::BSFixedString(rotatePhysicsSession(false, expectedSession.c_str()));
 }
 RE::BSFixedString physicsSession(RE::StaticFunctionTag*) {
     std::lock_guard lock(mutex); return RE::BSFixedString(physicsSessionToken());
@@ -2063,7 +2105,7 @@ bool physicsSetPopulation(RE::StaticFunctionTag*, bool optIn, RE::BSFixedString 
 
 void physicsUnregister(RE::StaticFunctionTag*, RE::Actor* actor, bool retainForCleanup, RE::BSFixedString expectedSession) {
     if (!actor) return;
-    std::lock_guard lock(mutex);
+    std::unique_lock lock(mutex);
     if (!physicsSessionMatches(expectedSession.c_str())) return;
     physicsRegistrationRequests.erase(actor);
     const auto state = states.find(actor->formID);
@@ -2073,6 +2115,7 @@ void physicsUnregister(RE::StaticFunctionTag*, RE::Actor* actor, bool retainForC
         if (retainForCleanup) { found->second.active = false; found->second.ready = false; }
         else physicsBindings.erase(found);
     }
+    lock.unlock();
     queuePinCollection(); // Sticky cheap authority survives; root release stays on main task.
 }
 

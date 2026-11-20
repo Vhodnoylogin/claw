@@ -1297,3 +1297,34 @@ operation was issued in that run. The observer ended normally, 50 staged
 files and 78 VFS routes were reconciled, the copied profile was discarded,
 and native exit was 0. A bounded inspection of the exact slot clone will
 separate engine equipment removal and visible geometry in a follow-up.
+
+VR run 145633 read the exact slot-60 clone as a renamed `BSTriShape`.
+Its skin partition retained four vertices, two ordered triangles and the
+one-bone mapping, bound to the actor's `NPC Root [Root]`. The dismember
+slot was visible and the clone and its ancestors were not application
+culled at sampling time. This explains why the previous name-based lookup
+found no geometry. The observations used threads 46360 and 23604; the
+cross-sample thread gate stopped the case before `UnequipItem`. Observable
+first-person rendering and the equipment round trip remain unverified.
+Typed retirement and native exit 0 completed, and the original 50 staged
+paths and 78 VFS routes reconciled.
+
+### SKSE task queue ownership
+
+VR run 144023 accepted the typed FSMP probe request and then refused it
+before provider dispatch. The two successful pose observations used
+different OS threads. The rejected offer's thread was not recorded.
+The actor lease was retired, the game exited with code 0, and 48 staged
+paths and 76 live VFS routes reconciled.
+
+The SKSE VR 2.0.12 source calls its task-drain routine at two sites and
+holds its queue lock across `TaskDelegate::Run`. CLAW's native callbacks
+now reserve their state under the CLAW mutex and release it before
+enqueuing. Failed submissions revoke only their exact reservation.
+Serialization, unregistration and session rotation also enqueue outside
+the state lock. Body-family selection copies its profile before calling
+the asynchronous actor request. Tasks that quarantine actors can collect
+pins directly within the task. This fixes lock-order inversions found in
+the source.
+It does not establish the cause of the earlier provider refusal or a
+shutdown fault.

@@ -60,13 +60,35 @@ class PhysicsAuthorityContracts(unittest.TestCase):
         self.assertIn("expectedRuntime)", disable)
         rotate = PLUGIN.split("std::string rotatePhysicsSession(", 1)[1].split("bool physicsSetPopulation", 1)[0]
         self.assertIn("physicsSessionAuthorized = authorize", rotate)
-        self.assertIn("physicsSessionMatches(expectedSession.c_str()) ? rotatePhysicsSession(false)", rotate)
+        self.assertLess(rotate.index("!authorize && !physicsSessionMatches(expectedSession)"),
+                        rotate.index("physicsSessionAuthorized = authorize"))
+        self.assertIn("rotatePhysicsSession(false, expectedSession.c_str())", rotate)
         register = PLUGIN.split("bool registerPhysics(", 1)[1].split("bool physicsRegister(", 1)[0]
         self.assertEqual(register.count("!physicsSessionAuthorized || !physicsSessionMatches("), 2)
         self.assertIn('std::to_string(physicsSessionWorld) + "/" + std::to_string(physicsSessionRevision)', PLUGIN)
         self.assertIn("physicsProcessNonce", PLUGIN)
         self.assertIn("physicsSessionWorld != epoch", PLUGIN)
         self.assertIn("if (authorize) physicsSessionWorld = epoch.load()", rotate)
+
+    def test_native_callbacks_release_state_mutex_before_enqueuing_skse_tasks(self):
+        callbacks = (
+            ("bool requestCoatSurfaceAudit(", "RE::BSFixedString coatSurfaceAudit(", "tasks->AddTask"),
+            ("bool requestSourceBootstrap(", "bool claimSourceBootstrap(", "tasks->AddTask"),
+            ("bool registerPhysics(", "bool physicsRegister(", "tasks->AddTask"),
+            ("bool configureMorphFamily(", "std::vector<RE::BSFixedString> morphFamilies(", "return actorRequest"),
+            ("void load(SKSE::SerializationInterface*", "void deleted(", "queuePinCollection();"),
+            ("std::string rotatePhysicsSession(", "RE::BSFixedString physicsBeginSession(", "queuePinCollection();"),
+            ("void physicsUnregister(", "bool physicsActorCurrent(", "queuePinCollection();"),
+        )
+        for start, end, enqueue in callbacks:
+            with self.subTest(callback=start):
+                code = PLUGIN.split(start, 1)[1].split(end, 1)[0]
+                self.assertLess(code.index("std::unique_lock lock(mutex)"), code.index("lock.unlock()"))
+                self.assertLess(code.index("lock.unlock()"), code.index(enqueue))
+
+        quarantine = PLUGIN.split("void quarantine(", 1)[1].split("void checkRuntimeInstances(", 1)[0]
+        self.assertNotIn("queuePinCollection", quarantine)
+        self.assertIn("collectPins();", quarantine)
     def test_cleanup_and_publication_use_separate_native_authority(self):
         cleanup = PLUGIN.split("bool physicsActorCurrent(", 1)[1].split("const PhysicsBinding* physicsSnapshot", 1)[0]
         snapshot = PLUGIN.split("const PhysicsBinding* physicsSnapshot", 1)[1].split("bool physicsConditionCurrent", 1)[0]
