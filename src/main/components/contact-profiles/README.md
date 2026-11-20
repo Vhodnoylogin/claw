@@ -72,3 +72,10 @@ native event window were independently replayed. Game shutdown returned
 The release profile is still open for live provider consumption, rebinding
 and contact tests on its actual fitted regions. HIGGS and PLANCK use separate
 contact paths. See the [VR evidence](../../../test/docs/vr-readiness-20261119.md).
+
+The fitted male VR tail slot 106 passed the same controlled experiment with
+one actual capsule. CBPC emitted 3, 0, 1 and 0 callbacks during the active
+near, far, return and detached intervals. The unattached near control emitted
+zero. The engine then faulted during process shutdown. The test verified the
+scoped capsule on one born werewolf. Full profile activation and human-to-wolf
+provider binding remain separate work.

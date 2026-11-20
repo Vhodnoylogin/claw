@@ -1580,3 +1580,36 @@ of the actor and observed its unloaded state twice. No contact provider
 operation was issued. Native exit was 0, with 123 restored preimages,
 25 staged paths and 52 verified VFS winners. Terminal SHA-256
 `65dd85fc4000384143d06d21629fdd8278ee17bb1156becb5e000bac22b68521`.
+
+### Actual fitted VR tail capsule
+
+Run 173932 held the target tail region and the virtual wand still after
+ordinary floor settlement. The first opening overlap sample was 0.70180
+game units, below the 0.75 test margin. The next seven were 2.98499 to
+4.52249 units. The original interval included the opening transient and
+stopped before arming or requesting the scoped bone witness. The private
+test now records up to nine snapshots and uses the first sustained
+qualified interval. Archived replay checks the exact seven qualified
+frames and rejects a duplicate frame or foreign owner.
+
+In run 174319 the fixed `TailBone01` witness confirmed the exact loaded
+body, actor, bone and zero-valued effective morph vector before arming.
+The observed scene and actual stock CBPC 1.7.2 call ledger bracketed one
+append and one detach of fitted slot 106, token `0x434C006A`. The unattached
+near control emitted zero callbacks. Active near, far and return emitted
+3, 0 and 1. The final near hold after detach emitted zero. All callback
+windows used fresh geometry. Initial active near overlap exceeded 3.46 units and
+far separation exceeded 3.53 units. The post-model witness, final removal
+and original controller input were observed.
+
+The independent terminal script exposed two positive-path defects before
+producing a receipt. A local list shadowed the geometry module and the
+event replay omitted the fixture sex. The external replay renames the local
+list and supplies the fixture sex. It reads the frozen run files and verifies
+exact arguments, event durations, observations and retirement. Its
+terminal SHA-256 is `51d5f821ac506e17c4a0c21f3362d9d3cf22ccb9b1a1b529774c7ccf48e48100`.
+The contact scenario passed. Native shutdown still returned 0xC0000005
+at `SkyrimVR.exe+0xE3ED1D` (Application event 102979). All 123 preimages,
+25 staged paths and 52 VFS winners reconciled. This is evidence for one
+fixed capsule in an isolated born-werewolf fixture. Whole-profile fit,
+other regions, transformed humans and routine shutdown remain open.
