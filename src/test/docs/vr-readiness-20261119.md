@@ -1432,6 +1432,26 @@ are separate requirements for its successor. Terminal SHA-256
 motion comparison SHA-256
 `c458f5a6371c3ea326068131228a0e349f4bff94c836856d280aa3c87235a7ef`.
 
+The corrected writer observer qualified the ordinary world-node transfer
+in run 170659. After both actual solver substeps and normal force clear,
+the stock FrameSync writer set both exact dynamic P1 nodes to their
+expected solver-derived world positions. The independent read-only
+anchors were stationary. The left node moved about 0.05348 game units
+relative to its anchor. The right node also moved about 0.01014 units
+between its on-scene before and after observations. This exceeds the
+strict 0.01000 paired scene-control limit, though the right solver joint
+showed no relative change in the pulse step. The same-run solver contrast
+qualified separately. The scene-transfer proof establishes applied node
+positions, while paired scene motion and rendered skin remain open.
+
+The preceding 170319 attempt ended on a DevBench scene-inspection timeout
+before the NPC existed. Owned cleanup restored all inputs. Run 170659
+retained the same provider binary, then completed normal scoped
+retirement, native exit 0, 146 file restores and 76 VFS wins.
+Terminal SHA-256 `ed4f61c0d80692191334fb91a61fa185ccde966e88f13dfca4c55bf544555d27`.
+Scene comparison SHA-256
+`87fea1479c5a4b873e40b94ddb899a0d14b7707e7c48f33d9e188922de06b0be`.
+
 ### Stock male first-person armor model route
 
 The private route probe changed only male `MOD4` in the diagnostic armor
