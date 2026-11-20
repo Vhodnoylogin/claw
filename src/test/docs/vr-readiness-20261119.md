@@ -2054,3 +2054,30 @@ provider events. Exact solver outcomes, haptics and the left ear remain
 open. Replay and custody SHA-256 values are
 `5d17dcc1b393b2da584569e503f7388e5637a9e5668fe7be701abc34672aca91`
 and `5565e73252dfd78d952f69681782e8f3304d1a6e2e822a3d3c5ff11db001b8f3`.
+
+The force-free survey `20261121-000848-1122b0` recorded eight distinct
+stock writer windows over 235.466 ms on the same owned female NPC. The
+right writeback displacement was 0.043504–0.199200 game units. Zero
+windows met the 0.01000 right bound, and one met both 0.05 joint-gap
+bounds. Right target-to-scene and final-write observations remain separate
+in the replay. Each new ticket opened after its preceding report.
+
+The first verifier expected a newer clock field in the private test
+image. Localized compiler include tracking left its original callback
+entry timestamp in the binary. The exact archive replay verifies that
+shared entry plus the strictly later ticket opens, actual loaded DLL,
+stock-role records and independent pose brackets. It provides measured
+natural writer output. Exact renderer and input-to-motion qualification
+remain open. The game completed with exit 0 and 146 restored snapshots.
+Restoration SHA-256
+`4692338dfdea699a44d507406a1c866ac3fa53e5b49a8190ec385d8d1458474f`.
+Independent survey SHA-256
+`c5633039845a6c797c95e741eeb26aeaace15cfa57f99a148460803f6781c97e`.
+
+The first left-ear slot 91 attempt `20261121-001155-a408a2` used an
+authored fitted left capsule and one separate floor site. Placement
+reached that site while the independent player reference moved over
+4 game units. The stable-reference guard refused before AI changes,
+controller motion or provider operations. Exit `0xC0000005` and all 141
+restored snapshots were recorded separately. Restoration SHA-256
+`a8279a8348a237e1e4878ce56d6862db551a5762ff312e083f2c7453c1a536a9`.
