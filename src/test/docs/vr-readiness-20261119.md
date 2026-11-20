@@ -2002,3 +2002,31 @@ refused the separate active request with `bilateral_joint_gap_exceeded` before
 applying a force. The strict pair remains unqualified. The game exited with
 code 0, Bridge agreed and 146 preimages were restored. Terminal SHA-256
 `f147a332036c0df9cb2d589aa4748b16c195e6cab5a545f562e79046228f9111`.
+
+The diagnostic run `20261120-232750-22e0b9` recorded both initial
+joint gaps at 0.01075328, below the original 0.05 gate. A single
+left-side force was observed over two solver substeps. The left written
+scene moved 0.059048 game units under the force and 0.011059 without it.
+Right scene displacement was identical in both windows at 0.011059
+game units, equal to the original right target-to-scene offset. Right
+target and pivot translations did not change during either solver
+window. The strict paired result still failed its 0.01000 right scene
+limit. The game exited with code 0 and restored all 146 snapshots.
+The terminal and independent paired audit SHA-256 values are
+`6586a6f17bc9d2e51f6a9771c20bb3ff7a0c7cee3b80295370aab500a283bbef`
+and `1e4d71fc488118e2f6d5deac5d7ac5ed7d9e4e19ef04163c21388f1c9fbb35e3`.
+
+The first fixed-floor EarR run `20261120-232323-4302bb` obtained one
+owned reference in the expected cell. Five increasing observations
+still showed its 3D as unloaded, before the intended move. In the
+successor `20261120-232957-a09920`, reference identity was established
+before the sole initial move to the measured floor. Two settled world
+samples and a separate AI state read allowed the stationary comparison.
+The nominal projected near and far gaps at that point were -5.7103
+and +7.1963 game units. A 0.603-unit follow-up move changed the reference
+position while leaving the separately observed scene root in place.
+The strict correction gate stopped before capture or contact. Both
+attempts restored 141 snapshots each and recorded a separate nonzero
+game exit. Terminal SHA-256 values are
+`8650704e38b4b6dc872301b5bd57a3c4f642995054dd2a4a1bb5670568d9abb5`
+and `af6e948e4e4e5cbfecf1b136618d04107f67255c3a078000409de707d9abcc4b`.
