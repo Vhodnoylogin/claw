@@ -1799,3 +1799,19 @@ test needs a motion-aware hand contact criterion or a verified stable source.
 The case stopped before arming and the provider received no shape calls. It
 retired the fixture and verified exit 0 and 143 restored preimages. Terminal
 SHA-256 `4e11ff7f30d478a61c9efb599fb7925e3dc098f1e8b2794dc2673caf382e6f28`.
+
+Run 194018 used the moving-source hold test and the reviewed Autotest
+diagnostics in the exact isolated SE branch. The remaining 2 GU absolute
+hand-travel rule belonged to the correction planner. It stopped the planner
+with 2.594 GU measured travel before the new hold test ran. Replaying all
+six observed poses with the original 8 GU correction envelope found a
+projected overlap of at least 4.770 GU, with at least 4.663 GU in the
+adjacent linear model. This isolates the obsolete planning criterion.
+The final live hold and provider contrast still require actual evidence.
+Native exit was 0 and 143 preimages restored. Terminal SHA-256
+`45e1c3915e3cad9dd5a9969db0c0ba6b3f9f695ddb4464fa9c4c15abc50f54ca`.
+
+The automatically written Autotest report joined the Main Menu 504 and
+the exact abandoned-read decision by the same local request ID. It counted
+one abandoned request, zero unresolved gateway requests and a later ready
+queue. This verified the new diagnostics in SE with the real test runtime.
