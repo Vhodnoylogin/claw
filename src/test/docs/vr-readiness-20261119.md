@@ -1370,3 +1370,24 @@ one spawned fixture, no trace or actuation requests, 146 restored file
 preimages, 48 staged paths and 76 VFS routes. Bridge 2.3.7 agreed with
 the exact native exit 0. Controlled P1 motion and contact are still
 unqualified by this read-only run.
+
+### Stock male first-person armor model route
+
+The private route probe changed only male `MOD4` in the diagnostic armor
+addon that wins the test profile's load order. The world model and
+installed stock fallback stayed byte-for-byte controls. Run 153757
+reached the stock cast but did not qualify the topology observation.
+One effect remained active at 16.828 seconds, and the guardian separately
+refused an exact identity check for a short-lived SteamVR web helper.
+
+The follow-up 154752 used two unchanged-owner, both-clear observations
+at 16.813 and 19.109 seconds. One complete native capture found the
+expected world body in slot 32. The separately observed first-person
+actor and biped roots were complete, with no matching marker and no
+active or buffered equipment slot. The first-person actor root itself
+had its application-cull flag clear. The modified `MOD4` was insufficient
+to load the marker into the first-person graph of this stock male fixture.
+Other camera routes, VRIK and HMD rendering require separate measurements.
+The outer carrier classification remained ambiguous. Native
+exit was 0, with 118 restored preimages, 253 cold files and 35 VFS
+winners. No original profile or calibration file changed.
