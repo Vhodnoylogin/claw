@@ -1266,3 +1266,24 @@ once, the game exited normally, and all 49 staged paths/77 live VFS entries
 were reconciled. This qualifies the detached resource read for that marker.
 An actor-graph attachment, skin rebinding to the actor, first-person dispatch
 and hardware rendering remain separate work.
+
+### Rebuilt FSMP provider control
+
+The published FSMP 4.1.1 build provenance names commit 2215ec3b. The current
+release tag points to e52ad960. Their 214 authored files match byte for byte
+except for the CMake project version line. Both sets point to the same
+CommonLibVR and nifly commits and use the same package baseline. The overlay
+adds only private read-side causal instrumentation with its option off by
+default. The local compiled variant has no live lease endpoint yet.
+
+The published-release source was built both unchanged and with the optional
+observer. Both were x64 Release with MSVC 19.44 and report version 4.1.1.0
+(noavx). Their three SKSE exports and direct dependency lists match the
+archived provider. The binary sizes and hashes distinguish every cohort.
+
+VR run 142546 independently matched the rebuilt unchanged DLL's actual mapped
+backing and received original typed provider replies. Its disposable NPC
+never acquired 3D inside the existing check window. Load of the rebuilt
+provider is proven for this session. Actor behavior, motion and causal
+observation are unqualified. Native exit was 0 and the source profile was
+restored and reconciled.
