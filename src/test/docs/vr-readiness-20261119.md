@@ -2047,7 +2047,8 @@ window, 0 in the far window, 4 after returning near and 0 after removal.
 An independent replay verified the actor and model leases, actual
 controller poses, native append/detach receipts and observed geometry
 windows. The archived original run passed the subject checks and failed
-the separate game exit with `0xC0000005`. The cold audit verified 141
+the separate game exit with `0xC0000005`, Windows record 103047 at
+`SkyrimVR.exe+0xAB4F26`. The cold audit verified 141
 restored snapshots and 70 VFS winners. The replay qualifies the observed
 provider events. Exact solver outcomes, haptics and the left ear remain
 open. Replay and custody SHA-256 values are

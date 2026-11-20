@@ -148,3 +148,12 @@ The successful attempt prepopulated only these same disabled rows in its
 own disposable profile and retained the original byte-equality gate. Runtime
 verification SHA-256
 `aac22e6e0d8b22a015f7397148ba6faaeecb92760c5a364630abc9e1b671c752`.
+
+The separately tracked Autotest startup run `20261120-235614-820c68`
+accepted the 23 observed disabled rows and started the game with the
+same DLL. Runa's wolf inspection reached Valley Brown again. The final
+control-human diagnostic returned no chunks within the bounded read
+window, so the repeated scenario failed before Edda. The reason for the
+empty diagnostic remains undetermined. Exit 0 and 464 restored snapshots
+passed independently. Repeat SHA-256
+`53fadb040862e47422832ee51aac8e30c95fbbb9f4ac70a81478f831c5d53749`.
