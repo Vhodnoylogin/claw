@@ -55,6 +55,15 @@ changed the measured worker median by 0.4–1.3%. Symmetric covariance ran
 504 inputs. The source retains the measured reservation and original
 arithmetic.
 
+A separate audit traced 31 morph channels and direct weight interpolation to
+the support vertices of each slot. Across 256 single-channel contrasts in the
+compiled rest-space fitter, every changed capsule belonged to the predicted
+partition set. A size change to the ears affected 6 capsules in the flat
+profile and 22 in VR for either sex. A tail-length change affected 6 in the
+flat profile and 17 male or 18 female capsules in VR. This identifies which
+slots a changed-capsule refresh could preserve. Such a refresh still requires
+provider ownership, verified cleanup, and live timing and contact checks.
+
 Tests are under `src/test/components/contact-profiles/`. Provider consumption
 and the effect of nearby hands still need a scoped gameplay check. The CBPC
 test fixture and event witness are ready for a bounded near/far comparison

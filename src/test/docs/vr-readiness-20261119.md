@@ -1028,3 +1028,24 @@ dependency loading. The real current and historical NIF readers opened the
 same 490-block donor. The current VR-body component passed 17 checks, the
 broader VR suite with exact archived resources passed 88 of 89 (one optional
 reference missing), and the existing native Release suite passed 24 checks.
+
+## Bridge 2.3.7 test-instance observation
+
+The same Bridge 2.3.7 route file was present in all four installations.
+One owned TEST VR manager was opened with the original CLAW VR profile for
+readback only. The live batch verified the five exact CLAW files selected
+from the retained profile and the modal route returned an empty list. The
+manager exited with code 0 and the six protected profile files matched their
+initial hashes. The manager rewrote the general ModOrganizer.ini during its
+session. The game, selected profile and offline-mode values read the same
+before and after. The full-byte guard therefore failed for the general INI.
+The local receipt is `Builds/claw-vr-bridge-237-preflight-20261120/RESULT.json`.
+
+The prepared P1 case retains batch evidence for its 76 staged VFS paths.
+It also reads the exact owned Bridge's dialogs before dispatch or on startup
+failure and correlates the known SKSE operation with the SkyrimVR
+PID, process creation time and executable. A terminal Bridge observation
+is compared with the existing independent game exit handle when available.
+These diagnostic calls share bounded original phase time and never authorize
+dispatch. The prepared case passed 14 offline checks. Its game observations
+are pending.
