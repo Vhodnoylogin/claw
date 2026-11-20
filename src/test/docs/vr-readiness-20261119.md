@@ -1665,3 +1665,14 @@ Native exit was 0 and 143 snapshots restored. Terminal SHA-256
 The new Skyrim Autotest created its per-run review during both editions'
 tests. Reviewing 181509, 181811 and 182453 preserves the observed status
 of the feature scenario, exact process exit and environment restoration.
+
+In 182908 the adaptive test collected seven neutral observations before
+the one owned hand movement. The predicted minimum overlap was 1.24 game
+units. The first actual raised read had 4.26 units of overlap. The next
+observation 0.383 seconds later had 0.49 units of separation as the ear
+continued animating. No sustained seven-frame near window qualified and
+no provider operation was sent. The test returned the controller to
+neutral, observed the disposable actor unloaded, and restored all 123
+preimages. Native exit was 0. The automatically written Autotest review
+and independent terminal agree. Terminal SHA-256
+`535fe5dbbbf9efff2ffa0a130553060bc6b40f646ce4ae058eb002946ea4d740`.
