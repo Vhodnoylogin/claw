@@ -1287,3 +1287,13 @@ never acquired 3D inside the existing check window. Load of the rebuilt
 provider is proven for this session. Actor behavior, motion and causal
 observation are unqualified. Native exit was 0 and the source profile was
 restored and reconciled.
+
+The engine-managed slot-60 marker probe 143217 verified ordinary equipment
+selection, the exact private ARMO/ARMA, the active slot and skinned clone,
+and unchanged inventory count. The original third-person actor graph grew
+from 213 to 214 objects. Its unique expected triangle geometry was absent,
+so the visualization check withheld acceptance and no second equipment
+operation was issued in that run. The observer ended normally, 50 staged
+files and 78 VFS routes were reconciled, the copied profile was discarded,
+and native exit was 0. A bounded inspection of the exact slot clone will
+separate engine equipment removal and visible geometry in a follow-up.
