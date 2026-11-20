@@ -1452,7 +1452,7 @@ writer targets. The unchanged 0.01000 right-control ceiling still fails.
 The next comparison needs a passive scene write in the same scene and
 ownership bracket to distinguish background writeback from pulse cross-talk.
 Precision replay SHA-256
-`979f7302bda143d19920dfb839d6ca5f18e29f236894371e941121fbc096c59a`.
+`898217b2ba04e7c164e1de1d2f4bccdc4c057afac17b9dccecf95b6eda9fa744`.
 
 The preceding 170319 attempt ended on a DevBench scene-inspection timeout
 before the NPC existed. Owned cleanup restored all inputs. Run 170659
@@ -1937,3 +1937,30 @@ identity, time, code and raw ledger record, then reran the unchanged checks
 for the two existing stages and rehashed all 141 restored preimages and 70
 VFS winners. Terminal SHA-256
 `e75e7fa6839deb2162016ad85c3eafde98fbd497a34fe1a8529ca518a64e1417`.
+
+Run `20261120-213155-76b205` acknowledged distinct near, far and reset
+controller publications. The calibration refused its timing proof. Host
+Python 3.12 had recorded the sends on GetTickCount64 while the game
+observer supplied QPC readings. This placed the first recorded send
+22.237 ms before the preceding settled read despite the order of the raw
+ledger. No mapping from archived driver ticks or wall times repairs this
+missing native timing evidence. The actor retired, all 141 preimages were
+restored, and Skyrim VR separately faulted at `0xAB4F26`, record 103016.
+Terminal SHA-256
+`1b3018da8a50c5754f8d57260b8ca6dd5f3699cf83663575b8894c46324097aa`.
+
+The QPC-only successor `20261120-213810-b2b8f6` passed the isolated
+controller calibration in the same profile. It captured 56 neutral samples
+across 1.629 seconds, 17 near samples across 0.470 seconds and 17 far samples
+across 0.469 seconds, with exact resets and independent samples bracketing
+three single publications. The phase clocks share the measured 10 MHz QPC
+frequency. A separate replay against the exact slot 96 capsule measured
+signed gaps of -4.609 to +50.048 game units for the near position, and
++3.372 to +49.883 for far. It found no full 1.5-second near overlap.
+A stationary/settled fixture comparison is required before a contact trial.
+No collider operations were issued. The overall run again failed on the
+distinct shutdown result at `0xAB4F26`, Windows record 103021, with all
+141 preimages rechecked and restored. Terminal and geometry replay SHA-256
+values are, respectively,
+`5a86faf8f0d7d9428b923d80fc452f30329fdb97146b7b9db29dd225b720e599`
+and `1e8a71dc9cc3f92caeb042efa78f170377a0710adcdc7b433d51627a3e690825`.
