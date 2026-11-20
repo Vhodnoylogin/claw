@@ -1112,3 +1112,45 @@ Builds/claw-vr-skee-attachment-case-20261120,
 Builds/claw-vr-cbpc-floor-anchor-20261120 and
 Builds/claw-vr-cbpc-tail-motion-study-20261120. The compiled latent
 attachment fixture and any live output stay outside the mod archive.
+
+## 20 November repeated runtime controls
+
+The second stock renderer run reached two post-effect observations and exact
+owned Skyrim VR body topology. Native mirror reads produced both textures;
+the combined check rejected uniform pixels or differing dimensions before
+emitting images. The original executable did not retain the per-eye reason.
+A successor diagnostic logs those independent conditions and compositor timing
+without changing acceptance. WARP checks confirmed black with a varying alpha
+channel and retained the old successful PNG output byte for byte.
+
+In the second P1 trial the nearest named observations matched all four
+solver-anchor coordinates across 28 paired steps. The head orientation
+differed across readers by .0000434 while each reader's own endpoints remained
+stable. The later world read measured up to 17.83 units of P1 anchor motion,
+with exactly unchanged local transforms. A replay using the right anchor as a
+moving reference measured a bilateral difference of only .001095 units or
+less in both retained captures. The private pulse adapter retains independent
+local right-anchor and rollback readbacks, original precision bounds and
+zero effect on product physics settings. A live response is still required.
+
+The Papyrus-stack RaceMenu test returned an ordinary typed integer zero for
+provider refusal and exited 0. Its exact staged files were restored. The next
+diagnostic compares the runtime value of the original path with a path
+constructed using one separator per directory before allowing a fresh attach.
+An equal string refutes the path hypothesis and withholds the duplicate call.
+
+CBPC run 130040 independently qualified the stock diagnostic sphere on one
+male target's TailBone01. A session-local fit used six chart samples and two
+later samples before the first provider operation. Actual held geometry
+overlapped, separated, overlapped again and still nominally overlapped after
+detach. The callback counts in those intervals were 5, 0, 5 and 0. The native
+event packet and 32 held scene observations were independently replayed.
+
+The same run ended with an access-violation exit after shutdown. Windows
+reported SkyrimVR.exe + E3ED1D for this and two earlier CBPC runs. Three
+prior FSMP-only cases already showed that same exit signature. This does not
+assign a provider or establish a clean game exit. The isolated profile, all
+121 snapshots, 23 staged files, 50 positive and five excluded VFS paths
+were independently reconciled. This qualifies scoped CBPC callbacks, with
+full-rig contact sets, provider rebinding, output visible in a physical
+headset and Havok-family interaction still open.
