@@ -64,8 +64,11 @@ flat profile and 17 male or 18 female capsules in VR. This identifies which
 slots a changed-capsule refresh could preserve. Such a refresh still requires
 provider ownership, verified cleanup, and live timing and contact checks.
 
-Tests are under `src/test/components/contact-profiles/`. Provider consumption
-and the effect of nearby hands still need a scoped gameplay check. The CBPC
-test fixture and event witness are ready for a bounded near/far comparison
-with an independently placed and observed NPC. HIGGS and PLANCK remain
-different contact paths.
+Tests are under `src/test/components/contact-profiles/`. The stock CBPC probe
+registered 5, 0, 5 and 0 scoped callback events during nearby, far, nearby
+and detached intervals on one male wolf's tail. The exact near geometry and
+native event window were independently replayed. Game shutdown returned
+0xC0000005 after the case, and the isolated installation was restored.
+The release profile is still open for live provider consumption, rebinding
+and contact tests on its actual fitted regions. HIGGS and PLANCK use separate
+contact paths. See the [VR evidence](../../../test/docs/vr-readiness-20261119.md).
