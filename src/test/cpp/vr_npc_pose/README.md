@@ -1,9 +1,10 @@
 # VR NPC pose witness
 
-This standalone, read-only SKSEVR test plugin observes the male VR FSMP fixture.
+This standalone, read-only SKSEVR test plugin observes the VR FSMP fixtures.
 It uses the dynamic NPC FormID, exact base, runtime handle, cell and vanilla
-werewolf armor addon supplied by the test harness. It also requires the
-fixture's male sex, weight 50 and beast race `000CDD84` on both actor and base.
+werewolf armor addon supplied by the test harness. The standard male fixture
+uses weight 50. The separate female motion fixture uses weight 100. Both
+require beast race `000CDD84` on the actor and base.
 The harness still owns the single spawn, addon pin and fixture provenance.
 
 1. Call `CLAWVRNpcPose.BeginNpc(nonce, actor, base, handle, cell, addon)` once per
@@ -17,6 +18,10 @@ The harness still owns the single spawn, addon pin and fixture provenance.
    `BeginNpcContact` takes the same typed array and adds three required
    named transforms for the remaining ear and tail support partitions.
    The two original entry points retain the twelve-node output order.
+   `BeginFemaleNpc` takes the same six integers as `BeginNpc`. The female
+   witness adds both pre-P1 anchors and both P1 drivers at the end of the
+   original twelve-name list. The witness requires explicit sex and weight
+   for the selected fixture at every observation.
 2. Call `SampleNpc(nonce, i)` with successive indices 1–16. Poll
    `ReadNpc(nonce, i)` after each request and retain the sample before requesting
    the next index. The lease stops accepting samples 12 seconds after Begin.
@@ -34,9 +39,9 @@ During an initial VR alternate start, the native NewGame message can be
 absent. Each main task checks the actual loaded player and the same attached
 fixture cell with main/loading menus closed. An observed load in progress
 or failed load remains a separate refusal.
-Each pose provides row-major rotation, translation and scale. The nine
-driven bones, two anchors and root control include both world and local
-transforms plus the actual parent's world transform. No raw pointers leave
+Each pose provides row-major rotation, translation and scale. The requested
+drivers, anchors and root control include both world and local transforms
+plus the actual parent's world transform. No raw pointers leave
 the engine task context. The historical `skse_main_thread_task` field names
 the SKSE task path. `threadID` is the actual per-sample Windows thread.
 SKSEVR 2.0.12 serializes its delegate queue and drains it at two call sites.

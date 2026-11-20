@@ -17,18 +17,22 @@ EVIDENCE_ENV = "CLAW_FSMP_VR61_EVIDENCE"
 XML_ENV = "CLAW_FSMP_VR61_XML"
 
 
+def selected_inputs(evidence_env, xml_env, input_sha, xml_sha):
+    paths = [os.environ.get(name) for name in (evidence_env, xml_env)]
+    if paths == [None, None]:
+        raise unittest.SkipTest("Optional pinned actor replay not selected")
+    if not all(paths):
+        raise AssertionError(f"Set both {evidence_env} and {xml_env}")
+    inputs, xml = [Path(path).read_bytes() for path in paths]
+    if (hashlib.sha256(inputs).hexdigest(), hashlib.sha256(xml).hexdigest()) != (input_sha, xml_sha):
+        raise AssertionError("Explicit actor evidence or effective authored XML differs")
+    return json.loads(inputs), xml
+
+
 class VR61ActualReplay(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        paths = [os.environ.get(name) for name in (EVIDENCE_ENV, XML_ENV)]
-        if paths == [None, None]:
-            raise unittest.SkipTest("Optional pinned VR61 replay not selected")
-        if not all(paths):
-            raise AssertionError(f"Set both {EVIDENCE_ENV} and {XML_ENV}")
-        inputs, cls.xml = [Path(path).read_bytes() for path in paths]
-        if (hashlib.sha256(inputs).hexdigest(), hashlib.sha256(cls.xml).hexdigest()) != (INPUT_SHA, XML_SHA):
-            raise AssertionError("Explicit VR61 evidence or effective authored XML differs")
-        cls.data = json.loads(inputs)
+        cls.data, cls.xml = selected_inputs(EVIDENCE_ENV, XML_ENV, INPUT_SHA, XML_SHA)
         cls.raw = cls.data["rawReadState5"]
         cls.poses = cls.data["rawNativePoseReplies"]
         cls.args = {"serial": 5, "actor": 0xFF000844, "pose_nonce": 461663627,
@@ -79,3 +83,37 @@ class VR61ActualReplay(unittest.TestCase):
         pose["sample"]["threadID"] = 0
         with self.assertRaisesRegex(ValueError, "scoped male wolf pose"):
             binding.evaluate(self.raw, [self.poses[0], json.dumps(pose)], self.xml, **self.args)
+
+
+class VR69ActualReplay(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.data, cls.xml = selected_inputs(
+            "CLAW_FSMP_VR69_EVIDENCE", "CLAW_FSMP_VR69_XML",
+            "da20816197738faf93ee3a92a93c1e3d2ac24af7cef0d02b39fbd8044e65f19d",
+            "8d3a1fd08901e0ef2a9a2defe34548ba0cf4112f352778c27832a4f85a697a35",
+        )
+        cls.pose = cls.data["pose"]["rawNativePoseReplies"]
+        cls.catalogue = cls.data["catalogue"]
+        cls.args = {"serial": 5, "actor": 0xFF00087C, "pose_nonce": 1495847292,
+                    "window_nonce": 359439051, "arm_qpc": 692272301588, "sex": "female"}
+
+    def test_actual_female_graph_and_both_p1_anchors(self):
+        result = binding.evaluate(self.catalogue["rawReadState5"], self.pose, self.xml, **self.args)
+        self.assertEqual(result["pairedSteps"], 29)
+        self.assertEqual(len(result["tokens"]), 15)
+        for anchor, driver, pair in (("NPC L PreBreast P1", "NPC L Breast P1", (11, 14)),
+                                     ("NPC R PreBreast P1", "NPC R Breast P1", (4, 15))):
+            self.assertEqual((result["tokens"][anchor], result["tokens"][driver]), pair)
+            self.assertEqual(result["roles"][driver]["parent"], anchor)
+            self.assertEqual(result["roles"][driver]["observedInverseMass"], 20.)
+        self.assertFalse(result["renderedMotionQualified"])
+
+    def test_wrong_joint_frame_or_stiffness_refused(self):
+        malformed = self.xml.replace(b"<frameInA />", b"<frameInB />", 1)
+        with self.assertRaisesRegex(ValueError, "identity joint frame"):
+            binding.evaluate(self.catalogue["rawReadState5"], self.pose, malformed, **self.args)
+        frame = copy.deepcopy(self.catalogue["frame"])
+        frame["sample"]["objectWindow"]["incidentConstraints"]["constraints"][0]["spring2"]["stiffness"][0] += .1
+        with self.assertRaisesRegex(ValueError, "stiffness"):
+            binding.evaluate(json.dumps(frame), self.pose, self.xml, **self.args)

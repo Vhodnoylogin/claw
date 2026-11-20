@@ -8,6 +8,7 @@
 #include "claw/PhysicsObserver.h"
 #include "claw/RuntimeSupport.h"
 #include "claw/WorldStartPolicy.h"
+#include <algorithm>
 #include <atomic>
 #include <bit>
 #include <chrono>
@@ -44,9 +45,21 @@ constexpr std::array nodeNames{
     "NPC Spine2 [Spn2]", "NPC Pelvis [Pelv]", "NPC R Thigh [LThg]"
 };
 
-enum class Scope { motion, effectiveMorphs, earTailSupport };
+constexpr auto femaleNodeNames = [] {
+    std::array<const char*, motionNodeCount + 4> names{};
+    std::copy_n(nodeNames.begin(), motionNodeCount, names.begin());
+    names[motionNodeCount] = "NPC L PreBreast P1";
+    names[motionNodeCount + 1] = "NPC L Breast P1";
+    names[motionNodeCount + 2] = "NPC R PreBreast P1";
+    names[motionNodeCount + 3] = "NPC R Breast P1";
+    return names;
+}();
+constexpr std::size_t maximumPoseNodes = std::max(nodeNames.size(), femaleNodeNames.size());
 
-auto nodeNamesFor(Scope scope) {
+enum class Scope { motion, effectiveMorphs, earTailSupport, femaleMotion };
+
+std::span<const char* const> nodeNamesFor(Scope scope) {
+    if (scope == Scope::femaleMotion) return femaleNodeNames;
     auto names = std::span<const char* const>(nodeNames);
     return scope == Scope::earTailSupport ? names : names.first(motionNodeCount);
 }
@@ -65,13 +78,15 @@ void connectMorphSource() {
 struct Fixture {
     RE::FormID actor{}, base{}, cell{}, addon{};
     std::uint32_t handle{};
+    bool female{};
+    unsigned weight() const { return female ? 100u : 50u; }
     bool operator==(const Fixture&) const = default;
 };
 
 Fixture fixtureBits(std::int32_t actor, std::int32_t base, std::int32_t handle,
-                    std::int32_t cell, std::int32_t addon) {
+                    std::int32_t cell, std::int32_t addon, bool female = false) {
     return {std::bit_cast<std::uint32_t>(actor), std::bit_cast<std::uint32_t>(base),
-        std::bit_cast<std::uint32_t>(cell), std::bit_cast<std::uint32_t>(addon), std::bit_cast<std::uint32_t>(handle)};
+        std::bit_cast<std::uint32_t>(cell), std::bit_cast<std::uint32_t>(addon), std::bit_cast<std::uint32_t>(handle), female};
 }
 
 void require(bool condition, const char* reason) {
@@ -150,8 +165,8 @@ bool sceneReady(RE::FormID expectedCell) {
            !ui->IsMenuOpen(RE::LoadingMenu::MENU_NAME) && !ui->IsMenuOpen(RE::MainMenu::MENU_NAME);
 }
 
-std::array<Object*, nodeNames.size()> findNodes(Object& root, std::span<const char* const> names) {
-    std::array<Object*, nodeNames.size()> result{};
+std::array<Object*, maximumPoseNodes> findNodes(Object& root, std::span<const char* const> names) {
+    std::array<Object*, maximumPoseNodes> result{};
     std::vector<Object*> pending{&root};
     std::unordered_set<Object*> seen;
     std::size_t links{};
@@ -234,7 +249,8 @@ private:
         return form(&actor) == fixture.actor && form(base) == fixture.base &&
                actor.GetHandle().native_handle() == fixture.handle && form(actor.GetParentCell()) == fixture.cell &&
                form(actor.GetRace()) == beastRace && form(base->race) == beastRace &&
-               static_cast<std::uint32_t>(base->GetSex()) == 0 && base->weight == 50.0f &&
+               static_cast<std::uint32_t>(base->GetSex()) == static_cast<std::uint32_t>(fixture.female) &&
+               base->weight == static_cast<float>(fixture.weight()) &&
                actor.Is3DLoaded() && !actor.IsDeleted() && !actor.IsDisabled() && !actor.IsDead();
     }
 
@@ -261,7 +277,7 @@ private:
     RE::BSTSmartPointer<RE::BipedAnim> biped;
     RE::FormID item{};
     Path bipedRootPath, clonePath;
-    std::array<Path, nodeNames.size()> nodes;
+    std::array<Path, maximumPoseNodes> nodes;
 };
 
 class Witness final : public RE::BSTEventSink<RE::TESObjectLoadedEvent> {
@@ -297,7 +313,8 @@ public:
         if (requested <= 0 || !claw::npc_pose::validFixture(
                 expected.actor, expected.base, expected.handle, expected.cell, expected.addon))
             return response("refused", requested, 0, "positive nonce and exact dynamic NPC fixture required").dump();
-        if (requestedScope != Scope::motion && !claw::validPhysicsNames(names))
+        if ((requestedScope == Scope::effectiveMorphs || requestedScope == Scope::earTailSupport) &&
+            !claw::validPhysicsNames(names))
             return response("refused", requested, 0, "invalid effective morph names").dump();
         if (nonce)
             return nonce == requested && fixture == expected && sequence == 0 && scope == requestedScope && morphNames == names
@@ -438,7 +455,8 @@ private:
             sample.update({{"phase", "skse_main_thread_task"}, {"threadID", GetCurrentThreadId()},
                 {"qpcBegin", first}, {"qpcEnd", last}, {"loadEpoch", leaseEpoch}, {"rootToken", nonce},
                 {"actor", fixture.actor}, {"base", fixture.base}, {"runtimeHandle", fixture.handle},
-                {"cell", fixture.cell}, {"bodyAddon", fixture.addon}, {"sex", 0}, {"weight", 50},
+                {"cell", fixture.cell}, {"bodyAddon", fixture.addon},
+                {"sex", static_cast<unsigned>(fixture.female)}, {"weight", fixture.weight()},
                 {"race", beastRace}, {"view", "third_person"}});
             auto out = response("ready", nonce, index);
             out["sample"] = std::move(sample);
@@ -473,6 +491,10 @@ std::string begin(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t actor
                   std::int32_t handle, std::int32_t cell, std::int32_t addon) {
     return witness->begin(nonce, fixtureBits(actor, base, handle, cell, addon), Scope::motion);
 }
+std::string beginFemale(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t actor, std::int32_t base,
+                       std::int32_t handle, std::int32_t cell, std::int32_t addon) {
+    return witness->begin(nonce, fixtureBits(actor, base, handle, cell, addon, true), Scope::femaleMotion);
+}
 template <Scope scope>
 std::string beginWithMorphs(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t actor, std::int32_t base,
                             std::int32_t handle, std::int32_t cell, std::int32_t addon,
@@ -491,6 +513,7 @@ std::string end(RE::StaticFunctionTag*, std::int32_t nonce) { return witness->en
 bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     if (!vm) return false;
     vm->RegisterFunction("BeginNpc", name, begin);
+    vm->RegisterFunction("BeginFemaleNpc", name, beginFemale);
     vm->RegisterFunction("BeginNpcWithMorphs", name, beginWithMorphs<Scope::effectiveMorphs>);
     vm->RegisterFunction("BeginNpcContact", name, beginWithMorphs<Scope::earTailSupport>);
     vm->RegisterFunction("SampleNpc", name, sample);

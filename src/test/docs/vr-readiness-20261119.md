@@ -850,3 +850,42 @@ is unsuitable as a positive contact control. The next case needs
 a measurably stationary owned NPC close enough for a separated
 far interval and two qualified near intervals. Silent callback
 intervals alone do not report whether a solver pair was evaluated.
+
+## VR68/VR69 female FSMP binding and solver parameters
+
+VR68 `20261120-041429-745650` directly observed the ordinary female
+world slot and exact `CLAWMotionFemale.xml` on a born-female NPC at
+weight 100. The observer read 17 expected world names, including both
+P1 anchors and both drivers. Global FSMP callback counters advanced
+41/41 after spawn. One guarded Disable confirmed absent 3D, exit0 and
+restored 144/46/74/6. Independent receipt SHA-256
+`c98f171fb2b391063af1c4b8f680eaaaa5cbe9afbd2d08f421847ca5222e6fce`.
+
+VR69 `20261120-042451-b8e015` added two independently bracketed
+16-transform reads of a fresh female actor `FF00087C`. A single
+public FSMP window within their QPC bounds retained 29 complete
+pairs, 15 rigid bodies and 11 enabled Spring2 edges. Head, tail
+and both P1 kinematic anchor poses had unique exact endpoint
+positions and a compatible rotation basis. This resolves the
+bilateral P1 ambiguity left by topology alone. The actual left and
+right P1 roles map to local tokens 14 and 15, respectively. The
+shared replay also validates the exact inertia and stiffness
+under the observed uniform scale, along with inverse mass,
+signed linear/angular limits and damping. The joint frame must
+match the authored side. Official source documents cubic linear
+stiffness and fifth-power angular stiffness scaling.
+[FSMP constraint implementation](https://github.com/DaymareOn/hdtSMP64/blob/e52ad960048c14e637d14fcbd65314ca017fc3b8/src/hdtSkinnedMesh/hdtGeneric6DofConstraint.cpp#L21)
+
+The last complete pair showed ear and tail owner-relative
+translations up to .036593 game units. Left and right P1 relative
+translations measured .000691 and .000488, close to the sampled
+world-coordinate granularity. This cannot establish meaningful visible
+P1 response or a controlled amplitude. The numeric correspondence
+depends on observed poses, XML and graph uniqueness. Direct provider
+ownership, synchronized skin rendering and contacts are separate.
+
+The pose lease ended before one verified Disable, exit0 and 146/48/76/6
+restoration. Independent receipt SHA-256
+`7ffe488789079f33b9aba2d4ba299b955070d4b418ce3c647524ed52241ef5f2`,
+raw inputs `da20816197738faf93ee3a92a93c1e3d2ac24af7cef0d02b39fbd8044e65f19d`,
+numerical association `efbcfe47b0eb794953f916ac8d6a5d590b661a29d54b1452728585b695555b0b`.
