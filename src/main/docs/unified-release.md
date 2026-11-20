@@ -66,7 +66,7 @@ into `SelectAll`, which bypasses ordinary dependency enforcement. Family selecti
 uses a two-option `SelectExactlyOne` group. Family and host pages read a flag
 from the preceding native page, consistent with MO2's previous-visible-page rule.
 
-[The source contract](../resources/publication/unified-installer/installer-contract.json)
+[The dated installer source contract](../resources/publication/unified-installer-20261030/installer-contract.json)
 records primary schema/source hashes and inspected line ranges. Third-party
 installer implementation is not copied into this repository. The CLI requires
 the matching local primary files, verifies their hashes and records the contract
@@ -79,7 +79,7 @@ standard pattern semantics; manually copying every folder bypasses the choices.
 python src/main/python/build-tools/build-unified-release.py --out '<new-external-output-directory>' `
   --schema '<reviewed-GenericModConfig5.0.xsd>' `
   --installer-source '<reviewed-src/fomodinstallerdialog.cpp>'
-python -m unittest discover -s src/test/python/unit -p test_unified_release.py -v
+python -m unittest discover -s src/test/python/integration -p test_unified_release.py -v
 ```
 
 The builder requires the exact reviewed frozen input-manifest hash, checks each

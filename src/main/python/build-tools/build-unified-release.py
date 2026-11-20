@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[4]
-INSTALLER = ROOT / 'src/main/resources/publication/unified-installer'
+INSTALLER = ROOT / 'src/main/resources/publication/unified-installer-20261030'
 FROZEN = ROOT / 'target/references/releases/se-core-20261030'
 MOD_NAME = "CLAW - Configurable Lycanthrope Anatomy and Weight"
 ARCHIVE = MOD_NAME + " - 20261030.zip"

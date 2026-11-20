@@ -37,7 +37,13 @@ class UnifiedReleaseTests(unittest.TestCase):
     def test_installer_identity_and_default_archive_use_the_full_owner_name(self):
         expected = "CLAW - Configurable Lycanthrope Anatomy and Weight"
         self.assertEqual(self.config().findtext("moduleName"),expected)
-        self.assertEqual(ET.fromstring(self.entries["fomod/info.xml"]).findtext("Name"),expected)
+        info = ET.fromstring(self.entries["fomod/info.xml"])
+        self.assertEqual(info.findtext("Name"),expected)
+        self.assertEqual(info.findtext("Version"),"2026.10.30")
+        self.assertEqual(release.sha(self.entries["fomod/ModuleConfig.xml"]),
+                         "9a02f059dec84a47367b98e7f4a9f95bb152ce30e3b6c3c504f22b60dd9ccbca")
+        self.assertEqual(release.sha(self.entries["fomod/info.xml"]),
+                         "704a91ac2ec290b82c83c5413ec6d8041d85bcb994f376b428d3cf175c161073")
         self.assertEqual(release.ARCHIVE,expected+" - 20261030.zip")
 
     def test_exact_version_range_rejects_ae_vr_both_neighbors_and_later_build_components(self):

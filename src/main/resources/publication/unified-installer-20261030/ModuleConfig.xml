@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+  <moduleName>CLAW - Configurable Lycanthrope Anatomy and Weight</moduleName>
+  <requiredInstallFiles>
+    <folder source="00 Base" destination="" priority="0" />
+  </requiredInstallFiles>
+  <installSteps order="Explicit">
+    <installStep name="Optional human morph linkage">
+      <optionalFileGroups order="Explicit">
+        <group name="Native linkage" type="SelectAny">
+          <plugins order="Explicit">
+            <plugin name="Human morph linkage (Skyrim 1.7.104.0 only)">
+              <description>Enable human-to-werewolf morph linkage only for Skyrim SE 1.7.104.0 with SKSE 2.3.1, matching Address Library v13 and official compatible RaceMenu/SKEE. An active RaceMenu.esp and the detected game version gate this option; the installer does not verify the complete dependency chain. Leave unchecked to install the base resources alone.</description>
+              <files>
+                <folder source="10 Native" destination="" priority="0" />
+              </files>
+              <conditionFlags>
+                <flag name="humanLink">Yes</flag>
+              </conditionFlags>
+              <typeDescriptor>
+                <dependencyType>
+                  <defaultType name="NotUsable" />
+                  <patterns>
+                    <pattern>
+                      <dependencies operator="And">
+                        <gameDependency version="1.7.104.1" />
+                      </dependencies>
+                      <type name="NotUsable" />
+                    </pattern>
+                    <pattern>
+                      <dependencies operator="And">
+                        <gameDependency version="1.7.104.0" />
+                        <fileDependency file="RaceMenu.esp" state="Active" />
+                      </dependencies>
+                      <type name="Optional" />
+                    </pattern>
+                  </patterns>
+                </dependencyType>
+              </typeDescriptor>
+            </plugin>
+          </plugins>
+        </group>
+      </optionalFileGroups>
+    </installStep>
+    <installStep name="Declare installed human bodies">
+      <visible operator="And">
+        <flagDependency flag="humanLink" value="Yes" />
+      </visible>
+      <optionalFileGroups order="Explicit">
+        <group name="Choose your actual body resources" type="SelectExactlyOne">
+          <plugins order="Explicit">
+            <plugin name="HIMBO 5.8 male + CBBE 2.0.3 female">
+              <description>Select only if these are your installed human body resources. This declares the geometry conversion mapping. It does not install human bodies, choose a preset or enable physics.</description>
+              <files>
+                <folder source="20 Human Family/HIMBO-and-CBBE" destination="" priority="0" />
+              </files>
+              <typeDescriptor>
+                <type name="Optional" />
+              </typeDescriptor>
+            </plugin>
+            <plugin name="HIMBO 5.8 male + 3BA 2.48 female">
+              <description>Select only if these are your installed human body resources. This declares the geometry conversion mapping. It does not install human bodies, choose a preset or enable physics.</description>
+              <files>
+                <folder source="20 Human Family/HIMBO-and-3BA" destination="" priority="0" />
+              </files>
+              <typeDescriptor>
+                <type name="Optional" />
+              </typeDescriptor>
+            </plugin>
+          </plugins>
+        </group>
+      </optionalFileGroups>
+    </installStep>
+    <installStep name="Optional wild-werewolf source generation">
+      <visible operator="And">
+        <flagDependency flag="humanLink" value="Yes" />
+      </visible>
+      <optionalFileGroups order="Explicit">
+        <group name="OBody integration" type="SelectAny">
+          <plugins order="Explicit">
+            <plugin name="Originally-beast OBody source integration">
+              <description>Installs the CLAW source host for eligible actors first encountered as wolves. Requires active OBody.esp and its complete dependency chain. OBody supplies ordinary human source values; CLAW converts them to wolf morphs. Skip to omit this host.</description>
+              <files>
+                <folder source="30 OBody Source" destination="" priority="0" />
+              </files>
+              <typeDescriptor>
+                <dependencyType>
+                  <defaultType name="NotUsable" />
+                  <patterns>
+                    <pattern>
+                      <dependencies operator="And">
+                        <fileDependency file="OBody.esp" state="Active" />
+                      </dependencies>
+                      <type name="Optional" />
+                    </pattern>
+                  </patterns>
+                </dependencyType>
+              </typeDescriptor>
+            </plugin>
+          </plugins>
+        </group>
+      </optionalFileGroups>
+    </installStep>
+  </installSteps>
+</config>
