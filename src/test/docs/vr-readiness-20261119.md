@@ -1990,3 +1990,15 @@ four roles in both masks, then emitted `worker_or_sync_clock` at role 2.
 The paired audit found no two complete writer windows. Inspect the ordered
 sync-end clock receipt before another amplitude comparison. Terminal SHA-256
 `1c48eee5a7a5a556b329b6eb827e294859ec23141a34104380d8aecb4c9af0c1`.
+
+Run `20261120-223552-371a8a` used a private timing correction. Its passive
+solver, capture, stock writeback and typed receipt joined successfully. The
+right anchor's final read and its enclosing sync close shared one QPC tick,
+with established program order. Passive changes from the pre-existing scene
+to the written scene were 0.026295 left and 0.027793 right game units, though
+both solver target translations changed by only 0.000977 units. The scene
+therefore already had passive writeback motion in this run. The provider
+refused the separate active request with `bilateral_joint_gap_exceeded` before
+applying a force. The strict pair remains unqualified. The game exited with
+code 0, Bridge agreed and 146 preimages were restored. Terminal SHA-256
+`f147a332036c0df9cb2d589aa4748b16c195e6cab5a545f562e79046228f9111`.
