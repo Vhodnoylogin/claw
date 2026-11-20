@@ -71,6 +71,16 @@ def read_pose(pose, vector, model):
     return sex, values, weight, frames
 
 
+def native_vector(model, pose):
+    """Use the co-sampled SKEE values directly, without a matrix or a clamp."""
+    sample = pose["sample"]
+    require(type(sample["sex"]) is int and sample["sex"] in (0, 1)
+            and type(sample.get("effectiveMorphs")) is dict, "Typed native effective morph vector required")
+    return {"pid": pose["pid"], "sequence": pose["sequence"], "modelIdentity": model["modelIdentity"],
+            **{field: sample[field] for field in IDENTITY_FIELDS}, "sex": ("male", "female")[sample["sex"]],
+            "weight": sample["weight"] / 100, "morphs": sample["effectiveMorphs"]}
+
+
 def owner_support(vertices, weights, binds, global_to_skin, frames, owner):
     require(owner in frames, "Missing owner world transform: " + owner)
     missing = sorted(set(weights) - frames.keys())
@@ -97,10 +107,14 @@ def compare_support(rest, posed, faces, padding):
 
 def pinned_asset(model, filename):
     source, = [row for row in model["sourceInputs"] if Path(row["path"]).name.lower() == filename]
+    return read_pinned_asset(source)
+
+
+def read_pinned_asset(source):
     path = Path(source["path"])
     raw = path.read_bytes()
     require(len(raw) == source["bytes"] and sha256(raw).hexdigest() == source["sha256"],
-            "Archived source bytes changed: " + filename)
+            "Pinned geometry source bytes changed: " + path.name)
     return path, raw
 
 
@@ -123,6 +137,36 @@ class Skin:
         rows = self.weights[ids]
         return owner_support(self.vertices[ids], {name: rows[:, i] for i, name in enumerate(self.names)
                              if np.any(rows[:, i] > 0)}, self.binds, self.global_to_skin, frames, owner)
+
+    def same_geometry(self, other):
+        paired = ((self.vertices, other.vertices), (self.faces, other.faces), (self.weights, other.weights),
+                  (self.global_to_skin, other.global_to_skin))
+        return (self.names == other.names and all(np.array_equal(a, b) for a, b in paired)
+                and all(np.array_equal(self.binds[name], other.binds[name]) for name in self.names))
+
+
+def observed_geometry(model, sex, observed, pynifly=None):
+    """Compare the authored support source with an externally proven VFS winner.
+
+    The caller binds these hashes to the same actor's model route and tests both
+    VFS endpoints. NIF scene metadata can differ outside these named skins.
+    """
+    require(sex in ("male", "female") and set(observed) == {"low", "high", "tri"},
+            "Expected named observed NIF endpoints and TRI")
+    effective = {role: read_pinned_asset(row) for role, row in observed.items()}
+    require(effective["low"][1] == effective["high"][1], "Observed NIF endpoints differ")
+    path, authored = pinned_asset(model, sex+"bodywerewolf_1.nif")
+    _, authored_tri = pinned_asset(model, sex+"bodywerewolf.tri")
+    require(effective["tri"][1] == authored_tri, "Observed TRI differs from the authored contact source")
+    api, _, _ = breast_rig.load_pynifly(pynifly)
+    source, actual = (api.NifFile(str(p)) for p in (path, effective["high"][0]))
+    result = {}
+    for name in ("body", "head"):
+        require(name in source.shape_dict and name in actual.shape_dict, "Missing named skin: " + name)
+        expected, loaded = (Skin(nif.shape_dict[name], {}, {}) for nif in (source, actual))
+        require(expected.same_geometry(loaded), "Observed serialized skin differs: " + name)
+        result[name] = {"vertices": len(loaded.vertices), "triangles": len(loaded.faces), "bones": len(loaded.names)}
+    return {"nifBytesEqual": authored == effective["high"][1], "triBytesEqual": True, "skins": result}
 
 
 def check(model, pose, vector, slot_indexes, pynifly=None):
@@ -183,14 +227,21 @@ def main():
     parser.add_argument("--model", type=Path, required=True)
     parser.add_argument("--model-sha256", required=True)
     parser.add_argument("--pose", type=Path, required=True, help="Ready VR NPC pose witness response")
-    parser.add_argument("--vector", type=Path, required=True, help="Complete normalized target vector bound to the pose")
+    vector_source = parser.add_mutually_exclusive_group(required=True)
+    vector_source.add_argument("--vector", type=Path, help="Complete normalized target vector bound to the pose")
+    vector_source.add_argument("--native-effective", action="store_true", help="Use co-sampled SKEE values")
+    parser.add_argument("--observed-assets", type=Path, help="Pinned low/high/tri winners for this actor's model route")
     parser.add_argument("--pynifly", type=Path)
     parser.add_argument("--slot", action="append", type=int)
     args = parser.parse_args()
     raw = args.model.read_bytes()
     require(sha256(raw).hexdigest() == args.model_sha256, "Archived model SHA-256 differs")
-    print(json.dumps(check(json.loads(raw), read_json(args.pose), read_json(args.vector), args.slot,
-                           args.pynifly), indent=2, allow_nan=False))
+    model, pose = json.loads(raw), read_json(args.pose)
+    vector = native_vector(model, pose) if args.native_effective else read_json(args.vector)
+    result = check(model, pose, vector, args.slot, args.pynifly)
+    if args.observed_assets:
+        result["observedAssets"] = observed_geometry(model, result["sex"], read_json(args.observed_assets), args.pynifly)
+    print(json.dumps(result, indent=2, allow_nan=False))
 
 
 if __name__ == "__main__":

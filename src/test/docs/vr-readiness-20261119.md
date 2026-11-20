@@ -653,3 +653,56 @@ and `d87c827bbbddfc1fc0b032e97bd6979a5a9e57b15f94994c41561056eb6df6f8`.
 EndNpc completed before the two-sample unload check. The game exited 0.
 Restoration reconciled 146 file snapshots, 48 staged paths, 75 native
 VFS winners and six temporary directories.
+
+## VR62 independent controller-to-world-hand check
+
+VR62 `20261120-032311-3fcac0` used full VRIK with the pinned XP32
+Vanilla-tail skeleton and the same world model route. One tracked 20 cm
+left-controller pulse and one return occurred before the ordinary
+transformation. Another occurred afterward with the exact same player
+identity. The observed left wand and skeletal hand displacement were
+13.99920 and 13.99762 game units as a human, then 15.40009 and 15.39830
+as a wolf. The right wand and HMD stayed fixed; the right hand displaced
+0 and 0.00403 respectively. After neutral return the left residuals were
+0.00049 and 0.00428. The four logical publications have matching Protocol
+2 ACKs. The exact post-turn third-person volume and slot were observed.
+A controller-to-skeleton association does not establish HMD rendering
+or that the two results require VRIK. A stock counterfactual is separate.
+
+The outer candidate status remains failed due to ambiguous carrier
+classification and an archived calibration height mismatch. Exit0,
+collected and restored, 116 snapshots, 253 cold files, 30 cold resource
+winners and 47 staged native VFS winners. Independent receipt SHA-256
+`41fbafcb91a95c49e2a086561063abedb6c7c1368587a16827471f8b825ff896`.
+
+## VR63 effective RaceMenu input and task-thread guard
+
+VR63 `20261120-033003-d642a5` forwarded one exact Papyrus String array
+of 31 canonical names through the pinned DevBench. Both native reads
+returned 31 finite zeros for `FF000855`, handle 1112344, body `CDD86`,
+addon `CDD87`, weight 50, epoch 1 and the same opaque lease. QPC advanced
+at 10 MHz. The consumer refused the pair because Windows thread IDs
+changed 34020 to 20236; the second native sample then lacked the
+successor independent observer bracket. The official SKSEVR 2.0.12
+`Hooks_Threads.cpp` drains a serialized task queue from two call sites.
+A per-sample OS thread identifier is distinct from actor/root ownership
+and from a render-synchronized producer. The VR61 replay now permits
+different valid task thread IDs while retaining the same ownership and
+temporal checks.
+
+EndNpc explicitly retired the lease. The strict joint-sample tripwire
+withheld Disable. The owned executable later hit
+`0xC0000005` at `SkyrimVR.exe+0xE3ED1D`, Windows Application record 102806.
+The same offset previously occurred in VR55 and VR59. Event ordering
+alone does not establish its cause. All 146 file snapshots, 48 staged
+paths, 75 native VFS winners and six directories reconciled. Receipt
+SHA-256 `26a209ed7e8b5b68f7f0c0fc3696b94f4d1364d79cf6f2e07fd97a0294e568a4`.
+
+An offline replay of the serialized support geometry uses the fully
+independently bracketed first pose and its native zero vector. Exact
+actual VFS endpoint NIFs differ from the archive in file bytes but
+match the body/head vertices, faces, weights and bind data; the TRI is
+byte-identical. The 24 sufficiently observed slots are an offline
+measurement from the native pose. See the contact-profile test notes
+for the measured excess and limits. Observed nonzero morph response,
+a fresh two-pose qualification and live contact remain open.

@@ -20,7 +20,7 @@ HEAD, TAIL = "NPC Head [Head]", "Tails"
 ANCHORS = (HEAD, TAIL)
 ROLES = (*ANCHORS, *probe.MALE)
 POSE_IDENTITY = ("actor", "base", "runtimeHandle", "race", "cell", "bodyItem", "bodyAddon",
-                 "sex", "threadID", "loadEpoch", "rootToken", "weight")
+                 "sex", "loadEpoch", "rootToken", "weight")
 FIELDS = ("linearLowerLimit", "angularLowerLimit", "linearUpperLimit", "angularUpperLimit",
           "linearDamping", "angularDamping")
 require = probe.require
@@ -68,6 +68,7 @@ def actor_poses(replies, native, actor, pose_nonce):
                 "Native actor lease/process/clock changed")
         sample = reply["sample"]
         require(all(joint.witness.integer(sample[key], 1) for key in POSE_IDENTITY if key not in ("sex", "weight"))
+                and joint.witness.integer(sample["threadID"], 1)
                 and type(actor) is int and 0xFF000000 < actor <= 0xFFFFFFFF and sample["actor"] == actor
                 and type(sample["sex"]) is int and sample["sex"] == 0
                 and joint.witness.number(sample["weight"]) and 0 <= sample["weight"] <= 100
@@ -187,6 +188,7 @@ def evaluate(raw_provider, raw_poses, xml, *, serial, actor, pose_nonce, window_
     return {
         "status": "scoped-actor-graph-and-last-pair-associated", "tokens": tokens, "roles": results,
         "pid": native["pid"], "pairedSteps": window["pairedSteps"], "sampledPairQpc": [window["lastPreQpc"], window["lastPostQpc"]],
+        "poseThreadIDs": [row["threadID"] for row in poses],
         "localSolverMovementObserved": any(row["localTranslationDelta"] > 1e-3 for row in results.values()),
         "directProviderOwnerAvailable": False, "renderedMotionQualified": False, "contactQualified": False,
     }

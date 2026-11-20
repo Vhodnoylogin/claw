@@ -3,7 +3,9 @@
 #include <SKSE/SKSE.h>
 #include <Windows.h>
 #include <nlohmann/json.hpp>
+#include <IPluginInterface.h>
 #include "LeasePolicy.h"
+#include "claw/PhysicsObserver.h"
 #include "claw/RuntimeSupport.h"
 #include "claw/WorldStartPolicy.h"
 #include <atomic>
@@ -39,14 +41,45 @@ constexpr std::array nodeNames{
     "NPC Head [Head]", "Tails", "NPC Root [Root]"
 };
 
+std::atomic<IBodyMorphInterface*> effectiveSource;
+
+void connectMorphSource() {
+    InterfaceExchangeMessage exchange;
+    SKSE::GetMessagingInterface()->Dispatch(InterfaceExchangeMessage::kMessage_ExchangeInterface,
+        &exchange, sizeof(exchange), "skee");
+    auto* queried = exchange.interfaceMap ? exchange.interfaceMap->QueryInterface("BodyMorph") : nullptr;
+    if (queried && queried->GetVersion() >= IBodyMorphInterface::kPluginVersion4)
+        effectiveSource.store(static_cast<IBodyMorphInterface*>(queried));
+}
+
 struct Fixture {
     RE::FormID actor{}, base{}, cell{}, addon{};
     std::uint32_t handle{};
     bool operator==(const Fixture&) const = default;
 };
 
+Fixture fixtureBits(std::int32_t actor, std::int32_t base, std::int32_t handle,
+                    std::int32_t cell, std::int32_t addon) {
+    return {std::bit_cast<std::uint32_t>(actor), std::bit_cast<std::uint32_t>(base),
+        std::bit_cast<std::uint32_t>(cell), std::bit_cast<std::uint32_t>(addon), std::bit_cast<std::uint32_t>(handle)};
+}
+
 void require(bool condition, const char* reason) {
     if (!condition) throw std::runtime_error(reason);
+}
+
+Json readEffectiveMorphs(RE::Actor& actor, const std::vector<std::string>& names) {
+    Json result = Json::object();
+    if (names.empty()) return result;
+    auto* provider = effectiveSource.load();
+    require(provider, "effective SKEE body morph interface unavailable");
+    auto* ref = reinterpret_cast<::TESObjectREFR*>(static_cast<RE::TESObjectREFR*>(&actor));
+    for (const auto& name : names) {
+        const float value = provider->GetBodyMorphs(ref, name.c_str());
+        require(std::isfinite(value), "effective morph value is not finite");
+        result[name] = value;
+    }
+    return result;
 }
 
 std::uint64_t qpc() {
@@ -163,8 +196,9 @@ public:
         check();
     }
 
-    Json snapshot() const {
+    Json snapshot(const std::vector<std::string>& names) const {
         check();
+        auto values = readEffectiveMorphs(*actorIdentity, names);
         const auto observed = findNodes(*root);
         Json rows = Json::array();
         for (std::size_t i = 0; i < nodeNames.size(); ++i) {
@@ -175,6 +209,10 @@ public:
         }
         Json result{{"nodes", std::move(rows)}, {"rootWorld", pose(root->world)},
                     {"bodyCloneWorld", pose(clonePath[0]->world)}, {"bodyItem", item}};
+        if (!names.empty()) {
+            require(readEffectiveMorphs(*actorIdentity, names) == values, "effective morph vector changed during pose read");
+            result["effectiveMorphs"] = std::move(values);
+        }
         check();
         return result;
     }
@@ -240,13 +278,16 @@ public:
         if (active() || unreleased()) queueRetirement("world changed");
     }
 
-    std::string begin(std::int32_t requested, const Fixture& expected) {
+    std::string begin(std::int32_t requested, const Fixture& expected, std::vector<std::string> names = {},
+                      bool requestMorphs = false) {
         std::lock_guard lock(mutex);
         if (requested <= 0 || !claw::npc_pose::validFixture(
                 expected.actor, expected.base, expected.handle, expected.cell, expected.addon))
             return response("refused", requested, 0, "positive nonce and exact dynamic NPC fixture required").dump();
+        if (requestMorphs && !claw::validPhysicsNames(names))
+            return response("refused", requested, 0, "invalid effective morph names").dump();
         if (nonce)
-            return nonce == requested && fixture == expected && sequence == 0
+            return nonce == requested && fixture == expected && sequence == 0 && morphNames == names
                 ? readCurrent() : response("refused", requested, 0, "one NPC pose lease per process").dump();
         if (loading)
             return response("refused", requested, 0, "load in progress or failed").dump();
@@ -255,6 +296,7 @@ public:
 
         nonce = requested;
         fixture = expected;
+        morphNames = std::move(names);
         watched.store(fixture.actor);
         leaseEpoch = epoch;
         deadline = Clock::now() + maxLifetime;
@@ -376,7 +418,7 @@ private:
             require(leaseEpoch == epoch && !loading && !expired() && !unloaded.load(), "NPC pose lease invalidated");
             const auto first = qpc();
             if (!scene) scene = std::make_unique<Scene>(fixture);
-            auto sample = scene->snapshot();
+            auto sample = scene->snapshot(morphNames);
             const auto last = qpc();
             require(first <= last && !expired() && !unloaded.load(), "NPC pose expired or unloaded during sample");
             sample.update({{"phase", "skse_main_thread_task"}, {"threadID", GetCurrentThreadId()},
@@ -403,6 +445,7 @@ private:
     std::atomic<bool> unloaded{};
     bool loading{}, unloadsObserved{};
     Fixture fixture;
+    std::vector<std::string> morphNames;
     std::int32_t nonce{}, sequence{};
     const char* status{"idle"};
     const char* reason{};
@@ -413,8 +456,17 @@ Witness* witness; // SKSE registration and the bounded watchdog share process li
 
 std::string begin(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t actor, std::int32_t base,
                   std::int32_t handle, std::int32_t cell, std::int32_t addon) {
-    return witness->begin(nonce, {std::bit_cast<std::uint32_t>(actor), std::bit_cast<std::uint32_t>(base),
-        std::bit_cast<std::uint32_t>(cell), std::bit_cast<std::uint32_t>(addon), std::bit_cast<std::uint32_t>(handle)});
+    return witness->begin(nonce, fixtureBits(actor, base, handle, cell, addon));
+}
+std::string beginWithMorphs(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t actor, std::int32_t base,
+                            std::int32_t handle, std::int32_t cell, std::int32_t addon,
+                            std::vector<RE::BSFixedString> input) {
+    std::vector<std::string> names;
+    if (input.size() <= 32) {
+        names.reserve(input.size());
+        for (const auto& name : input) names.emplace_back(name.c_str() ? name.c_str() : "");
+    }
+    return witness->begin(nonce, fixtureBits(actor, base, handle, cell, addon), std::move(names), true);
 }
 std::string sample(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t index) { return witness->sample(nonce, index); }
 std::string read(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t index) { return witness->read(nonce, index); }
@@ -423,6 +475,7 @@ std::string end(RE::StaticFunctionTag*, std::int32_t nonce) { return witness->en
 bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     if (!vm) return false;
     vm->RegisterFunction("BeginNpc", name, begin);
+    vm->RegisterFunction("BeginNpcWithMorphs", name, beginWithMorphs);
     vm->RegisterFunction("SampleNpc", name, sample);
     vm->RegisterFunction("ReadNpc", name, read);
     vm->RegisterFunction("EndNpc", name, end);
@@ -433,6 +486,7 @@ void message(SKSE::MessagingInterface::Message* data) {
     if (!data) return;
     using Message = SKSE::MessagingInterface;
     switch (data->type) {
+    case Message::kPostPostLoad: connectMorphSource(); break;
     case Message::kDataLoaded: witness->registerUnloads(); break;
     case Message::kPreLoadGame: witness->world(false); break;
     case Message::kNewGame: witness->world(true); break;

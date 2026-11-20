@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from posed_contact import compare_support, owner_support, read_pose, world_matrix
+from posed_contact import compare_support, native_vector, owner_support, read_pose, world_matrix
 
 
 def rig_transform():
@@ -47,6 +47,22 @@ class PosedContactControls(unittest.TestCase):
                 read_pose(pose, {**vector, **changed}, model)
         with self.assertRaisesRegex(ValueError, "does not belong"):
             read_pose(pose, {**vector, "rootToken": 6}, model)
+
+    def test_native_morphs_keep_effective_values_until_validation(self):
+        sample = {"phase": "skse_main_thread_task", "view": "third_person", "actor": 0xFF00010A,
+                  "base": 0x0B000800, "runtimeHandle": 1112350, "loadEpoch": 2, "rootToken": 5,
+                  "qpcBegin": 10, "qpcEnd": 11, "sex": 0, "weight": 75, "nodes": []}
+        pose = {"schema": "claw-vr-npc-pose/1", "status": "ready", "nonce": 5, "sequence": 0,
+                "pid": 7, "qpcFrequency": 100, "sample": sample}
+        model = {"modelIdentity": "fixture", "morphs": ["one"]}
+        with self.assertRaisesRegex(ValueError, "Typed native effective morph vector"):
+            native_vector(model, pose)
+        sample["effectiveMorphs"] = {"one": -.2}
+        vector = native_vector(model, pose)
+        self.assertEqual(vector["morphs"], {"one": -.2})
+        self.assertEqual(vector["weight"], .75)
+        with self.assertRaisesRegex(ValueError, "explicit normalized morphs"):
+            read_pose(pose, vector, model)
 
 
 if __name__ == "__main__":

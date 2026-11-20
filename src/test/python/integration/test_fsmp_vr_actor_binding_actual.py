@@ -70,3 +70,12 @@ class VR61ActualReplay(unittest.TestCase):
         frame["sample"]["objectWindow"]["incidentConstraints"]["constraints"][0]["spring2"]["damping"][0] = .2
         with self.assertRaisesRegex(ValueError, "damping"):
             binding.evaluate(json.dumps(frame), self.poses, self.xml, **self.args)
+
+    def test_serialized_queue_can_report_two_positive_os_threads(self):
+        pose = json.loads(self.poses[1])
+        pose["sample"]["threadID"] += 1
+        result = binding.evaluate(self.raw, [self.poses[0], json.dumps(pose)], self.xml, **self.args)
+        self.assertNotEqual(*result["poseThreadIDs"])
+        pose["sample"]["threadID"] = 0
+        with self.assertRaisesRegex(ValueError, "scoped male wolf pose"):
+            binding.evaluate(self.raw, [self.poses[0], json.dumps(pose)], self.xml, **self.args)

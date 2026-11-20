@@ -14,6 +14,14 @@ fields.
 The harness is responsible for acquiring the effective vector in the same
 observation and for retaining the archive and witness provenance. The
 identity fields let the checker refuse mismatched inputs.
+Use `--native-effective` in place of `--vector` for a witness that carries
+the complete RaceMenu vector in that same snapshot. Out-of-range inputs
+remain a refusal for this fitted model. `--observed-assets` accepts a JSON
+object with `low`, `high` and `tri` source pins with `path`, `bytes` and
+`sha256`. The caller obtains these from the actual model route and VFS.
+The checker requires identical observed endpoints, the original TRI bytes,
+and exact vertices, faces, skin weights and bind data for the two named
+support shapes. Other NIF blocks can differ.
 
 ```text
 python src/test/components/contact-profiles/posed_contact.py --model <fitted-capsules.json> --model-sha256 <sha256> --pose <witness.json> --vector <vector.json> --pynifly <PyNifly-dir>
@@ -30,6 +38,17 @@ posed support triangles for the original rest-fit capsule and the posed
 refit. Distances are in the capsule owner's local units. Each slot's
 assigned excess and sampled surface distances describe that snapshot.
 Provider contact and runtime fitting remain separate.
+
+VR63 provided a fully independently bracketed male NPC sample and all 31
+effective RaceMenu inputs at zero, actor weight 50. Against the actual
+pinned VFS geometry, 24 support slots had sufficient named pose bones. The
+largest measured vertex excess outside its rest capsule was 0.154986 in
+owner-local units. An enclosing fit built from that same sampled set left
+no assigned vertex excess beyond floating-point error. This is a single
+pose comparison without holdout or false-positive contact qualification.
+The second native sample lacked its final independent observer bracket.
+The exact geometry replay SHA-256 is
+`8c5a415b8b2a35d10587b565f242142d24c20c6bfbfdd2cde11cdbd319b2510e`.
 
 Stock HIGGS 1.10.10 reports hand, mass and separating velocity in its
 collision callback. Its deliberate-grab API can identify the held object
