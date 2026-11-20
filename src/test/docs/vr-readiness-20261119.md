@@ -1210,3 +1210,24 @@ adaptation defers only a context equality failure after both reads have passed
 their normal identity checks. It uses the original deadline and round budget,
 re-runs the full read-side checks and never replays a launch. The installed
 Bridge and previous frozen test packets are unchanged.
+
+### Native model load and isolated compositor control
+
+The second model trial, 134213, deferred one inconsistent context read and
+admitted the original retained SKSE launch on a later observation. The exact
+owned game exited with code 0. The model database returned a node for the
+private CLAW marker and the native deep-copy path created three disjoint scene
+objects with independent skin structures. Each model had one matching bone,
+four weight-1 vertices and unchanged player/NPC actor graphs after the read.
+Both runtime BSTriShape inline counts read zero. The exact disk marker keeps
+its four vertices and two triangles in its skin partition and has zero inline
+counts. A separate bounded native partition read remains required. The original
+case result is retained as failed with clean restoration and no graph writes.
+
+An isolated compositor control reached VR Room Setup and read the numerical
+scene audience. A same-owner reconnect occurred before synthetic scene
+admission, so it captured no mirror pixels and dispatched no SKSE or Skyrim.
+All 14 owned platform identities were retired. Steam still reported an active
+application immediately after closure. Once Steam reported idle, the same
+restore routine reconciled all 23 preimages. The control advances only the
+platform attempt count. Stereo output under a virtual HMD remains open.
