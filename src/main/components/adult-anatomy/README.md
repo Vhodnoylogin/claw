@@ -19,6 +19,11 @@ preserves their geometry, materials and TRI fields, and refuses an existing FSMP
 hook. Bone spheres enclose the serialized morph domain and declared nominal
 joint limits; this is not a simulation or proof of engine culling behavior.
 
+Keep the appearance usable with physics off by default in the eventual
+installer. The pinned original resources already contain this neutral geometry
+and TRI without an FSMP binding. Treat the motion rig and its XML as the
+opt-in variant and verify both selections during packaging.
+
 `src/test/components/adult-anatomy/test_neutral.py` checks the actual resources
 through the native NIF reader and Morphbench facade. `visibility_probe.py` is a
 separate Blender body-occlusion proxy. Neither establishes live attachment,

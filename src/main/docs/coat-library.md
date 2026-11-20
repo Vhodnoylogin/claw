@@ -52,6 +52,15 @@ darker variant than the closest anchor. Native source tests cover neutral greys
 and equal-luminance warm/neutral inputs. An in-game comparison needs fresh hair
 RGB, mapping revision and selected diffuse paths from the same run.
 
+The later SE candidate run `20261113-102317-d73973` measured the same RGB
+48,35,33 on the Runa human specimen and its pre-transform twin. The twin
+automatically received Valley Brown, with 12 managed surfaces verified and no
+manual override. The game exited with code 0 and the run restored the profile.
+The candidate used a precursor DLL and mapping, and captured no image. This
+establishes the measured RGB-to-material route for that run. The final-release
+mapping and rendered appearance are separate checks. Result SHA-256
+`64c10cd5480d2bd64fdbd75c8b32f7394e1833a5975671cc2734cfae32a11258`.
+
 The optional artwork is installed from Elegant's own Randomized component.
 The adapter keeps the installed model material when the selected resources
 are unavailable. No texture image is included in CLAW. The [installer guide](../resources/publication/runtime/README.md)
