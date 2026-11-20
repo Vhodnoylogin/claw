@@ -1328,3 +1328,34 @@ pins directly within the task. This fixes lock-order inversions found in
 the source.
 It does not establish the cause of the earlier provider refusal or a
 shutdown fault.
+
+The universal Release DLL built from CLAW eb6baf0 loaded in run 151411.
+The test catalog carried an XML declaration and was rejected by the actual
+family parser before any scoped write. The next packet passed both catalog
+and matrix checks with the same-build preset tool before staging.
+
+Run 151931 verified the exact loaded DLL. One disposable werewolf changed
+its `CLAWArmGirth` from 0.5 to 0.125 through `ConfigureMorphFamily`, then
+returned to 0.5 with its original family. The physics session opened and
+read back its token. A qualified registration became current, its explicit
+removal made it inactive, and ending the session returned a new token.
+The independent terminal audit recovered all 48 staged paths and 75 VFS
+routes. Native exit was 0. This case exercised logical queue boundaries
+in an unsaved world. Fitted contacts, motion and the serialization-load
+callback require separate runtime evidence.
+
+### FSMP step tied to the actor's loaded body
+
+Run 152212 used the private observer build of FSMP 4.1.1. One scoped
+request tied fifteen exact roles, including P1, on the same female NPC
+to the provider's source read and one solver step. The provider verified
+the system in its own `FrameEvent` before and after the worker and sync
+stages. The two native pose snapshots and independent actor reads kept
+the same identity, root, body item, cell and epoch. The final pose
+callback used a different OS thread from the offer.
+
+The independent verifier replayed the scoped association and confirmed
+one spawned fixture, no trace or actuation requests, 146 restored file
+preimages, 48 staged paths and 76 VFS routes. Bridge 2.3.7 agreed with
+the exact native exit 0. Controlled P1 motion and contact are still
+unqualified by this read-only run.
