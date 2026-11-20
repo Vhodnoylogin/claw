@@ -1,4 +1,4 @@
-"""Nominal geometry admission for the single-tail stock CBPC VR fixture.
+"""Nominal sphere and capsule geometry for stock CBPC VR fixtures.
 
 The caller still owns the overlay, actor, provider, driver and attach receipts.
 Observer frames contain scene transforms, without solver or render readback.
@@ -34,6 +34,19 @@ def _sphere(frame, offset, radius):
     return center, radius
 
 
+def _point_segment_distance(point, start, end):
+    edge = [b - a for a, b in zip(start, end, strict=True)]
+    length_squared = sum(value * value for value in edge)
+    require(math.isfinite(length_squared), "Invalid world capsule axis")
+    if length_squared == 0:
+        return math.dist(point, start)
+    along = sum((value - origin) * delta for value, origin, delta in zip(point, start, edge, strict=True))
+    require(math.isfinite(along), "Invalid world capsule projection")
+    position = max(0., min(1., along / length_squared))
+    closest = [origin + position * delta for origin, delta in zip(start, edge, strict=True)]
+    return math.dist(point, closest)
+
+
 def _reference(raw, form, base, cell):
     rows = [row for row in raw["refs"] if _form(row["identity"].get("form"), form)]
     require(len(rows) == 1, "Expected exactly one observed reference")
@@ -56,7 +69,7 @@ def _wand(picking, key, name):
     return transform(row["world"])
 
 
-def measure_frame(raw, *, actor, base, cell, pid, target_offset, target_radius):
+def measure_frame(raw, *, actor, base, cell, pid, target_offset, target_radius, target_node=None, target_end=None):
     """Extract synchronized scene geometry and both reference incarnations."""
     require(type(actor) is int and 0xFF000000 <= actor < 0xFFFFFFFF
             and all(positive_int(value) for value in (base, cell, pid)) and _finite_positive(target_radius),
@@ -71,23 +84,31 @@ def measure_frame(raw, *, actor, base, cell, pid, target_offset, target_radius):
             "Complete same-task VR Observer snapshot required")
     player = _reference(raw, PLAYER, 7, cell)
     npc = _reference(raw, actor, base, cell)
-    tails = [row for row in raw.get("nodes", []) if row.get("name") == TAIL]
-    require(len(tails) == 1 and tails[0].get("status") == "available"
-            and tails[0].get("firstPerson") is False and tails[0].get("identity") == npc[0]
-            and _form(tails[0].get("form"), actor), "Expected exact owned third-person TailBone01")
+    node = TAIL if target_node is None else target_node
+    require(isinstance(node, str) and bool(node), "An exact target node name is required")
+    targets = [row for row in raw.get("nodes", []) if row.get("name") == node]
+    require(len(targets) == 1 and targets[0].get("status") == "available"
+            and targets[0].get("firstPerson") is False and targets[0].get("identity") == npc[0]
+            and _form(targets[0].get("form"), actor), f"Expected exact owned third-person {node}")
     picking = raw.get("vrPicking", {})
     require(picking.get("status") == "available" and picking.get("phase") == raw["phase"]
             and picking.get("space") == raw["space"] and picking.get("units") == raw["units"],
             "VR tracking scene poses are unavailable")
     left = _wand(picking, "leftWand", "LeftWandNode")
-    target, target_world_radius = _sphere(transform(tails[0]["world"]), numbers(target_offset, 3), target_radius)
+    target_pose = transform(targets[0]["world"])
+    target, target_world_radius = _sphere(target_pose, numbers(target_offset, 3), target_radius)
     source, source_world_radius = _sphere(left, (0., -6., -2.), 3.)
+    shape = {"target": target, "radiusSum": source_world_radius + target_world_radius}
+    if target_end is None:
+        shape["distance"] = math.dist(source, target)
+    else:
+        endpoint, _ = _sphere(target_pose, numbers(target_end, 3), target_radius)
+        shape.update(segmentEnd=endpoint, distance=_point_segment_distance(source, target, endpoint))
     return {"session": raw["sessionId"], "epoch": raw["loadGeneration"], "sample": raw["sampleId"],
             "frame": raw["producerFrame"],
             "ns": raw["producerMonotonicNs"], "player": player, "actor": npc, "left": left,
             "controls": {side: _wand(picking, *node) for side, node in CONTROLS.items()},
-            "source": source, "target": target, "distance": math.dist(source, target),
-            "radiusSum": source_world_radius + target_world_radius}
+            "source": source, **shape}
 
 
 def _same_basis(first, current):

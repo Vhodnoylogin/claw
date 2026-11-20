@@ -66,6 +66,26 @@ class CbpcVrGeometryControls(unittest.TestCase):
         self.assertEqual(result["distance"], 2.)
         self.assertEqual(result["radiusSum"], 5.5)
 
+    def test_measures_the_nearest_point_on_a_rotated_named_capsule(self):
+        raw = self.frames["nearBefore"][0]
+        raw["nodes"][0]["name"] = "EarR"
+        raw["vrPicking"]["nodes"]["leftWand"]["world"]["translation"][1] = 1
+        result = measure_frame(raw, **FIXTURE, target_node="EarR", target_end=[1, 2, 0])
+        self.assertEqual(result["target"], [15., 0., 9.])
+        self.assertEqual(result["segmentEnd"], [11., 0., 9.])
+        self.assertEqual(result["distance"], 1.)
+        self.assertEqual(result["radiusSum"], 5.5)
+        with self.assertRaisesRegex(ValueError, "Expected exact owned third-person TailBone01"):
+            measure_frame(raw, **FIXTURE)
+
+    def test_capsule_distance_clamps_to_endpoints_and_accepts_a_point_capsule(self):
+        raw = self.frames["nearBefore"][0]
+        result = measure_frame(raw, **FIXTURE, target_end=[1, .5, 0])
+        self.assertEqual(result["segmentEnd"], [14., 0., 9.])
+        self.assertEqual(result["distance"], 1.)
+        point = measure_frame(raw, **FIXTURE, target_end=FIXTURE["target_offset"])
+        self.assertEqual(point["distance"], 2.)
+
     def test_measured_holds_bound_event_clock_inward(self):
         result = run(self.frames)
         self.assertEqual(result["holds"], {"nearBefore": (10_000_001, 20_000_000), "far": (30_000_001, 40_000_000),

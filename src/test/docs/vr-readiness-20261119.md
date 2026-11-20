@@ -1815,3 +1815,74 @@ The automatically written Autotest report joined the Main Menu 504 and
 the exact abandoned-read decision by the same local request ID. It counted
 one abandoned request, zero unresolved gateway requests and a later ready
 queue. This verified the new diagnostics in SE with the real test runtime.
+
+Run `20261120-194716-dc95a5` passed the stock CBPC 1.7.3 callback contrast
+on Skyrim SE 1.7.104. The loaded CLAW profile exposed 52 slots and selected
+flat slot 46 on `TailBone03`. A measured placement correction moved the
+disposable born werewolf 7.98 game units horizontally. Fresh measurements
+qualified the corrected hold, followed by the unattached control and one
+capsule attachment. During the held intervals CBPC emitted 6, 0, 6 and 0
+matching events for near, far, return and detached positions. Two further
+events were outside those holds. Each active hold contained at least 0.603
+seconds of reported contact duration. The actor was then disabled and its
+3D unloaded. This verifies callback contrast for the fitted slot and the
+observed moving geometry. Solver-frame coverage, Havok contact, automatic
+whole-profile attachment and original-human rebinding remain open.
+
+The executor report recorded three passing checks, a startup `gfx` HTTP 504
+resolved as abandoned before start, zero unresolved requests and a later
+ready queue. Native exit was 0. Independent replay rehashed 143 snapshots,
+including the original profile files, and reproduced the report and callback
+classification. Terminal SHA-256
+`6ad76644fa6b5781e925bfe73674ec00752d3380c1ec1d3f90bc940b48f0c75f`.
+
+The reusable VR geometry check can now take the exact actor node and both
+endpoints of a fitted capsule. It computes the closest point over the whole
+segment after the owner's rotation and scale. The original single-sphere
+fixture still takes its ordinary route. The capsule calculation reproduced
+all 114 retained EarR distances from `191921` and the four independent world
+snapshots from its spawn, floor and capture brackets. The native rows still
+show a positive gap of 35.146–88.238 game units at the neutral controller pose.
+
+An isolated native observer for the known `PostVrikPostHiggs` callback was
+built and checked offline. Its bounded lease and immutable pages keep real
+callback sequence and QPC cadence separate from graphics-frame telemetry.
+The native phase/capture tests and six independent audit cases passed. The
+observer requires the same exact VRIK and HIGGS resources as the earlier
+tracked avatar trial. It is test instrumentation. Neither this phase contract
+nor the geometric replay establishes the NPC solver update phase or contact.
+
+Run `20261120-204834-ca13f3` loaded the exact VRIK and HIGGS providers in
+the copied TEST VR profile and produced 165 post-tracking rows over 4.948
+seconds. There were four missing callback sequences and four discarded
+graphics crossings. The gaps were 58.5–59.8 ms. The longest continuous
+callback window was 1.353 seconds against the 1.5-second criterion. The
+observed cadence therefore failed. The witness checked ownership and copied
+poses before retiring the disposable actor. No attach, detach or tracking
+commands were issued. The next measurement brackets the actual transform
+copies with the graphics counter, keeping the callback-wide QPC clock,
+owner checks and original thresholds.
+
+Native exit was `0xC0000005`. A read-only review correlated Windows record
+103005 with the owned `SkyrimVR.exe` instance and offset `0xAB4F26`, distinct
+from the earlier `0xE3ED1D` observation. The error's cause remains unknown.
+Independent restoration checked 141 snapshots, 70 virtual winners and
+the archived test-only provider/fixture profile. Terminal SHA-256
+`2b31cd3ac31724366b016c3d50a12415d4350d5e4489ae7741a443f2d1a960f6`.
+
+The r02 binary changed the graphics bracket to surround only the five pose
+copies. Run `20261120-205502-515087` kept the same runtime PEX and provider
+payload. It retained 170 poses across a continuous 4.972-second callback
+interval with zero missing callback sequences. Seven gaps and eight repeats
+in graphics labels remain visible as separate telemetry. Independent replay
+qualified the passive recording against the same owner, the before/after
+world brackets and the original cadence requirement. The neutral controller
+remained 34.287–86.962 game units from the capsule surface. Provider contact
+and rendered positions were outside this passive test.
+
+The feature scenario passed. The overall run failed because the game exited
+at the same `0xC0000005` and `0xAB4F26` as r01, Windows record 103007. Both
+attempts retired their disposable actor and independently restored all 141
+preimages. The newer Autotest report identifies one explicitly abandoned
+startup inspect read in both runs and a separate observed queue recovery.
+Cadence and exit results remain reported separately.
