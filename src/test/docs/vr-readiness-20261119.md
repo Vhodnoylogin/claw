@@ -1403,6 +1403,21 @@ at the right control. Longer intervals in the bench could exceed the original
 `7c9a218d5baedd622bf30021a5ccf1f41ddb42fff25c1052959ffd24dab89d52`.
 A controlled two-substep game response remains to be measured.
 
+Run 162540 recorded the controlled response from the same female NPC and
+the two executed stock substeps at 16.667 and 12.500 ms. One central force
+addition used an impulse integral of 0.150000006, and the stock force clear
+was observed. The left joint moved 0.053877 game units along its local X
+axis. The right joint and the earlier passive comparison of both joints
+showed zero drift. The active test did not measure the passive step
+durations. The wrapper mismatched the exact `mainThread` and `frameThread`
+field names and failed after reading the raw completed result. Its original
+failure is retained. Process-owned cleanup skipped subsequent scoped
+actor actions, reconciled 146 preimages and observed native and Bridge
+exit 0. Independent raw replay verified the role and clock joins. It does
+not qualify transfer to the skinned scene or pixels. Terminal SHA-256
+`dd3480ed449eaddea0a259e80d111f0dd08fb381e56aee7536d1e9b346eda88d`,
+replay SHA-256 `fcf88e763f86739319a7e68b0f4092e42fba94ef29f935e0f7ced6e47ae8e3ec`.
+
 ### Stock male first-person armor model route
 
 The private route probe changed only male `MOD4` in the diagnostic armor
@@ -1448,3 +1463,13 @@ The disposable profile's archived height offset became 1.0, after reading
 The refusal and calibration discrepancy remain in the original result.
 Native exit was 0. The independent terminal SHA-256 is
 `d31a10db32ec4e08e35ebbd3fe11d435812136000b8929b3108dfd6869888a98`.
+
+Run 162939 independently verified the first-world observation gate in the
+private observer. It recorded the ordered menus and the stable initial world,
+then accepted one Capture. The next real HIGGS phase callback ran, changing
+its callback sequence from 3240 to 3241. The native body collection refused
+the exact engine-managed Body32 guard, before the virtual head tilt.
+The result records no body clearance. The game exited with code 0 and the
+original profile, 122 snapshots, eight staged paths and 51 VFS winners
+reconciled. Terminal SHA-256
+`d24b912482d1eb5b874e41dda78dfd5ff8799224d8714b442dd0f183666c4560`.
