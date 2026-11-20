@@ -1720,3 +1720,26 @@ The live Autotest review preserved one `gfx` 504 and one explicit startup-read
 abandonment in the New Game menu, plus a later ready queue and exit 0. The
 retained review uses the original transport schema. The successor records a
 local per-request identifier to link the timeout and its exact disposition.
+
+Run 190255 used the shared multi-pose placement in the actual game. The
+pre-move group qualified while the right hand varied 1.931 GU. After the
+disposable actor reached the intended floor position, eight observations
+spanning 2.552 seconds all showed nominal hand/capsule overlap. In two
+observations the overlap was 0.240 and 0.726 GU, below the 0.75 GU test
+margin. The case stopped before arming or calling CBPC. The replay finds
+three six-frame groups spanning 1.78–1.84 seconds with a modeled floor
+correction of 6.96–7.08 GU. The minimum projected overlap is 6.27 GU.
+The next test can try a single small adjustment using these post-move
+measurements and must remeasure the new pose before any provider call.
+Replay SHA-256 `33ff7115968e3c0170dd640dca1933a63bddac5da1126ccd7d8081db4ad746cc`.
+Native exit 0 and 143 preimages restored. Terminal SHA-256
+`d12e1243173e7b45a2b4b6399389670b4bbeb8c09b9386e2894dcbb59afb835c`.
+
+The provisional EarR frame witness has compiled with the pinned VR SDK.
+It copies the exact EarR, actor root, both wands and HMD in a bounded
+serialized SKSE task and records engine-frame and QPC boundaries. It skips
+duplicate frames before the graph walk and tracks gaps and outstanding work.
+The isolated audit covers ordered pages, matching fixture and epoch, multiple
+serialized drain threads and missing frames splitting a timed interval.
+Live cadence and callback correlation remain open. Native build receipt SHA-256
+`854119007ddda4ad10f7fbb7cdb191d7c2d83506f083464b84e4df8a63771b3d`.
