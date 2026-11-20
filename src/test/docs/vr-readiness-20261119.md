@@ -1154,3 +1154,29 @@ assign a provider or establish a clean game exit. The isolated profile, all
 were independently reconciled. This qualifies scoped CBPC callbacks, with
 full-rig contact sets, provider rebinding, output visible in a physical
 headset and Havok-family interaction still open.
+
+### Isolated VR residuals
+
+The renderer diagnostics run 131126 read a pair of 2748 x 2880 mirror textures
+with matching format. Every RGB pixel in both eyes was black. Four consecutive
+timings had advancing frame indices and zero presents, with the owned game as
+scene and last renderer. The reader rejected the pair before recording PNG or
+issuing any HMD tilt. These measurements describe the virtual runtime.
+Physical-headset display and all in-game first-person pixel acceptance are open.
+
+In 130936 the original and programmatically built Papyrus paths returned the
+same exact string. No repeat of AttachMesh was sent. The actual 1,978,368-byte
+mapped provider is RaceMenuVR 0.5 from Nexus file metadata for mod 156898. It
+contains the working node-transform and body-morph registration literals.
+Neither AttachMesh nor DetachMesh appeared in its ASCII or UTF-16 strings,
+although the VM description advertises both as native methods. This evidence
+strongly points toward missing binding for the newer attachment API. A
+scoped VM linker trace or a provider-issued confirmation would establish the
+reason independently. No universal attachment route is claimed.
+
+The 130734 FSMP P1 case bound an exact world and fresh timestamps but stopped
+before arming because all four named actor anchors changed between the outside
+pose observations. The stationary solver poses in its 29 complete pairs exactly
+matched all four late named node positions. The earlier named sample preceded
+the first pair by .442 seconds. A tighter independently named read inside the
+same capture interval is being prepared. It does not change actuator scope.
