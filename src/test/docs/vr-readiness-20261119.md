@@ -1886,3 +1886,17 @@ attempts retired their disposable actor and independently restored all 141
 preimages. The newer Autotest report identifies one explicitly abandoned
 startup inspect read in both runs and a separate observed queue recovery.
 Cadence and exit results remain reported separately.
+
+Run `20261120-211440-1b3a9e` repeated the same startup, staged 25 identical
+payloads and verified nine mapped module backings with the same VRIK/HIGGS
+profile. The EarR observer stayed loaded and never received a call. After the
+ordinary 15-step prelude it waited 9.734 seconds with no new engine calls,
+fixture NPC, CBPC commands or tracking actions. The passive control passed.
+The original shutdown queued `qqq` and the game again exited with
+`0xC0000005` at `SkyrimVR.exe+0xAB4F26`, Windows record 103011. Active
+EarR calls and the disposable NPC are not needed to reproduce that fault.
+The older executor recorded no window-close receipts, so the next controlled
+comparison varies the grace between the console quit request and any native
+window-close fallback. The cause remains open. Independent replay verified
+141 restored snapshots and 70 VFS winners. Terminal SHA-256
+`8a1f166fb04b83462a6c3bdc9f19ed41cccd443fd9be4f2689abaf25250251e3`.
