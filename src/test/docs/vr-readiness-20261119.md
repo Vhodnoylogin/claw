@@ -1639,3 +1639,29 @@ the player preserves the archived near and far horizontal controls.
 Vertical alignment for the actual held ear and the provider contact
 remain open. Native exit was 0xC0000005. All 123 snapshots restored.
 Terminal SHA-256 `b2acf25ab6e9476f20b3f2075bb40f01bbba15d3fcbd0b31e00c19df94186e50`.
+
+Run 181509 held the same player and actor root in the reviewed area. The
+virtual wand moved at 69.99 game units per metre. During the observation
+window the ear animated down and sideways, leaving 19.85 to 32.90 units of
+surface separation. The test stopped before provider work. A replay of
+the later seven sampled poses found a modeled position with 0.99 units
+of near overlap and 3.38 units of far separation. Actual current geometry
+in that position still needs a live measurement. Terminal SHA-256
+`747e7dc0562de59526c83f9d5cae5d133f924938ea884b0e5cc47cda8c480b51`.
+
+SE run 181811 reached the exact native input route and the game mapped
+Sneak to scan code 29. The official DevBench reported only the HUD and
+no message box. The scripted gameplay module still expected full menu
+flags. Run 182453 used the corrected shared Autotest menu predicate.
+The exact owned input tap released, the actual player changed from
+standing to sneaking, and hand height fell 18.66–19.63 units. The player
+and actor root stayed stationary. During those same samples the tail rose
+with idle animation, leaving at least 10.82–14.21 units of vertical
+surface separation. The scenario stopped without appending a capsule.
+The tested outcome is normal keyboard input and updated engine pose.
+Native exit was 0 and 143 snapshots restored. Terminal SHA-256
+`05d8a2b83837198e1f6faf24774d0ab37fbd90335e1065d291c81531455d185f`.
+
+The new Skyrim Autotest created its per-run review during both editions'
+tests. Reviewing 181509, 181811 and 182453 preserves the observed status
+of the feature scenario, exact process exit and environment restoration.

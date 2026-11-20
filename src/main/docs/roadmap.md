@@ -195,3 +195,10 @@ launch/tool defects locally for a later owner-approved handoff. The owner's
 13 November exception permits one status request to the original MO2 API Bridge
 chat; other testing coordination remains local. Keep FHD and the accepted
 paired-scene rules.
+
+For every CLAW game run, retain the Autotest `run-review.json` with the original
+steps and terminal evidence. For a frozen executor without this report, read its
+retained directory with `python -m skyrim_autotest.run_review`. Use the observed
+startup, tool, shutdown and restoration behavior to propose improvements to the
+general executor. Keep the CLAW feature result and Autotest findings distinct.
+Develop the tool from these observations alongside the feature work.
