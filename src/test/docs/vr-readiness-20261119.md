@@ -2192,6 +2192,41 @@ observation. The Bridge result remains unavailable for this exit. The
 terminal and age-contrast SHA-256 values are
 `c8e3c01e5f9709a99baf29792e087e069de9aa0899f4430b2b58b8980dc4c133`
 and `b9f9baebbfec4bbe72afd9a514bf9938b6c954506e6d77a9579229c6180d89b2`.
+
+### Paired scene capture and passive admission
+
+The private paired test captures outer entry, pre-write, post-write and
+outer return in the existing game update. It joins those observations to the
+accepted stock writer and records the actual passive substeps alongside
+the existing force receipt. The reusable
+[comparison](../python/integration/fsmp_phase_comparison.py) checks both
+windows' initial poses, timing and anchor motion. The absolute stock
+right control remains independent of the measured contrast at outer return.
+
+Run `20261121-120123-b715f2` reached the fixture and stopped before a
+provider request. The root was stationary. All four kinematic anchors
+changed translation in eight of nine observed intervals. The longest
+matching sequence was two, and the ten observations took 3.589 seconds
+of the existing ten-second budget. The replay SHA-256 is
+`6744a0b3e7a94afd850160a2c7c5a2b80d79f26356657ecdd1c7081ff72cf261`.
+
+The second run `20261121-120526-a98f5c` allowed up to 24 observations
+within the original deadline and reached the three matching poses in its
+first three observations. Its passive capture supplies the four game
+boundaries and both actual solver substeps, 0.016666668 s and 0.012666665 s.
+The right stock write moved 0.180997 GU and the outer pose returned to the
+incoming XYZ. The typed passive sample fails the original provider's
+0.008 component prerequisite. Its left Y moved −0.009765625 GU and
+right X moved −0.0087890625 GU during the solver step. This is sufficient
+to explain why the original provider would decline the later request.
+The retained active reply was unconfirmed. The scenario stopped further
+actor calls and kept the active measurement unavailable.
+
+Both games exited 0. Independent restoration checked all 146 snapshots
+and 76 VFS winners in each run. The second run's terminal and passive
+admission replay SHA-256 values are
+`e02b46e9310c8ad57080681036a76842312a4d33ec2186e6d25c09e04de3a23e`
+and `d76dad572498bafb7771c3fcc03c7caaf4d36a52c3c2e972f3de3e1653013383`.
 Exact nested replay SHA-256
 `7d737e872516d904cbf444250a2b461291742b32b48470140661f29a470e8a3b`.
 
