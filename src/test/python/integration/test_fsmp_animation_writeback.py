@@ -1,12 +1,30 @@
 import unittest
 
 if __package__:
-    from .fsmp_animation_writeback import compare_animated_joint_x, hierarchy_residual
+    from .fsmp_animation_writeback import (compare_animated_joint_x, hierarchy_residual,
+                                          preceding_frame_sync, world_sample_qpc)
 else:
-    from fsmp_animation_writeback import compare_animated_joint_x, hierarchy_residual
+    from fsmp_animation_writeback import (compare_animated_joint_x, hierarchy_residual,
+                                         preceding_frame_sync, world_sample_qpc)
 
 
 class AnimatedWritebackTests(unittest.TestCase):
+    def test_world_clock_must_fit_the_independent_request(self):
+        self.assertEqual(world_sample_qpc(110_000, 5, 900, 1300, 10_000_000), (1100, 1161))
+        with self.assertRaisesRegex(ValueError, 'host request interval'):
+            world_sample_qpc(110_000, 5, 900, 1160, 10_000_000)
+
+    def test_scene_read_must_fall_fully_between_two_observed_writers(self):
+        syncs = [(10, 12), (20, 25), (30, 32), (80, 90)]
+        self.assertEqual(preceding_frame_sync(syncs, 27, 29, 20), 1)
+        self.assertIsNone(preceding_frame_sync(syncs, 12, 13, 20))
+        self.assertIsNone(preceding_frame_sync(syncs, 12, 20, 20))
+        self.assertIsNone(preceding_frame_sync(syncs, 29, 31, 20))
+        self.assertIsNone(preceding_frame_sync(syncs, 33, 37, 20))
+        self.assertIsNone(preceding_frame_sync(syncs, 92, 94, 20))
+        with self.assertRaisesRegex(ValueError, 'nonoverlapping'):
+            preceding_frame_sync([(10, 25), (20, 28)], 30, 35, 20)
+
     def test_hierarchy_residual_uses_rotated_scaled_parent(self):
         identity = [1, 0, 0, 0, 1, 0, 0, 0, 1]
         quarter_turn = [0, -1, 0, 1, 0, 0, 0, 0, 1]

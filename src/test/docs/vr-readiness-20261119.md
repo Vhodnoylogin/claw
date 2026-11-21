@@ -2578,3 +2578,12 @@ The broad solver-to-scene comparison SHA-256 is
 `2864f4d2a7ccc50972223a400f4f464172bc18a9bb2767ee4f7b21b475275a0d`.
 The complete wide repeat's one-run review SHA-256 is
 `e2c847b69fc9bd03a1a9ef4938e5d87139b6d558e421668d9f7dcda36faadcc1`.
+
+The SE observer exposes the steady-clock start and truncated duration of a
+WORLD sample. With the pinned Windows QPC implementation and the measured
+10 MHz frequency, the full converted interval fit inside the independent
+host request in all 100 saved samples. Use a full contained interval for the
+next source recording. The WORLD read must fall after a directly observed
+FrameSync return and before the next observed FrameSync begins, with a
+bounded inter-frame interval. A missing following receipt or an overlap
+leaves the scene phase unassigned.

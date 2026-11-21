@@ -21,6 +21,41 @@ def hierarchy_residual(parent_world, child_world, child_local):
     }
 
 
+def world_sample_qpc(started_ns, duration_us, request_qpc, response_qpc, frequency):
+    """Bound a WORLD sample after verifying that its steady clock uses the same QPC.
+
+    The caller pins the observer clock implementation. The transport bracket
+    independently checks the conversion, including both timestamp truncations.
+    """
+    values = (started_ns, duration_us, request_qpc, response_qpc, frequency)
+    if (any(type(value) is not int for value in values) or started_ns <= 0 or duration_us < 0
+            or frequency <= 0 or not 0 < request_qpc < response_qpc):
+        raise ValueError("Expected valid WORLD sample and request clocks")
+    nanos_per_second = 1_000_000_000
+    start = started_ns * frequency // nanos_per_second
+    stop_ns = started_ns + (duration_us + 1) * 1000 + 1
+    stop = (stop_ns * frequency + nanos_per_second - 1) // nanos_per_second
+    if not request_qpc <= start <= stop <= response_qpc:
+        raise ValueError("WORLD clock does not fit inside the host request interval")
+    return start, stop
+
+
+def preceding_frame_sync(syncs, sample_start, sample_stop, maximum_interval_ticks):
+    """Find a completed sync followed by the full scene read before the next sync."""
+    if (type(sample_start) is not int or type(sample_stop) is not int
+            or type(maximum_interval_ticks) is not int or not 0 < sample_start <= sample_stop
+            or maximum_interval_ticks <= 0):
+        raise ValueError("Expected a bound scene read and a positive maximum sync interval")
+    if (any(type(start) is not int or type(end) is not int or not 0 < start <= end for start, end in syncs)
+            or any(second[0] <= first[1] for first, second in zip(syncs, syncs[1:]))):
+        raise ValueError("Expected ordered nonoverlapping FrameSync receipts")
+    index = bisect_left([end for _, end in syncs], sample_start) - 1
+    if (index < 0 or index + 1 >= len(syncs) or sample_stop >= syncs[index + 1][0]
+            or syncs[index + 1][0] - syncs[index][1] > maximum_interval_ticks):
+        return None
+    return index
+
+
 def compare_animated_joint_x(solver, samples, *, tolerance, maximum_interval_ticks):
     """Use neighboring post-step values to bound the asynchronous scene read.
 
