@@ -2280,6 +2280,29 @@ supplied the node samples. The review leaves the native exit and run verdict
 as recorded. SHA-256
 `4a74e54c9d7da532bd66a91b318e145d383e537b824a216f4eb1cb419940ce84`.
 
+The schema-2 observer run `20261121-123349-43b436` repeated the guarded case
+with the same fixture, actions and limits. The only changed staged image
+added world rotation and scale to the four existing boundaries. The verifier
+reconstructed all 32 observed transform digests from their numeric values.
+At outer entry and before the write, both dynamic node rotations differed
+between the windows. The largest rotation-matrix component differences
+were `5.424023e-6` left and `1.866370e-6` right. Both were actual numeric
+differences. The scales, translations and both anchor transforms matched.
+The second observed solver substep was 0.013000000 s passive and 0.012666665 s
+active. Strict matched contrast remains unavailable for these two inputs.
+
+The original passive gate and the absolute 0.010 GU right control passed.
+One active pulse moved the left joint's local X by +0.052512 GU. The left
+scene displacement was 0.054427 GU at stock write and remained 0.054427 GU
+at outer return, with the same full transform digest. Right XYZ was zero in
+both windows. This repeats the scoped left response and quiet right control.
+The renderer supplied no frames. The independent native exit and the Bridge
+exit observation both recorded 0. All 146 snapshots and 76 VFS winners passed
+restoration. Terminal, provider log and numeric replay SHA-256 values are
+`ca9860a280c94aa31b379c7516ff702ebd02599f147c72b667ca11c41ec92bc5`,
+`50988cfa6c5071a2a11cc32059133005f7cbee9827d8f2cd902a7346fa174bc2`, and
+`90023ba02b7a78904f68954b6b2ef44e35748b7fcd531fb53353efbf7d9a5502`.
+
 Run `20261121-005955-d817a9` established three independent virtual-controller
 translation inputs through native game observations. Measured X/Y/Z gains
 were 70.017306, 70.000000 and 70.003934 game units per metre. The measured
