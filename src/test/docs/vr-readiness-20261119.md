@@ -2303,6 +2303,16 @@ restoration. Terminal, provider log and numeric replay SHA-256 values are
 `50988cfa6c5071a2a11cc32059133005f7cbee9827d8f2cd902a7346fa174bc2`, and
 `90023ba02b7a78904f68954b6b2ef44e35748b7fcd531fb53353efbf7d9a5502`.
 
+Morphbench's configured-envelope calculation was also evaluated directly
+at the measured scene poses, with the same XML and the identity `frameInA`
+setting. All 16 P1 placements produced the corresponding origin, axes and
+12 box edges per placement. The four comparison samples from the passive
+solver's two kinematic anchors had exact origin agreement. The worker and
+editor axes differed by at most `7.301569e-7` in a rotation-matrix component.
+This establishes tool-to-game frame placement for the sampled unit-scale
+anchors. It does not measure the simulated surface. Exact editor pose replay
+SHA-256 `53c76249275135df42fc8f7aef2140b23cfc25f120df6f0ca2058a0e214ce6b8`.
+
 Run `20261121-005955-d817a9` established three independent virtual-controller
 translation inputs through native game observations. Measured X/Y/Z gains
 were 70.017306, 70.000000 and 70.003934 game units per metre. The measured
