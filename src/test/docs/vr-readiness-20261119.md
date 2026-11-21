@@ -2150,6 +2150,26 @@ passive scene overwrite after nested FSMP sync inside the outer game
 update. Its internal writer, rendered output and active amplitude are
 separate open measurements. The original absolute 0.010 right gate passed
 zero of eight times. The run exited normally and restored 146 snapshots.
+
+The passive writeback decomposition of the same eight windows measures the
+right target-to-scene gap at 0.024169–0.036291 game units before the solver
+step. The step moved the right target by 0.001544–0.002013 units and reduced
+that gap each time. The writer copied the target exactly at the recorded
+precision. Between successive windows the solver retained its previous
+target seven times while the scene resumed its pre-write coordinates.
+Both P1 nodes returned to their exact incoming world XYZ at the outer
+update return in all eight windows. Their full transform digests matched in
+seven, with a parent transform digest change in the first window. There
+are no numeric rotation or scale samples in that report.
+
+The control offset therefore already exists before each observed solver
+step. A follow-up comparison needs a settled incoming right target and
+equivalent passive and active write/return measurements from one run.
+The right absolute 0.010 gate still applies at stock writeback. The offline
+[decomposition](../python/integration/fsmp_scene_writeback.py) keeps that
+value independent of later scene restoration. The external passive replay
+report SHA-256 is
+`a560c239e202e10e8aac70e32afa658c325d32e6058aa52740e6d9e834b894bd`.
 Exact nested replay SHA-256
 `7d737e872516d904cbf444250a2b461291742b32b48470140661f29a470e8a3b`.
 
