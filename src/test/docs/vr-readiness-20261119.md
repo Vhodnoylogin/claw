@@ -2587,3 +2587,41 @@ next source recording. The WORLD read must fall after a directly observed
 FrameSync return and before the next observed FrameSync begins, with a
 bounded inter-frame interval. A missing following receipt or an overlap
 leaves the scene phase unassigned.
+
+#### Direct FSMP writer observation in SE
+
+The first source-observer attempt, `20261121-144314-9e6c97`, reached the
+owned fixture and stopped on callback reference extraction before arming.
+The corrected `20261121-144613-3e6456` proved that the selected stock
+FrameSync event runs outside the SKSE game task, so that observer refused
+before the animation. Both owned games exited 0 and restored 130 external
+preimages and 268 VFS winners. The v2 observer binds the owned carrier on
+the game task, checks its exact provider membership under the stock FSMP
+lock in FrameSync, and confirms the same actor after capture on the game
+task. The solver steps, stock writer and renderer are unchanged in this
+private observation build.
+
+Run `20261121-145604-f34885` qualified the v2 observer. It retained 359
+FrameSync observations, 845 native pairs and 176 independent compositor
+frames. For both P1s, the stock assignment reached the calculated position
+and that position was still present at FrameSync return. The following
+WORLD reads in all 24 animated observations saw the recomposed hierarchy
+within 0.000246 GU. These reads began 0.893–2.941 ms after FrameSync return
+and ended before the next observed sync. All 25 scene reads joined exactly
+one solver step and one FrameSync. Maximum joint-relative change after the
+write was 0.286650 GU left and 0.254563 GU right. The quiet left positive
+control retained its 0.10 GU offset within 0.000236 GU in the same join.
+These measurements locate the reversion between FrameSync return and
+the next game-thread sample. The exact writer that recomposes the graph
+and the pose consumed at skin rendering remain unobserved.
+
+The compositor recorder exercised its deadline path: it retained all
+176 completed frames with one final pending readout explicitly recorded.
+All 11 configured joints passed readback in this same run. The game
+exited 0 and the disposable SE environment restored. No shipped physics
+parameters were changed. Direct-order proof SHA-256
+`44018ff0a7ed21529822e0ddb2103d798b941d10e100494ba2408fde494d4900`.
+One-run settings proof SHA-256
+`04860876e5fb61cab07b934a41ff31ea077ca1375f866526679f75939992880e`.
+Independent restoration SHA-256
+`26d7b4bc2e05fbf27c5ce35d88d70251a690f7fedae6e417dcb2d3f99191b847`.

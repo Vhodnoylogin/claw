@@ -5,8 +5,10 @@ from math import dist, isfinite
 
 if __package__:
     from . import fsmp_probe as probe
+    from .fsmp_joint_limit_readback import joint_frame
 else:
     import fsmp_probe as probe
+    from fsmp_joint_limit_readback import joint_frame
 
 
 def hierarchy_residual(parent_world, child_world, child_local):
@@ -19,6 +21,49 @@ def hierarchy_residual(parent_world, child_world, child_local):
         "rotationComponent": probe.max_delta(scene_relative["rotationRowMajor"], local["rotationRowMajor"]),
         "scale": abs(scene_relative["scale"] - local["scale"]),
     }
+
+
+def evaluate_translation(writer, *, sync_end_parent, scene_parent, scene_world, scene_local, rest_local, tolerance):
+    """Score one joined unit-scale P1 write and the later WORLD read.
+
+    The caller binds the actor, directed joint, clock and neighboring syncs.
+    A later hierarchy match establishes the sampled pose after the assignment.
+    It does not identify which code changed the transform.
+    """
+    if type(tolerance) not in (int, float) or not isfinite(tolerance) or tolerance < 0:
+        raise ValueError("Expected a finite nonnegative translation tolerance")
+    residual = hierarchy_residual(scene_parent, scene_world, scene_local)["translationGU"]
+    result = {"writer": writer["writer"], "hierarchyResidualGU": residual}
+    if writer["writer"] != "observed":
+        return result
+
+    before = writer.get("writerBefore", writer.get("before"))
+    target, after, final = (writer.get(key) for key in ("target", "after", "final"))
+    phases = (before, target, after, final)
+    if any(type(value) is not dict or type(value.get("qpc")) is not int or value["qpc"] <= 0 for value in phases):
+        raise ValueError("Direct write phases are incomplete or reversed")
+    if any(first["qpc"] > second["qpc"] for first, second in zip(phases, phases[1:])):
+        raise ValueError("Direct write phases are incomplete or reversed")
+    before, target, after, final = map(probe.transform, phases)
+    joint_final = joint_frame(sync_end_parent, final, rest_local)["translation"]
+    joint_scene = joint_frame(scene_parent, scene_world, rest_local)["translation"]
+    result.update(
+        targetVsAssignmentGU=dist(target["translation"], after["translation"]),
+        stockDisplacementGU=dist(before["translation"], after["translation"]),
+        assignmentVsSyncEndGU=dist(after["translation"], final["translation"]),
+        syncEndVsNextWorldJointGU=dist(joint_final, joint_scene),
+    )
+    if result["targetVsAssignmentGU"] > tolerance:
+        status = "assignment-differs-from-target"
+    elif result["assignmentVsSyncEndGU"] > tolerance:
+        status = "changed-by-sync-return"
+    elif result["syncEndVsNextWorldJointGU"] <= tolerance:
+        status = "retained-at-world-sample"
+    elif residual <= tolerance:
+        status = "later-world-matches-hierarchy"
+    else:
+        status = "later-world-moved"
+    return dict(result, status=status)
 
 
 def world_sample_qpc(started_ns, duration_us, request_qpc, response_qpc, frequency):
