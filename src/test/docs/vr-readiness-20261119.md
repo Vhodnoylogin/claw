@@ -2649,3 +2649,12 @@ pair was absent for `NPC EarL [EarL]Bone02` in those two runs, and the last
 pair stayed below the declared motion floor for that link. This was a
 sampling limit in those captures. The R05 observed-pair review SHA-256
 is `895f7973cb78ffca7ceab20616ed041cd58fdd5694301b4dc3139d74f29dd973`.
+
+The VR contact scorer now accepts the explicit first unattached hold.
+Its replay of the exact left-ear scope yields the archived 0/5/0/4/0
+provider events, including silence before the one verified slot-91 append.
+The callback is matched by the exact actor and `NPC EarL [EarL]Bone01`.
+The slot is verified through the separate scoped append and detach receipts.
+Morphbench's independent replay of the 35 input poses reproduced the
+signed gaps within 0.000000694 GU. Contact and calibration passed their
+technical checks, and the recorded native shutdown status remains failed.

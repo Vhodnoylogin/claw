@@ -1,7 +1,11 @@
 import copy
+from dataclasses import replace
 import unittest
 
-from cbpc_event_readback import Audience, score
+if __package__:
+    from .cbpc_event_readback import Audience, score
+else:
+    from cbpc_event_readback import Audience, score
 
 
 class CbpcEventControls(unittest.TestCase):
@@ -27,6 +31,33 @@ class CbpcEventControls(unittest.TestCase):
         self.assertEqual(result["qualifiedHeldEventCounts"], {"nearBefore": 1, "far": 0, "nearAfter": 1, "nearDetached": 0})
         self.assertFalse(result["solverPairCoverageQualified"])
         self.assertFalse(result["havokContactQualified"])
+        self.assertNotIn("preAppendCallbacks", result)
+
+    def test_named_ear_capsule_requires_matching_callbacks_and_optional_preappend_silence(self):
+        ear = "NPC EarL [EarL]Bone01"
+        audience = replace(self.audience, bone=ear)
+        holds = {"unattachedNear": (100, 110), **self.holds}
+        snap = copy.deepcopy(self.snapshot)
+        for event in snap["events"]:
+            event["strArg"] = ear
+        result = score(snap, audience, holds, .3, 10)
+        self.assertEqual(result["status"], "qualified-emission-contrast")
+        self.assertEqual(result["preAppendCallbacks"], 0)
+        self.assertNotIn("unattachedNear", result["qualifiedHeldEventCounts"])
+        for bone in ("NPC EarL [EarL]Bone02", "NPC EarR [EarR]Bone01", "earl"):
+            with self.subTest(bone=bone), self.assertRaisesRegex(ValueError, "actor, event or group"):
+                score(snap, replace(audience, bone=bone), holds, .3, 10)
+
+    def test_preappend_hold_rejects_emission_and_invalid_producer_interval(self):
+        hold = {"unattachedNear": (100, 110), **self.holds}
+        events = [self.event(sequence, qpc) for sequence, qpc in enumerate((100, 125, 165), 1)]
+        for edge in (100, 110):
+            with self.subTest(edge=edge), self.assertRaisesRegex(ValueError, "pre-append hold"):
+                events[0]["qpc"] = edge
+                score({**self.snapshot, "events": events, "lastSequence": 3}, self.audience, hold, .3, 10)
+        for interval in ((99, 110), (100, 109), (110, 120)):
+            with self.subTest(interval=interval), self.assertRaisesRegex(ValueError, "overlap, are too short"):
+                score(self.snapshot, self.audience, {**hold, "unattachedNear": interval}, .3, 10)
 
     def test_far_or_detached_emission_refuses_the_contrast(self):
         for tick, index in ((145, 1), (185, 2)):

@@ -29,7 +29,7 @@ def matches_snapshot(snapshot, audience):
     identity = (audience.pid, audience.nonce, audience.generation, audience.actor, audience.base, audience.cell)
     keys = ("pid", "nonce", "generation", "actorFormId", "baseFormId", "cellFormId")
     require(all(positive_int(value) for value in identity) and 0xFF000000 <= audience.actor < 0xFFFFFFFF
-            and audience.sex in ("Male", "Female") and audience.bone,
+            and audience.sex in ("Male", "Female") and type(audience.bone) is str and audience.bone.strip(),
             "Explicit disposable actor and event scope required")
     require(all(positive_int(snapshot.get(key)) and snapshot[key] == value for key, value in zip(keys, identity))
             and snapshot.get("schema") == "claw-vr-cbpc-events/1" and snapshot.get("status") == "sealed"
@@ -43,10 +43,10 @@ def matches_snapshot(snapshot, audience):
 def score(snapshot, audience, holds, minimum_duration, minimum_hold_ticks):
     """Score positive and silent holds supplied by an independent scene witness.
 
-    Holds use the same QPC clock. The caller separately qualifies measured
-    separation/overlap, actor continuity, advancing scene, single-node
-    configuration, provider and attach state through each hold.
-    A silent window is a negative for observed callback emission only.
+    Holds use the same QPC clock and the callback must name the exact
+    audience bone. An optional first unattachedNear hold requires silence
+    before append. The caller qualifies capsule or sphere geometry, actor
+    continuity, provider and attachment custody independently.
     """
     matches_snapshot(snapshot, audience)
     require(type(minimum_duration) in (int, float) and math.isfinite(minimum_duration) and minimum_duration > 0,
@@ -65,6 +65,8 @@ def score(snapshot, audience, holds, minimum_duration, minimum_hold_ticks):
     phases = ("nearBefore", "far", "nearAfter")
     if "nearDetached" in holds:
         phases += ("nearDetached",)
+    if "unattachedNear" in holds:
+        phases = ("unattachedNear", *phases)
     require(set(holds) == set(phases), "Complete near/far/near hold set required")
     last = armed - 1
     for phase in phases:
@@ -95,9 +97,14 @@ def score(snapshot, audience, holds, minimum_duration, minimum_hold_ticks):
             collected[phase].append(duration)
         last = qpc
 
+    unattached = collected.pop("unattachedNear", None)
+    require(not unattached, "Provider emitted a callback in the pre-append hold")
     has_controls = bool(collected["nearBefore"] and collected["nearAfter"])
     silent = not collected["far"] and not collected.get("nearDetached")
-    return {"status": "qualified-emission-contrast" if has_controls and silent else "insufficient-emission-contrast",
-            "qualifiedHeldEventCounts": {phase: len(values) for phase, values in collected.items()},
-            "minimumObservedEngineDurations": {phase: min(values) if values else None for phase, values in collected.items()},
-            "eventsOutsideHolds": gaps, "solverPairCoverageQualified": False, "havokContactQualified": False}
+    result = {"status": "qualified-emission-contrast" if has_controls and silent else "insufficient-emission-contrast",
+              "qualifiedHeldEventCounts": {phase: len(values) for phase, values in collected.items()},
+              "minimumObservedEngineDurations": {phase: min(values) if values else None for phase, values in collected.items()},
+              "eventsOutsideHolds": gaps, "solverPairCoverageQualified": False, "havokContactQualified": False}
+    if unattached is not None:
+        result["preAppendCallbacks"] = 0
+    return result
