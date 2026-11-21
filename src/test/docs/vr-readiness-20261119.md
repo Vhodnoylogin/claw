@@ -2170,6 +2170,28 @@ The right absolute 0.010 gate still applies at stock writeback. The offline
 value independent of later scene restoration. The external passive replay
 report SHA-256 is
 `a560c239e202e10e8aac70e32afa658c325d32e6058aa52740e6d9e834b894bd`.
+
+The later passive run `20261121-114230-cb8612` allowed two extra seconds
+after the same four-anchor readiness check and before the original pose
+lease. Its first opening came 4.204230 seconds after readiness, compared
+with 2.235520 seconds in the earlier run. The provider DLL and all 76
+verified VFS resources matched. All eight windows had a 0.007059 GU right
+gap before the solver and an equal stock write displacement. The target
+did not change during the observed steps. The original right gate passed
+8/8. Both P1 transforms returned to their incoming world digests every
+time. The initial parent world transforms differed between the two runs,
+so the separate windows cannot isolate a causal dwell effect. They
+establish the existence of a qualifying passive window in TEST VR.
+An active test still needs to qualify that incoming gap within the same run
+and compare the two phases before any claim about the rendered response.
+
+The game exited 0 and independent verification restored 146 snapshots and
+76 VFS winners. Bridge's matching operation still reported running on its
+cleanup read, 2.62 seconds before the first retained independent exit
+observation. The Bridge result remains unavailable for this exit. The
+terminal and age-contrast SHA-256 values are
+`c8e3c01e5f9709a99baf29792e087e069de9aa0899f4430b2b58b8980dc4c133`
+and `b9f9baebbfec4bbe72afd9a514bf9938b6c954506e6d77a9579229c6180d89b2`.
 Exact nested replay SHA-256
 `7d737e872516d904cbf444250a2b461291742b32b48470140661f29a470e8a3b`.
 
