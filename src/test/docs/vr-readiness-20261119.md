@@ -2313,6 +2313,22 @@ This establishes tool-to-game frame placement for the sampled unit-scale
 anchors. It does not measure the simulated surface. Exact editor pose replay
 SHA-256 `53c76249275135df42fc8f7aef2140b23cfc25f120df6f0ca2058a0e214ce6b8`.
 
+The [surface replay](../python/integration/p1_surface_replay.py) applies
+the measured P1 transform changes to the exact weight-100 NIF's stored
+vertices and skin bindings. It isolates those two bones' contributions to
+linear blend skinning, including rotation. Normalization uses the complete
+skin weight sum per vertex. It does not substitute unknown live morphs or
+poses for other bones. In the `20261121-123349-43b436` replay, the largest
+normalized contribution after the update was 0.019456 GU on the breast-bearing
+`head` shape, 0.018119 GU on `fur_chest`, and 0.020459 GU on `fur_belly`.
+The `ChestBlend` maximum was 0.000477 GU. Passive maxima were below
+0.000002 GU in all five P1-weighted shapes. The movement expected at the
+surface from this small pulse is substantially smaller than the motion of
+its driver. A photographed confirmation requires larger measured separation
+from the camera's registration floor and a genuinely sustained effect.
+Offline replay SHA-256
+`ff2741e5d71f24b9ed6b93cabf08700dba16ca1f1f18de19b4e0ed80d0f9f504`.
+
 Run `20261121-005955-d817a9` established three independent virtual-controller
 translation inputs through native game observations. Measured X/Y/Z gains
 were 70.017306, 70.000000 and 70.003934 game units per metre. The measured
