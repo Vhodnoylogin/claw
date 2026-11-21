@@ -112,6 +112,18 @@ def object_window(native):
     return native['sample']['objectWindow']
 
 
+def completed_motion(case, relative_shift):
+    latest = copy.deepcopy(case[3])
+    latest['sample']['sampledQpc'] = 1500
+    window = object_window(latest)
+    window.update(status='complete', pairedSteps=900, lastPreQpc=1470, lastPostQpc=1480,
+                  summedPairedHostTimeStep=.016 * 900)
+    for body in window['objects']:
+        body['lastPost']['world'][9] += 3. + relative_shift * body['token']
+        body['maximumPostWorld'][9] = body['lastPost']['world'][9]
+    return latest
+
+
 class RigConfigReadbackTests(unittest.TestCase):
     def test_checks_all_joints_and_keeps_equilibrium_declared_only(self):
         for sex, count in (('female', 11), ('male', 9)):
@@ -170,6 +182,42 @@ class RigConfigReadbackTests(unittest.TestCase):
                 else:
                     case[1]['refs'][0]['scale'] = .98
                 evaluate(case)
+
+    def test_resolves_motion_in_each_named_bone_relative_to_its_parent(self):
+        case = symbolic('female')
+        result = readback.evaluate_motion(evaluate(case), completed_motion(case, .015))
+        self.assertEqual((result['status'], result['observedJointCount']), ('observed', 11))
+        self.assertEqual(result['joints']['TailBone05']['parent'], 'TailBone04')
+
+    def test_common_actor_motion_does_not_qualify_solver_joint_motion(self):
+        case = symbolic('female')
+        result = readback.evaluate_motion(evaluate(case), completed_motion(case, 0.))
+        self.assertEqual((result['status'], result['observedJointCount']), ('incomplete', 0))
+
+    def test_first_nonzero_relative_motion_requires_the_same_native_pair(self):
+        case = symbolic('female')
+        configured = evaluate(case)
+        final = completed_motion(case, 0.)
+        ear = readback.probe.MALE[0]
+        tokens = configured['joints'][ear]
+        anchor, driver = (object_window(final)['objects'][tokens[role] - 1]
+                          for role in ('parentToken', 'driverToken'))
+        for body, shift in ((anchor, 2.), (driver, 2.05)):
+            original = copy.deepcopy(body['initialPre'])
+            moved = copy.deepcopy(original)
+            moved['world'][9] += shift
+            body.update(firstNonzeroStep=43, firstNonzeroPreQpc=1210, firstNonzeroPostQpc=1220,
+                        firstNonzeroPair={'pre': original, 'post': moved})
+        self.assertTrue(readback.evaluate_motion(configured, final)['joints'][ear]['motionObserved'])
+        driver.update(firstNonzeroPreQpc=1221, firstNonzeroPostQpc=1230, firstNonzeroStep=44)
+        self.assertFalse(readback.evaluate_motion(configured, final)['joints'][ear]['motionObserved'])
+
+    def test_completed_constraint_must_match_the_observed_directed_binding(self):
+        case = symbolic('female')
+        final = completed_motion(case, .015)
+        object_window(final)['incidentConstraints']['constraints'][0]['spring2']['damping'][0] += .1
+        with self.assertRaisesRegex(ValueError, 'Completed constraint differs'):
+            readback.evaluate_motion(evaluate(case), final)
 
 
 if __name__ == '__main__':

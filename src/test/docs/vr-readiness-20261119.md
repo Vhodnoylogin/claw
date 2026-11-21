@@ -2625,3 +2625,27 @@ One-run settings proof SHA-256
 `04860876e5fb61cab07b934a41ff31ea077ca1375f866526679f75939992880e`.
 Independent restoration SHA-256
 `26d7b4bc2e05fbf27c5ce35d88d70251a690f7fedae6e417dcb2d3f99191b847`.
+
+#### Technical motion acceptance from native coordinates
+
+The owner limited this check to motion and the correct bone connections.
+The replay reads the named actor nodes through World Observer, associates
+them to the native FSMP objects and checks every directed Spring2 link
+against the installed XML. For each link it compares the child's position
+and orientation relative to its own parent in the same solver pre/post
+pair. Shared actor translation and rotation cancel in that frame. The
+first stored pair is eligible only if both bodies share its exact step
+and timestamps. The terminal complete pair is also checked.
+
+In `20261121-145604-f34885`, all 15 identities, 11 links and 11 relative
+motions were observed from the original native transport. The shared
+first motion sample was step 117. Left and right P1 moved 0.103377 and
+0.069523 GU relative to their respective PreBreast anchors in that pair.
+Both ear chains attach to the head and all five tail links lead to the
+same `Tails` anchor through the expected preceding links. The other wide
+setting run `20261121-141058-b42d67` also qualified all 11. Two earlier runs
+qualified configuration for all 11 and motion for 10. The stored shared
+pair was absent for `NPC EarL [EarL]Bone02` in those two runs, and the last
+pair stayed below the declared motion floor for that link. This was a
+sampling limit in those captures. The R05 observed-pair review SHA-256
+is `895f7973cb78ffca7ceab20616ed041cd58fdd5694301b4dc3139d74f29dd973`.

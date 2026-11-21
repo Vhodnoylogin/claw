@@ -67,14 +67,14 @@ def authored_joints(xml, sex):
         raise ValueError('Invalid original FSMP motion XML') from error
 
 
-def _quiet_window(native, pid, nonce):
+def _normal_window(native, pid, nonce, status):
     require(type(native) is dict and native.get('schema') == V4_SE,
             'SE native v4 snapshot required')
     native = witness.parse(json.dumps(native, allow_nan=False))
     require(native['status'] == 'ready' and native['pid'] == pid, 'Native process/phase changed')
     sample = native['sample']
     window = witness.validate_window(sample['objectWindow'], sample['loadEpoch'], nonce, version=4)
-    require(window['status'] == 'collecting' and window['pairedSteps'] >= 2 and not window['awaitingPost']
+    require(window['status'] == status and window['pairedSteps'] >= 2 and not window['awaitingPost']
             and window['lastPostQpc'] <= sample['sampledQpc']
             and window['lastPreThreadId'] == window['lastPostThreadId']
             and sample['mainFreezeTime'] is False and sample['mainFreezeNextFrame'] is False
@@ -165,8 +165,8 @@ def evaluate(xml, world, native_before, native_after, *, reference, base, sex, p
             and all(abs(node[space]['scale'] - 1) <= 1e-5 for node in row['nodes'].values()
                     for space in ('local', 'world')), 'Unit SE actor/root/local/WORLD scales required')
 
-    before, start = _quiet_window(native_before, pid, nonce)
-    after, end = _quiet_window(native_after, pid, nonce)
+    before, start = _normal_window(native_before, pid, nonce, 'collecting')
+    after, end = _normal_window(native_after, pid, nonce, 'collecting')
     progression = witness.compare(before, after)
     require(progression['providerCompletedStepsObserved'] and start['pairedSteps'] < end['pairedSteps']
             and start['firstPreQpc'] == end['firstPreQpc'] and start['lastPostQpc'] < end['lastPostQpc']
@@ -186,3 +186,57 @@ def evaluate(xml, world, native_before, native_after, *, reference, base, sex, p
         'scope': 'Configured Spring2 fields only. Equilibrium and frame are XML declarations. '
                  'No motion, collision, rendered deformation or VR acceptance.',
     }
+
+
+def _step_motion(anchor, driver, step, begin, end):
+    relative = [probe.relative(joint.pose_transform(driver[phase]), joint.pose_transform(anchor[phase]))
+                for phase in ('pre', 'post')]
+    before, after = relative
+    return {'step': step, 'preQpc': begin, 'postQpc': end,
+            'translationGU': math.dist(before['translation'], after['translation']),
+            'rotationComponentChange': probe.max_delta(before['rotationRowMajor'], after['rotationRowMajor'])}
+
+
+def evaluate_motion(configuration, native_final, *, translation_floor=.005, rotation_floor=.001):
+    """Measure relative pre/post movement on the already associated directed rig."""
+    require(configuration['status'] == 'configured-se-rig-observed'
+            and all(type(value) in (int, float) and math.isfinite(value) and value > 0
+                    for value in (translation_floor, rotation_floor)),
+            'Expected an associated rig and positive motion floors')
+    final, window = _normal_window(native_final, configuration['pid'], configuration['nonce'], 'complete')
+    require(final['sample']['loadEpoch'] == configuration['loadEpoch']
+            and window['firstPreQpc'] == configuration['firstPreQpc']
+            and window['lastPreQpc'] > configuration['bracketingLastPostQpc'][1],
+            'Completed motion belongs to a different rig bracket')
+    tokens = configuration['tokens']
+    objects = {body['token']: body for body in window['objects']}
+    observed = {row['token']: row for row in window['incidentConstraints']['constraints']}
+    require(objects.keys() == set(tokens.values())
+            and observed.keys() == {edge['constraintToken'] for edge in configuration['joints'].values()},
+            'Completed rig body or joint inventory changed')
+    movements = {}
+    for name, edge in configuration['joints'].items():
+        anchor_token, driver_token = tokens[edge['parent']], tokens[name]
+        row = observed[edge['constraintToken']]
+        require(row['bodyAToken'] == anchor_token and row['bodyBToken'] == driver_token
+                and row['enabled'] is True and row['status'] == 'spring2' and row['type'] == 12
+                and row['spring2'] == edge['observedSpring2'], 'Completed constraint differs: ' + name)
+        anchor, driver = objects[anchor_token], objects[driver_token]
+        clocks = ('firstNonzeroStep', 'firstNonzeroPreQpc', 'firstNonzeroPostQpc')
+        samples = []
+        if (anchor['firstNonzeroPair'] and driver['firstNonzeroPair'] and all(anchor[k] == driver[k] for k in clocks)
+                and window['firstPreQpc'] <= anchor['firstNonzeroPreQpc']
+                < anchor['firstNonzeroPostQpc'] <= window['lastPostQpc']):
+            samples.append(_step_motion(anchor['firstNonzeroPair'], driver['firstNonzeroPair'],
+                                        *(anchor[k] for k in clocks)))
+        samples.append(_step_motion({'pre': anchor['lastPre'], 'post': anchor['lastPost']},
+                                    {'pre': driver['lastPre'], 'post': driver['lastPost']},
+                                    window['pairedSteps'], window['lastPreQpc'], window['lastPostQpc']))
+        qualified = any(s['translationGU'] >= translation_floor or s['rotationComponentChange'] >= rotation_floor
+                        for s in samples)
+        movements[name] = {'parent': edge['parent'], 'parentToken': anchor_token, 'driverToken': driver_token,
+                           'motionObserved': qualified, 'samples': samples}
+    count = sum(item['motionObserved'] for item in movements.values())
+    return {'status': 'observed' if count == len(movements) else 'incomplete', 'observedJointCount': count,
+            'pairedSteps': window['pairedSteps'], 'translationFloorGU': translation_floor,
+            'rotationComponentFloor': rotation_floor, 'joints': movements}
