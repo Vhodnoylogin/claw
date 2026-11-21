@@ -2230,6 +2230,37 @@ and `d76dad572498bafb7771c3fcc03c7caaf4d36a52c3c2e972f3de3e1653013383`.
 Exact nested replay SHA-256
 `7d737e872516d904cbf444250a2b461291742b32b48470140661f29a470e8a3b`.
 
+Run `20261121-121800-36c729` disabled AI only on the temporary test NPC,
+after its identity and initial AI state were read back. The passive solver
+reported zero translation change for all four P1 roles and met the original
+0.008 GU component prerequisite. FSMP accepted one left-side pulse, applied
+and cleared it within two recorded substeps. The left joint-local X change
+was +0.053188 GU. The left scene node moved by
+`(-0.0546875, -0.001953125, +0.0068359375)` GU (length 0.055148 GU) at
+stock write and retained that position at outer return. Right scene XYZ and
+both anchors were stationary in both windows. Both right stock measurements
+met the absolute 0.010 GU limit.
+
+The earlier passive right displacement did not recur in this fixture. The
+two runs had different initial states and cannot isolate the effect of AI.
+In the new run the solver targets and incoming XYZ agreed between the
+windows. The pre-write world transform digests of both dynamic nodes
+differed, and the second integration interval was 0.012333332 s passive
+versus 0.012499999 s active. Strict paired comparison is unavailable. The
+[offline observation summary](../python/integration/fsmp_phase_observation.py)
+retains the two within-window measurements in this case. It yields no
+matched motion, surface displacement or rendered amplitude measurement.
+
+The independent process observation recorded exit 0. All 146 snapshots and
+76 VFS winners were verified. Bridge still reported the matching game as
+running on a cleanup read 2.663 s before the first independent exit
+observation. Autotest `b4b8589` retained the actual passed passive-stationarity
+gate separately from the scenario and exit verdicts. The terminal, provider
+log and offline scene observation SHA-256 values are respectively
+`52dcd51cd0993d13c65e2cbca6b6418583789584c19213c1576403d56d43d915`,
+`1e0c7873fdaff229658d68c3f565216c53a4d69fb1ad9152dcc2d7e50abedf60`, and
+`20e26b48b4bb8ada3979b25adc1532d5ea196523f9363f77025df21657063f2d`.
+
 Run `20261121-005955-d817a9` established three independent virtual-controller
 translation inputs through native game observations. Measured X/Y/Z gains
 were 70.017306, 70.000000 and 70.003934 game units per metre. The measured

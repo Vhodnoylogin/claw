@@ -3,8 +3,10 @@ import unittest
 
 if __package__:
     from .fsmp_phase_comparison import P1_ROLES, PHASES, ROLES, compare, observe_passive_admission
+    from .fsmp_phase_observation import observe_window, summarize_replay
 else:
     from fsmp_phase_comparison import P1_ROLES, PHASES, ROLES, compare, observe_passive_admission
+    from fsmp_phase_observation import observe_window, summarize_replay
 
 
 def window(*, active=False, left=.008, right=.006):
@@ -42,6 +44,28 @@ class PhaseComparisonTests(unittest.TestCase):
         result = compare(window(), window(active=True, left=.048))
         self.assertAlmostEqual(result["phases"]["afterStockWrite"]["activeMinusPassiveGU"]["left"][0], .04)
         self.assertEqual(result["phases"]["afterOuterUpdate"]["activeMinusPassiveGU"]["left"], (0., 0., 0.))
+
+    def test_individual_window_retains_motion_when_pair_timing_differs(self):
+        quiet, pulse = window(left=0., right=0.), window(active=True, left=.055, right=0.)
+        pulse["worldByPhase"]["afterOuterUpdate"]["leftP1"] = (.055, 0., 0.)
+        pulse["solverSteps"] = (.016, .013)
+        with self.assertRaisesRegex(ValueError, "same two observed positive solver step durations"):
+            compare(quiet, pulse)
+        replay = {"observedWindows": [quiet, pulse], "initialMatch": {}, "renderedMotionMeasured": False,
+                  "comparisonUnavailable": "Mismatched solver steps"}
+        observed_replay = summarize_replay(replay)
+        self.assertEqual(observed_replay["comparisonUnavailable"], "Mismatched solver steps")
+        self.assertFalse(observed_replay["renderedMotionMeasured"])
+        self.assertNotEqual(observed_replay["passiveSolverStepsS"], observed_replay["activeSolverStepsS"])
+        for observed, left in ((observed_replay["passive"], 0.), (observed_replay["active"], .055)):
+            self.assertEqual(observed["rightStockControl"], {
+                "absoluteRightStockWriteGU": 0., "absoluteRightLimitGU": .01, "absoluteRightGateMet": True,
+            })
+            for phase in PHASES[2:]:
+                self.assertEqual(observed["phases"][phase]["left"]["relativeDeltaGU"], (left, 0., 0.))
+            self.assertNotIn("activeMinusPassiveGU", observed["phases"]["afterOuterUpdate"])
+        with self.assertRaisesRegex(ValueError, "same scope"):
+            summarize_replay(dict(replay, observedWindows=[pulse, quiet]))
 
     def test_absolute_gate_is_independent_of_passive_subtraction(self):
         result = compare(window(right=.011), window(active=True, right=.011))
@@ -86,3 +110,4 @@ class PhaseComparisonTests(unittest.TestCase):
         quiet["worldByPhase"]["afterStockWrite"]["rightAnchor"] = (.01, 0., 0.)
         with self.assertRaisesRegex(ValueError, "stationary anchors"):
             compare(quiet, pulse)
+        self.assertIsNone(observe_window(quiet)["rightStockControl"])
