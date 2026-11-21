@@ -4,7 +4,10 @@ No transport, engine actions, solver writes or phase assumptions live here.
 """
 from pathlib import Path
 import math
-import fsmp_probe as probe
+if __package__:
+    from . import fsmp_probe as probe
+else:
+    import fsmp_probe as probe
 
 MODULE_HASHES={
  'hdtsmp64.dll':'5290e2a8c3ddc4c13fecfd08234ff455f50c6a9ca42dcd381cde158631446672',

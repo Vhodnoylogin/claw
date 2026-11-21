@@ -2495,3 +2495,86 @@ repeatability floor. The sampled release used the solver timestamps.
 The independent game exit was 0, and 128 external snapshot preimages
 and 266 staged VFS winners passed restoration.
 Live proof SHA-256 `f0e73ea8fc362c87fb9dcc743626d08073f49396b88cc2216c183dcaad6b43b2`.
+
+### Ordinary SE animation and Morphbench amplitude contrast, 2026-11-21
+
+SE admitted `WerewolfJumpStanding` on the same disposable transformed female
+fixture. In `20261121-140240-bcd92c`, WORLD observations measured Spine2
+travel of 18.97 GU and the two PreBreast anchors at 14.21 and 17.76 GU.
+The 848-pair solver trace observed relative joint changes during the animation.
+The first window capture stopped at its size check. Skyrim used FHD and
+the compositor reported 3360×1890 physical pixels at 175% desktop scaling.
+
+Morphbench `c59f201` opened the exact same NIF endpoints, TRI, skeleton
+and XML. It exported two settings by changing the left P1 linear-X stop
+fields and retaining equilibrium at +0.10 GU. The FrameInA guide bounds
+matched the exported values. SE read back the intended fields as float32
+from the directed Spring2 constraints. The right configuration was identical.
+
+| Condition | SE run | Configured left X, GU | Matched observed X span, GU |
+| --- | --- | --- | --- |
+| Narrow | `20261121-140828-5aba15` | `0.09…0.11` | `0.042060` |
+| Wide | `20261121-141058-b42d67` | `0.00…0.20` | `0.197467` |
+
+The comparison paired 181 native observations by both anchor positions,
+bases, recent translation velocities and host-step durations. The left
+span increased by 4.69×. The right span was 0.295313 and 0.296364 GU
+respectively. Some transient samples crossed the configured stops. Their
+observed range depends on the animation and the solver response.
+
+Both runs exited 0 and restored 128 external snapshots, the disposable
+profile and 266 staged VFS winners. The narrow capture retained 176
+compositor frames. All 176 joined native solver neighbors within the
+declared 75 ms maximum gap on either side. The initial wide capture
+ended with a GPU readback still pending, preserving its failed recorder
+status and 176 complete prefix frames. A repeat `20261121-141540-d7bbc8`
+completed with 176 joined compositor frames, 850 native pairs, exit 0 and
+matching snapshot restoration. The frame clock observations bound proximity
+to the solver pairs. They do not identify the engine update used to render.
+
+Editor export manifest SHA-256
+`7434faf3544f829e467aeb8569b39161dbb7c81a524041faac6888c28465b4dd`.
+Matched amplitude proof
+`2ddb1ad75cfcce704fd68bede6d04b23c9365f9e964b2c43cfe9460b90bfd90e`.
+Narrow and wide repeat compositor trace reviews
+`765fb1a60d0888ff87195907406cf6b082e8089f16c8e4fcab11d221aad95a48` and
+`f128804c38723d0aa3e4033eed8db58fef7fc2b1ddd8079939de7bab91051076`.
+
+#### One-run configuration and ordinary scene check
+
+Each of the four runs associated 15 named nodes with the corresponding
+native bodies. Each read all 11 directed Spring2 joints in the same owned
+window and checked the six-axis limits, damping, stiffness, enabled-spring
+and limit flags and stop ERP against the staged XML and the provider's
+defaults. All 11 driven bodies recorded a change within a pre/post pair.
+The native configuration readback does not expose the equilibrium or frame.
+The completed wide repeat joined 176 compositor frames and 850 native
+pre/post pairs from the same run.
+
+For each P1 driver, the checker projected WORLD and native observations into
+the same observed rest-frame basis. It used the extrema from all native
+post-step observations around each complete WORLD request interval. With
+a 0.005 GU tolerance and a 350 ms maximum enclosing interval, the animated
+WORLD X value fell outside that range in the following samples.
+
+| SE run | Left out of 24 | Right out of 24 |
+| --- | --- | --- |
+| `20261121-140240-bcd92c` | 21 | 22 |
+| `20261121-140828-5aba15` | 24 | 22 |
+| `20261121-141058-b42d67` | 22 | 20 |
+| `20261121-141540-d7bbc8` | 22 | 19 |
+
+During those animated samples the WORLD positions were within 0.000252 GU
+of composition from the parent WORLD and the child's local pose. The
+quiet left P1 differed by 0.1007–0.1018 GU in the four runs. This identifies
+the sampled hierarchy pose during animation. The captures lack the exact
+stock write and render-consumption phases. A consolidated physics acceptance
+run still needs those boundaries and contact observations. For subsequent
+Morphbench edits, a single run per platform can read the full configuration
+and sample several planned animations and contacts before restoring the
+profile.
+
+The broad solver-to-scene comparison SHA-256 is
+`2864f4d2a7ccc50972223a400f4f464172bc18a9bb2767ee4f7b21b475275a0d`.
+The complete wide repeat's one-run review SHA-256 is
+`e2c847b69fc9bd03a1a9ef4938e5d87139b6d558e421668d9f7dcda36faadcc1`.
