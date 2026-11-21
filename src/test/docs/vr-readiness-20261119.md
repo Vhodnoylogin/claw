@@ -2329,6 +2329,18 @@ from the camera's registration floor and a genuinely sustained effect.
 Offline replay SHA-256
 `ff2741e5d71f24b9ed6b93cabf08700dba16ca1f1f18de19b4e0ed80d0f9f504`.
 
+The native SE screenshot receipt records its frame after the image is
+found and copied. That frame number cannot identify the exposure. The
+[capture window check](../python/integration/fsmp_capture_window.py) requires
+the entire request interval to fall within one complete, lossless native
+object window. Its pose check uses the first pre pose and all post-pose
+extrema for the four associated P1 roles. This preserves excursions missed
+by an opening and closing point read. The retained SE A2 step input
+`20261119-233430-9790f3` replays a whole-window span of 0.010010 GU for the
+left anchor and 0.009521 GU for the left driver. Both right spans were
+zero. There was no screenshot in that run. Pose span replay SHA-256
+`2a7e7845466aba5393d8dae08eae149e627e1f4d3a7a8bc7e179159919863d88`.
+
 Run `20261121-005955-d817a9` established three independent virtual-controller
 translation inputs through native game observations. Measured X/Y/Z gains
 were 70.017306, 70.000000 and 70.003934 game units per metre. The measured
