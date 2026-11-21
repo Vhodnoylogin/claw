@@ -2658,3 +2658,11 @@ The slot is verified through the separate scoped append and detach receipts.
 Morphbench's independent replay of the 35 input poses reproduced the
 signed gaps within 0.000000694 GU. Contact and calibration passed their
 technical checks, and the recorded native shutdown status remains failed.
+
+The same event scorer accepts the explicit Skyrim SE 1.7.104 callback schema
+when the raw pre-arm receipt identifies the same process and generation in
+its idle, registered state. Replaying `20261120-194716-dc95a5` from five
+hash-verified archive files reproduced the stock `TailBone03` slot-46 counts
+of 0/6/0/6/0 and two callbacks outside the measured holds. The new replay
+uses the original typed append, detach and sealed read as provenance. The
+archived game exit was 0 and the isolated profile was restored.

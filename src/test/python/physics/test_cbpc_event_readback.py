@@ -3,9 +3,9 @@ from dataclasses import replace
 import unittest
 
 if __package__:
-    from .cbpc_event_readback import Audience, score
+    from .cbpc_event_readback import Audience, score, score_se
 else:
-    from cbpc_event_readback import Audience, score
+    from cbpc_event_readback import Audience, score, score_se
 
 
 class CbpcEventControls(unittest.TestCase):
@@ -58,6 +58,35 @@ class CbpcEventControls(unittest.TestCase):
         for interval in ((99, 110), (100, 109), (110, 120)):
             with self.subTest(interval=interval), self.assertRaisesRegex(ValueError, "overlap, are too short"):
                 score(self.snapshot, self.audience, {**hold, "unattachedNear": interval}, .3, 10)
+
+    def test_se_slot46_intake_requires_exact_producer_and_both_silence_controls(self):
+        audience = replace(self.audience, bone="TailBone03")
+        holds = {"unattachedNear": (100, 110), **self.holds}
+        transport = {"schema": "claw-se-cbpc-events/1", "runtime": "SkyrimSE-1.7.104"}
+        snap = {**self.snapshot, **transport,
+                "events": [{**event, "strArg": audience.bone} for event in self.snapshot["events"]]}
+        ready = {**transport, "status": "idle", "sinkRegistered": True, "loading": False,
+                 "pid": audience.pid, "generation": audience.generation}
+        result = score_se(snap, ready, audience, holds, .3, 10)
+        self.assertEqual(result["status"], "qualified-emission-contrast")
+        self.assertEqual(result["preAppendCallbacks"], 0)
+        self.assertEqual(result["qualifiedHeldEventCounts"], {"nearBefore": 1, "far": 0, "nearAfter": 1, "nearDetached": 0})
+        self.assertFalse(result["solverPairCoverageQualified"])
+        self.assertFalse(result["havokContactQualified"])
+        with self.assertRaisesRegex(ValueError, "unsupported"):
+            score(snap, audience, holds, .3, 10)
+        with self.assertRaisesRegex(ValueError, "unsupported"):
+            score_se(self.snapshot, ready, audience, holds, .3, 10)
+        with self.assertRaisesRegex(ValueError, "producer receipt"):
+            score_se({**snap, "runtime": None}, ready, audience, holds, .3, 10)
+        for change in ({"schema": "claw-vr-cbpc-events/1"}, {"runtime": "SkyrimSE-1.6.1170"},
+                       {"pid": str(audience.pid)}, {"generation": audience.generation + 1},
+                       {"sinkRegistered": False}, {"loading": True}, {"status": "pending"}):
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, "producer receipt"):
+                score_se(snap, {**ready, **change}, audience, holds, .3, 10)
+        for phase in ("unattachedNear", "nearDetached"):
+            with self.subTest(phase=phase), self.assertRaisesRegex(ValueError, "requires pre-append and detached"):
+                score_se(snap, ready, audience, {name: hold for name, hold in holds.items() if name != phase}, .3, 10)
 
     def test_far_or_detached_emission_refuses_the_contrast(self):
         for tick, index in ((145, 1), (185, 2)):

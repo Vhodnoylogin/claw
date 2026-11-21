@@ -3,6 +3,10 @@ from dataclasses import dataclass
 import math
 import struct
 
+_VR_SCHEMA = "claw-vr-cbpc-events/1"
+_SE_SCHEMA = "claw-se-cbpc-events/1"
+_SE_RUNTIME = "SkyrimSE-1.7.104"
+
 
 @dataclass(frozen=True)
 class Audience:
@@ -25,14 +29,14 @@ def positive_int(value):
     return type(value) is int and value > 0
 
 
-def matches_snapshot(snapshot, audience):
+def matches_snapshot(snapshot, audience, *, schema=_VR_SCHEMA):
     identity = (audience.pid, audience.nonce, audience.generation, audience.actor, audience.base, audience.cell)
     keys = ("pid", "nonce", "generation", "actorFormId", "baseFormId", "cellFormId")
     require(all(positive_int(value) for value in identity) and 0xFF000000 <= audience.actor < 0xFFFFFFFF
             and audience.sex in ("Male", "Female") and type(audience.bone) is str and audience.bone.strip(),
             "Explicit disposable actor and event scope required")
     require(all(positive_int(snapshot.get(key)) and snapshot[key] == value for key, value in zip(keys, identity))
-            and snapshot.get("schema") == "claw-vr-cbpc-events/1" and snapshot.get("status") == "sealed"
+            and snapshot.get("schema") == schema and snapshot.get("status") == "sealed"
             and snapshot.get("observation") == "skse_mod_callback", "Foreign, unsupported or incomplete witness")
     require(snapshot.get("sealedWithoutLocalDrops") is True
             and type(snapshot.get("dropped")) is int and snapshot["dropped"] == 0
@@ -49,6 +53,25 @@ def score(snapshot, audience, holds, minimum_duration, minimum_hold_ticks):
     continuity, provider and attachment custody independently.
     """
     matches_snapshot(snapshot, audience)
+    return _score_holds(snapshot, audience, holds, minimum_duration, minimum_hold_ticks)
+
+
+def score_se(snapshot, readiness, audience, holds, minimum_duration, minimum_hold_ticks):
+    """Score an SE window with its independently observed pre-arm producer receipt."""
+    matches_snapshot(snapshot, audience, schema=_SE_SCHEMA)
+    require(snapshot.get("runtime") == _SE_RUNTIME and isinstance(readiness, dict)
+            and readiness.get("schema") == _SE_SCHEMA
+            and readiness.get("runtime") == _SE_RUNTIME and readiness.get("status") == "idle"
+            and readiness.get("sinkRegistered") is True and readiness.get("loading") is False
+            and all(positive_int(readiness.get(key)) and readiness[key] == snapshot[key]
+                    for key in ("pid", "generation")),
+            "Foreign or incomplete SE callback producer receipt")
+    require("unattachedNear" in holds and "nearDetached" in holds,
+            "SE callback contrast requires pre-append and detached holds")
+    return _score_holds(snapshot, audience, holds, minimum_duration, minimum_hold_ticks)
+
+
+def _score_holds(snapshot, audience, holds, minimum_duration, minimum_hold_ticks):
     require(type(minimum_duration) in (int, float) and math.isfinite(minimum_duration) and minimum_duration > 0,
             "Explicit positive configured engine-duration threshold required")
     try:
