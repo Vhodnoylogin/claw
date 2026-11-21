@@ -2416,3 +2416,37 @@ withholds world placement when the provider's context cannot be
 established. This change keeps the existing public CBPC preview gate.
 The review manifest SHA-256 is
 `5bf7c33557c3fa7bde2f77f0f7dde33771c289c1538b6555fc744303c4406a41`.
+
+### SE equilibrium calibration and native frames, 2026-11-21
+
+Morphbench exported the same female FSMP resource at left P1 linear-X
+equilibrium offsets of 0, +0.10 and +1.00 GU. Only the 10× condition used
+wider left X stops (±1.50 GU instead of ±0.15 GU) to allow that offset.
+The three SE runs used the same kinematic PreBreast anchor-based camera
+framing, two native 1920×1080 originals per run, and a 900-pair advancing
+solver window covering both captures. The right joint stayed within
+0.000005 GU of zero in all shots. The observed left joint ranges were:
+
+| Setting | SE run | Measured before and after capture, GU |
+| --- | --- | --- |
+| Neutral | `20261121-131559-fcdd2f` | `−0.00000410` |
+| +1.00 | `20261121-131815-8cf976` | `+1.000628…+1.001452` |
+| +0.10 | `20261121-132030-3643a8` | `+0.100708…+0.101531` |
+
+Across the four comparisons between neutral and amplified originals,
+the left lower mane showed a signed 10th-percentile horizontal shift
+of −1.59 to −1.85 pixels. Within one setting, the same area's repeat
+frames measured about −0.03 pixels. The neutral and amplified camera
+coordinates were identical. The nominal run used the same subject-relative
+framing after the actor spawned at different world coordinates. Its
+background differed. Four of six textured landmarks chosen from the
+amplified comparison moved in the expected direction in both nominal
+originals. One landmark at baseline pixel (1137, 612) moved approximately
+−4.49 pixels at +1.00 and −0.45 to −0.47 pixels at +0.10.
+
+This qualifies stationary joint and localized surface response in SE.
+Animated response and rendered VR evidence remain open. All three sessions
+exited with code 0. Independent restoration verified 128 external snapshot
+preimages, removal of the disposable profile, and 266 staged VFS winners
+per run. The local evidence is under `Builds/claw-se-fsmp-equilibrium-capture-20261121/`.
+Summary SHA-256 `5a69290f58cba05dc48813cc98cbc7c821e8c9781cf0d3e7441f3029d1c77edb`.
