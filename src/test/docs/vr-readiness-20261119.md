@@ -2261,6 +2261,25 @@ log and offline scene observation SHA-256 values are respectively
 `1e0c7873fdaff229658d68c3f565216c53a4d69fb1ad9152dcc2d7e50abedf60`, and
 `20e26b48b4bb8ada3979b25adc1532d5ea196523f9363f77025df21657063f2d`.
 
+Morphbench `5ba0a4c` opened the four exact VFS resource winners for that
+weight-100 test (NIF, TRI, skeleton and XML). The 11 configured constraints
+and 957 guide lines were available through the workspace. The XML export was
+byte-identical. FSMP's two exact runtime constraints both required the same
+frame-A linear bounds of ±0.15 GU observed in the editor. Fourteen recorded
+scalar pivot endpoints lie within their respective axis limits: both active
+left-X endpoints, plus right XYZ before and after each window. This compares
+joint-local endpoints to configured limits. The engine-node world measurement
+above is a separate quantity; the tool has no measured rendered amplitude
+for this run. Editor and runtime bounds report SHA-256
+`96454770a7fc462c202df99cc57d56df9419f2978727428cf8f41f657822bf68`.
+
+Autotest `a1555bd` also retained the World Observer declarations. Nineteen
+successful snapshots declared render unavailable and physics unavailable.
+None requested physics through World Observer. The separate FSMP provider
+supplied the node samples. The review leaves the native exit and run verdict
+as recorded. SHA-256
+`4a74e54c9d7da532bd66a91b318e145d383e537b824a216f4eb1cb419940ce84`.
+
 Run `20261121-005955-d817a9` established three independent virtual-controller
 translation inputs through native game observations. Measured X/Y/Z gains
 were 70.017306, 70.000000 and 70.003934 game units per metre. The measured
