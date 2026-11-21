@@ -50,3 +50,35 @@ def bracket_capture(observation, request_qpc, response_qpc, *, translation_limit
               or span["maximumRotationComponentSpan"] > rotation_limit]
     return {"withinSolverWindow": True, "sampledPoseStable": not failed, "failedRoles": failed,
             "requestQpc": request_qpc, "responseQpc": response_qpc}
+
+
+def bracket_trace_capture(rows, roles, request_qpc, response_qpc, *, translation_limit, rotation_limit):
+    """Use the enclosing pairs from a parsed complete trace for one stable hold.
+
+    Include both the last whole pair before the request and the first whole
+    pair after the response. This permits other, moving phases in the same
+    trace, while keeping the actual screenshot exposure time unspecified.
+    """
+    if (len(roles) != len(P1_ROLES) or set(roles) != set(P1_ROLES) or not rows
+            or type(request_qpc) is not int or type(response_qpc) is not int
+            or not rows[0]["postQpc"] < request_qpc < response_qpc < rows[-1]["preQpc"]):
+        raise ValueError("Expected four roles and a complete capture interval inside the paired trace")
+    start = max(i for i, row in enumerate(rows) if row["postQpc"] < request_qpc)
+    stop = next(i for i, row in enumerate(rows) if row["preQpc"] > response_qpc)
+    pairs = rows[start:stop + 1]
+    if (len(pairs) < 3 or any(row["preQpc"] >= row["postQpc"] for row in pairs)
+            or any(b["pair"] != a["pair"] + 1 or b["preQpc"] <= a["postQpc"]
+                   for a, b in zip(pairs, pairs[1:]))):
+        raise ValueError("Expected contiguous native pose pairs spanning the capture interval")
+    poses = {}
+    for index, name in enumerate(roles):
+        worlds = [row[phase][index]["world"] for row in pairs for phase in ("pre", "post")]
+        if any(len(world) != 12 or not all(map(isfinite, world)) for world in worlds):
+            raise ValueError("Expected complete finite trace poses")
+        widths = [max(values) - min(values) for values in zip(*worlds, strict=True)]
+        poses[name] = {"translationSpanUpperGU": hypot(*widths[9:]),
+                       "maximumRotationComponentSpan": max(widths[:9])}
+    observation = {"firstPreQpc": pairs[0]["preQpc"], "lastPostQpc": pairs[-1]["postQpc"], "poseSpans": poses}
+    return {**bracket_capture(observation, request_qpc, response_qpc,
+                              translation_limit=translation_limit, rotation_limit=rotation_limit),
+            "firstPair": pairs[0]["pair"], "lastPair": pairs[-1]["pair"], "poseSpans": poses}

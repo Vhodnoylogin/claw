@@ -1,10 +1,10 @@
 import unittest
 
 if __package__:
-    from .fsmp_capture_window import bracket_capture, observe_pose_span
+    from .fsmp_capture_window import bracket_capture, bracket_trace_capture, observe_pose_span
     from .fsmp_phase_comparison import P1_ROLES
 else:
-    from fsmp_capture_window import bracket_capture, observe_pose_span
+    from fsmp_capture_window import bracket_capture, bracket_trace_capture, observe_pose_span
     from fsmp_phase_comparison import P1_ROLES
 
 
@@ -44,3 +44,35 @@ class NativeCaptureWindowTests(unittest.TestCase):
                 observe_pose_span(dict(window, **{key: value}), tokens)
         with self.assertRaisesRegex(ValueError, "four distinct"):
             observe_pose_span(window, dict.fromkeys(tokens, 1))
+
+
+class NativeTraceCaptureTests(unittest.TestCase):
+    def setUp(self):
+        self.rows = []
+        for index, x in enumerate((0, .1, .1, .1, 0), 1):
+            pose = [1., 0., 0., 0., 1., 0., 0., 0., 1., 0., 0., 0.]
+            self.rows.append({"pair": index, "preQpc": 10 * index, "postQpc": 10 * index + 5,
+                              **{phase: [{"world": pose.copy()} for _ in P1_ROLES] for phase in ("pre", "post")}})
+            self.rows[-1]["pre"][1]["world"][9] = x
+            self.rows[-1]["post"][1]["world"][9] = x
+
+    def bracket(self, start, stop):
+        return bracket_trace_capture(self.rows, P1_ROLES, start, stop,
+                                     translation_limit=.005, rotation_limit=.004)
+
+    def test_selects_the_stable_hold_inside_a_moving_trace(self):
+        value = self.bracket(27, 38)
+        self.assertTrue(value["sampledPoseStable"])
+        self.assertEqual((value["firstPair"], value["lastPair"]), (2, 4))
+
+    def test_picks_up_motion_on_the_enclosing_pairs(self):
+        value = self.bracket(23, 38)
+        self.assertFalse(value["sampledPoseStable"])
+        self.assertEqual(value["failedRoles"], [P1_ROLES[1]])
+
+    def test_refuses_missing_or_unenclosed_pairs(self):
+        with self.assertRaisesRegex(ValueError, "complete capture interval"):
+            self.bracket(14, 38)
+        self.rows[2]["pair"] += 1
+        with self.assertRaisesRegex(ValueError, "contiguous"):
+            self.bracket(27, 38)

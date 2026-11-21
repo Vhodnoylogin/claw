@@ -2450,3 +2450,48 @@ exited with code 0. Independent restoration verified 128 external snapshot
 preimages, removal of the disposable profile, and 266 staged VFS winners
 per run. The local evidence is under `Builds/claw-se-fsmp-equilibrium-capture-20261121/`.
 Summary SHA-256 `5a69290f58cba05dc48813cc98cbc7c821e8c9781cf0d3e7441f3029d1c77edb`.
+
+### SE nominal left-anchor step and return, 2026-11-21
+
+The held-step fixture keeps the nominal +0.10 GU P1 equilibrium and the
+original ±0.15 GU stops. It applies and removes one +0.10 GU local-X
+position key on the exact left kinematic PreBreast anchor. The camera stays
+fixed throughout. Initial body identities must match the complete solver
+catalogue. A later game-node sample is compared with the same roles in the
+local complete native trace, and each capture requires stable poses across
+its whole request interval.
+
+The first run `20261121-133438-93b346` failed a two-sided instantaneous
+rotation association before applying any input. One adjacent sample was
+within the original tolerance. Run `20261121-133850-56ef7b` applied and
+undid the input, but independent scene and solver clocks still caused both
+instantaneous matches to fail while the left P1 continued moving. Each
+left one quiet FHD image and restored the test profile.
+
+Run `20261121-134223-413983` retained three originals and 53 raw trace
+pages in a complete 900-pair window. Its launcher failed by handing
+decoded objects to a validator that accepts original JSON. Independent
+replay compared the 53 page strings with the actual transport ledger and
+qualified 848 sequential traced pairs and all three capture brackets.
+The left driver travelled 0.097900 GU along the commanded axis and returned
+within 0.000977 GU of the quiet pose. The right anchor, driver and joint
+span stayed within 0.000001 GU. Six preselected fur landmarks shifted
+0.15–0.37 pixels toward the commanded side when held and returned within
+0.08 pixels. The difference is subtle at full-frame FHD. The transient in
+the native pairs is a separate numeric observation between the stills.
+
+The old record retains its launcher failure, unverified after-morph
+comparison and independent native exit code 0. The replay proof
+SHA-256 is `258d5c724b8b19648ae5786c669057b59b6c222fa8dc29884d0ad4f3e243ed17`.
+
+Corrected run `20261121-134649-c7a4cf` passed on the same inputs, with
+846 ordered native trace pairs, three qualified original FHD frames
+and identical before/after observations for all 31 body morph outputs.
+Left signed travel was 0.097656 GU and maximum return error was
+0.000977 GU. Right-side span stayed below 0.000002 GU. Across six fixed
+fur landmarks, median visible horizontal shift was −0.239 pixels in
+the hold and +0.018 pixels after return. Five shifts were above the
+repeatability floor. The sampled release used the solver timestamps.
+The independent game exit was 0, and 128 external snapshot preimages
+and 266 staged VFS winners passed restoration.
+Live proof SHA-256 `f0e73ea8fc362c87fb9dcc743626d08073f49396b88cc2216c183dcaad6b43b2`.
