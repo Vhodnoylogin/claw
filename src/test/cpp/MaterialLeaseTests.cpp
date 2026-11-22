@@ -12,7 +12,12 @@ struct Alpha {
     operator float() const { return value; }
     Alpha& operator=(float next) { if (!refuseWrite) value = next; return *this; }
 };
-struct Property { Alpha alpha; const int* material{}; const int* fadeNode{}; };
+struct Property { Alpha alpha; const int* material{}; const int* fadeNode{}; int texture{}; };
+struct Node {
+    const Node* parent{};
+    std::vector<std::shared_ptr<Node>> children;
+    const auto& GetChildren() const { return children; }
+};
 }
 int main() {
     using namespace claw::appearance;
@@ -171,6 +176,53 @@ int main() {
         require(!restoreMaterialWithAlpha(current, own, donor, clone, [](const Ptr&) { return true; }) && current == own && clones == 0,
             "Nonfinite live alpha reached donor restoration");
         own->alpha = 1.F;
+        // A failed rollback retains the original donor until its fade-preserving
+        // restoration succeeds. Only the still-owned property can request this retry.
+        current = own; own->texture = 3; donor->texture = 7;
+        const auto owns = [&] { return own->material == &ownMaterial && own->texture == 3; };
+        const auto release = [&](auto&& duplicate, auto&& setup, auto&& unchanged) {
+            return releaseMaterialLease(current, own, owns, [&] {
+                return restoreMaterialWithAlpha(current, own, donor, duplicate, setup, unchanged);
+            });
+        };
+        const auto setupOk = [](const Ptr&) { return true; };
+        const auto unchanged = [&](const Ptr& copy) { return copy->texture == donor->texture; };
+        current = foreign;
+        require(release([](const Ptr&) -> Ptr { throw std::runtime_error("Foreign slot was cloned"); }, setupOk, unchanged) ==
+            MaterialRelease::unowned && current == foreign, "An already-unowned slot was mistaken for takeover during release");
+        current = own;
+        require(release([](const Ptr&) { return Ptr{}; }, setupOk, unchanged) == MaterialRelease::pending && current == own,
+            "Failed donor clone lost retryable coat custody");
+        require(release(clone, [](const Ptr&) { return false; }, unchanged) == MaterialRelease::pending && current == own,
+            "Failed donor setup lost retryable coat custody");
+        require(release(clone, setupOk, unchanged) == MaterialRelease::released && current != own &&
+            current->texture == 7 && current->alpha == 1.F && donor->alpha == .25F,
+            "Coat retry did not recover its original texture and preserve live fade");
+        current = own;
+        require(release([&](const Ptr& source) { current->alpha = .75F; return clone(source); }, setupOk, unchanged) ==
+            MaterialRelease::released && current->alpha == .75F, "Donor cloning reverted a newer live fade value");
+        own->alpha = 1.F;
+
+        current = own;
+        require(release([&](const Ptr& source) { current = foreign; return clone(source); }, setupOk, unchanged) ==
+            MaterialRelease::yielded && current == foreign, "A valid clone overwrote a later property binding");
+        current = own;
+        require(release(clone, [&](const Ptr&) { current = own; own->texture = 9; return false; }, unchanged) ==
+            MaterialRelease::yielded && current == own && own->texture == 9,
+            "In-place takeover during failed setup retained retry custody");
+        own->texture = 3; current = own;
+        require(release(clone, [](const Ptr& copy) { copy->texture = 9; return false; }, unchanged) ==
+            MaterialRelease::yielded && current != own && current->texture == 9,
+            "In-place takeover of the replacement was overwritten during rollback");
+
+        Node oldRoot, newRoot;
+        auto geometry = std::make_shared<Node>(); geometry->parent = &oldRoot; oldRoot.children.push_back(geometry);
+        require(isMaterialGeometryAttached(geometry.get(), &oldRoot, 8), "Attached coat geometry was lost");
+        oldRoot.children.clear();
+        require(!isMaterialGeometryAttached(geometry.get(), &oldRoot, 8), "Detached geometry kept a stale reciprocal route");
+        geometry->parent = &newRoot; newRoot.children.push_back(geometry);
+        require(isMaterialGeometryAttached(geometry.get(), &newRoot, 8) &&
+            !isMaterialGeometryAttached(geometry.get(), &oldRoot, 8), "Reparented geometry lost its current root identity");
         std::cout << "Coat content guards remain strict; finite property fade and rollback alpha are preserved without shared-donor writes\n";
         return 0;
     } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }

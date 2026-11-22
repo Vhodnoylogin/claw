@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <charconv>
@@ -66,16 +67,19 @@ bool initializePrivateMaterial(Pointer& current, const Pointer& replacement,
 // Clone must provide a private donor-material copy; Initialize runs the engine's
 // geometry setup while that replacement is bound. Refusal leaves the old owned
 // property, or a property installed by another writer during initialization.
-template<class Pointer, class Clone, class Initialize>
+template<class Pointer, class Clone, class Initialize, class CanRevert = decltype([](const Pointer&) { return true; })>
 bool restoreMaterialWithAlpha(Pointer& current, const Pointer& owned, const Pointer& donor,
-    Clone&& clone, Initialize&& initialize) {
+    Clone&& clone, Initialize&& initialize, CanRevert&& canRevert = {}) {
     if (!current || !owned || !donor || current.get() != owned.get() || owned.get() == donor.get() ||
         !std::isfinite(current->alpha) || !std::isfinite(donor->alpha)) return false;
-    const float alpha = current->alpha;
-    if (donor->alpha == alpha) { current = donor; return true; }
+    if (donor->alpha == static_cast<float>(current->alpha)) { current = donor; return true; }
+    const auto ownedMaterial = owned->material;
     auto replacement = std::forward<Clone>(clone)(donor);
-    if (!replacement || replacement.get() == donor.get() || replacement.get() == owned.get() ||
-        !replacement->material || replacement->material == donor->material || replacement->material == owned->material) return false;
+    if (current.get() != owned.get() || owned->material != ownedMaterial ||
+        !replacement || replacement.get() == donor.get() || replacement.get() == owned.get() ||
+        !replacement->material || replacement->material == donor->material || replacement->material == owned->material ||
+        !std::isfinite(current->alpha) || !std::isfinite(donor->alpha)) return false;
+    const float alpha = current->alpha;
     const auto privateMaterial = replacement->material;
     replacement->alpha = alpha;
     current = replacement;
@@ -83,13 +87,37 @@ bool restoreMaterialWithAlpha(Pointer& current, const Pointer& owned, const Poin
         return current.get() == replacement.get() && replacement->material && replacement->material == privateMaterial &&
             replacement->material != donor->material && replacement->material != owned->material;
     };
-    const auto failed = [&] {
-        if (stillPrivate()) current = owned;
+    if (!initializePrivateMaterial(current, replacement, donor, alpha, std::forward<Initialize>(initialize))) {
+        if (stillPrivate() && canRevert(replacement)) current = owned;
         return false;
-    };
-    if (!initializePrivateMaterial(current, replacement, donor, alpha, std::forward<Initialize>(initialize)))
-        return stillPrivate() ? failed() : false;
+    }
     return true;
+}
+
+enum class MaterialRelease { unowned, released, yielded, pending };
+
+// Recheck the complete ownership witness after engine setup. A failed restore
+// can leave our coat bound, or let another engine writer take over the slot.
+template<class Pointer, class Guard, class Restore>
+MaterialRelease releaseMaterialLease(const Pointer& current, const Pointer& owned, Guard&& guard, Restore&& restore) {
+    const auto holds = [&] { return current && current.get() == owned.get() && guard(); };
+    if (!holds()) return MaterialRelease::unowned;
+    if (restore()) return MaterialRelease::released;
+    return holds() ? MaterialRelease::pending : MaterialRelease::yielded;
+}
+
+template<class Node>
+bool isMaterialGeometryAttached(const Node* object, const Node* root, std::size_t maxDepth) {
+    if (!root) return false;
+    for (std::size_t depth = 0; object && depth < maxDepth; ++depth) {
+        if (object == root) return true;
+        const auto* parent = object->parent;
+        if (!parent || std::ranges::none_of(parent->GetChildren(), [object](const auto& child) {
+            return child.get() == object;
+        })) return false;
+        object = parent;
+    }
+    return false;
 }
 
 // Diagnostic only: preserve exact float bits (including nonfinite witnesses)

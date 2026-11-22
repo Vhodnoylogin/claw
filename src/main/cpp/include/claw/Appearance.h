@@ -30,6 +30,7 @@ public:
     void reset();
     void forget(RE::FormID id);
     void restore(RE::Actor* actor);
+    void retryPendingRollbacks();
     void captureHuman(RE::Actor* actor);
     void setLibrary(CoatLibrary library, std::filesystem::path dataRoot);
     void setPolicy(std::string_view xml);
@@ -62,6 +63,7 @@ public:
     template<class Keep> void retainIf(Keep&& keep);
 
 private:
+    using TexturePaths = std::array<std::string, RE::BSTextureSet::Texture::kTotal>;
     struct Surface {
         RE::NiPointer<RE::BSGeometry> geometry;
         RE::NiPointer<RE::BSShaderProperty> original, own;
@@ -77,10 +79,15 @@ private:
         std::array<RE::NiPointer<RE::NiSourceTexture>, 3> otherTextures;
         RE::BSTSmartPointer<RE::BSEffectShaderData> effectData;
         std::optional<MaterialLeaseState> materialLease;
-        std::array<std::string, RE::BSTextureSet::Texture::kTotal> texturePaths;
+        TexturePaths texturePaths;
         bool patterned{};
         std::optional<std::int32_t> initializedFeature;
         std::optional<RGB> initializedTint;
+    };
+    struct PendingRollback {
+        RE::ActorHandle actor;
+        std::vector<Surface> surfaces;
+        std::vector<RE::NiPointer<RE::BSGeometry>> yielded;
     };
     struct Entry {
         RE::FormID base{};
@@ -108,7 +115,10 @@ private:
         } yield; // Pin conflicting geometries even if detached. Their addresses cannot be reused.
     };
     template<class F> static void visit(RE::NiAVObject* object, F&& f);
-    static void unbind(Entry& entry);
+    bool unbind(Entry& entry, bool defer = true);
+    static MaterialRelease releaseSurface(const Surface& surface);
+    static bool attached(const RE::NiAVObject* object, const RE::NiAVObject* root);
+    [[nodiscard]] std::string_view rollbackStatus(RE::FormID id) const;
     static std::string_view prepareMaterial(RE::BSShaderProperty* copy,
         const RE::BSShaderProperty* original, std::optional<std::uint32_t> tint);
     static bool protectPrivateTint(RE::BSShaderProperty* copy, const RE::BSShaderProperty* original);
@@ -119,6 +129,7 @@ private:
     static std::optional<RGB> observedTint(const RE::BSShaderMaterial* material);
     static void reportYieldDifferences(RE::FormID actor, const Entry& entry, const std::vector<SurfaceLeaseFailure>& failures);
     static std::string texturePath(RE::BSTextureSet* set, RE::BSTextureSet::Texture slot);
+    static TexturePaths readTexturePaths(const RE::BSShaderProperty& property);
     CoatDecision decision(const Entry& entry) const;
     bool preparePattern(RE::BSShaderProperty* property, const CoatTexture& texture, const CoatDDSInfo& expected, std::string& reason) const;
     struct PatternAssets { bool valid{}; std::map<std::string, CoatDDSInfo, std::less<>> dimensions; };
@@ -130,6 +141,8 @@ private:
     inline static constexpr std::uint32_t patternRecord = 0x54504343; // CCPT
     inline static constexpr std::uint32_t automaticRecord = 0x53414343; // CCAS, additive v1
     std::map<RE::FormID, Entry> entries_;
+    // Material custody survives entry retirement while the same geometry remains live.
+    std::map<RE::FormID, PendingRollback> pendingRollbacks_;
     std::set<RE::FormID> colourRecords_, patternRecords_, automaticRecords_, rejectedRecords_;
     CoatLibrary library_;
     CoatPolicy policy_;
@@ -146,31 +159,103 @@ template<class F> void Runtime::visit(RE::NiAVObject* object, F&& f) {
     f(object);
     if (auto* node = object->AsNode()) for (auto& child : node->GetChildren()) if (child) visit(child.get(), f);
 }
-inline void Runtime::unbind(Entry& entry) {
-    entry.audit.invalidate();
-    for (auto& surface : entry.surfaces) {
-        auto& current = surface.geometry->GetGeometryRuntimeData().shaderProperty;
-        // A later writer can replace the property OR mutate coat content in
-        // place. Finite per-geometry fade is carried onto rollback separately.
-        if (current.get() == surface.own.get() && (!surface.tinted || healthyPrivateTint(surface))) {
+inline bool Runtime::attached(const RE::NiAVObject* object, const RE::NiAVObject* root) {
+    return isMaterialGeometryAttached(object, root, targetModelMaxObjects);
+}
+inline MaterialRelease Runtime::releaseSurface(const Surface& surface) {
+    auto& current = surface.geometry->GetGeometryRuntimeData().shaderProperty;
+    const auto owns = [&] {
+        if (!healthyPrivateTint(surface) || readTexturePaths(*surface.own) != surface.texturePaths) return false;
+        if (surface.tinted) return true;
+        // A failed initial setup can still leave the staged property installed.
+        return surface.own->material == surface.material.get() &&
+            surface.own->GetExtraData("NO_TINT") == surface.guard.get() && surface.materialLease &&
+            mayRestoreMaterial(*surface.materialLease, materialLeaseState(*surface.own));
+    };
+    return releaseMaterialLease(current, surface.own, owns, [&] {
             RE::BSTSmartPointer<RE::BSShaderMaterial> restorationMaterial;
-            const bool restored = restoreMaterialWithAlpha(current, surface.own, surface.original,
+            std::optional<MaterialLeaseState> restorationContent;
+            TexturePaths restorationPaths;
+            return restoreMaterialWithAlpha(current, surface.own, surface.original,
                 [&](const auto& donor) {
                     RE::NiPointer<RE::BSShaderProperty> copy{static_cast<RE::BSShaderProperty*>(donor->Clone())};
                     if (copy && copy.get() != donor.get() && copy.get() != surface.own.get() && donor->material)
                         copy->SetMaterial(donor->material, true);
                     if (copy) restorationMaterial.reset(copy->material); // Retain exact post-setup identity witness.
-                    return copy;
-                }, [&](const auto& copy) { return copy->FinishSetupGeometry(surface.geometry.get()); });
-            if (!restored) SKSE::log::warn("CLAW coat rollback: surface={} donor restoration unavailable; private/later binding retained",
-                coatAuditQuote(surface.geometry->name.c_str() ? surface.geometry->name.c_str() : ""));
+                    return owns() ? copy : RE::NiPointer<RE::BSShaderProperty>{};
+                }, [&](const auto& copy) {
+                    if (copy->material->GetType() != RE::BSShaderMaterial::Type::kLighting) return false;
+                    restorationContent = materialLeaseState(*copy);
+                    restorationPaths = readTexturePaths(*copy);
+                    return copy->FinishSetupGeometry(surface.geometry.get());
+                }, [&](const auto& copy) {
+                    if (!restorationContent) return true;
+                    auto observed = materialLeaseState(*copy);
+                    observed.propertyAlpha = restorationContent->propertyAlpha;
+                    return observed == *restorationContent && readTexturePaths(*copy) == restorationPaths;
+                });
+        });
+}
+inline bool Runtime::unbind(Entry& entry, bool defer) {
+    entry.audit.invalidate();
+    const auto actor = entry.surfaces.empty() || !defer ? RE::NiPointer<RE::Actor>{} : entry.handle.get();
+    PendingRollback pending{entry.handle, {}, {}};
+    for (auto& surface : entry.surfaces) {
+        const auto result = releaseSurface(surface);
+        if (result == MaterialRelease::released || result == MaterialRelease::unowned) continue;
+        const auto* currentRoot = actor && actor->Is3DLoaded() ? actor->Get3D(false) : nullptr;
+        const bool reachable = attached(surface.geometry.get(), currentRoot);
+        if (result == MaterialRelease::yielded) {
+            if (reachable) pending.yielded.push_back(surface.geometry);
+            continue;
         }
+        SKSE::log::warn("CLAW coat rollback: surface={} donor restoration unavailable; {}",
+            coatAuditQuote(surface.geometry->name.c_str() ? surface.geometry->name.c_str() : ""),
+            reachable ? "retry pending on current model" : "private binding retained during model release");
+        if (reachable) pending.surfaces.push_back(std::move(surface));
     }
+    const bool complete = pending.surfaces.empty() && pending.yielded.empty();
+    if (!complete) pendingRollbacks_.emplace(actor->formID, std::move(pending));
     entry.surfaces.clear(); entry.root.reset(); entry.appliedPattern.clear();
     entry.appliedVariation.reset();
+    return complete;
+}
+inline void Runtime::retryPendingRollbacks() {
+    for (auto it = pendingRollbacks_.begin(); it != pendingRollbacks_.end();) {
+        auto& pending = it->second;
+        const auto actor = pending.actor.get();
+        if (!actor || actor->formID != it->first) {
+            it = pendingRollbacks_.erase(it); continue;
+        }
+        const auto reachable = [&](const auto& geometry) {
+            const auto* root = actor->Is3DLoaded() ? actor->Get3D(false) : nullptr;
+            return root && attached(geometry.get(), root);
+        };
+        std::erase_if(pending.surfaces, [&](const Surface& surface) {
+            if (!reachable(surface.geometry)) return true;
+            const auto result = releaseSurface(surface);
+            if (result == MaterialRelease::yielded || result == MaterialRelease::unowned)
+                pending.yielded.push_back(surface.geometry);
+            return result != MaterialRelease::pending;
+        });
+        std::erase_if(pending.yielded, [&](const auto& geometry) { return !reachable(geometry); });
+        if (pending.surfaces.empty() && pending.yielded.empty()) it = pendingRollbacks_.erase(it);
+        else ++it;
+    }
+}
+inline std::string_view Runtime::rollbackStatus(RE::FormID id) const {
+    const auto pending = pendingRollbacks_.find(id);
+    if (pending == pendingRollbacks_.end()) return {};
+    return pending->second.surfaces.empty() ? "yielded to later coat writer" : "previous coat rollback pending";
 }
 inline void Runtime::reset() {
-    for (auto& [id, entry] : entries_) { (void)id; unbind(entry); }
+    retryPendingRollbacks();
+    for (auto& [id, entry] : entries_) { (void)id; unbind(entry, false); }
+    const auto unresolved = std::ranges::count_if(pendingRollbacks_, [](const auto& item) {
+        return !item.second.surfaces.empty();
+    });
+    if (unresolved) SKSE::log::warn("CLAW coat rollback: releasing {} unresolved actor graphs at world reset", unresolved);
+    pendingRollbacks_.clear();
     entries_.clear(); colourRecords_.clear(); patternRecords_.clear(); automaticRecords_.clear(); rejectedRecords_.clear();
 }
 inline void Runtime::forget(RE::FormID id) {
@@ -187,6 +272,7 @@ inline void Runtime::restore(RE::Actor* actor) {
     }
 }
 inline std::string_view Runtime::status(RE::FormID id) const {
+    if (const auto rollback = rollbackStatus(id); !rollback.empty()) return rollback;
     const auto found = entries_.find(id);
     return found == entries_.end() ? std::string_view{"human appearance unavailable"} : found->second.status;
 }
@@ -260,14 +346,14 @@ inline std::string Runtime::appliedPattern(RE::FormID id) const {
 }
 inline std::string Runtime::patternStatus(RE::FormID id) const {
     const auto found = entries_.find(id);
-    if (found == entries_.end()) return "human appearance unavailable";
+    if (found == entries_.end()) return std::string(status(id));
     const auto& entry = found->second;
     const auto selected = decision(entry);
     const std::string origin = selected.origin == CoatOrigin::manual ? "explicit" :
         selected.origin == CoatOrigin::hairPool ? "automatic hair pool " + selected.pool :
         selected.origin == CoatOrigin::legacyHair ? "automatic legacy hair" :
         selected.origin == CoatOrigin::fallback ? "automatic fallback pool " + selected.pool : "no automatic pattern";
-    return origin + (mapping_ || policy_.tintMode() == TintMode::original ? " [original]: " : " [linked]: ") + entry.status;
+    return origin + (mapping_ || policy_.tintMode() == TintMode::original ? " [original]: " : " [linked]: ") + std::string(status(id));
 }
 inline std::uint64_t Runtime::auditClock() {
     return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -407,6 +493,13 @@ inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token, C
 }
 inline std::string Runtime::texturePath(RE::BSTextureSet* set, RE::BSTextureSet::Texture slot) {
     const auto* value = set ? set->GetTexturePath(slot) : nullptr; return value ? value : "";
+}
+inline Runtime::TexturePaths Runtime::readTexturePaths(const RE::BSShaderProperty& property) {
+    TexturePaths paths;
+    const auto* material = static_cast<const RE::BSLightingShaderMaterialBase*>(property.material);
+    for (std::uint32_t i = 0; i < paths.size(); ++i)
+        paths[i] = texturePath(material->textureSet.get(), static_cast<RE::BSTextureSet::Texture>(i));
+    return paths;
 }
 inline const Runtime::PatternAssets& Runtime::validatePattern(const std::string& key, const CoatPattern& pattern) {
     const auto [found, inserted] = validatedPatterns_.try_emplace(key);
@@ -680,6 +773,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     std::uint64_t saveNamespace, std::uint64_t identity, CoatValues coatOutputs) {
     if (!actor || !actor->GetActorBase() || (!mapping_ && !provider)) return false;
     if (!saveNamespace || !identity) return false;
+    if (pendingRollbacks_.contains(actor->formID)) return false;
     auto found = entries_.find(actor->formID);
     auto* owned = found == entries_.end() ? entryFor(actor) : &found->second;
     if (!owned) return false;
@@ -713,7 +807,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     const auto requestedPattern = entry.explicitPattern.empty() ? selectedChoice.pattern : entry.explicitPattern;
     const auto resource = mapping_ ? mapping_->material(selectedChoice.pattern) : std::string_view(selectedChoice.pattern);
     if (mapping_ && (resource.empty() || resource == installedCoatMaterial)) {
-        if (!entry.surfaces.empty()) unbind(entry);
+        if (!entry.surfaces.empty() && !unbind(entry)) return false;
         if (resource == installedCoatMaterial && entry.root.get() == root && entry.attemptedPattern == selectedChoice.pattern)
             return true;
         entry.root.reset(root);
@@ -788,7 +882,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         }
     }
     if (root == entry.root.get() && entry.attemptedPattern == requestedPattern && entry.attemptedMode == mode && entry.surfaces.empty()) return false;
-    unbind(entry);
+    if (!unbind(entry)) return false;
     std::vector<Surface> prepared;
     const auto* selected = library_.find(resource);
     std::string patternFailure = !requestedPattern.empty() && !selected ? "library or pattern unavailable" : "";
@@ -849,13 +943,13 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
             tint, role});
         auto& staged = prepared.back();
         auto* material = static_cast<RE::BSLightingShaderMaterialBase*>(copy->material);
+        staged.material.reset(material);
+        staged.guard.reset(netimmerse_cast<RE::NiBooleanExtraData*>(copy->GetExtraData("NO_TINT")));
+        staged.materialLease = materialLeaseState(*copy);
         staged.initializedFeature = static_cast<std::int32_t>(material->GetFeature());
         staged.patterned = selected != nullptr; staged.diffuseTexture = material->diffuseTexture;
-        if (selected) {
-            staged.textureSet = material->textureSet;
-            for (std::uint32_t i = 0; i < RE::BSTextureSet::Texture::kTotal; ++i)
-                staged.texturePaths[i] = texturePath(material->textureSet.get(), static_cast<RE::BSTextureSet::Texture>(i));
-        }
+        staged.textureSet = material->textureSet;
+        staged.texturePaths = readTexturePaths(*copy);
     }
     if (!retryWithoutPattern) break;
     }
@@ -879,6 +973,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         surface.material.reset(surface.own->material);
         surface.guard.reset(netimmerse_cast<RE::NiBooleanExtraData*>(surface.own->GetExtraData("NO_TINT")));
         surface.textureSet = static_cast<RE::BSLightingShaderMaterialBase*>(surface.own->material)->textureSet;
+        surface.texturePaths = readTexturePaths(*surface.own);
         const auto* accepted = static_cast<RE::BSLightingShaderMaterialBase*>(surface.own->material);
         surface.diffuseTexture = accepted->diffuseTexture;
         surface.otherTextures = {accepted->normalTexture, accepted->rimSoftLightingTexture, accepted->specularBackLightingTexture};

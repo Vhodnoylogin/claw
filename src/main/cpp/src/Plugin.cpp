@@ -1407,6 +1407,7 @@ void scan() {
     collectPins();
     if (!enabled) return;
     checkRuntimeInstances();
+    claw::appearance::runtime.retryPendingRollbacks();
     for (auto it = physicsPopulationBlocked.begin(); it != physicsPopulationBlocked.end();) {
         const auto state = states.find(it->first);
         if (state == states.end() || state->second.runtimeSerial != it->second) it = physicsPopulationBlocked.erase(it);
