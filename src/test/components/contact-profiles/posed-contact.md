@@ -121,6 +121,33 @@ Use the independent pose witness for the absolute bone and root transforms,
 and the trace log for the pose token. Qualify the reached hand position and
 the near, far and teardown event windows separately.
 
+### Scoring one live pose-contact case
+
+Collect the exact original tool ledger, fitted profile and Distribution log
+from one admitted run. Pin their SHA-256 digests in the case manifest alongside
+its PID and actor binding. Verify the loaded diagnostic DLL and the World
+Observer clock before using the `msvc-14.51.36231-qpc-10000000` case clock.
+The input fixture in `test_verify_pose_contact_window.py` shows the indexed
+ledger format for `verify_pose_contact_window.py --help`.
+
+Start with the fixture's ordinary idle animation and the hand away from it.
+The archived r03 tail observations show several game units of bone motion
+while the actor root remains fixed. Use the wide pose witness and the ACK
+banks to measure the actual *owner-local capsule change*. Bone displacement
+alone does not qualify the stimulus. Keep the effective SKEE vector and
+actor weight fixed. Choose a geometrically discriminating bank pair before
+collecting the contact holds.
+
+The active holds require successful `SnapshotCurrent` reads and independent
+body samples on both sides. A later publication or a stale pose rejects the
+hold. The scorer begins after the first Observer read completed, ends at the
+last read's start and requires 1.5 seconds of measured dwell. Each active
+near frame must clear the earlier bank and overlap the selected bank. The far
+hold clears both. Before append and after confirmed Host retirement the same
+near point must stay silent. The sealed callback must name the exact fixture
+actor and selected group. Events outside admitted holds are reported
+separately.
+
 ## Stationary controller contrast for a TRI refit
 
 Run `prepare_tail_refit_contrast.py` with the retained VR `fitted-capsules.json`

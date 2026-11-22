@@ -99,22 +99,22 @@ def tracked_pose(ledger, index, subject, model, phase, sequence):
     return sample, [morphs[name] for name in model["morphs"]]
 
 
-def inspect_frame(ledger, index, subject):
+def inspect_frame(ledger, index, subject, node=NODE):
     row = ledger[index]
     args, raw = row.get("args", {}), row["result"]
     require(row.get("tool") == "inspect" and args.get("kind") == "world_observer" and
             args.get("action") == "snapshot", "Expected a direct World Observer tool receipt")
     measured = measure_frame(raw, actor=subject.actor, base=subject.base, cell=subject.cell, pid=subject.pid,
-                             target_offset=[0., 0., 0.], target_radius=1., target_node=NODE)
-    require({item.get("name") for item in raw["nodes"]} == {NODE, "NPC Root [Root]"} and
-            len(raw["nodes"]) == 2, "Expected the exact tail node and its tracked actor root")
+                             target_offset=[0., 0., 0.], target_radius=1., target_node=node)
+    require({item.get("name") for item in raw["nodes"]} == {node, "NPC Root [Root]"} and
+            len(raw["nodes"]) == 2, "Expected the exact target node and its tracked actor root")
     roots = {item["name"]: item for item in raw["nodes"]}
     root = roots["NPC Root [Root]"]
     require(root["identity"] == measured["actor"][0] and root["form"] == subject.form["form"] and
             root["firstPerson"] is False and root["status"] == "available",
             "World Observer root does not belong to the measured third-person actor")
     measured["root"] = transform(root["world"])
-    measured["targetPose"] = transform(roots[NODE]["world"])
+    measured["targetPose"] = transform(roots[node]["world"])
     return measured
 
 
@@ -200,11 +200,11 @@ def morph_writes(ledger, subject, phases, recorded):
     require(writes == {*apply[:2], *restore[:2]}, "Unexpected RaceMenu writes in the refit scenario")
 
 
-def callback_counts(ledger, subject, capture, holds):
+def callback_snapshot(ledger, subject, capture, node=NODE):
     event = json.loads(typed(ledger, capture["read"], EVENTS, "Read", "string"))
     nonce, generation = (event[key] for key in ("nonce", "generation"))
-    matches_snapshot(event, Audience(subject.pid, nonce, generation, subject.actor, subject.base,
-                                    subject.cell, "Male", NODE))
+    audience = Audience(subject.pid, nonce, generation, subject.actor, subject.base, subject.cell, "Male", node)
+    matches_snapshot(event, audience)
     idle = json.loads(typed(ledger, capture["idle"], EVENTS, "GetCaptureState", "string", []))
     require(idle == {"pid": subject.pid, "schema": "claw-vr-cbpc-events/1", "generation": generation,
                     "status": "idle", "sinkRegistered": True, "loading": False},
@@ -214,6 +214,11 @@ def callback_counts(ledger, subject, capture, holds):
             typed(ledger, capture["seal"], EVENTS, "Seal", "bool", [nonce, generation]) is True,
             "Arm or seal acknowledgement is missing")
     typed(ledger, capture["read"], EVENTS, "Read", "string", [nonce, generation])
+    return event, audience
+
+
+def callback_counts(ledger, subject, capture, holds):
+    event, _ = callback_snapshot(ledger, subject, capture)
     start, armed, closed = (event[key] for key in ("requestedQpc", "armedQpc", "closedQpc"))
     require(event["qpcFrequency"] == QPC and all(positive_int(value) for value in (start, armed, closed)) and
             start <= armed < closed < start + 60 * QPC and
