@@ -109,7 +109,18 @@ def modules():
     return anatomy, fsmp_motion
 
 
-def build(candidate, receipt, skeleton, out, pynifly, morphbench):
+def historical_source_pins(source_pins, root):
+    """Verify the historical witnesses without importing their code."""
+    pins = {}
+    for relative, expected in source_pins.items():
+        path = root / relative
+        if not path.is_file() or digest(path.read_bytes()) != expected:
+            raise ValueError('Original anatomy04 source changed or missing: ' + relative)
+        pins[str(path)] = expected
+    return pins
+
+
+def build(candidate, receipt, skeleton, out, pynifly, morphbench, *, historical_source_root=None):
     anatomy, fsmp = modules(); p = anatomy.load_profile()
     candidate, receipt, skeleton = [Path(x).resolve(strict=True) for x in (candidate, receipt, skeleton)]
     if anatomy.sha(receipt) != RECEIPT: raise ValueError('Only frozen anatomy04 receipt admitted')
@@ -118,8 +129,8 @@ def build(candidate, receipt, skeleton, out, pynifly, morphbench):
         raise ValueError('Only frozen anatomy04 resource set admitted')
     inputs = {str(candidate/name): value for name,value in FROZEN.items()}
     inputs[str(receipt)] = RECEIPT; inputs[str(skeleton)] = p['inputs']['skeleton.nif']
-    for rel, expected in frozen['sourcePins'].items():
-        if anatomy.sha(REPO/rel) != expected: raise ValueError('Original anatomy04 source changed: '+rel)
+    historical_root = REPO if historical_source_root is None else Path(historical_source_root).resolve(strict=True)
+    historical_sources = historical_source_pins(frozen['sourcePins'], historical_root)
     rig, resource, _, api, Patch, Trip, dependencies = anatomy._imports(pynifly,morphbench)
     motion, female = fsmp.render_xml(False), fsmp.render_xml(True)
     if any(digest(data) != MOTION_HASHES[breast] for breast,data in [(False,motion),(True,female)]):
@@ -134,9 +145,10 @@ def build(candidate, receipt, skeleton, out, pynifly, morphbench):
     sources = {str(path): anatomy.sha(path) for directory in (HERE, anatomy.TOOLS, anatomy.VR, anatomy.PHYSICS)
                for path in sorted(directory.rglob('*.py'))}
     sources[str(anatomy.PROFILE)] = anatomy.sha(anatomy.PROFILE)
-    pins = {**inputs, **sources, **dependencies}
-    if any(anatomy.sha(path) != expected for path,expected in pins.items()): raise ValueError('Frozen input/source/dependency changed')
-    out = resource.safe_output(out, pins); prepared = {}; coverage = {}; anchor_coverage = {}
+    # Both sets must remain valid even when the historical root is this checkout.
+    pins = (*inputs.items(), *historical_sources.items(), *sources.items(), *dependencies.items())
+    if any(anatomy.sha(path) != expected for path, expected in pins): raise ValueError('Frozen input/source/dependency changed')
+    out = resource.safe_output(out, (path for path, _ in pins)); prepared = {}; coverage = {}; anchor_coverage = {}
     skel = api.NifFile(str(skeleton))
     if not set((*anchors,p['anchor'])) <= set(skel.nodes): raise ValueError('Missing anchor in pinned existing XP32 skeleton')
     for filename in ('malebodywerewolf_0.nif','malebodywerewolf_1.nif'):
@@ -159,10 +171,11 @@ def build(candidate, receipt, skeleton, out, pynifly, morphbench):
         target = package/XML; target.parent.mkdir(parents=True,exist_ok=True); target.write_bytes(combined)
         evidence = out/'original-xml'; evidence.mkdir()
         for name,data in [('CLAWMotionMale.xml',motion),('CLAWMotionFemale.xml',female),('CLAWNeutralAnatomy.xml',neutral)]: (evidence/name).write_bytes(data)
-        if any(anatomy.sha(path) != expected for path,expected in pins.items()): raise ValueError('Input/source/dependency changed during composition')
+        if any(anatomy.sha(path) != expected for path, expected in pins): raise ValueError('Input/source/dependency changed during composition')
         files = {str(x.relative_to(package)).replace('\\','/'): anatomy.sha(x) for x in package.rglob('*') if x.is_file()}
         report = {'status':'offline-combined-original-motion-and-neutral-anatomy; runtime-unqualified',
             'inputs':inputs, 'sources':sources, 'dependencies':dependencies, 'files':files,
+            'historicalSourceRoot':str(historical_root), 'historicalSources':historical_sources,
             'combinedDrivers':[*drivers,*p['drivers']], 'combinedAnchors':[*anchors,p['anchor']],
             'bodyProofs':{name:proof for name,(_,proof) in prepared.items()}, 'storedDriverCoverage':coverage,
             'existingSkeletonAnchorCoverage':anchor_coverage,
@@ -183,6 +196,8 @@ def build(candidate, receipt, skeleton, out, pynifly, morphbench):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('candidate','receipt','skeleton','out','pynifly','morphbench'): parser.add_argument('--'+name,type=Path,required=True)
+    parser.add_argument('--historical-source-root', type=Path,
+                        help='Root containing the exact source witnesses in the frozen receipt (default: this checkout).')
     args = parser.parse_args()
     try:
         result = build(**vars(args)); print(json.dumps({'status':result['status'],'files':len(result['files'])}))

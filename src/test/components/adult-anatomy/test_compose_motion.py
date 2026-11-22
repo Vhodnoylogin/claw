@@ -6,6 +6,7 @@ import importlib.util
 import json
 import struct
 import sys
+from tempfile import TemporaryDirectory
 import unittest
 import xml.etree.ElementTree as ET
 import numpy as np
@@ -29,6 +30,23 @@ class Pure(unittest.TestCase):
 
     def mutation(self,data,change):
         root=ET.fromstring(data); change(root); return ET.tostring(root)
+
+    def test_historical_witnesses_must_match_all_frozen_hashes(self):
+        witness = 'test_neutral.py'
+        second = 'visibility_probe.py'
+        original = b'historical witness\n'
+        expected = {name: c.digest(original) for name in (witness, second)}
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / witness).write_bytes(original)
+            with self.assertRaisesRegex(ValueError, 'missing: visibility_probe.py'):
+                c.historical_source_pins(expected, root)
+            (root / second).write_bytes(b'changed witness\n')
+            with self.assertRaisesRegex(ValueError, 'changed or missing: visibility_probe.py'):
+                c.historical_source_pins(expected, root)
+            (root / second).write_bytes(original)
+            self.assertEqual(c.historical_source_pins(expected, root),
+                             {str(root / name): pin for name, pin in expected.items()})
 
     def test_original_parameters_and_exact_twelve_driver_union(self):
         output=self.compose();root,bones=c.inspect_xml(output,(*self.drivers,*self.p['drivers']),(*self.anchors,self.p['anchor']))

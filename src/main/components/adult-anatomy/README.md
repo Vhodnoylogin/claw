@@ -46,6 +46,11 @@ materials, bounds and BODYTRI remain exact. Unknown, multiple or shared hooks ar
 refused. The original `Tails` kinematic anchor comes from the explicitly pinned
 existing XP32 skeleton; it is not grafted into the flat mesh bone graph.
 
+For a rebuild from a later checkout, pass `--historical-source-root` with a
+source tree containing the exact witnesses listed in the frozen anatomy04
+receipt. The historical witnesses are hash-checked. The running checkout and
+tool dependencies have separate pins in the composition report.
+
 The output contains two male endpoints, their unchanged TRI and the combined XML.
 The focused `test_compose_motion.py` suite checks invalid graphs/hooks, actual
 native resources, all thirty morphs and the actual Morphbench Physics facade's
