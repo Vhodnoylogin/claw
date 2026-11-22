@@ -16,6 +16,7 @@ import sys
 
 from prepare_tail_refit_contrast import CHANNEL, PROFILE_SHA, SLOT_IDS, STATES, read_pinned
 from posed_contact import native_vector, read_pose
+from tail_refit_morph import MORPH_SCRIPT, TEST_KEY, check_registry, key_value
 
 ROOT = Path(__file__).resolve().parents[4]
 sys.path[:0] = [str(ROOT), str(ROOT / "src/test/python/physics")]
@@ -26,6 +27,11 @@ from src.test.python.integration.fsmp_probe import numbers, transform
 
 PROOF_SHA = "40e4bc0d6de967e0a0d0199d59721287b928d40a5d9842ee7b7d59c8e5838be5"
 NODE = "TailBone02"
+CONTACT_NODES = {
+    "NPC EarL [EarL]Bone01", "NPC EarL [EarL]Bone02", "NPC EarR [EarR]Bone01", "NPC EarR [EarR]Bone02",
+    "TailBone01", NODE, "TailBone03", "TailBone04", "TailBone05", "NPC Head [Head]", "Tails", "NPC Root [Root]",
+    "NPC Spine2 [Spn2]", "NPC Pelvis [Pelv]", "NPC R Thigh [LThg]",
+}
 NATIVE, POSE, EVENTS, CBPC = "CLAWPhysicsNative", "CLAWVRNpcPose", "CLAWVRCBPCEvents", "CBPCPluginScript"
 NANO = 1_000_000_000
 QPC = 10_000_000
@@ -87,7 +93,7 @@ def tracked_pose(ledger, index, subject, model, phase, sequence):
             pose["sequence"] == sequence and sample["actor"] == subject.actor and sample["base"] == subject.base and
             sample["cell"] == subject.cell and sample["race"] == 0xCDD84 and sample["bodyAddon"] == 0xCDD87 and
             sample["bodyItem"] == 0xCDD86 and positive_int(sample["threadID"]) and
-            sex == "male" and weight == .5 and set(nodes) == {NODE} and
+            sex == "male" and weight == .5 and set(nodes) == CONTACT_NODES and
             all(value == (STATES[phase] if name == CHANNEL else 0.) for name, value in morphs.items()),
             "Native model lease, body binding, or effective SKEE phase differs")
     return sample, [morphs[name] for name in model["morphs"]]
@@ -126,7 +132,7 @@ def ordered(indices, message):
             and indices == sorted(set(indices)), message)
 
 
-def phase_bank(ledger, subject, model, proof, phase, number, mutations):
+def phase_bank(ledger, subject, model, proof, phase, number, previous_token, mutations):
     token = phase["token"]
     require(positive_int(token) and token < 0x01000000 and
             all(len(phase[name]) == len(SLOT_IDS) for name in ("capsules", "attach", "detach")),
@@ -134,6 +140,15 @@ def phase_bank(ledger, subject, model, proof, phase, number, mutations):
     args = [subject.form, subject.generation, token]
     before, values = tracked_pose(ledger, phase["poseBefore"], subject, model, number, 2 * number)
     after, end_values = tracked_pose(ledger, phase["poseAfter"], subject, model, number, 2 * number + 1)
+    event = json.loads(typed(ledger, phase["event"], POSE, "ReadPhysicsSnapshot", "string",
+                             [before["rootToken"], previous_token]))
+    tick = event["eventQpc"]
+    require(event.get("schema") == "claw-vr-npc-pose/1" and event.get("status") == "ready"
+            and event.get("pid") == subject.pid and event.get("qpcFrequency") == QPC
+            and event.get("nonce") == before["rootToken"] and event.get("snapshotToken") == token
+            and all(event.get(key) == before[key] for key in ("actor", "base", "runtimeHandle", "rootToken", "loadEpoch"))
+            and positive_int(tick) and tick <= before["qpcBegin"],
+            "Missing actor-bound native refit event")
     require(values == end_values and
             numbers(typed(ledger, phase["values"], NATIVE, "GetValues", "float[]", args), 31) == values and
             typed(ledger, phase["weight"], NATIVE, "GetWeight", "float", args) == .5,
@@ -155,7 +170,34 @@ def phase_bank(ledger, subject, model, proof, phase, number, mutations):
                 "Expected acknowledged append and exact slot retirement")
         bank.append(capsule)
         mutations.update((append, detach))
-    return bank, before, after
+    return bank, before, after, tick
+
+
+def morph_writes(ledger, subject, phases, recorded):
+    index = recorded["describe"]
+    require(type(index) is int and 0 <= index < len(ledger), "Missing RaceMenu registry receipt")
+    describe = ledger[index]
+    require(describe.get("tool") == "papyrus" and describe.get("args") == {"action": "describe", "script": MORPH_SCRIPT},
+            "Expected direct RaceMenu registry description")
+    check_registry(describe["result"])
+    initial, apply, restore = (recorded[key] for key in ("initial", "apply", "restore"))
+    ordered([recorded["describe"], *initial, phases[0]["event"], *phases[0]["detach"], *apply,
+             phases[1]["event"], *phases[1]["detach"], *restore, phases[2]["event"]],
+            "Tail morph calls must occur between the correct refit phases")
+    args = [subject.form, CHANNEL, TEST_KEY]
+    for value, checks in ((0., initial), (1., apply[2:]), (0., restore[2:])):
+        present, read = checks
+        require(typed(ledger, present, MORPH_SCRIPT, "HasBodyMorph", "bool", args) is (value != 0.)
+                and key_value(typed(ledger, read, MORPH_SCRIPT, "GetBodyMorph", "float", args)) == value,
+                "Stored tail morph was not isolated or cleared")
+    for calls, method, mutation_args in ((apply, "SetBodyMorph", [*args, 1.]), (restore, "ClearBodyMorph", args)):
+        require(typed(ledger, calls[0], MORPH_SCRIPT, method, "none", mutation_args) is None
+                and typed(ledger, calls[1], MORPH_SCRIPT, "UpdateModelWeight", "none", [subject.form]) is None,
+                "Missing acknowledged RaceMenu change and model update")
+    writes = {i for i, row in enumerate(ledger) if row.get("tool") == "papyrus"
+              and row.get("args", {}).get("script") == MORPH_SCRIPT and row["args"].get("action") == "call"
+              and row["args"].get("function") in ("SetBodyMorph", "ClearBodyMorph", "UpdateModelWeight")}
+    require(writes == {*apply[:2], *restore[:2]}, "Unexpected RaceMenu writes in the refit scenario")
 
 
 def callback_counts(ledger, subject, capture, holds):
@@ -202,7 +244,7 @@ def callback_counts(ledger, subject, capture, holds):
 
 
 def verify(manifest, ledger, model, proof):
-    require(type(manifest) is dict and manifest.get("schema") == "claw-vr-tail02-refit-reads/1",
+    require(type(manifest) is dict and manifest.get("schema") == "claw-vr-tail02-refit-reads/2",
             "Expected a tail refit index manifest for the original raw ledger")
     subject = Subject(**manifest["subject"])
     require(all(positive_int(value) for value in vars(subject).values()) and
@@ -220,7 +262,7 @@ def verify(manifest, ledger, model, proof):
     tokens = []
     for phase in phases:
         tokens.append(phase["token"])
-        indices += [phase["begin"], phase["values"], phase["weight"], *phase["capsules"], *phase["attach"],
+        indices += [phase["event"], phase["begin"], phase["values"], phase["weight"], *phase["capsules"], *phase["attach"],
                     phase["poseBefore"], *phase["hold"], phase["poseAfter"], phase["end"], *phase["detach"]]
     indices += [*manifest["detached"], capture["seal"], capture["read"]]
     ordered(indices, "Typed sample, bank mutation or capture indices are replayed or out of phase")
@@ -230,8 +272,9 @@ def verify(manifest, ledger, model, proof):
             "The observed Distribution DLL did not identify the pinned VR fitter")
 
     mutations = set()
-    states = [phase_bank(ledger, subject, model, proof, phase, number, mutations)
-              for number, phase in enumerate(phases)]
+    states = [phase_bank(ledger, subject, model, proof, phase, number, previous, mutations)
+              for number, (phase, previous) in enumerate(zip(phases, (0, *tokens[:-1]), strict=True))]
+    morph_writes(ledger, subject, phases, manifest["morph"])
     provider_calls = {i for i, row in enumerate(ledger) if row.get("tool") == "papyrus" and
                       row.get("args", {}).get("script") == CBPC and row["args"].get("action") == "call"
                       and row["args"].get("function") != "GetVersion"}
@@ -241,7 +284,7 @@ def verify(manifest, ledger, model, proof):
             "Controller was driven again during the fixed-controller contrast")
     banks = [row[0] for row in states]
     require(banks[0] == banks[2] and banks[0] != banks[1], "Neutral bank did not return after a real native refit")
-    samples = [sample for _, before, after in states for sample in (before, after)]
+    samples = [sample for _, before, after, _ in states for sample in (before, after)]
     first = samples[0]
     scene_root = transform(first["rootWorld"])
     body_root = transform(first["bodyCloneWorld"])
@@ -252,6 +295,8 @@ def verify(manifest, ledger, model, proof):
                 for sample in samples)
             and all(a["qpcEnd"] < b["qpcBegin"] for a, b in zip(samples, samples[1:])),
             "Different or replayed actor root and loaded body clone in the native lease")
+    require(all(old["qpcEnd"] < current[3] for old, current in zip(samples[1:-1:2], states[1:], strict=True)),
+            "A refit event predates the preceding completed pose hold")
 
     groups = [manifest["unattached"], *(phase["hold"] for phase in phases), manifest["detached"]]
     require(all(2 <= len(group) <= 8 for group in groups), "Expected bounded observed frame holds")
@@ -264,7 +309,7 @@ def verify(manifest, ledger, model, proof):
         end = frames[-1]["ns"] * QPC // NANO
         require(previous_end < start and end - start >= MIN_HOLD, "Observed hold is too short or overlaps another hold")
         if 1 <= number <= 3:
-            _, before, after = states[number - 1]
+            _, before, after, _ = states[number - 1]
             require(before["qpcEnd"] < start < end < after["qpcBegin"],
                     "Native SKEE lease samples do not bracket the observed hold")
         gaps = [[], []]

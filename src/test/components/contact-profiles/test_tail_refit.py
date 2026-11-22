@@ -4,8 +4,9 @@ import json
 import unittest
 
 from verify_tail_refit import (
-    CBPC, CHANNEL, EVENTS, NATIVE, NODE, PHASES, POSE, QPC, SLOT_IDS, verify,
+    CBPC, CHANNEL, CONTACT_NODES, EVENTS, NATIVE, NODE, PHASES, POSE, QPC, SLOT_IDS, verify,
 )
+from tail_refit_morph import FUNCTIONS, MORPH_SCRIPT, TEST_KEY
 from src.test.python.integration.fsmp_probe import OBSERVATION
 
 
@@ -32,7 +33,7 @@ def point(x=0., y=0., z=0.):
 
 def make_case():
     ledger, stamps = [], []
-    manifest = {"schema": "claw-vr-tail02-refit-reads/1",
+    manifest = {"schema": "claw-vr-tail02-refit-reads/2",
                 "subject": {"pid": PID, "actor": ACTOR, "base": BASE, "cell": CELL, "generation": 2},
                 "phases": [], "capture": {}}
 
@@ -83,13 +84,27 @@ def make_case():
                   "qpcBegin": tick, "qpcEnd": tick + 1000, "sex": 0, "weight": 50,
                   "bodyAddon": 0xCDD87, "bodyItem": 0xCDD86, "race": 0xCDD84, "threadID": 11360,
                   "phase": "skse_main_thread_task", "view": "third_person", "effectiveMorphs": effective,
-                  "nodes": [{"name": NODE, "world": point()}], "rootWorld": point(), "bodyCloneWorld": point()}
+                  "nodes": [{"name": name, "world": point()} for name in sorted(CONTACT_NODES)],
+                  "rootWorld": point(), "bodyCloneWorld": point()}
         reply = {"schema": "claw-vr-npc-pose/1", "status": "ready", "nonce": 42, "sequence": sequence,
                  "pid": PID, "qpcFrequency": QPC, "sample": sample}
         return call(POSE, "ReadNpc", [42, sequence], "string", json.dumps(reply))
 
     scope = [77, 1]
     manifest["modelRead"] = call(NATIVE, "GetModelIdentity", [], "string", MODEL["modelIdentity"])
+    morph = manifest["morph"] = {
+        "describe": record({"tool": "papyrus", "args": {"action": "describe", "script": MORPH_SCRIPT},
+                            "result": {"name": MORPH_SCRIPT, "globalFunctions": [
+                                {"name": method, "native": True, "returnType": ret,
+                                 "params": [{"type": param} for param in params]}
+                                for method, (ret, params) in FUNCTIONS.items()]}}),
+    }
+    storage_args = [ACTOR_ARG, CHANNEL, TEST_KEY]
+    def storage(value):
+        return [call(MORPH_SCRIPT, "HasBodyMorph", storage_args, "bool", value != 0.),
+                call(MORPH_SCRIPT, "GetBodyMorph", storage_args, "float", value)]
+
+    morph["initial"] = storage(0.)
     capture = manifest["capture"]
     capture["idle"] = call(EVENTS, "GetCaptureState", [], "string", json.dumps({
         "schema": "claw-vr-cbpc-events/1", "status": "idle", "generation": 1,
@@ -100,6 +115,17 @@ def make_case():
         time = (i + 2) * 30_000_000
         native_args = [ACTOR_ARG, 2, 15 + i]
         phase = {"token": 15 + i}
+        if i:
+            method, args = ("SetBodyMorph", [*storage_args, 1.]) if i == 1 else ("ClearBodyMorph", storage_args)
+            morph["apply" if i == 1 else "restore"] = [
+                call(MORPH_SCRIPT, method, args, "none", None),
+                call(MORPH_SCRIPT, "UpdateModelWeight", [ACTOR_ARG], "none", None), *storage(value),
+            ]
+        phase["event"] = call(POSE, "ReadPhysicsSnapshot", [42, 14 + i if i else 0], "string", json.dumps({
+            "schema": "claw-vr-npc-pose/1", "status": "ready", "nonce": 42,
+            "pid": PID, "qpcFrequency": QPC, "actor": ACTOR, "base": BASE, "loadEpoch": 1, "runtimeHandle": HANDLE,
+            "rootToken": 42, "snapshotToken": 15 + i, "eventQpc": time - 200_000,
+        }))
         phase["begin"] = call(NATIVE, "SnapshotCurrent", native_args, "bool", True)
         phase["values"] = call(NATIVE, "GetValues", native_args, "float[]", [value] + [0.] * 30)
         phase["weight"] = call(NATIVE, "GetWeight", native_args, "float", .5)
@@ -148,6 +174,19 @@ class TailRefitTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, message):
                     verify(plan, raw, MODEL, BASIS)
 
+    def test_cannot_substitute_an_unrelated_actor_event_or_leave_the_key_set(self):
+        plan, raw = make_case()
+        result = raw[plan["phases"][1]["event"]]["result"]
+        event = json.loads(result["returned"])
+        event["actor"] += 1
+        result["returned"] = json.dumps(event)
+        with self.assertRaisesRegex(ValueError, "actor-bound native refit event"):
+            verify(plan, raw, MODEL, BASIS)
+        plan, raw = make_case()
+        raw[plan["morph"]["restore"][2]]["result"]["returned"] = True
+        with self.assertRaisesRegex(ValueError, "morph was not isolated or cleared"):
+            verify(plan, raw, MODEL, BASIS)
+
     def test_exact_current_fit_and_all_four_slots_required(self):
         for key in ("capsules", "detach"):
             with self.subTest(key=key):
@@ -171,7 +210,7 @@ class TailRefitTest(unittest.TestCase):
                                     ("qpcBegin", 60_000_001, "do not bracket")):
             with self.subTest(field=key):
                 plan, raw = make_case()
-                index = plan["phases"][0]["poseBefore"]
+                index = plan["phases"][0]["poseAfter" if key == "runtimeHandle" else "poseBefore"]
                 result = raw[index]["result"]
                 pose = json.loads(result["returned"])
                 pose["sample"][key] = value

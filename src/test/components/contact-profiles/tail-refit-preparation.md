@@ -36,5 +36,22 @@ morph states on that actor. Once `BeginNpcContact` is ready, the test witness's
 `CLAWPhysics_Observation` token after explicit Distribution registration.
 Check `SnapshotCurrent` before reading each bank. Stock r03 neither stages
 this witness extension nor drives the RaceMenu morph. The adaptive scenario
-still needs a scoped write with cleanup and aggregate readback.
+can use `tail_refit_morph.run_states` with the existing typed Papyrus call
+bridge and the owned actor guard. The helper first checks the runtime
+RaceMenu function signatures and absence of its private key. It sets only
+`CLAWTailLength` under `CLAWTest.TailRefit`, requests model updates, and
+clears the one key afterwards. A write without confirmed completion ends the
+trial without replay; the owning harness must retire that disposable game
+without saving. Capture the full 15-node `BeginNpcContact` pose and effective
+morph vector at each hold before and after its World Observer samples.
+
+Use schema `claw-vr-tail02-refit-reads/2` for the raw index manifest.
+Record the registry description plus initial presence/value reads under
+`morph.describe` and `morph.initial`. Put each transition's change, update,
+presence and value indices in `morph.apply` and `morph.restore`. Each phase's
+`event` indexes the ready `ReadPhysicsSnapshot` reply. The verifier binds
+these replies to the original fixture, pose sequence, native token and
+exact slot bank. The one-node fixed-sphere stock witness cannot supply
+those receipts.
+
 The archived coordinates are evidence for setup and carry no adaptive contact result.
