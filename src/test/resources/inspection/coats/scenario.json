@@ -18,18 +18,23 @@
     {"tag": "FBorn2Wolf", "sex": "female", "initialForm": "werewolf", "base": {"plugin": "test_CLAW - Wild Preset Fixture.esp", "localFormId": "000805"}, "position": [-2377.94482421875, 1536.0, 6976.4501953125], "headingDegrees": 270}
   ],
   "coatContract": {
-    "catalogueSize": 34,
+    "mappingSchemaVersion": 2,
+    "catalogueSize": 10,
+    "catalogueSource": "Exact non-alias logical IDs from CoatMapping.xml, bound through the installed CoatLibrary.xml",
     "primaryTintMode": "original",
-    "hairPoolCount": 6,
+    "hairPoolCount": 5,
     "hairPoolOverlapAllowed": false,
-    "fallbackPool": "natural",
-    "fallbackMembers": 32,
-    "automaticExcluded": ["elegant-2k-2.1/hyena-spotted", "elegant-2k-2.1/khajiit"],
+    "fallbackPool": "matrix",
+    "fallbackMembers": 10,
+    "historicalAliases": {"exposedInCatalogue": false, "validForCompatibleSavedManualSelections": true, "automaticEligible": false},
     "manualPatterns": ["elegant-2k-2.1/black", "elegant-2k-2.1/timber"],
+    "manualSaveActors": ["MControlWolf", "FBorn2Wolf"],
+    "automaticHairSaveActor": "FControlWolf",
     "invalidPattern": "elegant-2k-2.1/__claw_085_invalid__",
-    "priority": ["manual", "real hair measured pool", "saved source-less fallback"],
+    "priority": ["manual override", "measured hair colour group and matrix variation", "hairless scalar range from saved reference seed"],
     "seedBasis": "actual saved CWLS namespace plus CWLA per-reference identity; coatSeed version1",
-    "choiceBasis": "retain eligible saved pool/pattern; otherwise maximum coatScore over eligible IDs",
+    "choiceBasis": "choose a declared variant from the matrix variation within the nearest colour group, or a scalar interval without hair",
+    "baseFallback": "Keep installed model material if the selected material is unavailable",
     "differentSeedsMayChooseSamePattern": true,
     "mutationAdmissionIsNotApplication": true
   },
@@ -40,7 +45,7 @@
     "maximumAgeMilliseconds": 2000,
     "schema": 1,
     "stringEncoding": "bytes-u00xx",
-    "record": ["sample", "modelGeneration", "ageMs", "leaseRootCurrent", "complete surfaces array"],
+    "record": ["sample", "modelGeneration", "ageMs", "leaseRootCurrent", "complete surfaces array", "coatDecision for a verified automatic hair-group lease"],
     "modelGenerationMeaning": "Retained third-person root identity only. An unchanged token does not certify unchanged biped parts, children or geometry; compare the full observed inventory independently.",
     "managedComparisons": ["actual texture-set diffusePath", "actual bound diffuseResource", "actual tint and alpha", "individual retained-lease identity comparisons"],
     "excludedComparisons": ["complete name multiplicity", "materialType", "feature", "diffusePath", "diffuseResource", "tint", "materialAlpha", "propertyAlpha", "shaderFlags", "noTint"],
@@ -50,13 +55,13 @@
   },
   "phases": [
     {"name": "source-baseline", "required": ["six exact same-run identities", "both human actual keyed source vectors and weights", "actual human source colour availability", "four initially-beast actors without invented human hair", "before-mutation morph observations and fresh actual-surface samples on loaded beasts"]},
-    {"name": "automatic-selection", "required": ["34 manual catalogue IDs", "two human transforms with advancing frames", "eligible measured hair pool for each observed human source", "saved-reference natural fallback on four born wolves", "two stable requested/applied/origin/status samples"]},
-    {"name": "manual-isolation", "required": ["one explicit Black male and Timber female", "manual origin and completed private application", "fresh observed managed diffuse-set and bound-resource paths match the selected complete pattern", "complete excluded-surface observations remain unchanged within the same model generation", "same-base neighbours retain their IDs and morph values", "invalid ID rejected before queue without any changed actor", "clear resumes the previous eligible automatic choice", "retain manual and automatic cases together before save"]},
-    {"name": "refresh-persistence", "required": ["refresh all six once", "stable pattern/origin and unchanged source/key maps", "one disposable six-reference ESS/SKSE save pair", "one same-process owned load and six-reference remap", "same saved namespace/identities/seeds/pools/manual IDs", "independent saved-byte selection verification"]},
+    {"name": "automatic-selection", "required": ["ten canonical catalogue IDs", "two human transforms with advancing frames", "eligible measured hair group from each human source", "saved-reference scalar-range fallback on four born wolves", "two stable requested/applied/origin/status samples", "fresh applied decision value checked against independent skin-aware and seed-only scores"]},
+    {"name": "manual-isolation", "required": ["explicit Black on MControlWolf and Timber on FBorn2Wolf", "manual origin and completed private application", "fresh observed managed diffuse-set and bound-resource paths match the selected complete pattern", "complete excluded-surface observations remain unchanged within the same model generation", "same-base neighbours retain their IDs and morph values", "invalid ID rejected before queue without any changed actor", "clear resumes the previous eligible automatic choice", "retain those two manual cases and keep FControlWolf automatic for the save"]},
+    {"name": "refresh-persistence", "required": ["refresh all six once", "stable pattern/origin and unchanged source/key maps", "one disposable six-reference ESS/SKSE save pair", "one same-process owned load and six-reference remap", "same saved namespace/identities/seeds/groups/manual IDs", "independent saved-byte selection verification", "new FControlWolf model audit matches the automatic pattern, variation, and selected material on the remapped reference"]},
     {"name": "post-load-manual-clear", "required": ["clear exactly one restored manual override after owned load/remap", "completed requested/applied/origin reads return its retained eligible automatic choice", "fresh actual-surface sample agrees with that automatic pattern", "all other remapped actors retain their choices and source/key values"]},
     {"name": "human-return-retransform", "required": ["return only the two controls to their witnessed human races", "no applied wolf coat on humans", "human source/key preservation and own-key absence", "transform both controls again", "same eligible saved automatic/manual selection after refresh"]},
     {"name": "technical-evidence-and-finish", "required": ["fresh actual-surface readback with actor identity and request/sample timing witnesses", "guarded menu finish and actual process outcome", "native and external restoration to the exact current attempt baseline", "separate mechanical/material-observation/shutdown findings"]}
   ],
   "requiresSeparateRealSourceTransitionContract": ["hair-source arrival", "hair-source removal", "hair group migration"],
-  "noClaims": ["all34 patterns visually reviewed", "arbitrary recolouring", "independent shader RGB from cached status", "new AE or VR acceptance", "physics or VR body", "formal schema2 platform qualification"]
+  "noClaims": ["all ten patterns visually reviewed", "arbitrary recolouring", "independent shader RGB from cached status", "new AE or VR acceptance", "physics or VR body", "formal schema2 platform qualification"]
 }

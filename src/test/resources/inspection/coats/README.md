@@ -19,19 +19,22 @@ Resolve plugin/local forms and current dynamic references in the actual run.
 Preserve the explicit AI/collision-off preconditions and per-reference locomotion
 hold. No new room, camera framework or tool implementation is introduced.
 
-Original texture colours are the primary policy mode. If the release exposes
-linked tint as a startup-only option, verify that second mode in a separate
-bounded session instead of claiming a hot policy reload. Manual catalogue
-availability and automatic pool eligibility are different: all34 named patterns
-remain manually available; the shipped natural fallback excludes the two
-stylized patterns. Same-base actors have independent saved identities/seeds,
-but two different seeds may legitimately select the same pattern.
+Use the installed schema-2 `CoatMapping.xml`, `CoatMatrix.xml` and
+`CoatLibrary.xml`. The catalogue exposes ten canonical Randomized patterns.
+Saved legacy IDs resolve through aliases. The automatic hair path selects one
+of five groups using the observed hair RGB and chooses a variant using matrix
+variation. The hairless path uses the normalized saved seed and the scalar
+ranges. The mode uses original texture colours, with the installed base
+material when a selected resource is unavailable. Same-base actors have
+independent saved identities and seeds and may legitimately pick the same coat.
 
-Use the actual policy, measured library palettes and saved `CWLS`/`CWLA`/`CCAS`
-records to check selection. Do not use runtime FormID, NPC base or host time as
-the seed. Retain real `CCLR` source flags/RGB and `CCPT` manual IDs independently.
-Returning to human removes applied coat ownership without discarding an eligible
-saved automatic choice. A later transform must recover that choice.
+Use the exact matrix, mapping and `CWLS`/`CWLA`/`CCAS` records to check selection.
+The saved namespace and distribution identity provide the seed. Retain `CCLR`
+hair and skin flags/RGB and `CCPT` manual IDs independently. Keep the female
+human control automatic across save/load, alongside two manual actors. Compare
+the female's fresh `coatDecision` and both actual DDS fields on her remapped
+reference with the verified saved choice. Returning to human clears applied
+coat ownership, and a later transform must reapply the expected selection.
 
 Requested/applied IDs and origin/status remain application diagnostics. The
 additional `RequestCoatSurfaceAudit(actor)` / `GetCoatSurfaceAudit(actor)` pair
@@ -65,6 +68,16 @@ After the owned save/load and reference remap, clear one restored manual choice
 and compare it with its retained automatic baseline and a fresh surface sample.
 Keep the other actors unchanged. Clearing before the save does not cover this
 post-load behavior.
+
+The CLAW test reviewer `src/test/python/integration/coat_persistence_readback.py`
+checks one automatic hair-group actor. Keep the original native save and load
+results, and fresh actor-bound material audits on both sides of the load. Bind
+each sample to the run, PID, world generation, actor reference, and handle at
+collection. Independently decode the matching owned co-save and use the exact
+matrix and catalog to supply the expected pattern, both variation scores, and
+twelve surface paths. The reviewer checks the remap and fresh model generation
+before comparing the two applied decisions and both diffuse fields. It reports
+skin-term contrast independently of automatic coat persistence.
 
 Genuine source arrival/removal needs a supported real-appearance fixture action.
 The existing actor-race action changes current race and preserves the base; it

@@ -3,10 +3,11 @@
 The 0.9.0 FOMOD installs three XML files under `SKSE/Plugins/CLAW/`.
 `CoatMatrix.xml` produces a named numeric dictionary through the common evaluator.
 Starting with 0.10.0, schema-2 `CoatMapping.xml` reads separate normalized sRGB channels
-and a variation channel. Its configured colour anchors select a group; the saved
-reference seed selects a variant only inside that group. RGB is never mixed with
-the seed. The material adapter owns this interpretation; the shared numerical
-matrix knows no colours, groups or texture identifiers.
+and a variation channel. Its configured colour anchors select a group using
+hair RGB. The variation channel combines the saved reference seed and captured
+skin RGB to select a variant within that group. With hair and no captured skin
+it uses the full normalized seed. The material adapter interprets the named
+outputs and resolves the texture identifiers.
 
 Schema 1 remains supported. Its scalar intervals also remain the schema-2
 hairless fallback: each includes its lower bound, and the final interval includes 1.
@@ -27,9 +28,9 @@ load checks all bound names against the matrix output dictionary.
 The adapter converts RGB to Oklab and minimizes
 `lightnessWeight * deltaL² + chromaWeight * (deltaA² + deltaB²)` over configured
 anchors. Weights default to 1, must be finite in [0,1024], and cannot both be zero.
-Ties use declared group/anchor order. The selected group's declared variant order
-partitions the normalized seed into equal half-open intervals; seed 1 selects the
-last variant. No texture ID or colour-family name is compiled into the adapter.
+Ties use declared group/anchor order. The selected group's declared variant
+order partitions the normalized variation into equal half-open intervals, with
+1 selecting the last variant.
 
 The 0.10.0 mapping uses weights 1 and 256 to prioritize chroma.
 Unweighted distance incorrectly maps some neutral greys to nearby warm textures.
