@@ -53,7 +53,21 @@ def matrix(value):
                          'translation': value['position'], 'scale': value['scale']})
 
 
-def clearance(shape, records, observation):
+def captured_bones(observation, virtual_tri):
+    if virtual_tri is None:
+        return observation['bones']
+    require(type(observation.get('torsoCaptureVersion')) is int and observation['torsoCaptureVersion'] == 1,
+            'Expected the native torso capture extension')
+    actual = observation.get('torsoBodyTri')
+
+    def path(value):
+        return value.replace('\\', '/').casefold().removeprefix('meshes/')
+
+    require(isinstance(actual, str) and path(actual) == path(virtual_tri), 'Captured torso BODYTRI differs from the pinned asset')
+    return observation['torsoBones']
+
+
+def clearance(shape, records, observation, *, virtual_tri=None):
     """Consume one actor-bound native observation, including its effective TRI values.
 
     The caller verifies the subject, archive winner and native capture provenance.
@@ -65,7 +79,8 @@ def clearance(shape, records, observation):
     visible = [row for row in observation['shapes'] if row['name'].casefold() == plan['shape'].casefold()]
     require(len(visible) == 1 and visible[0].get('ancestorCull') is False and visible[0].get('skinned') is True,
             'Expected the unculled retained skinned torso')
-    missing = sorted(set(plan['bones']) - observation['bones'].keys())
+    bones = captured_bones(observation, virtual_tri)
+    missing = sorted(set(plan['bones']) - bones.keys())
     require(not missing, 'Missing influential torso bones: ' + ', '.join(missing))
     values = observation.get('effectiveMorphs')
     require(isinstance(values, dict) and all(type(values.get(name)) in (int, float) and np.isfinite(values[name])
@@ -73,7 +88,7 @@ def clearance(shape, records, observation):
     near = observation['nearLeft']
     require(type(near) in (float, int) and np.isfinite(near) and near > 0, 'Invalid engine near distance')
     camera = matrix(observation['camera'])[:3, 3]
-    frames = {name: matrix(observation['bones'][name]['world']) for name in plan['bones']}
+    frames = {name: matrix(bones[name]['world']) for name in plan['bones']}
     skin = Skin(shape, records, values)
     selected, triangles = np.unique(skin.faces, return_inverse=True)
     vertices = skin.support(selected, frames, None)
@@ -98,7 +113,7 @@ def main():
         observation = read_json(args.observation)
         require(observation.get('schema') == 'claw-vr-vrik-world-avatar/1' and observation.get('status') == 'ready',
                 'Expected a ready native avatar envelope')
-        result['clearance'] = clearance(shape, records, observation['sample'])
+        result['clearance'] = clearance(shape, records, observation['sample'], virtual_tri=assets['tri']['virtualPath'])
     print(json.dumps(result, indent=2, allow_nan=False))
 
 

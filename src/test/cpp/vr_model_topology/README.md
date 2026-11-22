@@ -46,3 +46,24 @@ version carries a VR subtype nibble. The witness now uses CLAW's existing
 runtime-target check and keeps the exact VR-family filter. The fixed binary
 compiled with the same SDK and its own companion PEX. Its first game
 qualification is recorded separately from the build.
+
+## Post-phase torso capture
+
+`build_torso_capture.py` builds a distinct diagnostic from the retained R06
+observer using its sealed source, commands and MSVC dependencies. Supply the
+R06 build directory, the pinned RaceMenu API header, the retained compiler
+environment script and a new external output directory:
+
+```text
+python src/test/cpp/vr_model_topology/build_torso_capture.py --r06 <native-r06> --skee <IPluginInterface.h> --environment <capture-environment.cmd> --out <new-external-directory>
+```
+
+This preserves the original Papyrus declarations and five-bone packet. The
+extension adds `torsoCaptureVersion`, `torsoBodyTri`, `torsoBones` and
+`effectiveMorphs` in the same post-VRIK/HIGGS sample. `TorsoPose.h` observes
+the loaded `HEAD` skin's actual palette and brackets it with readings of the
+effective RaceMenu values. The R06 candidate retains its male fixture gate.
+The helper's female palette is checked against its NIF/TRI separately.
+Pass an independently admitted capture to the VR torso replay to reconstruct
+clearance. The candidate does not acquire rendered pixels or modify the game,
+and remains a separate test build.

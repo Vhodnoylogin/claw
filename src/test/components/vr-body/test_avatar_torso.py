@@ -21,6 +21,19 @@ def case():
 
 
 class AvatarTorsoTests(unittest.TestCase):
+    def test_native_extension_uses_torso_palette_and_matches_its_typed_link(self):
+        shape, records, sample = case()
+        virtual_tri = 'Meshes/Actors/WerewolfBeast/CLAW/FirstPerson/male/Body.tri'
+        with self.assertRaisesRegex(ValueError, 'native torso capture extension'):
+            clearance(shape, records, sample, virtual_tri=virtual_tri)
+        sample.update(torsoCaptureVersion=1, torsoBones=sample['bones'],
+                      torsoBodyTri=r'actors\werewolfbeast\claw\firstperson\male\body.tri')
+        sample['bones'] = {}
+        self.assertTrue(clearance(shape, records, sample, virtual_tri=virtual_tri)['torsoSeparatesFromBall'])
+        sample['torsoBodyTri'] = sample['torsoBodyTri'].replace('male', 'female')
+        with self.assertRaisesRegex(ValueError, 'BODYTRI differs'):
+            clearance(shape, records, sample, virtual_tri=virtual_tri)
+
     def test_rejects_world_tri_for_named_vr_mesh(self):
         with self.assertRaisesRegex(ValueError, 'namespaced VR Body.tri path'):
             retained_torso({}, {'virtualPath': 'Meshes/Actors/WerewolfBeast/Character Assets/MaleBodyWereWolf.tri'}, None)

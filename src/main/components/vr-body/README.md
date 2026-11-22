@@ -78,8 +78,10 @@ bones and morph channels to capture. Run it with a JSON file containing `nif`
 and `tri` entries (`path`, `sha256`, `bytes`, plus the TRI's `virtualPath`) and
 `--pynifly <path>`. The NIF's typed `BODYTRI` links must use that path. With
 `--observation <file>`, it also uses one admitted post-VRIK/HIGGS envelope
-with current `effectiveMorphs` and the complete bone transforms to reconstruct
-the visible torso. It measures the signed distance from its triangles to a
+from the [torso capture extension](../../../test/cpp/vr_model_topology/README.md).
+The captured `torsoBodyTri` must match the pinned route. The `effectiveMorphs`
+and `torsoBones` fields reconstruct the visible torso. The tool measures the
+signed distance from its triangles to a
 camera-centred ball with the engine's left near distance as radius. The
 archived player trial lacks eleven influential bones and the co-sampled
 effective TRI values. Its bounding spheres alone cannot supply that result.
