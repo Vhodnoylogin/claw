@@ -58,29 +58,27 @@ Reuse the shared numerical core and suitable core adapters. Keep component
 resources and activation isolated, in the same repository and development
 branch; do not create a separate product repository.
 
-## Separate private candidate archive
+## Private core and add-on candidates
 
-`python/package.py` packages the exact retained neutral resources with a small
-FOMOD. It does not rebuild geometry, alter the core installer, install anything
-or launch a game. The default **Keep current CLAW motion** installs only a
-uniquely named user guide and asset-credit notice. It installs no NIF or XML,
-so choosing anatomy physics off preserves an existing core male ear/tail FSMP
-binding. Overwriting it with the unhooked static core would disable that motion.
+`python/package.py` creates two test archives. The companion core keeps the
+original installer choices and hides the embedded neutral anatomy in both male
+body sources. The optional add-on restores the exact visible neutral shape in
+both weight endpoints and both male `bodywerewolf` / `PlayerWerewolf` routes.
+The core's TRI, materials, female models, data and runtime stay byte-identical.
 
-The other two choices are explicit: anatomy motion only for core **None**, or
-the combined ear/tail/anatomy system for core **FSMP**. The installer cannot
-detect the prior core selection; the user must match it and reinstall the
-overlay when that selection changes. Each option maps both endpoints to both
-male `bodywerewolf` and `PlayerWerewolf` armor paths. The original PlayerOnly
-materials remain exact, and the unchanged male TRI is inherited from required
-core. No female resource, matrix, DLL, script, plugin, provider binary, texture,
-skeleton or global configuration is bundled or overridden.
+In the add-on installer, choose the motion setting from the companion core.
+The next screen defaults to anatomy motion **Off** and preserves that core
+setting. Enabling anatomy motion selects either the separate three-driver rig
+or the combined ear/tail/anatomy rig, as appropriate. Repeat the add-on
+installation if the core setting changes. The original Elegant materials and
+shared core TRI apply to all four choices. Faster HDT-SMP remains a separate
+dependency when its motion is selected.
 
-The static core already contains the neutral procedural shape. This archive
-does not add adult-state morphs, a state controller or a completed independent
-appearance. Its anatomy motion remains unqualified: the retained male12 game
-case failed selective response. The authored XML has no collision shapes.
-Private file/installer checks do not turn those gates into passes.
+This candidate exposes the original neutral procedural model. Adult-state
+morphs, motion measurements and contacts remain separate tasks. The retained
+male12 game case failed selective response. Its authored XML implements the
+motion graph without collision shapes. Current verification covers the files
+and serialized installer choices offline.
 
 Build to a **new** external directory using the reviewed core and candidates:
 
@@ -89,18 +87,16 @@ python src/main/components/adult-anatomy/python/package.py `
   --core-archive 'D:/Skyrim VR Modding/Builds/claw-010-physics-release-20261113/final-package-01/CLAW - Customizable Lycanthrope Appearance and Weight.zip' `
   --neutral 'D:/Skyrim VR Modding/Builds/claw-adult-anatomy-20261112/candidate-04/candidate' `
   --combined 'D:/Skyrim VR Modding/Builds/claw-fsmp-anatomy-compose-20261112/candidate-01/candidate' `
-  --out 'D:/Skyrim VR Modding/Builds/claw-adult-anatomy-package-20261122-01'
+  --out 'D:/Skyrim VR Modding/Builds/claw-adult-anatomy-package-20261122-02'
 ```
 
-Input pins are explicit in the packager. It reopens the written ZIP, checks its
-eight-member inventory and verifies eighty compatible overlays across all forty
-core family/OBody/motion plans. Default overlays retain every selected core
-byte; enabled overlays change only the four male model destinations and add
-one local XML. The required source/asset records and all consumed input hashes
-stay in the external build report. The runtime archive contains only installer
-data, exact NIF/XML payloads, a brief guide and asset credits. Existing Elegant
-and XP32 conditions remain in force; private donor correspondence and developer
-sources are not copied into the archive.
+The packager reopens both archives and checks 120 selections across the forty
+core family/OBody/motion plans. Each plan covers the companion core alone,
+the add-on with static anatomy, and the add-on with anatomy motion. The add-on
+changes only the four male model destinations and optionally adds one local XML.
+The external report records exact input and payload identities. The add-on
+archive contains installer data, exact NIF/XML payloads, a brief guide and
+asset credits. Existing Elegant and XP32 conditions apply.
 
 Run the focused pure tests with:
 

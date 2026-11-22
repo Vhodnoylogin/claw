@@ -1,6 +1,5 @@
 """Separate candidate selection contracts, with explicit actual assets opt-in."""
 import collections
-import copy
 import importlib.util
 import os
 from pathlib import Path
@@ -23,9 +22,9 @@ def helpers():
 def symbolic():
     entries = {p.GUIDE: p.RUNTIME_GUIDE, p.NOTICE: p.ASSET_NOTICE,
                'fomod/ModuleConfig.xml': p.installer(), 'fomod/info.xml': b'<fomod/>'}
-    for mode, (_, folder, xml) in p.MODES.items():
-        if mode != 'keep':
-            entries[folder+'/male.nif'] = b'synthetic opaque NIF, not game evidence'
+    for folder, xml in p.VARIANTS.values():
+        entries[folder+'/male.nif'] = b'synthetic opaque NIF, not game evidence'
+        if xml:
             entries[folder+'/'+xml] = b'<system/>'
     return entries
 
@@ -35,26 +34,28 @@ class PackageSelectionTests(unittest.TestCase):
     def setUpClass(cls):
         cls.package, cls.reader = helpers()
 
-    def test_default_has_no_model_or_xml_override_for_either_core_mode(self):
+    def test_default_installs_static_appearance_for_either_core_mode(self):
         entries = symbolic()
         config = ET.fromstring(entries['fomod/ModuleConfig.xml'])
         recommended = [x.findtext('conditionFlags/flag') for x in config.findall('.//plugins/plugin')
                        if x.find('typeDescriptor/type').get('name') == 'Recommended']
-        self.assertEqual(recommended, ['keep'])
+        self.assertEqual(recommended, ['none', 'off'])
         for core in ('none', 'fsmp'):
-            selected = p.selection(entries, 'keep', self.reader, core_motion=core)
-            self.assertEqual(set(selected), {p.GUIDE, p.NOTICE})
+            selected = p.selection(entries, 'off', self.reader, core_motion=core)
+            self.assertEqual(set(selected), {*p.DESTINATIONS, p.GUIDE, p.NOTICE})
+            folder = p.VARIANTS[core, 'off'][0]
+            self.assertEqual({selected[name] for name in p.DESTINATIONS}, {folder + '/male.nif'})
 
     def test_both_male_routes_and_known_core_motion_choice_are_required(self):
         entries = symbolic()
-        for mode, core in (('anatomy', 'none'), ('combined', 'fsmp')):
-            selected = p.selection(entries, mode, self.reader, core_motion=core)
-            self.assertEqual(set(selected), {*p.DESTINATIONS, p.XML_ROOT+p.MODES[mode][2], p.GUIDE, p.NOTICE})
+        for core in ('none', 'fsmp'):
+            selected = p.selection(entries, 'on', self.reader, core_motion=core)
+            self.assertEqual(set(selected), {*p.DESTINATIONS, p.XML_ROOT+p.VARIANTS[core, 'on'][1], p.GUIDE, p.NOTICE})
             self.assertEqual(len({selected[name] for name in p.DESTINATIONS}), 1)
-            with self.assertRaisesRegex(ValueError, 'ear/tail policy'):
-                p.selection(entries, mode, self.reader, core_motion='fsmp' if core == 'none' else 'none')
+        with self.assertRaisesRegex(ValueError, 'Explicit known'):
+            p.selection(entries, 'on', self.reader, core_motion='unknown')
         with self.assertRaisesRegex(ValueError, 'CLAW.esp'):
-            p.selection(entries, 'keep', self.reader, core_motion='fsmp', active=())
+            p.selection(entries, 'off', self.reader, core_motion='fsmp', active=())
 
     def test_weakened_default_extra_female_mapping_and_foreign_payload_fail(self):
         for change in ('multiple', 'default', 'female'):
@@ -65,15 +66,15 @@ class PackageSelectionTests(unittest.TestCase):
             elif change == 'default':
                 xml.find('.//plugins/plugin/typeDescriptor/type').set('name', 'Optional')
             else:
-                ET.SubElement(xml.find('.//pattern/files'), 'file', source='10 Anatomy FSMP/male.nif',
+                ET.SubElement(xml.find('.//pattern/files'), 'file', source='10 Static/male.nif',
                               destination=p.MESH+'femalebodywerewolf_0.nif')
             entries['fomod/ModuleConfig.xml'] = ET.tostring(xml)
             with self.subTest(change=change), self.assertRaisesRegex(ValueError, 'Installer changed'):
-                p.selection(entries, 'keep', self.reader, core_motion='fsmp')
+                p.selection(entries, 'off', self.reader, core_motion='fsmp')
         for name in ('Textures/foreign.dds', 'SKSE/Plugins/hdtSMP64.dll', 'Source/tool.py'):
             entries = symbolic(); entries[name] = b'foreign'
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'archive member'):
-                p.audit(entries, {}, self.package, self.reader)
+                p.audit(entries, {}, {}, self.package, self.reader)
 
 
 class ActualCandidatePackage(unittest.TestCase):
@@ -90,39 +91,42 @@ class ActualCandidatePackage(unittest.TestCase):
                              out=Path(cls.temp.name)/'fresh-output')
         cls.package, cls.reader = helpers()
         cls.entries = cls.package.read_zip(Path(cls.report['archive']['path']).read_bytes())
+        cls.base = cls.package.read_zip(Path(cls.report['baseArchive']['path']).read_bytes())
         cls.core = cls.package.read_zip(Path(paths[0]).read_bytes())
 
-    def test_actual_zip_has_eight_members_and_eighty_verified_overlays(self):
-        self.assertEqual(self.report['archive']['members'], 8)
-        self.assertEqual(self.report['planCount'], 80)
-        self.assertEqual(collections.Counter(row['anatomyMode'] for row in self.report['plans']),
-                         {'keep': 40, 'anatomy': 20, 'combined': 20})
+    def test_actual_pair_has_ten_overlay_members_and_120_verified_selections(self):
+        self.assertEqual(self.report['archive']['members'], 10)
+        self.assertEqual(self.report['planCount'], 120)
+        self.assertEqual(collections.Counter(row['anatomy'] for row in self.report['plans']),
+                         {'absent': 40, 'off': 40, 'on': 40})
         self.assertFalse(self.report['runtimeQualified'])
         self.assertFalse(self.report['contactQualified'])
-        self.assertFalse(self.report['baseArchiveWritten'])
+        self.assertEqual(set(self.base), set(self.core))
         self.assertEqual(self.report['retainedMotionResult']['result'], 'failed')
         self.assertFalse(any(name.endswith(('.dll', '.pex', '.esp', '.tri', '.dds', '.py')) for name in self.entries))
 
-    def test_static_default_preserves_actual_core_fsmp_binding(self):
-        selected = p.selection(self.entries, 'keep', self.reader, core_motion='fsmp')
+    def test_static_default_restores_original_appearance_and_preserves_core_fsmp(self):
+        selected = p.selection(self.entries, 'off', self.reader, core_motion='fsmp')
         # Equal core endpoints/armor routes share archive members. Read their
         # installed destinations from the actual serialized FOMOD mappings.
-        base = self.reader.resolve_selection(ET.fromstring(self.core['fomod/ModuleConfig.xml']), self.core,
+        paths = self.reader.resolve_selection(ET.fromstring(self.base['fomod/ModuleConfig.xml']), self.base,
             native=True, male_family='HIMBO', family='CBBE', physics='fsmp',
             additional_active=('HIMBO.esp', 'CBBE.esp'))
-        original = {name: self.core[source] for name, source in base.items()}
-        overlay = {**original, **{name: self.entries[source] for name, source in selected.items()}}
+        original = {name: self.core[source] for name, source in paths.items()}
+        baseline = {name: self.base[source] for name, source in paths.items()}
+        self.assertEqual({name for name in baseline if baseline[name] != original[name]}, set(p.DESTINATIONS))
+        overlay = {**baseline, **{name: self.entries[source] for name, source in selected.items()}}
         self.assertTrue(all(overlay[name] == data for name, data in original.items()))
         self.assertTrue(all(p.sha(overlay[name]) == p.CORE_FSMP_SHA for name in p.DESTINATIONS))
         self.assertEqual(p.sha(overlay[p.XML_ROOT+'CLAWMotionMale.xml']),
                          'b42bfa436a4e53baa48ff2249d4659718603798dabdb1e6b9427dc37efa0ea34')
 
     def test_modified_skin_or_xml_bytes_cannot_enter_a_rebuilt_candidate(self):
-        for source in ('10 Anatomy FSMP/male.nif', '20 Combined FSMP/CLAWMotionNeutralAnatomyMale.xml'):
+        for source in ('10 Static/male.nif', '30 Anatomy FSMP/male.nif', '40 Combined FSMP/CLAWMotionNeutralAnatomyMale.xml'):
             entries = dict(self.entries)
             changed = bytearray(entries[source]); changed[-1] ^= 1; entries[source] = bytes(changed)
             with self.subTest(source=source), self.assertRaisesRegex(ValueError, 'Changed component payload'):
-                p.audit(entries, self.core, self.package, self.reader)
+                p.audit(entries, self.base, self.core, self.package, self.reader)
 
 
 if __name__ == '__main__':
