@@ -73,6 +73,25 @@ class ContactProfileTests(unittest.TestCase):
             if change == 'missing': value.pop('vr')
             with self.subTest(change=change), self.assertRaises(ValueError): contract.validate_recipes(value)
 
+    def test_both_profiles_require_ear_and_tail_contact_for_both_sexes(self):
+        for node, parent in (('NPC EarL [EarL]Bone01', 'NPC Head [Head]'),
+                             ('TailBone02', 'NPC Pelvis [Pelv]')):
+            with self.subTest(node=node, change='removed'):
+                recipes = contract.read_recipes()
+                for recipe in recipes.values():
+                    rows = recipe['supportRegions']
+                    attachment = next(row for row in rows if row['node'] == node)
+                    next(row for row in rows if row['node'] == parent)['count'] += attachment['count']
+                    rows.remove(attachment)
+                with self.assertRaisesRegex(ValueError, 'ear and tail contact'):
+                    contract.validate_recipes(recipes)
+            with self.subTest(node=node, change='female-only'):
+                recipes = contract.read_recipes()
+                for recipe in recipes.values():
+                    next(row for row in recipe['supportRegions'] if row['node'] == node)['sexMask'] = 'female'
+                with self.assertRaisesRegex(ValueError, 'ear and tail contact'):
+                    contract.validate_recipes(recipes)
+
     def test_both_models_retain_exact_declared_slots_sex_masks_and_identity(self):
         models = {edition: synthetic_model(edition) for edition in contract.PROFILES}
         contract.validate_models(models)

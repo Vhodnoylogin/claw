@@ -26,6 +26,9 @@ host = load_module('claw_contact_profile_host', PHYSICS / 'build.py')
 settings = fit._settings_module
 PROFILES = {'flat': ('flat-coarse.json', settings.FLAT_PROFILE, 52),
             'vr': ('vr-detailed.json', settings.VR_PROFILE, 128)}
+EAR_TAIL_CONTACT_NODES = {'NPC EarL [EarL]Bone01', 'NPC EarL [EarL]Bone02',
+                          'NPC EarR [EarR]Bone01', 'NPC EarR [EarR]Bone02',
+                          'TailBone01', 'TailBone02', 'TailBone03', 'TailBone05'}
 
 
 def pin(path):
@@ -50,6 +53,11 @@ def validate_recipes(recipes):
         rows = settings.support_regions(value['supportRegions'])
         if sum(row['count'] for row in rows) != budget:
             raise ValueError('Profile allocation differs from its one-ledger budget')
+        shared_nodes = {row['node'] for row in rows if row['sexMask'] == 'both'}
+        missing_contact = EAR_TAIL_CONTACT_NODES - shared_nodes
+        if missing_contact:
+            raise ValueError(f'{edition} profile lacks ear and tail contact for both sexes: '
+                             + ', '.join(sorted(missing_contact)))
         regions[edition] = {row['node']: row for row in rows}
     if set(regions['flat']) != set(regions['vr']):
         raise ValueError('Both profiles must retain the same whole-body attachments')
