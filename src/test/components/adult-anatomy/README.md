@@ -92,6 +92,15 @@ negative XML changes only the probe tag. Query each actor's active file and
 separately verify its attached provider system. Retain a final separated
 control after measuring the response.
 
+For the exact collision candidate, run `visibility_probe.py` with
+`--fsmp-peer-report <peer-report.json> --fsmp-surface-report <collision-report.json>`.
+It verifies the ordered retained triangle set and chooses an exposed,
+driver-weighted face with a projection margin under any rotation of the
+unit-scale peer. Separation is bounded against every retained face.
+The first probe was too wide to establish that margin. The smaller probe
+selects face 201 on both rigs in the pinned rest pose. Re-evaluate point
+positions, scale and clearance in the game before running the contact trial.
+
 The stock witness can compare paired motion in those windows. A direct
 contact or impulse assertion requires observation before FSMP clears the
 manifolds. The fixture is test-only and file verification grants no launch

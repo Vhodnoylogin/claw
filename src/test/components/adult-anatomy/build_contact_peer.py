@@ -24,7 +24,10 @@ CONFIG = Path("SKSE/Plugins/hdtSkinnedMeshConfigs/CLAW/CLAWAnatomyContactProbe.x
 CONTROL = CONFIG.with_name(CONFIG.stem + "NoContact.xml")
 PLUGIN = "test_CLAW - FSMP Contact Peer.esp"
 HOOK_PATH = str(CONFIG).replace("/", "\\")
-VERTICES = ((.25, .25, .25), (-.25, -.25, .25), (-.25, .25, -.25), (.25, -.25, -.25))
+VERTICES = (
+    (.0625, .0625, .0625), (-.0625, -.0625, .0625),
+    (-.0625, .0625, -.0625), (.0625, -.0625, -.0625),
+)
 TRIANGLES = ((0, 1, 2), (0, 3, 1), (0, 2, 3), (1, 3, 2))
 
 

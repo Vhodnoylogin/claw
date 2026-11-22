@@ -17,8 +17,12 @@ p=argparse.ArgumentParser(description=__doc__)
 for name in ('nif','pynifly','generator','skeleton','out'):p.add_argument('--'+name,type=Path,required=True)
 p.add_argument('--fit-contact', action='store_true', help='Fit and measure candidate capsules on exposed neutral skin')
 p.add_argument('--primary-capsules', type=int, choices=range(1, 5), default=1)
+p.add_argument('--fsmp-peer-report', type=Path, help='Verified test probe and payload')
+p.add_argument('--fsmp-surface-report', type=Path, help='Packed collision receipt for the exact target NIF')
 a=p.parse_args(args)
 if a.out.exists():raise ValueError('Use a new visibility receipt')
+if bool(a.fsmp_peer_report) != bool(a.fsmp_surface_report):
+    p.error('Supply both FSMP receipts to plan peer contact')
 sys.path.insert(0,str(a.pynifly))
 from pyn import pynifly as api
 api.NifFile.Load(str(a.pynifly/'NiflyDLL.dll'))
@@ -57,7 +61,7 @@ result={'scope':'Exact original generator five-ray BVH body-parity proxy on unch
     'actualFlagAncestry':ancestry,'materialPaths':gen.textures,
     'limits':'Parity is not an exact solid/visibility oracle for an open mesh. Fur and camera can occlude exterior geometry. File-visible does not prove a visible or acceptable attachment in game. Neutral state remains unchanged.'}
 
-if a.fit_contact:
+if a.fit_contact or a.fsmp_peer_report:
     repo = Path(__file__).resolve().parents[4]
     profile_path = repo / 'src/main/components/adult-anatomy/resources/neutral-rig.json'
     profile = json.loads(profile_path.read_text(encoding='utf-8'))
@@ -65,6 +69,36 @@ if a.fit_contact:
         raise ValueError('Expected the exact neutral anatomy skeleton and vertex layout')
     fitter = repo / 'src/main/python/physics'
     sys.path.insert(0, str(fitter))
+
+if a.fsmp_peer_report:
+    from contact_fit import triangle_distance
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from peer_contact_geometry import expected_face_digest, plan, read_pinned_probe, verify_face_digest
+
+    peer_points, radius, peer_digest = read_pinned_probe(a.fsmp_peer_report)
+    face_digest, surface_digest = expected_face_digest(a.fsmp_surface_report, result['nifSha256'])
+    drivers = profile['drivers']
+    packed = rig.read_weights(gen, gen.bone_names).astype(np.float16).astype(np.float32)
+    exposed = ~np.asarray(inside)
+    faces = np.asarray(gen.tris, dtype=int)
+    retained, targets = plan(
+        gen_vertices, faces, exposed, packed[:, [gen.bone_names.index(name) for name in drivers]],
+        peer_points, radius, lambda point: not scope['_inside'](Vector(point)), triangle_distance,
+    )
+    verify_face_digest(retained, face_digest)
+    if not any(targets):
+        raise ValueError('No robust separated/overlapping aim in the retained rest geometry')
+    result['fsmpTrialAim'] = {
+        'basis': 'Rest pose of the pinned skeleton, neutral morphs, test peer at unit scale',
+        'peerReportSha256': peer_digest,
+        'surfaceReportSha256': surface_digest,
+        'providerFaceCount': len(retained),
+        'providerFaceIndicesSha256': face_digest,
+        'drivers': dict(zip(drivers, targets, strict=True)),
+        'gameQualified': False,
+    }
+
+if a.fit_contact:
     from contact_fit import capsule, capsule_surface, partitions, signed_capsules, surface_metrics, triangle_distance
 
     def fit_float_capsule(points):
@@ -131,5 +165,6 @@ if a.fit_contact:
         'capsules': caps,
         'gameQualified': False,
     }
-a.out.write_text(json.dumps(result,indent=2)+'\n')
+with a.out.open('x', encoding='utf-8') as report:
+    report.write(json.dumps(result, indent=2, allow_nan=False) + '\n')
 print('NEUTRAL_VISIBILITY|'+json.dumps({k:result[k] for k in ('bodyParityInside','bodyParityOutside','tubeOutside','ballsOutside','fullyOutsideTriangles')}))
