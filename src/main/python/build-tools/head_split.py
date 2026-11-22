@@ -199,7 +199,7 @@ def clone_shape_shader(nif, shape, sphere):
     return source,clone
 
 
-def split_nif(data, plan_, names):
+def split_nif(data, plan_, names, *, suffix=SUFFIX):
     nif=Nif(data); added=[]; changed=[]; appended=[]; shader_clones=[]
     for name,p in plan_.items():
         if p['action']!='split': continue
@@ -217,10 +217,10 @@ def split_nif(data, plan_, names):
         newshape=bytearray(shape)
         shader_source,shader_clone=clone_shape_shader(nif,newshape,sphere)
         appended.append(shader_clone)
-        shader_clones.append({'source':shader_source,'clone':shader_clone,'shape':name+SUFFIX})
+        shader_clones.append({'source':shader_source,'clone':shader_clone,'shape':name+suffix})
         nsid=len(nif.blocks);ndid=nsid+1;npid=nsid+2;nbid=nsid+3
         newinstance=bytearray(instance);struct.pack_into('<II',newinstance,0,ndid,npid)
-        struct.pack_into('<I',newshape,0,nif.name(name+SUFFIX));struct.pack_into('<I',newshape,sphere+16,nsid)
+        struct.pack_into('<I',newshape,0,nif.name(name+suffix));struct.pack_into('<I',newshape,sphere+16,nsid)
         for kind,value in [('BSDismemberSkinInstance',newinstance),('NiSkinData',newdata),('NiSkinPartition',newpart),('BSTriShape',newshape)]:
             appended.append(nif.append(kind,value))
         nif.blocks[dataid]=subset_skin_data(source_data,m['torsoVertices'])
@@ -238,7 +238,7 @@ def split_nif(data, plan_, names):
                        'shaderPropertyClones':shader_clones,'byteExactUntouchedBlocks':len(old.blocks)-len(changed)}
 
 
-def split_trip(data, plan_):
+def split_trip(data, plan_, *, suffix=SUFFIX):
     r=Reader(data);magic=r.take(4)
     if magic not in (b'PIRT',b'\0IRT'):raise ValueError('Not TRIP')
     count,=r.unpack('<H'); records=[]; names=set()
@@ -260,7 +260,7 @@ def split_trip(data, plan_):
             if len({i for i,_ in pairs})!=len(pairs):raise ValueError('Duplicate TRI vertex')
             morphs.append((morph,scale,pairs))
         p=plan_[decoded]
-        choices=[(shape,None)] if p['action']!='split' else [(shape,p['mapping']['torsoVertices']),(shape+SUFFIX.encode(),p['mapping']['headVertices'])]
+        choices=[(shape,None)] if p['action']!='split' else [(shape,p['mapping']['torsoVertices']),(shape+suffix.encode(),p['mapping']['headVertices'])]
         for newname,ids in choices:
             remap=None if ids is None else {int(old):new for new,old in enumerate(ids)};output=[]
             for morph,scale,pairs in morphs:
@@ -270,7 +270,7 @@ def split_trip(data, plan_):
     r.done(); return magic+encode('<H',len(records))+b''.join(records)
 
 
-def pose_equivalence(before,after,raw_before,raw_after,plan_,skeleton):
+def pose_equivalence(before,after,raw_before,raw_after,plan_,skeleton,*,suffix=SUFFIX):
     """Execute all ten imposed head states on actual serialized geometry/binds."""
     rest={n:rig.matrix(x.global_transform) for n,x in skeleton.nodes.items()}
     parents={n:x.parent.name if x.parent else None for n,x in skeleton.nodes.items()}
@@ -293,7 +293,7 @@ def pose_equivalence(before,after,raw_before,raw_after,plan_,skeleton):
         m=p['mapping'];seam=m['seamVertices'];row={}
         for label,coefficients in states:
             old=evaluate(b,raw_before,coefficients);parts=[];error=0.
-            for dest,key in [(b.name,'torsoVertices'),(b.name+SUFFIX,'headVertices')]:
+            for dest,key in [(b.name,'torsoVertices'),(b.name+suffix,'headVertices')]:
                 ids=m[key];actual=evaluate(new[dest],raw_after,coefficients);parts.append((ids,actual))
                 error=max(error,*[float(np.linalg.norm(x-y[:,ids],axis=-1).max()) for x,y in zip(actual,old)])
             seam_error=0.
@@ -309,9 +309,9 @@ def pose_equivalence(before,after,raw_before,raw_after,plan_,skeleton):
             'states':rows,'scope':'Equivalence with source, including its existing head/breast susceptibility; this does not qualify hiding the Head bone or camera clearance.'}
 
 
-def verify(api, Trip, source, target, source_tri, target_tri, plan_,skeleton=None):
+def verify(api, Trip, source, target, source_tri, target_tri, plan_,skeleton=None,*,suffix=SUFFIX):
     before=api.NifFile(str(source));after=api.NifFile(str(target));old={s.name:s for s in before.shapes};new={s.name:s for s in after.shapes}
-    expected=set(old)|{n+SUFFIX for n,p in plan_.items() if p['action']=='split'}
+    expected=set(old)|{n+suffix for n,p in plan_.items() if p['action']=='split'}
     if set(new)!=expected:raise ValueError('Serialized shape inventory mismatch')
     source_blocks=Nif(Path(source).read_bytes());target_blocks=Nif(Path(target).read_bytes())
     shader_ownership={};generated_shader_ids=set()
@@ -321,7 +321,7 @@ def verify(api, Trip, source, target, source_tri, target_tri, plan_,skeleton=Non
             data=blocks.blocks[shape.id];extra=struct.unpack_from('<I',data,4)[0]
             return struct.unpack_from('<I',data,92+4*extra)[0]
         original=shader_id(source_blocks,old[name])
-        torso=shader_id(target_blocks,new[name]);head=shader_id(target_blocks,new[name+SUFFIX])
+        torso=shader_id(target_blocks,new[name]);head=shader_id(target_blocks,new[name+suffix])
         if torso!=original or head<len(source_blocks.blocks) or head in generated_shader_ids:
             raise ValueError('Split shapes share mutable shader property state: '+name)
         if target_blocks.kind(head)!='BSLightingShaderProperty' or target_blocks.blocks[head]!=source_blocks.blocks[original]:
@@ -333,7 +333,7 @@ def verify(api, Trip, source, target, source_tri, target_tri, plan_,skeleton=Non
     checks={};tri_pairs=0
     for name,p in plan_.items():
         b=old[name];m=p['mapping'];names=list(b.bone_weights);bw=rig.read_weights(b,names)
-        choices=[(name,np.arange(len(b.verts)),np.arange(len(b.tris)))] if p['action']!='split' else [(name,m['torsoVertices'],m['torsoTriangles']),(name+SUFFIX,m['headVertices'],m['headTriangles'])]
+        choices=[(name,np.arange(len(b.verts)),np.arange(len(b.tris)))] if p['action']!='split' else [(name,m['torsoVertices'],m['torsoTriangles']),(name+suffix,m['headVertices'],m['headTriangles'])]
         for dest,ids,tids in choices:
             a=new[dest];remap=np.full(len(b.verts),-1,int);remap[ids]=np.arange(len(ids))
             for field in ('verts','uvs','normals','colors'):
@@ -363,7 +363,7 @@ def verify(api, Trip, source, target, source_tri, target_tri, plan_,skeleton=Non
         if not np.array_equal(rig.matrix(node.transform),rig.matrix(other.transform)):raise ValueError('Node transform changed')
     result={'shapes':checks,'mappedSparseTriPairs':tri_pairs,'publicMorphCount':len({k for x in raw_after.values() for k in x}),
             'shaderPropertyOwnership':shader_ownership}
-    if skeleton is not None:result['controlledHeadPoses']=pose_equivalence(before,after,raw_before,raw_after,plan_,skeleton)
+    if skeleton is not None:result['controlledHeadPoses']=pose_equivalence(before,after,raw_before,raw_after,plan_,skeleton,suffix=suffix)
     return result
 
 

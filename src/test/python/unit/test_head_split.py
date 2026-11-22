@@ -66,6 +66,10 @@ class SplitTests(unittest.TestCase):
         self.assertEqual(output[('head_CLAWHead','G',0)].packed,source[('head','G',1)].packed)
         self.assertEqual(output[('head_CLAWHead','G',2)].packed,(7,8,9))
         self.assertEqual(output[('head_CLAWHead','G',2)].scale,source[('head','G',3)].scale)
+        alternate=tri_patch.offsets(h.split_trip(data,p,suffix='_CLAWEars'))
+        self.assertEqual(alternate[('head_CLAWEars','G',0)].packed,source[('head','G',1)].packed)
+        self.assertEqual(alternate[('head_CLAWEars','G',2)].scale,source[('head','G',3)].scale)
+        self.assertNotIn(('head_CLAWHead','G',0),alternate)
 
     def test_rejects_truncated_and_trailing_trip(self):
         for data in (b'PIRT\1',b'PIRT\0\0x'):

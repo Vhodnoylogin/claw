@@ -93,6 +93,21 @@ carrier. Qualify the live world route first by checking the loaded Body32
 identity, one FSMP system for the actor and normal retirement. The separate
 native first-person graph needs its own qualification.
 
+The detached `src/test/components/vr-body/stage_visible_ears.py` trial gives
+both sexes visible ear skin on the legacy world carrier. It splits both ears
+from the already hidden `head_CLAWHead`, retains the original skin and sparse
+TRI records, and clears the hidden flag only on the added shape. Its isolated
+TRI destination protects the original first-person resources. The static and
+FSMP controls use identical ear geometry. Select only one arm in a disposable
+profile, with core physics set to None. These archives are test fixtures.
+
+The numerical readback covers skin influence on all four ear bones and the
+authored [0,1] TRI box in the inherited sphere. Before making it a player
+option, confirm the active body and its FSMP registration, measure movement
+using the actual skinned ear surfaces, and check both eye frusta with the
+matched bone and TRI sample. Use the installed base coat for these controls.
+The separate ear surface still needs live coat-material coverage.
+
 For the next headset probe, `src/test/components/vr-body/avatar_torso.py`
 reads the pinned active NIF and TRI and lists the exact influential torso
 bones and morph channels to capture. Run it with a JSON file containing `nif`
