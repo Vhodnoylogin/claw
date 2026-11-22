@@ -14,10 +14,11 @@ sys.path[:0] = [str(ROOT/"src/main/components/vr-body"), str(ROOT/"src/main/pyth
 import vr_dispatch as dispatch
 
 
-def nif_fixture(label, extra=b"BODYTRI", collision=None):
-    strings = [label, b"BODYTRI", dispatch.FSMP_HOOK]
-    blocks = [("NiNode", struct.pack("<III", 0, 1, 1)),
-              ("NiStringExtraData", struct.pack("<II", strings.index(extra), 0))]
+def nif_fixture(tri_path, extra=b"BODYTRI", collision=None, shape_refs=(2,)):
+    strings = [b"body", b"BODYTRI", dispatch.FSMP_HOOK, tri_path]
+    blocks = [("NiNode", struct.pack("<III", 0, 0, 1)),
+              ("BSTriShape", struct.pack(f"<{2 + len(shape_refs)}I", 0, len(shape_refs), *shape_refs)),
+              ("NiStringExtraData", struct.pack("<II", strings.index(extra), 3))]
     if collision:
         blocks.append((collision, b""))
     def string(value):
@@ -93,6 +94,12 @@ class DispatchControls(unittest.TestCase):
                     ValueError, "requires both sexes range-disabled and --resources"):
                 dispatch.build(Path("unused"), sexes, resource_candidate=resources, fixed_profile_fomod=True)
 
+    def test_bodytri_must_be_referenced_by_the_shape(self):
+        correct = dispatch.bodytri_path("male").encode("ascii")
+        for refs in ((), (0,), (2, 2), (2, 255)):
+            with self.subTest(refs=refs), self.assertRaisesRegex(ValueError, "exactly one same-sex BODYTRI"):
+                dispatch.require_static_nif(nif_fixture(correct, shape_refs=refs), expected_sex="male")
+
     def test_archive_choices_only_change_the_fixed_alias(self):
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -105,7 +112,8 @@ class DispatchControls(unittest.TestCase):
                     relative = dispatch.resource_paths(sex, endpoint)
                     asset = root/"resources"/relative
                     asset.parent.mkdir(parents=True, exist_ok=True)
-                    assets[relative] = nif_fixture(relative.encode()) if endpoint is not None else relative.encode()
+                    assets[relative] = (nif_fixture(dispatch.bodytri_path(sex).encode("ascii"))
+                                        if endpoint is not None else relative.encode())
                     asset.write_bytes(assets[relative])
                     hashes[relative] = hashlib.sha256(assets[relative]).hexdigest()
             (root/"install-manifest.json").write_text(json.dumps({
@@ -148,15 +156,20 @@ class DispatchControls(unittest.TestCase):
             target = dispatch.resource_paths("male", 1)
             manifest = root / "install-manifest.json"
             initial = json.loads(manifest.read_bytes())
-            for kwargs, error in (({"extra": dispatch.FSMP_HOOK}, "FSMP binding"),
-                                  ({"collision": "bhkRigidBody"}, "collision block"),
-                                  ({"collision": "RootCollisionNode"}, "collision block")):
-                raw = nif_fixture(target.encode(), **kwargs)
+            male_tri = dispatch.bodytri_path("male").encode("ascii")
+            invalid_nifs = (
+                (nif_fixture(male_tri, extra=dispatch.FSMP_HOOK), "FSMP binding"),
+                (nif_fixture(male_tri, collision="bhkRigidBody"), "collision block"),
+                (nif_fixture(male_tri, collision="RootCollisionNode"), "collision block"),
+                (nif_fixture(dispatch.bodytri_path("female").encode("ascii")), "namespaced Body.tri"),
+                (nif_fixture(b"actors\\werewolfbeast\\character assets\\malebodywerewolf.tri"), "namespaced Body.tri"),
+            )
+            for raw, error in invalid_nifs:
                 (root / "resources" / target).write_bytes(raw)
                 initial["files"][target] = hashlib.sha256(raw).hexdigest()
                 manifest.write_text(json.dumps(initial), encoding="utf-8")
                 for fixed_profile in (False, True):
                     rejected = root / "rejected.zip"
-                    with self.subTest(fixed_profile=fixed_profile, **kwargs), self.assertRaisesRegex(ValueError, error):
+                    with self.subTest(fixed_profile=fixed_profile, error=error), self.assertRaisesRegex(ValueError, error):
                         dispatch.assemble(esp, root, rejected, fixed_profile_fomod=fixed_profile)
                     self.assertFalse(rejected.exists())

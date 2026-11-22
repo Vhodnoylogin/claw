@@ -38,6 +38,10 @@ def armor_path(sex):
     return resource_paths(sex, 1).removeprefix("Meshes/").replace("/", "\\")
 
 
+def bodytri_path(sex):
+    return resource_paths(sex).removeprefix("Meshes/").replace("/", "\\").lower()
+
+
 def resource_layout(manifest):
     """Accept only the authored first-person assets emitted by the body builder."""
     expected = {resource_paths(sex, endpoint) for sex in SEXES for endpoint in (None, 0, 1)}
@@ -52,16 +56,18 @@ def resource_layout(manifest):
     return files
 
 
-def require_static_nif(data):
-    """Reject active provider bindings and embedded collision in a VR body NIF."""
+def require_static_nif(data, *, expected_sex=None):
+    """Check static resources and, for packaged bodies, their actual shape TRI links."""
     from player_only_materials import Reader, container
 
     _, middle, types, indices, blocks, _ = container(data)
     reader = Reader(middle)
     count, _ = reader.unpack("<II")
     strings = [reader.string() for _ in range(count)]
-    for index, block in zip(indices, blocks, strict=True):
-        kind = types[index]
+    bodytri_blocks, shape_blocks = set(), []
+    expected_tri = bodytri_path(expected_sex).encode("ascii") if expected_sex is not None else None
+    for index, (kind_index, block) in enumerate(zip(indices, blocks, strict=True)):
+        kind = types[kind_index]
         if kind.casefold().startswith("bhk") or kind in COLLISION_BLOCKS:
             raise ValueError(f"Static VR body contains collision block {kind}")
         if kind == "NiStringExtraData":
@@ -72,6 +78,21 @@ def require_static_nif(data):
                 raise ValueError("Invalid VR body string extra index")
             if strings[name].strip().lower() == FSMP_HOOK:
                 raise ValueError("Static VR body contains an FSMP binding")
+            if expected_tri is not None and strings[name] == b"BODYTRI":
+                if strings[value] != expected_tri:
+                    raise ValueError("First-person BODYTRI must name its own sex's namespaced Body.tri")
+                bodytri_blocks.add(index)
+        if expected_tri is not None and kind.endswith(("TriShape", "TriStrips")):
+            shape_blocks.append(block)
+    if expected_tri is not None:
+        if not shape_blocks:
+            raise ValueError("First-person NIF must contain shapes with a BODYTRI link")
+        for block in shape_blocks:
+            shape = Reader(block)
+            _, count = shape.unpack("<II")  # NiObjectNET name and extra-data count.
+            refs = shape.unpack(f"<{count}I")
+            if any(ref >= len(blocks) for ref in refs) or sum(ref in bodytri_blocks for ref in refs) != 1:
+                raise ValueError("First-person shape must link exactly one same-sex BODYTRI block")
 
 
 def fixed_profile_xml(shared, alternatives):
@@ -126,7 +147,7 @@ def assemble(esp, resource_candidate, archive, *, fixed_profile_fomod=False):
         if hashlib.sha256(data).hexdigest() != digest:
             raise ValueError("Mismatched first-person resource " + relative)
         if source.suffix == ".nif":
-            require_static_nif(data)
+            require_static_nif(data, expected_sex=source.parent.name)
         assets[relative] = (source, digest)
     metadata = {}
     if fixed_profile_fomod:

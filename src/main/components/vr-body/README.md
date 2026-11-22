@@ -31,7 +31,10 @@ python src/main/components/vr-body/vr_dispatch.py --disable-range male --out <ne
 
 Pass `--resources <body-candidate-dir>` to make a separate MO2 test archive.
 The command reopens the archive and checks the companion ESP and six
-namespaced NIF/TRI assets against their exact source hashes.
+namespaced NIF/TRI assets against their exact source hashes. Before assembling
+either archive, it reads each shape's `BODYTRI` reference and requires exactly
+one link to the packaged `Body.tri` for that sex. This also applies to the
+selected mesh copied to the legacy filename by the fixed-profile installer.
 The VR body archive supplies static meshes and morph data. Its builder and
 archive step reject FSMP bindings and embedded collision blocks. Pair it with
 `None` in the core CLAW installer for a setup with CLAW motion disabled.

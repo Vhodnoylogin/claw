@@ -6,7 +6,7 @@ adapters. Engine first-person dispatch remains a separate prospective VR probe.
 from __future__ import annotations
 import argparse
 import json
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import shutil
 import struct
 import sys
@@ -24,7 +24,7 @@ import morph_quality
 import player_only_materials
 import vr_dispatch
 
-from vr_dispatch import NAMESPACE, require_static_nif, resource_paths
+from vr_dispatch import NAMESPACE, bodytri_path, require_static_nif, resource_paths
 REFERENCE_ENTRY = 'meshes/actors/character/character assets/1stperson_werewolf_hands.nif'
 LIMITS = dict(isolation.LIMITS)
 BOX_PAD = 1e-8
@@ -32,10 +32,6 @@ BOX_PAD = 1e-8
 
 def dump(path, value):
     Path(path).write_text(json.dumps(value, indent=2, allow_nan=False)+'\n', encoding='utf8')
-
-
-def bodytri_path(sex):
-    return str(PurePosixPath(resource_paths(sex)).relative_to('Meshes')).replace('/', '\\').lower()
 
 
 def namespace_bodytri(data, old, new):
@@ -313,7 +309,7 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
             before_paths = {value for s in actual.shapes for key, value in resource.bodytri(s) if key == 'BODYTRI'}
             if len(before_paths) != 1: raise ValueError('First-person source has inconsistent BODYTRI')
             namespaced, path_receipt = namespace_bodytri(bounded.read_bytes(), next(iter(before_paths)), bodytri_path(sex))
-            require_static_nif(namespaced)
+            require_static_nif(namespaced, expected_sex=sex)
             tri_target = out/'resources'/resource_paths(sex); tri_target.parent.mkdir(parents=True, exist_ok=True); tri_target.write_bytes(tri.read_bytes())
             endpoints = {}
             for endpoint in (0, 1):
