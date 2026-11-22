@@ -93,6 +93,21 @@ verify the neutral-return cleanup before any release claim. The offline grid
 provides a search target. In-game confirmation still depends on a reachable
 controller pose, the animated mesh and actual provider contact events.
 
+After the adaptive VR run, check its retained manifest and raw step log:
+
+```powershell
+python src/test/components/contact-profiles/verify_tail_refit.py `
+  --manifest <adaptive-capture.json> --steps <raw-steps.jsonl> `
+  --profile <retained-VR-fitted-capsules.json> --basis <TAIL02-FIXED-SPHERE.json>
+```
+
+The verifier requires the same actor and a fixed controller pose across the
+neutral, morphed and returned holds. It compares the four active native slots
+with their neutral bank, the aggregate RaceMenu vector and the scoped CBPC
+events. It also checks for quiet holds before attachment and after detachment.
+Provider events identify the bone shared by the four slots. The earlier
+fixed-sphere run cannot qualify as evidence for this scenario.
+
 ## Native timing replay
 
 The optional replay uses the exact VR65 native input and geometry result
