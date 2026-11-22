@@ -209,19 +209,24 @@ def render(model, sexes):
     return '\n'.join(lines)
 
 
-def read_paired_build(directory, model_pin):
+def read_paired_build(directory, model_pin, *, ear_tail_only=False):
     report = json.loads((directory / 'contact-profiles-build.json').read_bytes())
     require(report.get('status') == 'offline-model-pair-generated-game-pending'
             and report['profiles']['vr']['model'] == model_pin, 'Paired build and posed model differ')
     content = (directory / 'physics-fit-model.h').read_bytes()
     require({'sha256': sha256(content).hexdigest(), 'bytes': len(content)} == report['pairedHeader']
             and b'CLAW_PHYSICS_POSED_VR_SUPPORT' not in content, 'Paired build header differs from its base receipt')
+    # Older paired model emitters materialized large initializer lists on the
+    # native worker stack. Exact archive reproduction still accepts that base.
+    legacy = (b's.points={', b's.weightDeltas={', b's.fields.push_back({', b's.triangles={')
+    require(ear_tail_only or (b'static const Vec3 data[]=' in content and not any(field in content for field in legacy)),
+            'Head support needs a paired header with static numeric storage; regenerate it with the current fitter')
     return content
 
 
 def build(model_path, runtime_manifest, pynifly, output, *, paired_build=None, ear_tail_only=False):
     model_pin = contract.pin(model_path)
-    paired = read_paired_build(paired_build, model_pin) if paired_build is not None else None
+    paired = read_paired_build(paired_build, model_pin, ear_tail_only=ear_tail_only) if paired_build is not None else None
     model = json.loads(model_path.read_bytes())
     selected = selected_slots(model, ear_tail_only=ear_tail_only)
     files = runtime_inputs(runtime_manifest)

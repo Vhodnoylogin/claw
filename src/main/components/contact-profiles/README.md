@@ -39,7 +39,9 @@ input vectors.
 
 Pass `--paired-build <paired-profile-output>` to also emit the combined
 `physics-fit-model.h` for `-PhysicsModelHeader`. The exporter verifies the
-paired build receipt and enables the posed fit in that header. For VR, the worker uses the captured
+paired build receipt and enables the posed fit in that header. For new head
+support it requires the current fitter's static backing for numeric tables.
+Archival initializers can exceed the game thread's stack. For VR, the worker uses the captured
 actor pose to fit those original slots on first attachment and when the
 existing refresh detects a model, weight or morph update. The other slots
 use the regular fitter. Scene reads use the third-person Body32 and the actual

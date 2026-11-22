@@ -118,7 +118,7 @@ class PosedSupportExportTests(unittest.TestCase):
         with TemporaryDirectory() as folder:
             root = Path(folder)
             header = root / 'physics-fit-model.h'
-            content = b'#pragma once\n'
+            content = b'#pragma once\n{static const Vec3 data[]={{1,2,3}};s.points.assign(data,data+1);}\n'
             model = {'sha256': 'a' * 64, 'bytes': 12}
             receipt = {'status': 'offline-model-pair-generated-game-pending',
                        'profiles': {'vr': {'model': model}},
@@ -131,6 +131,13 @@ class PosedSupportExportTests(unittest.TestCase):
             header.write_bytes(b'#pragma late\n')
             with self.assertRaisesRegex(ValueError, 'header differs'):
                 read_paired_build(root, model)
+            stack_backed = b'#pragma once\ns.points={{1,2,3}};\n'
+            header.write_bytes(stack_backed)
+            receipt['pairedHeader'] = {'sha256': sha256(stack_backed).hexdigest(), 'bytes': len(stack_backed)}
+            (root / 'contact-profiles-build.json').write_text(json.dumps(receipt), encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'static numeric storage'):
+                read_paired_build(root, model)
+            self.assertEqual(read_paired_build(root, model, ear_tail_only=True), stack_backed)
 
 
 if __name__ == '__main__':
