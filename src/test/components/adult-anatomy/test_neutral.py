@@ -52,6 +52,8 @@ class Pure(unittest.TestCase):
 class Actual(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        if ARGS is None:
+            raise unittest.SkipTest("Run test_neutral.py with the explicit native resource paths")
         cls.p=builder.load_profile();cls.root=ARGS.candidate/'candidate';cls.mesh=cls.root/'Meshes/Actors/WerewolfBeast/Character Assets'
         cls.rig,cls.resource,cls.fsmp,cls.api,cls.NifPatch,cls.TripFile,_=builder._imports(ARGS.pynifly,ARGS.morphbench)
 

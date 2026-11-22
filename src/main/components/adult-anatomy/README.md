@@ -98,6 +98,19 @@ The external report records exact input and payload identities. The add-on
 archive contains installer data, exact NIF/XML payloads, a brief guide and
 asset credits. Existing Elegant and XP32 conditions apply.
 
+### Offline FSMP collision candidate
+
+`python/collision_candidate.py --help` lists the exact retained motion assets,
+provider source and native reader needed to build a separate collision candidate.
+The tool binds the existing anatomy mesh to one FSMP triangle surface per rig.
+It preserves the motion graph, visible mesh, skin weights and TRI. The generated
+files are for internal testing, separate from the installer.
+
+Contact qualification requires a positive-radius skinned peer on a different
+live skeleton with the reciprocal tags in the generated `peer-contract.json`.
+The offline report verifies the source geometry and provider rules. A game run
+with that peer is required to measure contact and confirm motion.
+
 Run the focused pure tests with:
 
 ```text
