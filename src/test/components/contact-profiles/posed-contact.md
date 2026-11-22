@@ -64,6 +64,35 @@ overlap comparison can use its actor/node/duration mod event with the
 same hand path before attach, after one attach and after removal. This
 requires a separately verified provider and exact target ownership.
 
+## Stationary controller contrast for a TRI refit
+
+Run `prepare_tail_refit_contrast.py` with the retained VR `fitted-capsules.json`
+and `claw-contact-profile-numeric.exe`. The script pins both inputs and writes
+one new external JSON report. It exercises the complete compiled male VR bank
+at weight .5 with `CLAWTailLength` 0, 1 and 0. The third bank must equal the
+first bank exactly. It measures all four TailBone02 slots together because
+stock callback events identify the node without distinguishing its slots.
+
+```powershell
+python src/test/components/contact-profiles/prepare_tail_refit_contrast.py `
+  --profile <retained-VR-fitted-capsules.json> --numeric <retained-numeric-exe> `
+  --out <new-external-report.json>
+```
+
+Using the provisionally assumed unit scale and a radius-three sphere, the
+retained report found a stationary center with 1.015 owner-local units of
+separation at neutral, 1.063 units of overlap at full morph and 1.015 units
+of separation after returning to neutral. The report is
+`TAIL02-FIXED-SPHERE.json`, SHA-256
+`40e4bc0d6de967e0a0d0199d59721287b928d40a5d9842ee7b7d59c8e5838be5`.
+
+The live check still needs the same owned actor/root, the observed aggregate
+RaceMenu vector, the exact active capsule bank, actual controller scale and
+co-sampled poses. Correlate same-node callbacks with the measured overlap and
+verify the neutral-return cleanup before any release claim. The offline grid
+provides a search target. In-game confirmation still depends on a reachable
+controller pose, the animated mesh and actual provider contact events.
+
 ## Native timing replay
 
 The optional replay uses the exact VR65 native input and geometry result
