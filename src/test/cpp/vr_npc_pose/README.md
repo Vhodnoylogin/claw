@@ -17,6 +17,13 @@ The harness still owns the single spawn, addon pin and fixture provenance.
    It preserves signed and out-of-range values for the caller to validate.
    `BeginNpcContact` takes the same typed array and adds three required
    named transforms for the remaining ear and tail support partitions.
+   After that contact lease is ready, `ReadPhysicsSnapshot(nonce, previousToken)`
+   polls the latest Distribution `CLAWPhysics_Observation` snapshot for its
+   exact pinned actor. Use zero for the first token. A ready response contains
+   `snapshotToken`, `eventQpc` and the lease identity. Verify currentness with
+   `CLAWPhysicsNative.SnapshotCurrent` using the same actor and generation
+   before reading any capsules. The observer neither registers the actor
+   with Distribution nor acknowledges its snapshot.
    The two original entry points retain the twelve-node output order.
    `BeginFemaleNpc` takes the same six integers as `BeginNpc`. The female
    witness adds both pre-P1 anchors and both P1 drivers at the end of the

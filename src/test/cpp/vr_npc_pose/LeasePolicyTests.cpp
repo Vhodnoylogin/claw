@@ -31,6 +31,13 @@ int main() {
     verify(!nextSample(maximumSequence + 1, maximumSequence), "refuse a sample past the cap");
     verify(!nextSample(0, std::numeric_limits<std::int32_t>::max()), "sequence validation cannot overflow");
 
+    verify(physicsSnapshotToken(1.f) == 1, "accept the first event token");
+    verify(physicsSnapshotToken(16777215.f) == 16777215, "accept the last production token");
+    verify(!physicsSnapshotToken(0.f), "refuse unset token");
+    verify(!physicsSnapshotToken(1.5f), "refuse a noninteger event argument");
+    verify(!physicsSnapshotToken(16777216.f), "refuse a token outside the production range");
+    verify(!physicsSnapshotToken(std::numeric_limits<float>::quiet_NaN()), "refuse a NaN event argument");
+
     const Transform valid{{1,0,0,0,1,0,0,0,1}, {2,3,4}, 0.5f};
     verify(finite(valid), "accept a complete finite scaled pose");
     auto changed = valid;
@@ -44,5 +51,5 @@ int main() {
     verify(!finite(changed), "refuse negative scale");
     changed.scale = 0.f;
     verify(!finite(changed), "refuse zero scale");
-    std::cout << "20 VR NPC pose policy controls passed\n";
+    std::cout << "26 VR NPC pose policy controls passed\n";
 }

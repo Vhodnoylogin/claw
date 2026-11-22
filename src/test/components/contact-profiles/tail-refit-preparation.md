@@ -31,9 +31,10 @@ Before a future adaptive capture, establish the same actor and actual native
 model, return tracked controls to neutral, publish one reviewed fixed command,
 and require the World Observer to show both margins at the reached point.
 Use the currently loaded actor's original model and recapture all three
-morph states on that actor. The Distribution Papyrus bridge delivers its
-snapshot token in the `CLAWPhysics_Observation` ModEvent after registration.
-Stock r03 does not stage a Distribution snapshot listener or drive the
-RaceMenu morph. Supply an owned test-side listener and a scoped writer with
-readback before using the existing native receipts verifier. The archived
-coordinates are evidence for setup and carry no adaptive contact result.
+morph states on that actor. Once `BeginNpcContact` is ready, the test witness's
+`ReadPhysicsSnapshot` can retrieve the matching actor's
+`CLAWPhysics_Observation` token after explicit Distribution registration.
+Check `SnapshotCurrent` before reading each bank. Stock r03 neither stages
+this witness extension nor drives the RaceMenu morph. The adaptive scenario
+still needs a scoped write with cleanup and aggregate readback.
+The archived coordinates are evidence for setup and carry no adaptive contact result.

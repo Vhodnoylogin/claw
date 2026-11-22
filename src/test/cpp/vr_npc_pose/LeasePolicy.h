@@ -18,6 +18,13 @@ constexpr bool nextSample(std::int32_t sequence, std::int32_t previous) {
     return previous >= 0 && previous < maximumSequence && sequence == previous + 1;
 }
 
+inline std::int32_t physicsSnapshotToken(float argument) {
+    // Match the production authority's nonzero, exactly representable range.
+    if (!std::isfinite(argument) || argument < 1.f || argument >= 16777216.f ||
+        std::trunc(argument) != argument) return 0;
+    return static_cast<std::int32_t>(argument);
+}
+
 struct Transform {
     std::array<float, 9> rotation{};
     std::array<float, 3> translation{};

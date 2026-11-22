@@ -115,6 +115,46 @@ std::uint64_t qpc() {
 
 RE::FormID form(const RE::TESForm* value) { return value ? value->GetFormID() : 0; }
 
+class SnapshotEvents final : public RE::BSTEventSink<SKSE::ModCallbackEvent> {
+public:
+    void observe(const RE::TESForm* ownedActor) {
+        std::lock_guard lock(mutex);
+        actor = ownedActor;
+        latest = {};
+    }
+
+    struct Entry {
+        std::int32_t token{};
+        std::uint64_t observedQpc{};
+    };
+
+    Entry readAfter(std::int32_t previous) {
+        std::lock_guard lock(mutex);
+        return latest.token > previous ? latest : Entry{};
+    }
+
+    RE::BSEventNotifyControl ProcessEvent(const SKSE::ModCallbackEvent* event,
+            RE::BSTEventSource<SKSE::ModCallbackEvent>*) override {
+        if (!event || !event->sender || event->eventName != "CLAWPhysics_Observation" ||
+            event->strArg != "snapshot") return RE::BSEventNotifyControl::kContinue;
+        const auto token = claw::npc_pose::physicsSnapshotToken(event->numArg);
+        std::lock_guard lock(mutex);
+        if (event->sender == actor && token > latest.token) {
+            LARGE_INTEGER tick{};
+            if (QueryPerformanceCounter(&tick) && tick.QuadPart > 0)
+                latest = {token, static_cast<std::uint64_t>(tick.QuadPart)};
+        }
+        return RE::BSEventNotifyControl::kContinue;
+    }
+
+private:
+    // The callback only compares the pinned sender address. It neither
+    // dereferences the form nor holds or acquires the parent witness mutex.
+    std::mutex mutex;
+    const RE::TESForm* actor{};
+    Entry latest;
+};
+
 Json pose(const RE::NiTransform& value) {
     Transform copied;
     for (std::size_t row = 0; row < 3; ++row)
@@ -243,6 +283,8 @@ public:
         return result;
     }
 
+    const RE::TESForm* eventSender() const { return actorIdentity.get(); }
+
 private:
     bool validActor(RE::Actor& actor) const {
         const auto* base = actor.GetActorBase();
@@ -297,6 +339,14 @@ public:
             source->AddEventSink<RE::TESObjectLoadedEvent>(this);
             std::lock_guard lock(mutex);
             unloadsObserved = true;
+        }
+    }
+
+    void registerSnapshots() {
+        if (auto* source = SKSE::GetModCallbackEventSource()) {
+            source->AddEventSink(&snapshots);
+            std::lock_guard lock(mutex);
+            snapshotsObserved = true;
         }
     }
 
@@ -355,6 +405,25 @@ public:
         if (!nonce || requested != nonce || index != sequence)
             return response("refused", requested, index, "unknown lease or sequence").dump();
         return readCurrent();
+    }
+
+    std::string readSnapshot(std::int32_t requested, std::int32_t previous) {
+        std::lock_guard lock(mutex);
+        if (!snapshotsObserved || !nonce || requested != nonce || previous < 0 ||
+            scope != Scope::earTailSupport || !scene || !active() || expired() || unloaded.load() || leaseEpoch != epoch)
+            return response("refused", requested, sequence, "active contact lease required").dump();
+        const auto entry = snapshots.readAfter(previous);
+        auto out = response(entry.token ? "ready" : "pending", nonce, sequence);
+        out["actor"] = fixture.actor;
+        out["base"] = fixture.base;
+        out["runtimeHandle"] = fixture.handle;
+        out["rootToken"] = nonce;
+        out["loadEpoch"] = leaseEpoch;
+        if (entry.token) {
+            out["snapshotToken"] = entry.token;
+            out["eventQpc"] = entry.observedQpc;
+        }
+        return out.dump();
     }
 
     std::string end(std::int32_t requested) {
@@ -433,6 +502,7 @@ private:
     }
 
     void retire(const char* why) {
+        snapshots.observe(nullptr);
         scene.reset(); // Engine ownership is released only in a main task.
         watched.store(0);
         SetThreadpoolTimer(timer, nullptr, 0, 0);
@@ -448,7 +518,10 @@ private:
         try {
             require(leaseEpoch == epoch && !loading && !expired() && !unloaded.load(), "NPC pose lease invalidated");
             const auto first = qpc();
-            if (!scene) scene = std::make_unique<Scene>(fixture, scope);
+            if (!scene) {
+                scene = std::make_unique<Scene>(fixture, scope);
+                if (scope == Scope::earTailSupport && snapshotsObserved) snapshots.observe(scene->eventSender());
+            }
             auto sample = scene->snapshot(morphNames);
             const auto last = qpc();
             require(first <= last && !expired() && !unloaded.load(), "NPC pose expired or unloaded during sample");
@@ -475,7 +548,8 @@ private:
     Clock::time_point deadline{};
     std::atomic<RE::FormID> watched{};
     std::atomic<bool> unloaded{};
-    bool loading{}, unloadsObserved{};
+    SnapshotEvents snapshots;
+    bool loading{}, unloadsObserved{}, snapshotsObserved{};
     Fixture fixture;
     Scope scope{Scope::motion};
     std::vector<std::string> morphNames;
@@ -508,6 +582,9 @@ std::string beginWithMorphs(RE::StaticFunctionTag*, std::int32_t nonce, std::int
 }
 std::string sample(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t index) { return witness->sample(nonce, index); }
 std::string read(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t index) { return witness->read(nonce, index); }
+std::string readSnapshot(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t previous) {
+    return witness->readSnapshot(nonce, previous);
+}
 std::string end(RE::StaticFunctionTag*, std::int32_t nonce) { return witness->end(nonce); }
 
 bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
@@ -518,6 +595,7 @@ bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("BeginNpcContact", name, beginWithMorphs<Scope::earTailSupport>);
     vm->RegisterFunction("SampleNpc", name, sample);
     vm->RegisterFunction("ReadNpc", name, read);
+    vm->RegisterFunction("ReadPhysicsSnapshot", name, readSnapshot);
     vm->RegisterFunction("EndNpc", name, end);
     return true;
 }
@@ -527,7 +605,10 @@ void message(SKSE::MessagingInterface::Message* data) {
     using Message = SKSE::MessagingInterface;
     switch (data->type) {
     case Message::kPostPostLoad: connectMorphSource(); break;
-    case Message::kDataLoaded: witness->registerUnloads(); break;
+    case Message::kDataLoaded:
+        witness->registerUnloads();
+        witness->registerSnapshots();
+        break;
     case Message::kPreLoadGame: witness->world(false); break;
     case Message::kNewGame: witness->world(true); break;
     case Message::kPostLoadGame:
