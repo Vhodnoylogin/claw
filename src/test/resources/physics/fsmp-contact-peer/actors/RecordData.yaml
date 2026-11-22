@@ -1,0 +1,15 @@
+SpriggitSource:
+  PackageName: Spriggit.Yaml.Skyrim
+  Version: 0.41
+ModKey: test_CLAW - FSMP Contact Actors.esp
+GameRelease: SkyrimSE
+ModHeader:
+  Stats:
+    Version: 1.7
+  Author: CLAW test fixture
+  Description: 'TEST ONLY. Two unplaced contact fixtures for a disposable Skyrim SE session.'
+  MasterReferences:
+  - Master: Skyrim.esm
+    FileSize: 0
+  - Master: test_CLAW - FSMP Contact Peer.esp
+    FileSize: 0

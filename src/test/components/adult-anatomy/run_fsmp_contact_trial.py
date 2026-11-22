@@ -154,7 +154,9 @@ class Trial:
 
     def check_ownership(self):
         for spec in self.specs:
-            self.guard(self.session, spec, self.deadline())
+            # The shared fixture API admits at most 30 seconds per call.
+            deadline = min(self.deadline(), time.monotonic() + 30.)
+            self.guard(self.session, spec, deadline)
 
     def call(self, tool, args):
         deadline = self.deadline()

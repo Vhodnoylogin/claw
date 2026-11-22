@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -131,6 +132,9 @@ class TransportTest(unittest.TestCase):
 
         def guard(s, actor, deadline):
             self.assertIs(s, session)
+            remaining = deadline - time.monotonic()
+            self.assertGreater(remaining, 0.)
+            self.assertLessEqual(remaining, 30.)
             guards.append(actor)
 
         trial = Trial(session, SUBJECTS, data, guard, 70, 21, 4, lambda _: None, lambda: False)

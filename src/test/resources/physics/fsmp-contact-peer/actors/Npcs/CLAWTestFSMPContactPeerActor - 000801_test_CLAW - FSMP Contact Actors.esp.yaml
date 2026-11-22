@@ -1,0 +1,27 @@
+FormKey: 000801:test_CLAW - FSMP Contact Actors.esp
+EditorID: CLAWTestFSMPContactPeerActor
+FormVersion: 43
+Configuration:
+  Flags:
+  - Essential
+  - AutoCalcStats
+  Level:
+    MutagenObjectType: NpcLevel
+    Level: 10
+  CalcMinLevel: 10
+  CalcMaxLevel: 10
+  DispositionBase: 50
+Voice: 01F2E6:Skyrim.esm
+Race: 013746:Skyrim.esm
+AIData:
+  EnergyLevel: 0
+Class: 0A1993:Skyrim.esm
+Name:
+  TargetLanguage: English
+  Value: CLAW FSMP Contact Probe Actor
+Health: 100
+Stamina: 100
+Height: 1
+Weight: 50
+DefaultOutfit: 000802:test_CLAW - FSMP Contact Actors.esp
+TextureLighting: '#007F7F7F'
