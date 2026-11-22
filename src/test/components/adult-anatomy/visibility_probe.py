@@ -15,6 +15,8 @@ from mathutils.bvhtree import BVHTree
 args=sys.argv[sys.argv.index('--')+1:]
 p=argparse.ArgumentParser(description=__doc__)
 for name in ('nif','pynifly','generator','skeleton','out'):p.add_argument('--'+name,type=Path,required=True)
+p.add_argument('--fit-contact', action='store_true', help='Fit and measure candidate capsules on exposed neutral skin')
+p.add_argument('--primary-capsules', type=int, choices=range(1, 5), default=1)
 a=p.parse_args(args)
 if a.out.exists():raise ValueError('Use a new visibility receipt')
 sys.path.insert(0,str(a.pynifly))
@@ -54,5 +56,80 @@ result={'scope':'Exact original generator five-ray BVH body-parity proxy on unch
     'fullyOutsideTriangles':len(triangles),'outsideVertexSample':[{'index':i,'position':gen.verts[i]} for i in external[:8]],
     'actualFlagAncestry':ancestry,'materialPaths':gen.textures,
     'limits':'Parity is not an exact solid/visibility oracle for an open mesh. Fur and camera can occlude exterior geometry. File-visible does not prove a visible or acceptable attachment in game. Neutral state remains unchanged.'}
+
+if a.fit_contact:
+    repo = Path(__file__).resolve().parents[4]
+    profile_path = repo / 'src/main/components/adult-anatomy/resources/neutral-rig.json'
+    profile = json.loads(profile_path.read_text(encoding='utf-8'))
+    if result['skeletonSha256'] != profile['inputs']['skeleton.nif'] or len(gen_vertices) != profile['vertices']:
+        raise ValueError('Expected the exact neutral anatomy skeleton and vertex layout')
+    fitter = repo / 'src/main/python/physics'
+    sys.path.insert(0, str(fitter))
+    from contact_fit import capsule, capsule_surface, partitions, signed_capsules, surface_metrics, triangle_distance
+
+    def fit_float_capsule(points):
+        fitted = capsule(points)
+        # The attachment takes float32 endpoints/radius, so verify those actual values.
+        for key in ('p1', 'p2'):
+            fitted[key] = np.asarray(fitted[key], dtype=np.float32).tolist()
+        gap = float(signed_capsules(points, [fitted]).max())
+        radius = np.float32(fitted['radius'] + max(0.0, gap))
+        fitted['radius'] = float(np.nextafter(radius, np.float32(np.inf)))
+        return fitted
+
+    tube = profile['tubeVertices']
+    bilateral = profile['ballVerticesEach']
+    boundaries = (0, tube, tube + bilateral, tube + 2 * bilateral)
+    faces = np.asarray(gen.tris, dtype=int)
+    exposed = np.zeros(len(gen_vertices), dtype=bool)
+    exposed[external] = True
+    caps = {}
+    for driver, start, stop in zip(profile['drivers'], boundaries[:-1], boundaries[1:], strict=True):
+        owned = (faces >= start) & (faces < stop)
+        if np.any(owned.any(axis=1) != owned.all(axis=1)):
+            raise ValueError('Unexpected shared triangle between anatomy regions')
+        owned_faces = faces[owned.all(axis=1)]
+        visible_faces = owned_faces[exposed[owned_faces].all(axis=1)]
+        points = np.flatnonzero(exposed[start:stop]) + start
+        if not len(visible_faces):
+            raise ValueError('Missing exposed neutral triangles for ' + driver)
+        frame = rig.matrix(skel.nodes[driver].global_transform)
+        local = np.linalg.solve(frame, np.c_[gen_vertices, np.ones(len(gen_vertices))].T).T[:, :3]
+        count = a.primary_capsules if start == 0 else 1
+        support = [points] if count == 1 else partitions(local, visible_faces, count, method='compact-extreme')[0]
+        fitted = [fit_float_capsule(local[ids]) for ids in support]
+        largest_gap = float(signed_capsules(local[points], fitted).max())
+        if largest_gap > 0:
+            raise ValueError('Candidate capsule excludes fitted support')
+        samples = []
+        for i, cap in enumerate(fitted):
+            surface = capsule_surface(cap)
+            others = fitted[:i] + fitted[i+1:]
+            samples.extend(surface[signed_capsules(surface, others) >= -1e-7])
+        samples = np.asarray(samples)
+        sample_world = (np.c_[samples, np.ones(len(samples))] @ frame.T)[:, :3]
+        sample_exterior = [not scope['_inside'](Vector(v)) for v in sample_world]
+        external_distance = triangle_distance(samples[sample_exterior], local[visible_faces])
+        weights = dict(gen.bone_weights[driver])
+        caps[driver] = {
+            'shapes': fitted,
+            'exteriorVertices': len(points),
+            'drivenExteriorVertices': sum(bool(weights.get(i, 0) > 0) for i in points),
+            'exteriorTriangles': len(visible_faces),
+            'partiallyExteriorTriangles': int(np.count_nonzero(exposed[owned_faces].any(axis=1))) - len(visible_faces),
+            'capsuleSurfaceSamplesOutsideTorso': sum(sample_exterior),
+            'capsuleSurfaceSamples': len(samples),
+            'exposedCapsuleToSkinMaxSampled': float(external_distance.max()) if len(external_distance) else None,
+            'largestExteriorVertexGap': largest_gap,
+            'surfaceDistances': surface_metrics(local, visible_faces, fitted),
+        }
+    result['contactCandidate'] = {
+        'basis': 'Exact candidate-shape rest reconstruction, fitted in each named driver bone frame',
+        'sampleScope': 'Finite rest-space estimates for fully exterior triangles; partially buried faces are counted separately',
+        'profileSha256': hashlib.sha256(profile_path.read_bytes()).hexdigest(),
+        'contactFitSha256': hashlib.sha256((fitter/'contact_fit.py').read_bytes()).hexdigest(),
+        'capsules': caps,
+        'gameQualified': False,
+    }
 a.out.write_text(json.dumps(result,indent=2)+'\n')
 print('NEUTRAL_VISIBILITY|'+json.dumps({k:result[k] for k in ('bodyParityInside','bodyParityOutside','tubeOutside','ballsOutside','fullyOutsideTriangles')}))

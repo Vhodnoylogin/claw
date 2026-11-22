@@ -78,3 +78,26 @@ archive replay is opt-in; set **both** `CLAW_MALE12_CASE_ROOT` and
 `CLAW_MALE12_CANDIDATE` to the two directories above before that command.
 Selecting only one, missing files or changed pins fails. Without either input,
 the actual-case test reports a skip, not actual evidence coverage.
+
+## Neutral contact fit
+
+Run `visibility_probe.py` in background Blender with the same explicit NIF,
+skeleton, generator and PyNifly as the neutral visibility check. Add
+`--fit-contact --primary-capsules 4` after Blender's `--` separator. Repeat
+with `--primary-capsules 1` and a new external report to compare budgets.
+
+The probe uses the existing body's five-ray parity mask to select exposed
+vertices. It fits in the three actual driver-bone frames, rounds the output
+to the attachment's float32 fields, then checks all selected vertices against
+the resulting capsules. Fully exposed triangles supply sampled distances in
+both directions. It also measures the capsule samples beyond the torso and
+reports triangles that cross the exposure boundary separately.
+
+The retained three-driver and combined twelve-driver meshes produced identical
+fit data. With four primary capsules, the largest sampled external distance
+to the primary exposed patch fell from 3.3121 to 1.6424 owner-local units.
+Each lateral region retained one capsule. The six-capsule candidate covered
+all 107 exposed vertices and the 144 fully exposed triangles in the sampled
+rest pose. The particular geometry, pose, body parity rule and finite surface
+samples limit the result. Provider attachment, pose following and actual
+contacts still require separate observations.

@@ -9,8 +9,9 @@ belong in ignored `target/` or an external build directory.
 The 12 November owner plan includes offline preparation after the VR body and
 contact candidates, then SE attachment/motion tests and VR technical tests. A
 previous requirement to wait for their separate releases is superseded. This
-directory still implies no accepted implementation or release qualification. It remains optional and outside the base runtime package until an
-explicit component packaging choice is implemented and tested.
+directory still implies no accepted implementation or release qualification.
+The separate private candidate installer described below is optional and remains
+outside the base runtime archive.
 
 The current source candidate reuses CLAW's existing neutral procedural shape.
 `python/build.py` adds bounded skin weights, the existing XP32 ancestry and an
@@ -56,3 +57,58 @@ global configuration, installation action or game launch is included.
 Reuse the shared numerical core and suitable core adapters. Keep component
 resources and activation isolated, in the same repository and development
 branch; do not create a separate product repository.
+
+## Separate private candidate archive
+
+`python/package.py` packages the exact retained neutral resources with a small
+FOMOD. It does not rebuild geometry, alter the core installer, install anything
+or launch a game. The default **Keep current CLAW motion** installs only a
+uniquely named user guide and asset-credit notice. It installs no NIF or XML,
+so choosing anatomy physics off preserves an existing core male ear/tail FSMP
+binding. Overwriting it with the unhooked static core would disable that motion.
+
+The other two choices are explicit: anatomy motion only for core **None**, or
+the combined ear/tail/anatomy system for core **FSMP**. The installer cannot
+detect the prior core selection; the user must match it and reinstall the
+overlay when that selection changes. Each option maps both endpoints to both
+male `bodywerewolf` and `PlayerWerewolf` armor paths. The original PlayerOnly
+materials remain exact, and the unchanged male TRI is inherited from required
+core. No female resource, matrix, DLL, script, plugin, provider binary, texture,
+skeleton or global configuration is bundled or overridden.
+
+The static core already contains the neutral procedural shape. This archive
+does not add adult-state morphs, a state controller or a completed independent
+appearance. Its anatomy motion remains unqualified: the retained male12 game
+case failed selective response. The authored XML has no collision shapes.
+Private file/installer checks do not turn those gates into passes.
+
+Build to a **new** external directory using the reviewed core and candidates:
+
+```powershell
+python src/main/components/adult-anatomy/python/package.py `
+  --core-archive 'D:/Skyrim VR Modding/Builds/claw-010-physics-release-20261113/final-package-01/CLAW - Customizable Lycanthrope Appearance and Weight.zip' `
+  --neutral 'D:/Skyrim VR Modding/Builds/claw-adult-anatomy-20261112/candidate-04/candidate' `
+  --combined 'D:/Skyrim VR Modding/Builds/claw-fsmp-anatomy-compose-20261112/candidate-01/candidate' `
+  --out 'D:/Skyrim VR Modding/Builds/claw-adult-anatomy-package-20261122-01'
+```
+
+Input pins are explicit in the packager. It reopens the written ZIP, checks its
+eight-member inventory and verifies eighty compatible overlays across all forty
+core family/OBody/motion plans. Default overlays retain every selected core
+byte; enabled overlays change only the four male model destinations and add
+one local XML. The required source/asset records and all consumed input hashes
+stay in the external build report. The runtime archive contains only installer
+data, exact NIF/XML payloads, a brief guide and asset credits. Existing Elegant
+and XP32 conditions remain in force; private donor correspondence and developer
+sources are not copied into the archive.
+
+Run the focused pure tests with:
+
+```text
+python -m unittest discover -s src/test/components/adult-anatomy -p test_package.py -v
+```
+
+Actual archive checks require all three explicit environment inputs:
+`CLAW_ANATOMY_CORE_ARCHIVE`, `CLAW_ANATOMY_NEUTRAL` and
+`CLAW_ANATOMY_COMBINED`, using the paths above. Selecting none reports the
+actual-input class as skipped; missing or changed selected inputs fail.
