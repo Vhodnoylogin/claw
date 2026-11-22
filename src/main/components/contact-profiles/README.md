@@ -24,20 +24,23 @@ python src/main/components/contact-profiles/python/posed_support.py --vr-model <
 ```
 
 `CompiledVRPoseSupport` exposes both sexes with their required bones, the
-existing morph order, and the original indices of the 32 ear and tail slots.
+existing morph order, and the original indices of the 42 head, ear and tail
+slots. Head support includes the jaw and other actual skin influences, so
+the capsules can follow deformation when the Head bone itself is stationary.
+Use `--ear-tail-only` to reproduce the archived 32-slot tables.
 The exporter checks the actual oriented triangles and requires the same
 normalized weights and bind mappings across actor-weight endpoints. It emits
 the vertex endpoint differences and sparse TRI fields in shape space, for
-application before skinning. The shared native calculation used the archived
-VR67 pose at both the observed ear-size value and its zero control. All sixteen
-ear slots changed and the sixteen tail slots matched. The female model was
-checked against the independent solver at rest with two effective input
-vectors.
+application before skinning. The earlier ear/tail native calculation used the
+archived VR67 pose at both the observed ear-size value and its zero control.
+All sixteen ear slots changed and the sixteen tail slots matched. The female
+model was checked against the independent solver at rest with two effective
+input vectors.
 
 Pass `--paired-build <paired-profile-output>` to also emit the combined
 `physics-fit-model.h` for `-PhysicsModelHeader`. The exporter verifies the
 paired build receipt and enables the posed fit in that header. For VR, the worker uses the captured
-actor pose to fit those 32 original slots on first attachment and when the
+actor pose to fit those original slots on first attachment and when the
 existing refresh detects a model, weight or morph update. The other slots
 use the regular fitter. Scene reads use the third-person Body32 and the actual
 skin palettes. The candidate checks the authored geometry extents, BODYTRI and
@@ -49,8 +52,8 @@ After the provider host acknowledges a complete snapshot, a VR-only 250 ms
 task samples one eligible actor in rotation. An independent rotation retries
 one unacknowledged pose event per tick through the ordinary observation guards.
 The two-second scan still handles morph updates and retries ordinary events.
-Pose-only fits older than 500 ms are discarded before publication. The pose worker
-fits the 32 pose-aware slots, comparing each with the last accepted capsule
+Pose captures older than 500 ms are discarded for both full refits and pose
+updates. The worker compares each updated capsule with the last accepted capsule
 in the attachment bone's local coordinates. The initial movement threshold
 is 0.05 game units. Exchanging the ends of a capsule leaves its identity
 unchanged for the comparison.

@@ -76,6 +76,32 @@ class PoseAckTests(unittest.TestCase):
         self.assertRaisesRegex(ValueError, "No successful Host delta",
                                self.verify, self.full, self.fallback, require_delta=True)
 
+    def test_pose_ack_accepts_42_changed_slots_and_rejects_43(self):
+        slots = list(range(43))
+        node = "TailBone02"
+        profile = {**PROFILE, "slots": [{"node": node, "sexMask": "both"} for _ in slots]}
+        initial = [{"slot": slot, "node": node, "colliderIndex": COLLIDER_INDEX_BASE + slot,
+                    "geometry": [0., 0., 0., 0., 0., 1., 1.]} for slot in slots]
+        full = dict(self.full, changedSlots=slots, capsules=initial)
+        updated = [dict(item, geometry=[0., 0., 0., 0., 0., 1., 1.5]) for item in initial]
+        delta = dict(self.delta, changedSlots=slots[:42], capsules=updated[:42])
+        fallback = dict(delta, application="full", capsules=[*updated[:42], initial[-1]])
+
+        for receipt, expected in ((delta, (1, 1)), (fallback, (2, 0))):
+            with self.subTest(application=receipt["application"]):
+                result = self.verify(full, receipt, profile=profile)
+                self.assertEqual((result["hostFull"], result["hostDelta"]), expected)
+                self.assertEqual((result["enabledSlots"], result["pose"]), (43, 1))
+                oversized = dict(receipt, changedSlots=slots, capsules=updated)
+                self.assertRaisesRegex(ValueError, "within the pose budget", self.verify, full, oversized,
+                                       profile=profile)
+
+    def test_morph_vector_retains_32_entry_limit(self):
+        morphs = [{"name": f"Morph{index}", "value": .5} for index in range(33)]
+        self.assertEqual(self.verify(dict(self.full, morphs=morphs[:32]))["nativeFull"], 1)
+        self.assertRaisesRegex(ValueError, "Invalid effective morph vector", self.verify,
+                               dict(self.full, morphs=morphs))
+
     def test_full_native_refits_may_change_morphs_and_omit_prior_token(self):
         refit = receipt(44, 200)
         refit["morphs"][0]["value"] = .75

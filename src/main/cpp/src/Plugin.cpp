@@ -260,9 +260,6 @@ std::map<RE::Actor*, std::uint64_t> physicsRegistrationRequests;
 std::uint64_t nextPhysicsRegistration{1};
 std::uint32_t nextPhysicsSnapshot{1};
 #if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
-constexpr auto physicsPosePeriod = std::chrono::milliseconds(250);
-constexpr auto maxQueuedPoseAge = 2 * physicsPosePeriod;
-
 struct PhysicsPoseGraph {
     std::vector<RE::NiPointer<RE::BSGeometry>> shapes;
     std::vector<RE::NiPointer<RE::NiSkinInstance>> skins;
@@ -876,9 +873,7 @@ std::vector<claw::physics::Capsule> fitPhysicsPose(const PhysicsFitWork& job, co
         female{claw::physics::CompiledVRPoseSupport(true).model};
     const auto& model = job.female ? female : male;
     if (support.modelIdentity != compiled.identity || !std::ranges::equal(support.morphs, compiled.morphs) ||
-        support.slotIndexes.size() != 32 || support.slotIndexes.size() != support.model.regions.size() ||
-        !std::ranges::is_sorted(support.slotIndexes) ||
-        std::ranges::adjacent_find(support.slotIndexes) != support.slotIndexes.end())
+        !claw::physics::VRPoseSlotsMatch(support.slotIndexes) || support.slotIndexes.size() != support.model.regions.size())
         throw std::invalid_argument("VR pose table does not match the selected collider model");
     std::vector<claw::physics::Vec3> points(support.model.vertices.size()), scratch;
     std::vector<claw::physics::Capsule> posed(support.slotIndexes.size());
@@ -973,8 +968,10 @@ void startPhysicsWorker() {
                         binding.observation.invalidate(); binding.ready = false; return;
                     }
 #if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
-                if (job.poseBaseSnapshot && (!job.pose ||
-                    std::chrono::steady_clock::now() - job.pose->captured > maxQueuedPoseAge)) return;
+                // Full TRI/weight refits use pose data too. Keep the requested
+                // refit pending until a fresh result is ready on this task.
+                if (vrRuntime && (!job.pose ||
+                    !claw::physics::VRPoseCaptureCurrent(job.pose->captured, std::chrono::steady_clock::now()))) return;
 #endif
                 if (!error.empty()) {
                     SKSE::log::warn("CLAW physics fit: {}", error);
@@ -2832,7 +2829,7 @@ void message(SKSE::MessagingInterface::Message* event) {
             if (vrRuntime) {
                 unsigned ticks{};
                 while (!stop.stop_requested()) {
-                    std::this_thread::sleep_for(physicsPosePeriod);
+                    std::this_thread::sleep_for(claw::physics::vrPosePeriod);
                     if (stop.stop_requested()) return;
                     queuePhysicsPoseScan();
                     if (++ticks == 8) { ticks = 0; queueScan(); }

@@ -84,8 +84,9 @@ class AutomaticObserverTests(unittest.TestCase):
     def test_expired_pose_fit_does_not_replace_acknowledged_capsules(self):
         plugin = (ROOT.parents[3]/'src/main/cpp/src/Plugin.cpp').read_text()
         result = plugin.split('void startPhysicsWorker() {', 1)[1].split('void queuePhysicsFit(', 1)[0]
-        expires = result.index('now() - job.pose->captured > maxQueuedPoseAge)) return;')
+        expires = result.index('if (vrRuntime && (!job.pose ||\n                    !claw::physics::VRPoseCaptureCurrent')
         self.assertLess(result.index('binding.fitPending = false;'), expires)
+        self.assertLess(expires, result.index('binding.needsFit = false;'))
         self.assertLess(expires, result.index('binding.capsules[slot] = capsules[i];'))
         self.assertLess(expires, result.index('publishPhysics(actor, binding, job.poseBaseSnapshot'))
 

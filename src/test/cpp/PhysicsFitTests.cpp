@@ -1,4 +1,5 @@
 #include "claw/PhysicsFit.h"
+#include "claw/PosedContactSupport.h"
 #include <cassert>
 #include <chrono>
 #include <iostream>
@@ -11,6 +12,17 @@
 
 int main() {
     using namespace claw::physics;
+    std::array<std::size_t, vrHeadPoseSlots + vrEarTailPoseSlots> poseSlots;
+    for (std::size_t i = 0; i < vrHeadPoseSlots; ++i) poseSlots[i] = 20 + i;
+    for (std::size_t i = 0; i < vrEarTailPoseSlots; ++i) poseSlots[i + vrHeadPoseSlots] = 88 + i;
+    assert(VRPoseSlotsMatch(poseSlots) && VRPoseSlotsMatch(std::span(poseSlots).subspan(vrHeadPoseSlots)));
+    assert(!VRPoseSlotsMatch(std::span(poseSlots).subspan(1)));
+    poseSlots[1] = poseSlots[0];
+    assert(!VRPoseSlotsMatch(poseSlots));
+    const auto captured = std::chrono::steady_clock::time_point{} + vrPosePeriod;
+    assert(VRPoseCaptureCurrent(captured, captured + vrPoseMaxAge));
+    assert(!VRPoseCaptureCurrent(captured, captured + vrPoseMaxAge + std::chrono::milliseconds(1)));
+    assert(!VRPoseCaptureCurrent(captured, captured - std::chrono::milliseconds(1)));
     Model simple{"fixture",{"grow","shrink"},{{"TailBone01",
         {{-1,-1,-4},{1,1,-4},{-1,1,4},{1,-1,4}},
         {{0,{{-.5,-.5,-2},{.5,.5,-2},{-.5,.5,2},{.5,-.5,2}}},

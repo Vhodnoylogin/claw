@@ -415,7 +415,7 @@ Bool Function CompletePoseLedger(Actor target, Bool female)
 EndFunction
 
 Bool Function ValidPoseChangedSlots(Int[] slots, Bool female)
-  If slots == None || slots.Length == 0 || slots.Length > 32
+  If slots == None || slots.Length == 0 || slots.Length > 42
     Return False
   EndIf
   Int previous = -1

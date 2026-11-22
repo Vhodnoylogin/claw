@@ -12,6 +12,8 @@ SCHEMA = "claw-posed-vr-ack/1"
 STAGES = ("capturedUs", "computedUs", "publishedUs", "acknowledgedUs")
 MAX_TOKEN = 0xFFFFFF
 MAX_SLOT = 127
+MAX_POSE_CHANGED_SLOTS = 42
+MAX_MORPHS = 32
 COLLIDER_INDEX_BASE = 0x434C0000
 UINT64_MAX = 0xFFFFFFFFFFFFFFFF
 
@@ -95,7 +97,7 @@ def typed_receipt(receipt):
     require(application == "full" or (application == "delta" and previous > 0), "Invalid Host application")
 
     morphs, bones = receipt.get("morphs"), receipt.get("bones")
-    require(len(names(morphs, "morph name")) <= 32 and all(unit(item.get("value")) for item in morphs),
+    require(len(names(morphs, "morph name")) <= MAX_MORPHS and all(unit(item.get("value")) for item in morphs),
             "Invalid effective morph vector")
     names(bones, "bone name")
     for bone in bones:
@@ -107,7 +109,7 @@ def typed_receipt(receipt):
     require(isinstance(changed, list) and changed, "Missing changed slots")
     for slot in changed:
         integer(slot, "changed slot", 0, MAX_SLOT)
-    require(changed == sorted(set(changed)) and (previous == 0 or len(changed) <= 32),
+    require(changed == sorted(set(changed)) and (previous == 0 or len(changed) <= MAX_POSE_CHANGED_SLOTS),
             "Changed slots must be unique, sorted and within the pose budget")
     require(isinstance(capsules, list) and capsules and all(isinstance(item, dict) for item in capsules),
             "Missing Host capsule arguments")

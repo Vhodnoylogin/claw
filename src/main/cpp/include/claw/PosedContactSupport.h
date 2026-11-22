@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <span>
 #include <stdexcept>
@@ -13,6 +14,27 @@ namespace claw::physics {
 
 using PoseAffine = std::array<double, 12>; // Row-major 3x4 matrix.
 using PoseLinear = std::array<Vec3, 3>;
+
+inline constexpr auto vrPosePeriod = std::chrono::milliseconds(250);
+inline constexpr auto vrPoseMaxAge = 2 * vrPosePeriod;
+inline constexpr std::size_t vrEarTailPoseSlots = 32;
+inline constexpr std::size_t vrHeadPoseSlots = 10;
+
+inline constexpr bool VRPoseSlotsMatch(std::span<const std::size_t> slots) {
+    std::size_t head{};
+    if (slots.size() == vrHeadPoseSlots + vrEarTailPoseSlots) head = vrHeadPoseSlots;
+    else if (slots.size() != vrEarTailPoseSlots) return false;
+    for (std::size_t i = 0; i < head; ++i)
+        if (slots[i] != 20 + i) return false;
+    for (std::size_t i = 0; i < vrEarTailPoseSlots; ++i)
+        if (slots[head + i] != 88 + i) return false;
+    return true;
+}
+
+inline constexpr bool VRPoseCaptureCurrent(std::chrono::steady_clock::time_point captured,
+        std::chrono::steady_clock::time_point now) {
+    return captured <= now && now - captured <= vrPoseMaxAge;
+}
 
 inline PoseAffine InvertPoseAffine(const PoseAffine& matrix) {
     const Vec3 x{matrix[0], matrix[1], matrix[2]}, y{matrix[4], matrix[5], matrix[6]},

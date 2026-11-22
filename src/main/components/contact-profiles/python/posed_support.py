@@ -1,4 +1,4 @@
-"""Emit immutable pose/TRI support for the existing VR ear and tail slots."""
+"""Emit immutable pose/TRI support for the VR head, ear and tail slots."""
 from __future__ import annotations
 
 import argparse
@@ -16,6 +16,8 @@ TOOLS = contract.ROOT / 'src/main/python/build-tools'
 sys.path.insert(0, str(TOOLS))
 from breast_rig import load_pynifly, matrix, read_weights
 from tri_patch import offsets
+
+HEAD = 'NPC Head [Head]'
 
 
 def require(value, message):
@@ -47,17 +49,36 @@ class Skin:
         return high.points - self.points
 
 
-def selected_slots(model):
+def selected_slots(model, *, ear_tail_only=False):
     contract.host.validate_fitted_model(model)
     require('priorSourceInputs' not in model and model.get('supportProfile') == contract.settings.VR_PROFILE
             and len(model['slots']) == contract.PROFILES['vr'][2],
             'Expected the standard fitted detailed VR model')
-    required = contract.EAR_TAIL_CONTACT_NODES
+    required = {node: 4 for node in sorted(contract.EAR_TAIL_CONTACT_NODES)}
+    if not ear_tail_only:
+        required = {HEAD: 10, **required}
     selected = [(index, slot) for index, slot in enumerate(model['slots']) if slot['node'] in required]
     counts = {node: sum(slot['node'] == node for _, slot in selected) for node in required}
-    require(set(counts.values()) == {4} and all(slot['sexMask'] == 'both' for _, slot in selected),
-            'The detailed profile must retain the 32 existing both-sex ear/tail slots')
+    require(counts == required and all(slot['sexMask'] == 'both' for _, slot in selected),
+            'The detailed profile must retain the exact requested both-sex head/ear/tail slot counts')
+    indices = list(range(88, 120))
+    if not ear_tail_only:
+        indices = list(range(20, 30)) + indices
+    owners = [node for node, count in required.items() for _ in range(count)]
+    require([(index, slot['node']) for index, slot in selected] == list(zip(indices, owners, strict=True)),
+            'Posed contact slots or their owner order differ from the detailed VR profile')
     return selected
+
+
+def selected_source_shapes(model, selected, sex):
+    shapes = set()
+    for node in {slot['node'] for _, slot in selected}:
+        expected = 'body' if node.startswith('TailBone') else 'head'
+        sources = model['regions'][sex + '/' + node]['sources']
+        require([source['shape'] for source in sources] == [expected],
+                f'Posed contact region {sex}/{node} must use the native {expected} shape')
+        shapes.add(expected)
+    return shapes
 
 
 def region_vertices(region, skins):
@@ -198,11 +219,11 @@ def read_paired_build(directory, model_pin):
     return content
 
 
-def build(model_path, runtime_manifest, pynifly, output, *, paired_build=None):
+def build(model_path, runtime_manifest, pynifly, output, *, paired_build=None, ear_tail_only=False):
     model_pin = contract.pin(model_path)
     paired = read_paired_build(paired_build, model_pin) if paired_build is not None else None
     model = json.loads(model_path.read_bytes())
-    selected = selected_slots(model)
+    selected = selected_slots(model, ear_tail_only=ear_tail_only)
     files = runtime_inputs(runtime_manifest)
     fitted_pins = {Path(row['path']).name: {key: row[key] for key in ('bytes', 'sha256')}
                    for row in model['sourceInputs']}
@@ -213,7 +234,7 @@ def build(model_path, runtime_manifest, pynifly, output, *, paired_build=None):
     for sex in ('male', 'female'):
         prefix = sex + 'bodywerewolf'
         endpoint_meshes = [api.NifFile(str(files[prefix + suffix])) for suffix in ('_0.nif', '_1.nif')]
-        shapes = {source['shape'] for _, slot in selected for source in model['regions'][sex + '/' + slot['node']]['sources']}
+        shapes = selected_source_shapes(model, selected, sex)
         low, high = ({name: Skin(mesh.shape_dict[name]) for name in shapes} for mesh in endpoint_meshes)
         data = compose_sex(model, selected, sex, low, high, offsets(files[prefix+'.tri'].read_bytes()))
         routes = []
@@ -233,6 +254,7 @@ def build(model_path, runtime_manifest, pynifly, output, *, paired_build=None):
     header.write_bytes(payload)
     record = {'modelIdentity': model['modelIdentity'], 'model': model_pin, 'source': contract.pin(Path(__file__)),
               'assets': {name: fitted_pins[name] for name in files}, 'generatedHeader': contract.pin(header),
+              'scope': 'ear-tail' if ear_tail_only else 'head-ear-tail',
               'slots': [index for index, _ in selected], 'morphs': model['morphs'],
               'sexes': {key.removesuffix('Data'): {'bones': value['bones'], 'shapes': value['shapes'],
                         **{field: len(value[field]) for field in ('vertices', 'memberships', 'influences', 'deltas')}}
@@ -251,10 +273,11 @@ def main():
     parser.add_argument('--runtime-inputs', type=Path, required=True)
     parser.add_argument('--pynifly', type=Path)
     parser.add_argument('--paired-build', type=Path, help='Also emit a native header from the exact paired build')
+    parser.add_argument('--ear-tail-only', action='store_true', help='Reproduce the retained 32-slot support without Head')
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
     print(json.dumps(build(args.vr_model, args.runtime_inputs, args.pynifly, args.out,
-                           paired_build=args.paired_build), indent=2))
+                           paired_build=args.paired_build, ear_tail_only=args.ear_tail_only), indent=2))
 
 
 if __name__ == '__main__':
