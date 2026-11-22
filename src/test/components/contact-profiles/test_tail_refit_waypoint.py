@@ -1,8 +1,9 @@
 import unittest
+from math import hypot
 
 import numpy as np
 
-from prepare_tail_refit_waypoint import MIN_MARGIN, calibration, waypoint
+from prepare_tail_refit_waypoint import MIN_MARGIN, calibration, envelope_distance, waypoint
 
 
 def pose(xyz):
@@ -46,6 +47,42 @@ class TailWaypointTest(unittest.TestCase):
         self.assertGreaterEqual(restricted["waypoint"]["morphedOverlapGu"], MIN_MARGIN)
         self.assertEqual(restricted["stockEnvelopeMarginUpperGu"], unlimited["stockEnvelopeMarginUpperGu"])
         self.assertIsNone(waypoint(*args, max_travel=.01)["waypoint"])
+
+    def test_distance_to_joint_envelope_covers_disk_rim_and_ball(self):
+        points = np.array([[.6, .8, 0.], [0., 2., 0.], [2., 1., 0.], [2., -.5, 0.], [0., -.5, 0.]])
+        expected = [0., 1., hypot(.4, 1.2), hypot(1.1, 1.2), 1.1]
+        np.testing.assert_allclose(envelope_distance(points, 1., .6), expected, atol=1e-12)
+        np.testing.assert_allclose(envelope_distance(points, None, .6), [0., 0., 0., 1.1, 1.1], atol=1e-12)
+        np.testing.assert_allclose(envelope_distance(points[:2], 1., -1.), [0., 1.], atol=1e-12)
+        np.testing.assert_allclose(envelope_distance(points[1:3], 1., 1.), [1., 2.], atol=1e-12)
+        self.assertTrue(np.isinf(envelope_distance(points, 1., 1.01)).all())
+
+    def test_joint_constraints_select_only_feasible_grid_points(self):
+        resting, active = self.bank(0.), self.bank(10.)
+        args = (self.origin, [self.frame], [resting, active, resting], 70. * np.eye(3), 70.)
+        legacy = waypoint(*args, max_travel=.12)
+        report = waypoint(*args, max_travel=.12, min_height=1.31)
+        selected = report["waypoint"]
+        self.assertLessEqual(selected["controllerTravelMetres"], .12)
+        self.assertGreaterEqual(selected["leftTranslationMetres"][1], 1.31)
+        self.assertGreaterEqual(report["constrainedGridBestMarginGu"], MIN_MARGIN)
+        self.assertGreaterEqual(report["constrainedEnvelopeMarginUpperGu"], report["constrainedGridBestMarginGu"])
+        self.assertEqual(report["stockEnvelopeMarginUpperGu"], legacy["stockEnvelopeMarginUpperGu"])
+        impossible = waypoint(*args, max_travel=.12, min_height=1.33)
+        self.assertIsNone(impossible["waypoint"])
+        self.assertIsNone(impossible["constrainedGridBestMarginGu"])
+        self.assertEqual(impossible["constrainedEnvelopeMarginUpperGu"], 0.)
+
+    def test_height_uses_tracking_y_rather_than_world_y(self):
+        resting, active = self.bank(0.), self.bank(10.)
+        turned = 70. * np.array([[1., 0., 0.], [0., 0., 1.], [0., -1., 0.]])
+        args = (self.origin, [self.frame], [resting, active, resting], turned, 70.)
+        self.assertIsNotNone(waypoint(*args, max_travel=.3)["waypoint"])
+        constrained = waypoint(*args, max_travel=.3, min_height=1.255)
+        self.assertIsNone(constrained["waypoint"])
+        self.assertLess(constrained["constrainedEnvelopeMarginUpperGu"], MIN_MARGIN)
+        with self.assertRaisesRegex(ValueError, "height must be positive and finite"):
+            waypoint(*args, min_height=float("nan"))
 
     def test_near_rigid_axis_swap_without_original_movement_match_refuses(self):
         columns = (70. * np.eye(3)).tolist()

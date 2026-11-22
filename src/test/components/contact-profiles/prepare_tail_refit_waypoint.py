@@ -92,9 +92,31 @@ def point_clearance(origin, points, role):
     return np.linalg.norm(fraction[:, None] * line - relative, axis=1) - HAND_RADIUS * origin["left"]["scale"] - DRIFT
 
 
-def waypoint(origin, frames, banks, matrix, minimum_gain, max_travel=None):
+def envelope_distance(displacement, max_travel, floor):
+    """Distance in tracking metres to the intersection of a ball and a height half-space."""
+    height = displacement[:, 1]
+    if max_travel is None:
+        return np.maximum(0., floor - height)
+    if floor > max_travel:
+        return np.full(len(displacement), np.inf)
+    travel = np.linalg.norm(displacement, axis=1)
+    ball = np.maximum(0., travel - max_travel)
+    if floor <= -max_travel:
+        return ball
+    # Use the nearest point on the ball when it clears the floor. Otherwise
+    # the nearest feasible point belongs to the ball's disk at the floor.
+    scale = np.divide(max_travel, travel, out=np.ones_like(travel), where=travel > max_travel)
+    disk_radius = np.sqrt((max_travel - floor) * (max_travel + floor))
+    lateral = np.hypot(displacement[:, 0], displacement[:, 2])
+    disk = np.hypot(height - floor, np.maximum(0., lateral - disk_radius))
+    return np.where(height * scale >= floor, ball, disk)
+
+
+def waypoint(origin, frames, banks, matrix, minimum_gain, max_travel=None, *, min_height=None):
     require(max_travel is None or (isfinite(max_travel) and max_travel > 0.),
             "Controller travel budget must be positive and finite")
+    require(min_height is None or (type(min_height) in (int, float) and isfinite(min_height) and min_height > 0.),
+            "Controller tracking height must be positive and finite")
     # A shared overlapping point must lie in every inflated morphed-bank box.
     geometry = [(world_capsules(frame, banks[0]), world_capsules(frame, banks[1])) for frame in frames]
     lower = np.max([np.min([np.minimum(cap["p1"], cap["p2"]) - cap["radius"] for cap in active], axis=0)
@@ -102,7 +124,10 @@ def waypoint(origin, frames, banks, matrix, minimum_gain, max_travel=None):
     upper = np.min([np.max([np.maximum(cap["p1"], cap["p2"]) + cap["radius"] for cap in active], axis=0)
                     for _, active in geometry], axis=0)
     if np.any(upper < lower):
-        return {"testedCenters": 0, "stockEnvelopeMarginUpperGu": 0., "waypoint": None}
+        result = {"testedCenters": 0, "stockEnvelopeMarginUpperGu": 0., "waypoint": None}
+        if min_height is not None:
+            result.update(constrainedGridBestMarginGu=None, constrainedEnvelopeMarginUpperGu=0.)
+        return result
     divisions = np.ceil((upper - lower) / GRID_STEP).astype(int).clip(min=1)
     require(int((divisions + 1).prod()) <= 2_000_000, "The retained stationary contrast exceeds the grid budget")
     axes = [np.linspace(lo, hi, n + 1) for lo, hi, n in zip(lower, upper, divisions, strict=True)]
@@ -114,6 +139,8 @@ def waypoint(origin, frames, banks, matrix, minimum_gain, max_travel=None):
     travel = np.linalg.norm(displacement, axis=1)
     if max_travel is not None:
         admitted &= travel <= max_travel
+    if min_height is not None:
+        admitted &= NEUTRAL[1] + displacement[:, 1] >= min_height
     stock_enlarged = (travel <= STOCK_REACH + cover / minimum_gain) & (
         NEUTRAL[1] + displacement[:, 1] >= STOCK_MIN_HEIGHT - cover / minimum_gain)
     neutral = np.full(len(points), np.inf)
@@ -133,10 +160,20 @@ def waypoint(origin, frames, banks, matrix, minimum_gain, max_travel=None):
                     "sphereCenterGu": points[best].tolist(), "neutralSeparationGu": float(neutral[best]),
                     "morphedOverlapGu": float(overlap[best]), "insideStockEnvelope": bool(within),
                     "directSweepClearanceGu": {name: float(values[best]) for name, values in clearance.items()}}
-    return {"testedCenters": len(points), "stockEnvelopeMarginUpperGu": stock_upper, "waypoint": selected}
+    result = {"testedCenters": len(points), "stockEnvelopeMarginUpperGu": stock_upper, "waypoint": selected}
+    if min_height is not None:
+        distance = envelope_distance(displacement, max_travel, min_height - NEUTRAL[1])
+        # The measured basis maps every world-grid cover ball into a tracking
+        # ball of radius cover/minimum_gain. Bound the joint envelope without
+        # relying on the clearance test passing at the sampled grid centers.
+        enlarged = distance <= cover / minimum_gain + 1e-12
+        result["constrainedGridBestMarginGu"] = float(np.max(margin[admitted])) if admitted.any() else None
+        result["constrainedEnvelopeMarginUpperGu"] = (
+            max(0., float(np.max(margin[enlarged])) + cover + 1e-12) if enlarged.any() else 0.)
+    return result
 
 
-def prepare(receipt, evidence, ledger, basis, max_travel=None):
+def prepare(receipt, evidence, ledger, basis, max_travel=None, *, min_height=None):
     require(receipt["restored"] is True and receipt["collectionComplete"] is True and
             receipt["caseResult"] == "passed" and receipt["scopedCalls"]["AttachColliderCapsule"] == 1 and
             evidence["status"] == "qualified-emission-contrast" and evidence["intent"] is None and
@@ -148,9 +185,11 @@ def prepare(receipt, evidence, ledger, basis, max_travel=None):
     origin, moved, holds = poses(ledger, evidence, subject)
     columns, minimum_gain = calibration(origin, moved, evidence["scope"]["tail02Target"], evidence["loweredPublication"])
     report = waypoint(origin, [frame for hold in holds for frame in hold], basis["capsulesByPhase"], columns,
-                      minimum_gain, max_travel)
+                      minimum_gain, max_travel, min_height=min_height)
     if max_travel is not None:
         report["maxControllerTravelMetres"] = max_travel
+    if min_height is not None:
+        report["minControllerHeightMetres"] = min_height
     return {"scope": "Archived fixed-slot pose prediction only; each hold must be remeasured in the live refit.",
             "run": receipt["runId"], "normalOriginalExit": receipt["normalExit"], "model": basis["model"],
             "holdSampleIds": {name: [frame["sample"] for frame in hold] for name, hold in zip(HOLD_NAMES, holds, strict=True)},
@@ -162,6 +201,7 @@ def main():
     for name in ("restored", "evidence", "steps", "basis", "out"):
         parser.add_argument("--" + name, required=True, type=Path)
     parser.add_argument("--max-travel-metres", type=float, help="optional radial limit from the recorded neutral position")
+    parser.add_argument("--min-height-metres", type=float, help="optional minimum left-controller Y in tracking metres")
     args = parser.parse_args()
     output = args.out.resolve()
     require(not output.exists() and REPO not in output.parents and
@@ -172,7 +212,7 @@ def main():
     steps_data = archived_input(args.steps, receipt)
     basis_data = read_pinned(args.basis, PROOF_SHA)
     report = prepare(receipt, json.loads(evidence_data), [json.loads(line) for line in steps_data.splitlines()],
-                     json.loads(basis_data), args.max_travel_metres)
+                     json.loads(basis_data), args.max_travel_metres, min_height=args.min_height_metres)
     report["stepsSha256"] = sha256(steps_data).hexdigest()
     report["stockEvidenceSha256"] = sha256(evidence_data).hexdigest()
     report["basisSha256"] = PROOF_SHA
