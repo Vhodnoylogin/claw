@@ -1,0 +1,20 @@
+FormKey: 000812:test_CLAW - Coat Turnover Fixture.esp
+EditorID: CLAWTestCoatTurnoverHeadAAA
+BodyTemplate:
+  FirstPersonFlags:
+  - Head
+  ArmorType: Clothing
+Race: 0CDD84:Skyrim.esm
+Priority:
+  Male: 0
+  Female: 0
+WeightSliderEnabled:
+  Male: False
+  Female: False
+Unknown: 2
+Unknown2: 23
+WorldModel:
+  Male:
+    File: claw\test\coat-turnover\head-a.nif
+  Female:
+    File: claw\test\coat-turnover\head-a.nif

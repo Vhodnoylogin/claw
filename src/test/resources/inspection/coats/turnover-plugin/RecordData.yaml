@@ -1,0 +1,13 @@
+SpriggitSource:
+  PackageName: Spriggit.Yaml.Skyrim
+  Version: 0.41
+ModKey: test_CLAW - Coat Turnover Fixture.esp
+GameRelease: SkyrimSE
+ModHeader:
+  Stats:
+    Version: 1.7
+  Author: CLAW nonshipping test source
+  Description: Actor-specific test skin and individually equippable werewolf coat surfaces.
+  MasterReferences:
+  - Master: Skyrim.esm
+    FileSize: 0

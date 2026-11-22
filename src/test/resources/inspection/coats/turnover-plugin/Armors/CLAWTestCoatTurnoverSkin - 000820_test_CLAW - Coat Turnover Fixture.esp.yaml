@@ -1,0 +1,20 @@
+FormKey: 000820:test_CLAW - Coat Turnover Fixture.esp
+EditorID: CLAWTestCoatTurnoverSkin
+SkyrimMajorRecordFlags:
+- NotPlayable
+BodyTemplate:
+  FirstPersonFlags:
+  - Body
+  - Hands
+  - Feet
+  - Tail
+  ArmorType: Clothing
+  ActsLike44: True
+Race: 013746:Skyrim.esm
+Armature:
+- 000D67:Skyrim.esm
+- 000D6C:Skyrim.esm
+- 000D6E:Skyrim.esm
+- 000814:test_CLAW - Coat Turnover Fixture.esp
+MajorFlags:
+- NonPlayable

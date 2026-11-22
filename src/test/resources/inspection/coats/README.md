@@ -114,13 +114,30 @@ Retain the actual equipment and refresh results separately with the run.
    unmanaged rows, and that the original automatic decision owns all twelve
    surfaces again. Keep the original root token across all four phases.
 
-The fixture needs separate test-only armor addons for HEAD and BODY, with
-one copy of each role and two mesh paths per replaceable part. Keep each
-role out of the other equipped models. Use an isolated actor, replace each
-part through an ordinary equipment change and read back the equipped form.
-The engine's handling of those changes must be established by the four
-actual audits. A new root, duplicated part, or a change to other managed
-meshes does not pass this case. The recorded stock-TXST control from
+The Spriggit source in `turnover-plugin/` supplies one female Nord fixture
+base (local form `000800`) and a dedicated skin (`000820`). The skin keeps
+the human torso, hands and feet and supplies the wolf's fixed Tail40 model.
+It has no stock wolf torso. The equippable variants are:
+
+| Part | Slot | A form | B form |
+| --- | --- | --- | --- |
+| HEAD | 30 | `000832` | `000833` |
+| BODY | 32 | `000830` | `000831` |
+
+Compile with Spriggit YAML 0.41 and prepare the five NIFs and shared TRI using
+`prepare_turnover_meshes.py --donor <female NIF> --tri <matching TRI> --pynifly
+<addon directory> --output <new external directory>`. The builder pins the
+retained r03 donor. It prunes unattached blocks, checks shape and slot
+membership, preserves the packed skin buffers and keeps the original TRI
+bytes under a fixture-local path. Variant A and B share geometry and material
+content and use different armor records and NIF paths.
+
+After transforming the owned fixture, confirm the dedicated skin and fixed
+rest are attached and the stock wolf torso is absent. Equip A in both slots.
+For the swaps, equip B directly over A and read back the worn forms with
+slot masks `0x1` and `0x4`. The four actual audits must establish that the
+engine retains the root and changes only the target geometry. The recorded
+stock-TXST control from
 `20261112-162527-512364` covered foreign material and then a different root
 after load. It predates the geometry IDs and never covered this same-root case.
 
@@ -128,7 +145,8 @@ after load. It predates the geometry IDs and never covered this same-root case.
 audit observations against the expected pattern and actual material paths.
 The caller binds the packet to the qualified run and checks process exit and
 restoration separately. Synthetic verifier controls exercise discrimination
-only. The equipment assets still require preparation and an admitted run.
+only. The offline package needs an admitted SE run to qualify attachment,
+slot exclusivity, and preservation of the root.
 
 The frozen owned interactive platform can exercise the existing typed coat APIs
 for a bounded operator probe. Its transport/configuration stays outside this

@@ -1,0 +1,13 @@
+FormKey: 000832:test_CLAW - Coat Turnover Fixture.esp
+EditorID: CLAWTestCoatTurnoverHeadA
+BodyTemplate:
+  FirstPersonFlags:
+  - Head
+  ArmorType: Clothing
+  ActsLike44: True
+Race: 0CDD84:Skyrim.esm
+Name:
+  TargetLanguage: English
+  Value: TEST CLAW Coat Turnover Head A
+Armature:
+- 000812:test_CLAW - Coat Turnover Fixture.esp

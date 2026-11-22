@@ -1,0 +1,37 @@
+FormKey: 000800:test_CLAW - Coat Turnover Fixture.esp
+EditorID: CLAWTestCoatTurnoverActor
+Configuration:
+  Flags:
+  - Female
+  - AutoCalcStats
+  Level:
+    MutagenObjectType: NpcLevel
+    Level: 10
+  CalcMinLevel: 10
+  CalcMaxLevel: 10
+  SpeedMultiplier: 100
+  DispositionBase: 50
+WornArmor: 000820:test_CLAW - Coat Turnover Fixture.esp
+Race: 013746:Skyrim.esm
+AIData:
+  EnergyLevel: 50
+Class: 013176:Skyrim.esm
+Name:
+  TargetLanguage: English
+  Value: TEST CLAW Coat Turnover
+PlayerSkills:
+  Health: 100
+  Stamina: 100
+  GearedUpWeapons: 1
+HeadParts:
+- 0EAA72:Skyrim.esm
+- 07291B:Skyrim.esm
+- 0EC1B2:Skyrim.esm
+- 0E4DA8:Skyrim.esm
+HairColor: 0A0431:Skyrim.esm
+NAM5: 0
+Height: 1
+Weight: 50
+TextureLighting: '#0091AAA8'
+FaceMorph:
+  ChinNarrowVsWide: -0.125
