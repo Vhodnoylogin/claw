@@ -3,7 +3,7 @@
 import argparse
 from hashlib import sha256
 import json
-from math import dist
+from math import dist, isfinite
 from pathlib import Path, PureWindowsPath
 
 import numpy as np
@@ -92,7 +92,9 @@ def point_clearance(origin, points, role):
     return np.linalg.norm(fraction[:, None] * line - relative, axis=1) - HAND_RADIUS * origin["left"]["scale"] - DRIFT
 
 
-def waypoint(origin, frames, banks, matrix, minimum_gain):
+def waypoint(origin, frames, banks, matrix, minimum_gain, max_travel=None):
+    require(max_travel is None or (isfinite(max_travel) and max_travel > 0.),
+            "Controller travel budget must be positive and finite")
     # A shared overlapping point must lie in every inflated morphed-bank box.
     geometry = [(world_capsules(frame, banks[0]), world_capsules(frame, banks[1])) for frame in frames]
     lower = np.max([np.min([np.minimum(cap["p1"], cap["p2"]) - cap["radius"] for cap in active], axis=0)
@@ -110,6 +112,8 @@ def waypoint(origin, frames, banks, matrix, minimum_gain):
     clearance = {role: point_clearance(origin, points, role) for role in ("head", "right")}
     admitted = (clearance["head"] >= .30 * GAIN_MAX) & (clearance["right"] >= .50 * GAIN_MAX)
     travel = np.linalg.norm(displacement, axis=1)
+    if max_travel is not None:
+        admitted &= travel <= max_travel
     stock_enlarged = (travel <= STOCK_REACH + cover / minimum_gain) & (
         NEUTRAL[1] + displacement[:, 1] >= STOCK_MIN_HEIGHT - cover / minimum_gain)
     neutral = np.full(len(points), np.inf)
@@ -132,7 +136,7 @@ def waypoint(origin, frames, banks, matrix, minimum_gain):
     return {"testedCenters": len(points), "stockEnvelopeMarginUpperGu": stock_upper, "waypoint": selected}
 
 
-def prepare(receipt, evidence, ledger, basis):
+def prepare(receipt, evidence, ledger, basis, max_travel=None):
     require(receipt["restored"] is True and receipt["collectionComplete"] is True and
             receipt["caseResult"] == "passed" and receipt["scopedCalls"]["AttachColliderCapsule"] == 1 and
             evidence["status"] == "qualified-emission-contrast" and evidence["intent"] is None and
@@ -143,7 +147,10 @@ def prepare(receipt, evidence, ledger, basis):
             (subject.pid, subject.actor, subject.base, subject.cell), "Archived capture refers to a different actor")
     origin, moved, holds = poses(ledger, evidence, subject)
     columns, minimum_gain = calibration(origin, moved, evidence["scope"]["tail02Target"], evidence["loweredPublication"])
-    report = waypoint(origin, [frame for hold in holds for frame in hold], basis["capsulesByPhase"], columns, minimum_gain)
+    report = waypoint(origin, [frame for hold in holds for frame in hold], basis["capsulesByPhase"], columns,
+                      minimum_gain, max_travel)
+    if max_travel is not None:
+        report["maxControllerTravelMetres"] = max_travel
     return {"scope": "Archived fixed-slot pose prediction only; each hold must be remeasured in the live refit.",
             "run": receipt["runId"], "normalOriginalExit": receipt["normalExit"], "model": basis["model"],
             "holdSampleIds": {name: [frame["sample"] for frame in hold] for name, hold in zip(HOLD_NAMES, holds, strict=True)},
@@ -154,6 +161,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("restored", "evidence", "steps", "basis", "out"):
         parser.add_argument("--" + name, required=True, type=Path)
+    parser.add_argument("--max-travel-metres", type=float, help="optional radial limit from the recorded neutral position")
     args = parser.parse_args()
     output = args.out.resolve()
     require(not output.exists() and REPO not in output.parents and
@@ -164,7 +172,7 @@ def main():
     steps_data = archived_input(args.steps, receipt)
     basis_data = read_pinned(args.basis, PROOF_SHA)
     report = prepare(receipt, json.loads(evidence_data), [json.loads(line) for line in steps_data.splitlines()],
-                     json.loads(basis_data))
+                     json.loads(basis_data), args.max_travel_metres)
     report["stepsSha256"] = sha256(steps_data).hexdigest()
     report["stockEvidenceSha256"] = sha256(evidence_data).hexdigest()
     report["basisSha256"] = PROOF_SHA

@@ -36,6 +36,17 @@ class TailWaypointTest(unittest.TestCase):
         report = waypoint(self.origin, [self.frame, shifted], [resting, active, resting], 70. * np.eye(3), 70.)
         self.assertEqual(report, {"testedCenters": 0, "stockEnvelopeMarginUpperGu": 0., "waypoint": None})
 
+    def test_radial_travel_budget_filters_candidates_without_changing_stock_bound(self):
+        resting, active = self.bank(0.), self.bank(10.)
+        args = (self.origin, [self.frame], [resting, active, resting], 70. * np.eye(3), 70.)
+        unlimited = waypoint(*args)
+        restricted = waypoint(*args, max_travel=.12)
+        self.assertGreater(unlimited["waypoint"]["controllerTravelMetres"], .12)
+        self.assertLessEqual(restricted["waypoint"]["controllerTravelMetres"], .12)
+        self.assertGreaterEqual(restricted["waypoint"]["morphedOverlapGu"], MIN_MARGIN)
+        self.assertEqual(restricted["stockEnvelopeMarginUpperGu"], unlimited["stockEnvelopeMarginUpperGu"])
+        self.assertIsNone(waypoint(*args, max_travel=.01)["waypoint"])
+
     def test_near_rigid_axis_swap_without_original_movement_match_refuses(self):
         columns = (70. * np.eye(3)).tolist()
         policy = {"columnsGuPerMetre": columns, "nearMetres": [-.30, 1.1, -.35]}

@@ -56,6 +56,26 @@ those receipts.
 
 The archived coordinates are evidence for setup and carry no adaptive contact result.
 
+## Detached subject staging
+
+Run `freeze_tail_refit_subject.py --help` for the file inputs. Use the original
+stock r03 case directory and the current paired native build and 15-node pose
+build receipts. Supply the authored VR fit, r03 waypoint replay with
+`--max-travel-metres 0.40`, installed XP32 werewolf skeleton and RaceMenu assets,
+and local Caprica imports.
+The script compares both archived carrier NIF endpoints and the TRI against the
+authored fit, and stages the exact reviewed CBPC overlay, NPC fixture and current
+native/Papyrus interfaces. The output records file pins and the archived waypoint
+separately from runtime checks. It is detached staging. Recheck installed VFS
+winners and loaded identities under the actual game session.
+
+The bounded replay proposes about 0.397 m of travel with 1.73 GU of neutral
+separation and 1.66 GU of morphed overlap. A runtime host must qualify and read
+back this move, then confirm clearance for the active scene. The archived static
+setup defines the target group with no declared shapes and the old run confirms
+functional detachment. The native provider's internal shape inventory was not
+observed in that run.
+
 ## Capture from the admitted VR fixture
 
 The owning run prepares the disposable actor, loaded-module pins, a clean
