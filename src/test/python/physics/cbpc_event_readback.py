@@ -48,8 +48,8 @@ def score(snapshot, audience, holds, minimum_duration, minimum_hold_ticks):
     """Score positive and silent holds supplied by an independent scene witness.
 
     Holds use the same QPC clock and the callback must name the exact
-    audience bone. An optional first unattachedNear hold requires silence
-    before append. The caller qualifies capsule or sphere geometry, actor
+    audience bone. An optional first unattachedNear or unattachedFar hold
+    requires silence before append. The caller qualifies capsule or sphere geometry, actor
     continuity, provider and attachment custody independently.
     """
     matches_snapshot(snapshot, audience)
@@ -88,8 +88,9 @@ def _score_holds(snapshot, audience, holds, minimum_duration, minimum_hold_ticks
     phases = ("nearBefore", "far", "nearAfter")
     if "nearDetached" in holds:
         phases += ("nearDetached",)
-    if "unattachedNear" in holds:
-        phases = ("unattachedNear", *phases)
+    baseline = next((name for name in ("unattachedNear", "unattachedFar") if name in holds), None)
+    if baseline:
+        phases = (baseline, *phases)
     require(set(holds) == set(phases), "Complete near/far/near hold set required")
     last = armed - 1
     for phase in phases:
@@ -120,7 +121,7 @@ def _score_holds(snapshot, audience, holds, minimum_duration, minimum_hold_ticks
             collected[phase].append(duration)
         last = qpc
 
-    unattached = collected.pop("unattachedNear", None)
+    unattached = collected.pop(baseline) if baseline else None
     require(not unattached, "Provider emitted a callback in the pre-append hold")
     has_controls = bool(collected["nearBefore"] and collected["nearAfter"])
     silent = not collected["far"] and not collected.get("nearDetached")

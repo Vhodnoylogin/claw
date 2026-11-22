@@ -143,10 +143,24 @@ body samples on both sides. A later publication or a stale pose rejects the
 hold. The scorer begins after the first Observer read completed, ends at the
 last read's start and requires 1.5 seconds of measured dwell. Each active
 near frame must clear the earlier bank and overlap the selected bank. The far
-hold clears both. Before append and after confirmed Host retirement the same
-near point must stay silent. The sealed callback must name the exact fixture
+hold clears both. Before append the hand may start at a verified far point,
+so the test can derive a near waypoint from the active pose. After confirmed
+Host retirement the same near point must stay silent. The sealed callback must name the exact fixture
 actor and selected group. Events outside admitted holds are reported
 separately.
+
+Use `run_pose_contact.PoseContactCapture` inside the admitted executor. Pass
+its raw ledger, the run-owned trace log, the matching profile and a guarded
+`position(phase, waypoint, *, deadline)` callback. The callback places the
+hand at the admitted far pose for `phase="far"`. For `phase="near"`, it uses
+the requested absolute world-space sphere center and the calibrated tracking
+basis, and returns `True` after confirmed movement. The collector measures
+the actual hand independently and refuses a missed margin or stale token.
+It polls complete ACK lines, verifies the exact bank chain before proposing
+movement and opens the 12-second pose lease immediately before the three
+active holds. It returns the manifest, exact raw input bytes and verdict.
+Keep the original log and ledger on failure. Resolve any unconfirmed
+operation with the owning executor's restoration path.
 
 ## Stationary controller contrast for a TRI refit
 

@@ -137,6 +137,16 @@ class VerifyPoseContactWindowTests(unittest.TestCase):
                     self.verify()
                 self.ledger[index] = original
 
+    def test_pre_append_far_allows_live_selection_of_the_near_waypoint(self):
+        holds = self.plan["holds"]
+        holds["unattachedFar"] = holds.pop("unattachedNear")
+        for index, _ in enumerate(holds["unattachedFar"]["frames"]):
+            self.frame(index, "unattachedFar")["vrPicking"]["nodes"]["leftWand"]["world"]["translation"][0] = 16.
+        report = self.verify()
+        self.assertEqual(report["status"], "qualified-emission-contrast")
+        self.assertEqual(report["preAppendPosition"], "unattachedFar")
+        self.assertEqual(report["preAppendCallbacks"], 0)
+
     def test_no_definite_ack_before_native_bracket_is_refused(self):
         before = read_payload(self.ledger, self.hold()["poseBefore"])["sample"]
         self.acks[1]["acknowledgedUs"] = before["qpcBegin"] // 10

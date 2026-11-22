@@ -75,8 +75,10 @@ def verify(manifest, ledger, ack_lines, model):
     next_publication = next((TICKS_PER_US * row["publishedUs"] for row in chain if row["token"] > token), None)
 
     capture, holds, release = manifest["capture"], manifest["holds"], manifest["release"]
-    require(set(holds) == set(PHASES), "Complete pre-append, near, far, repeat and detached holds required")
-    indices = [manifest["modelRead"], capture["idle"], capture["arm"], *holds["unattachedNear"]["frames"], manifest["ledgerCount"]]
+    baseline = "unattachedFar" if "unattachedFar" in holds else "unattachedNear"
+    phases = (baseline, *PHASES[1:])
+    require(set(holds) == set(phases), "Complete pre-append, near, far, repeat and detached holds required")
+    indices = [manifest["modelRead"], capture["idle"], capture["arm"], *holds[baseline]["frames"], manifest["ledgerCount"]]
     for name in ACTIVE:
         hold = holds[name]
         indices += [hold["currentBefore"], hold["poseBefore"], *hold["frames"], hold["poseAfter"], hold["currentAfter"]]
@@ -96,9 +98,9 @@ def verify(manifest, ledger, ack_lines, model):
     require(event["qpcFrequency"] == QPC and event["armedQpc"] < first_publication,
             "Native and CBPC clocks or initial capture order differ")
 
-    origin = previous = pose_origin = last_pose = None
+    origin = previous = pose_origin = last_pose = near_source = None
     windows, gaps = {}, {}
-    for name in PHASES:
+    for name in phases:
         hold = holds[name]
         rows = hold["frames"]
         require(2 <= len(rows) <= 8, "Each hold needs bounded independent frame samples")
@@ -108,7 +110,7 @@ def verify(manifest, ledger, ack_lines, model):
         earliest = frames[0]["ns"] * QPC // NANO
         require(event["armedQpc"] <= earliest and last_read < event["closedQpc"],
                 "Observer tasks extend outside the sealed capture")
-        if name == "unattachedNear":
+        if name == baseline:
             require(last_read < first_publication, "Pre-append samples overlap initial publication")
         if name in ACTIVE:
             expected = [subject.form, subject.generation, token]
@@ -154,17 +156,25 @@ def verify(manifest, ledger, ack_lines, model):
             previous = frame
             old_gap.append(bank_gap(frame, old))
             new_gap.append(bank_gap(frame, new))
-        require(dist(first["source"], origin["source"]) <= DRIFT if name != "far" else
-                dist(first["source"], origin["source"]) >= 2 * MARGIN, "The controller did not reproduce the required test position")
-        if name in ACTIVE:
+        if name == "nearBefore":
+            near_source = first["source"]
+            offset = dist(near_source, origin["source"])
+            require(offset <= DRIFT if baseline == "unattachedNear" else offset >= 2 * MARGIN,
+                    "The reached near pose does not contrast with the pre-append control")
+        elif name != baseline:
+            offset = dist(first["source"], near_source)
+            require(offset >= 2 * MARGIN if name == "far" else offset <= DRIFT,
+                    "The controller did not reproduce the required test position")
+        if name in ACTIVE or name == "unattachedFar":
             require(min(old_gap) >= MARGIN, "Old capsule bank is not separated in the measured pose")
-        require(min(new_gap) >= MARGIN if name == "far" else max(new_gap) <= -MARGIN,
+        require(min(new_gap) >= MARGIN if name in ("unattachedFar", "far") else max(new_gap) <= -MARGIN,
                 "The updated capsule bank does not give the measured near/far margin")
         windows[name] = (start, end)
         gaps[name] = {"oldGapGu": [min(old_gap), max(old_gap)], "newGapGu": [min(new_gap), max(new_gap)]}
 
     result = score(event, audience, windows, .3, MIN_HOLD)
     return {**result, "actor": subject.actor, "node": node, "token": token, "previousToken": receipt["previousToken"],
+            "preAppendPosition": baseline,
             "slots": slots, "holdQpc": windows, "worldGapRanges": gaps, "providerShapeInventoryVerified": False,
             "perSlotCallbackAttribution": False}
 

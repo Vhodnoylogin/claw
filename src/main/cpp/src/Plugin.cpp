@@ -2570,7 +2570,10 @@ void acknowledgePhysicsSnapshot(RE::Actor* actor, std::int32_t generation, std::
 #endif
     }
 #if defined(CLAW_TRACE_VR_POSE_ACK)
-    if (!evidence.empty()) SKSE::log::info("CLAW posed VR ACK {}", evidence);
+    if (!evidence.empty()) {
+        SKSE::log::info("CLAW posed VR ACK {}", evidence);
+        spdlog::default_logger()->flush(); // The owned run consumes ACKs before the process exits.
+    }
 #endif
 }
 

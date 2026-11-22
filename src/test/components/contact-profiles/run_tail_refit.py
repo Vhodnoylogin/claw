@@ -17,39 +17,23 @@ def signed_bits(value):
     return value - 0x100000000 if value >= 0x80000000 else value
 
 
-class Capture:
-    """Use only the provided executor, existing VFS/actor custody and a fixed controller."""
+class IndexedCapture:
+    """Match operations to the owning executor's original append-only ledger."""
 
-    def __init__(self, call, ledger_path, subject, profile, basis, *, deadline, clock=time):
+    def __init__(self, call, ledger_path, *, deadline, clock=time):
         self.call = call
         self.ledger_path = Path(ledger_path)
-        self.subject, self.profile, self.basis = subject, profile, basis
         self.deadline, self.clock = deadline, clock
         self.ledger_offset = 0
         self.ledger_count = 0
-        self.nonce = subject.generation
-        self.token = 0
-        self.session_token = None
-        self.sequence = 0
-        self.owner = None
-        self.morph_receipts = []
         self.waiting_on = None
-        self.banks = [[[*cap["p1"], *cap["p2"], cap["radius"]] for cap in bank]
-                      for bank in basis["capsulesByPhase"]]
-        self.manifest = {"schema": "claw-vr-tail02-refit-reads/2", "subject": vars(subject),
-                         "phases": [], "capture": {}, "morph": {}}
-
-    @classmethod
-    def from_files(cls, call, ledger_path, subject, profile_path, basis_path, *, deadline):
-        profile = json.loads(read_pinned(Path(profile_path), PROFILE_SHA))
-        basis = json.loads(read_pinned(Path(basis_path), PROOF_SHA))
-        return cls(call, ledger_path, subject, profile, basis, deadline=deadline)
 
     def ledger(self):
         return [json.loads(line) for line in self.ledger_path.read_bytes().splitlines()]
 
     def drain(self):
         with self.ledger_path.open("rb") as stream:
+            require(stream.seek(0, 2) >= self.ledger_offset, "Executor ledger regressed during the owned capture")
             stream.seek(self.ledger_offset)
             data = stream.read()
         require(not data or data.endswith(b"\n"), "Executor ledger append was incomplete")
@@ -61,7 +45,7 @@ class Capture:
 
     def record(self, name, packet):
         remaining = self.deadline - self.clock.monotonic()
-        require(remaining > 0, "Tail refit exceeded the owned capture window")
+        require(remaining > 0, "The owned capture window expired")
         self.drain()
         result = self.call(name, packet, timeout=min(2.6, remaining), deadline=self.deadline)
         start, rows = self.drain()
@@ -91,6 +75,34 @@ class Capture:
         self.waiting_on = None
         require(kind != "bool" or result is True, f"Native operation refused: {function}")
         return index, result
+
+    def json_pap(self, script, function, args):
+        index, value = self.pap(script, function, args, "string")
+        return index, json.loads(value)
+
+
+class Capture(IndexedCapture):
+    """Use only the provided executor, existing VFS/actor custody and a fixed controller."""
+
+    def __init__(self, call, ledger_path, subject, profile, basis, *, deadline, clock=time):
+        super().__init__(call, ledger_path, deadline=deadline, clock=clock)
+        self.subject, self.profile, self.basis = subject, profile, basis
+        self.nonce = subject.generation
+        self.token = 0
+        self.session_token = None
+        self.sequence = 0
+        self.owner = None
+        self.morph_receipts = []
+        self.banks = [[[*cap["p1"], *cap["p2"], cap["radius"]] for cap in bank]
+                      for bank in basis["capsulesByPhase"]]
+        self.manifest = {"schema": "claw-vr-tail02-refit-reads/2", "subject": vars(subject),
+                         "phases": [], "capture": {}, "morph": {}}
+
+    @classmethod
+    def from_files(cls, call, ledger_path, subject, profile_path, basis_path, *, deadline):
+        profile = json.loads(read_pinned(Path(profile_path), PROFILE_SHA))
+        basis = json.loads(read_pinned(Path(basis_path), PROOF_SHA))
+        return cls(call, ledger_path, subject, profile, basis, deadline=deadline)
 
     def observe(self):
         actor = self.subject.form["form"]
@@ -140,10 +152,6 @@ class Capture:
         require(reply["status"] == "ready" and reply["sequence"] == self.sequence, "Pose sequence differs")
         self.sequence += 1
         return index
-
-    def json_pap(self, script, function, args):
-        index, value = self.pap(script, function, args, "string")
-        return index, json.loads(value)
 
     def morph_call(self, script, function, args, kind):
         handler = self.pap if kind != "none" else self.write
