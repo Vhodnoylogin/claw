@@ -32,7 +32,9 @@ class PhysicsAuthorityContracts(unittest.TestCase):
     def test_cached_events_are_current_wakeups_and_old_snapshot_cannot_clean_new(self):
         cached = body(HOST, "ProcessAutomatic")
         self.assertLess(cached.index("ConditionCurrent(target, kind, expectedRuntime)"), cached.index("helper.MarkModelGenerationChanged"))
-        self.assertLess(cached.index('ConditionCurrent(target, "renew", expectedRuntime)'), cached.index("helper.Cleanup()"))
+        stale = cached[cached.index('If !CLAWPhysicsNative.SnapshotCurrent'):cached.index('Float[] values')]
+        self.assertIn('kind == "snapshot" && CLAWPhysicsNative.ConditionCurrent(target, "renew", expectedRuntime) && helper.CleanupGeneration(generation)', stale)
+        self.assertNotIn('kind == "pose"', stale)
         condition = PLUGIN.split("bool physicsConditionCurrent(", 1)[1].split("bool physicsSnapshotCurrent", 1)[0]
         self.assertIn('if (kind == "renew") return found->second.condition == "waiting"', condition)
         self.assertIn("if (authority.pending()) return false", condition)

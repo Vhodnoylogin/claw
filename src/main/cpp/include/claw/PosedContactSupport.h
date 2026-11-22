@@ -35,6 +35,21 @@ inline PoseAffine InvertPoseAffine(const PoseAffine& matrix) {
     return result;
 }
 
+inline constexpr double poseCapsuleTolerance = 0.05; // Owner-local game units, pending runtime calibration.
+
+// A capsule is a segment swept by a sphere. Direct and reversed endpoint
+// matchings both bound the surface shift by the end movement plus radius change.
+inline bool PoseCapsuleChanged(const Capsule& previous, const Capsule& next, double tolerance) {
+    const double remaining = tolerance - std::abs(previous.radius - next.radius);
+    if (remaining < 0) return true;
+    const auto differs = [squared = remaining * remaining](const Vec3& a, const Vec3& b) {
+        const auto delta = add(a, b, -1.);
+        return dot(delta, delta) > squared;
+    };
+    return (differs(previous.p1, next.p1) || differs(previous.p2, next.p2)) &&
+           (differs(previous.p1, next.p2) || differs(previous.p2, next.p1));
+}
+
 struct PoseInfluence {
     std::size_t bone;
     double weight;

@@ -25,6 +25,7 @@ String _acceptedModel = ""
 Bool _nativeSnapshot = False
 Bool _nativeOwner = False
 Int _nativeToken = 0
+Int _acceptedNativeToken = 0
 Float _nativeWeight = -1.0
 
 ; 0 dormant, 1 capability blocked, 2 not beast, 3 unloaded,
@@ -74,6 +75,7 @@ Bool Function ClearRetiredNativeObservation(Actor previousActor)
   _nativeOwner = False
   _nativeSnapshot = False
   _nativeToken = 0
+  _acceptedNativeToken = 0
   _nativeWeight = -1.0
   _busy = False
   Return True
@@ -166,12 +168,24 @@ EndFunction
 ; MorphName, after its model update completes. Never pass only CLAW's own key.
 ; The coordinator calls this after a morph change; no world scan or timer runs.
 Int Function SynchronizeMorphs(Actor expectedActor, Float[] values, String evidence, Bool nativeSnapshot = False, Int snapshotToken = 0)
+  Return SynchronizeObservedMorphs(expectedActor, values, evidence, nativeSnapshot, snapshotToken, False)
+EndFunction
+
+Int Function SynchronizePose(Actor expectedActor, Float[] values, String evidence, Int snapshotToken)
+  Return SynchronizeObservedMorphs(expectedActor, values, evidence, True, snapshotToken, True)
+EndFunction
+
+Int Function SynchronizeObservedMorphs(Actor expectedActor, Float[] values, String evidence, Bool nativeSnapshot, Int snapshotToken, Bool poseSnapshot)
   If _busy
     Return 8
   EndIf
   _busy = True
   Int snapshotGeneration = _modelGeneration
   Float snapshotWeight = -1.0
+  If poseSnapshot && !nativeSnapshot
+    _busy = False
+    Return SetStatus(1, "Pose changes require a current native snapshot")
+  EndIf
   If nativeSnapshot && !CLAWPhysicsNative.SnapshotCurrent(expectedActor, snapshotGeneration, snapshotToken)
     _busy = False
     Return SetStatus(1, "Native aggregate snapshot is stale; no append attempted")
@@ -194,7 +208,11 @@ Int Function SynchronizeMorphs(Actor expectedActor, Float[] values, String evide
   If !CLAWPhysicsData.MorphValuesValid(values)
     ; Once a known requested shape leaves the fitted domain, do not knowingly
     ; keep its previous mismatching capsules. Scoped cleanup may remain pending.
-    CleanupInternal()
+    If nativeSnapshot && !CLAWPhysicsNative.SnapshotCurrent(expectedActor, snapshotGeneration, snapshotToken)
+      _busy = False
+      Return SetStatus(1, "Native morph input became stale before cleanup")
+    EndIf
+    CleanupInternal(snapshotGeneration)
     _morphValuesQualified = False
     _morphRefresh = True
     _busy = False
@@ -217,6 +235,10 @@ Int Function SynchronizeMorphs(Actor expectedActor, Float[] values, String evide
     _busy = False
     Return SetStatus(1, "Morph snapshot changed or became invalid while copying; no append attempted")
   EndIf
+  If nativeSnapshot && !CLAWPhysicsNative.SnapshotCurrent(expectedActor, snapshotGeneration, snapshotToken)
+    _busy = False
+    Return SetStatus(1, "Native aggregate snapshot became stale while copying")
+  EndIf
   Bool changed = !_morphValuesQualified || (nativeSnapshot && snapshotWeight != _nativeWeight)
   index = 0
   While index < count
@@ -228,12 +250,16 @@ Int Function SynchronizeMorphs(Actor expectedActor, Float[] values, String evide
   _morphValues = prepared
   _morphValuesQualified = True
   _morphRefresh = _morphRefresh || changed
+  ; A full snapshot with a new token can contain different fitted geometry even at the same effective vector.
+  If nativeSnapshot && !poseSnapshot && _acceptedNativeToken != snapshotToken
+    _morphRefresh = True
+  EndIf
   _morphEvidence = evidence
   _nativeSnapshot = nativeSnapshot
   _nativeOwner = _nativeOwner || nativeSnapshot
   _nativeToken = snapshotToken
   _nativeWeight = snapshotWeight
-  Int outcome = SynchronizeInternal()
+  Int outcome = SynchronizeInternal(poseSnapshot)
   _busy = False
   Return outcome
 EndFunction
@@ -243,11 +269,15 @@ String Function GetMorphEvidence()
 EndFunction
 
 Int Function Cleanup()
+  Return CleanupGeneration(-1)
+EndFunction
+
+Int Function CleanupGeneration(Int expectedGeneration)
   If _busy
     Return 8
   EndIf
   _busy = True
-  Int outcome = CleanupInternal()
+  Int outcome = CleanupInternal(expectedGeneration)
   _busy = False
   Return outcome
 EndFunction
@@ -258,6 +288,7 @@ Function MarkModelGenerationChanged()
   _morphValuesQualified = False
   _nativeSnapshot = False
   _nativeToken = 0
+  _acceptedNativeToken = 0
   _generationUnknown = True
   If GetAcceptedLedgerCount() > 0
     SetStatus(6, "Model/provider generation changed; previous container presence is unknown")
@@ -277,6 +308,7 @@ Bool Function AcknowledgeProviderReset(Actor previousActor, Bool previousContain
   EndWhile
   _tracked = None
   _acceptedModel = ""
+  _acceptedNativeToken = 0
   _nativeOwner = False
   _generationUnknown = False
   SetStatus(9, "Host acknowledged old CBPC containers discarded; not independently read back")
@@ -303,7 +335,12 @@ Bool Function IsCurrentBeast(Actor target)
   Return beast != None && target.GetRace() == beast
 EndFunction
 
-Int Function CleanupInternal()
+Int Function CleanupInternal(Int expectedGeneration = -1)
+  Int cleanupGeneration = _modelGeneration
+  If expectedGeneration >= 0 && expectedGeneration != cleanupGeneration
+    Return SetStatus(6, "Stale cleanup request; the current ledger was left intact")
+  EndIf
+  _acceptedNativeToken = 0
   EnsureLedger()
   If GetAcceptedLedgerCount() == 0
     _tracked = None
@@ -320,7 +357,6 @@ Int Function CleanupInternal()
     Return SetStatus(6, "Cannot safely call scoped detach without provider/index ownership qualification")
   EndIf
   Actor cleanupActor = _tracked
-  Int cleanupGeneration = _modelGeneration
   If cleanupActor == None || !cleanupActor.Is3DLoaded()
     Return SetStatus(6, "Tracked actor is unavailable/unloaded; cleanup has not been proven")
   EndIf
@@ -357,9 +393,116 @@ Int Function CleanupInternal()
   Return SetStatus(7, "Native reported matching-index removals; no collider enumeration exists")
 EndFunction
 
-Int Function SynchronizeInternal()
+Bool Function CompletePoseLedger(Actor target, Bool female)
+  Int count = CLAWPhysicsData.SlotCount()
+  If _tracked != target || _female != female || _acceptedModel != CLAWPhysicsData.ModelIdentity() || _accepted == None || _accepted.Length < count || _accepted.Length > 128
+    Return False
+  EndIf
+  Int slot = 0
+  While slot < _accepted.Length
+    Bool expected = slot < count && CLAWPhysicsData.HasCapsule(slot) && CLAWPhysicsData.SlotEnabled(slot, female)
+    If _accepted[slot] != expected
+      Return False
+    EndIf
+    slot += 1
+  EndWhile
+  Return True
+EndFunction
+
+Bool Function ValidPoseChangedSlots(Int[] slots, Bool female)
+  If slots == None || slots.Length == 0 || slots.Length > 32
+    Return False
+  EndIf
+  Int previous = -1
+  Int index = 0
+  While index < slots.Length
+    Int slot = slots[index]
+    If slot <= previous || slot >= CLAWPhysicsData.SlotCount() || !CLAWPhysicsData.HasCapsule(slot) || !CLAWPhysicsData.SlotEnabled(slot, female)
+      Return False
+    EndIf
+    previous = slot
+    index += 1
+  EndWhile
+  Return True
+EndFunction
+
+Bool Function PoseSnapshotCurrent(Actor target, Int generation, Int token)
+  Return target != None && _nativeSnapshot && _nativeToken == token && _modelGeneration == generation && GetActorReference() == target && CLAWPhysicsNative.SnapshotCurrent(target, generation, token)
+EndFunction
+
+Bool Function PoseAttachmentCurrent(Actor target, Int generation, Int token, String node, Bool female)
+  ActorBase base = target.GetLeveledActorBase()
+  If base == None
+    Return False
+  EndIf
+  Int sex = base.GetSex()
+  Return (sex == 1 && female || sex == 0 && !female) && _nativeToken == token && AttachmentContextCurrent(target, generation, node)
+EndFunction
+
+Int Function RollBackPoseDelta(Actor target, Int generation, Int token, String reason)
+  _morphRefresh = True
+  If !PoseSnapshotCurrent(target, generation, token) || _tracked != target
+    Return SetStatus(6, "Pose update context changed; remaining ledger retained")
+  EndIf
+  Int cleanup = CleanupInternal(generation)
+  If cleanup == 6 || GetAcceptedLedgerCount() > 0
+    Return SetStatus(6, reason + "; previous slot cleanup remains unresolved")
+  EndIf
+  Return SetStatus(5, reason + "; accepted slots removed")
+EndFunction
+
+Int Function SynchronizePoseDelta(Actor target, Int generation, Int token, Int[] slots, Bool female)
+  ; Once any operation is attempted, the saved ledger no longer identifies a complete snapshot.
+  _acceptedNativeToken = 0
+  Int index = 0
+  While index < slots.Length
+    Int slot = slots[index]
+    String node = CLAWPhysicsData.Node(slot)
+    Int colliderIndex = CLAWPhysicsData.ColliderIndex(slot)
+    Float[] capsule = CLAWPhysicsNative.GetCapsule(target, generation, token, slot)
+    If capsule == None || capsule.Length != 7 || !(capsule[6] > 0.0)
+      Return RollBackPoseDelta(target, generation, token, "Replacement capsule was not available")
+    EndIf
+    Float[] point1 = new Float[3]
+    Float[] point2 = new Float[3]
+    point1[0] = capsule[0]
+    point1[1] = capsule[1]
+    point1[2] = capsule[2]
+    point2[0] = capsule[3]
+    point2[1] = capsule[4]
+    point2[2] = capsule[5]
+    If !_accepted[slot] || !PoseAttachmentCurrent(target, generation, token, node, female)
+      Return RollBackPoseDelta(target, generation, token, "Pose slot or snapshot changed before detach")
+    EndIf
+    Bool removed = CBPCPluginScript.DetachCollider(target, node, 1, colliderIndex, True)
+    If !CleanupContextCurrent(target, generation) || GetActorReference() != target
+      Return RollBackPoseDelta(target, generation, token, "Pose detach changed the owning context")
+    EndIf
+    If !removed
+      Return RollBackPoseDelta(target, generation, token, "Pose detach was not confirmed")
+    EndIf
+    _accepted[slot] = False
+    If !PoseAttachmentCurrent(target, generation, token, node, female)
+      Return RollBackPoseDelta(target, generation, token, "Pose snapshot changed before replacement")
+    EndIf
+    Bool accepted = CBPCPluginScript.AttachColliderCapsule(target, node, point1, capsule[6], point2, capsule[6], 0.0, colliderIndex, True)
+    _accepted[slot] = accepted
+    If !accepted || !PoseAttachmentCurrent(target, generation, token, node, female)
+      Return RollBackPoseDelta(target, generation, token, "Pose replacement rejected or context changed")
+    EndIf
+    index += 1
+  EndWhile
+  If !PoseSnapshotCurrent(target, generation, token)
+    Return RollBackPoseDelta(target, generation, token, "Pose snapshot changed before ledger acceptance")
+  EndIf
+  _acceptedNativeToken = token
+  Return SetStatus(4, "Changed pose slots were replaced; simulation/contact readback unavailable")
+EndFunction
+
+Int Function SynchronizeInternal(Bool poseSnapshot = False)
   EnsureLedger()
   Int synchronizationGeneration = _modelGeneration
+  Int synchronizationToken = _nativeToken
   If GetAcceptedLedgerCount() > 0 && _acceptedModel != CLAWPhysicsData.ModelIdentity()
     Return SetStatus(6, "Capsule model identity changed with remembered slots; cleanup/reset must be resolved under its original layout")
   EndIf
@@ -367,7 +510,13 @@ Int Function SynchronizeInternal()
     Return SetStatus(6, "Remembered capsules have an unresolved former actor; retargeted attachment refused")
   EndIf
   Actor target = GetActorReference()
+  If poseSnapshot && (!PoseSnapshotCurrent(target, synchronizationGeneration, synchronizationToken) || !IsCurrentBeast(target) || !target.Is3DLoaded())
+    Return SetStatus(1, "Stale pose snapshot; no native mutation attempted")
+  EndIf
   If _tracked != None && _tracked != target && GetAcceptedLedgerCount() > 0
+    If poseSnapshot
+      Return SetStatus(6, "Pose snapshot does not own the former alias ledger")
+    EndIf
     CleanupInternal()
     If GetAcceptedLedgerCount() > 0
       Return SetStatus(6, "Old alias actor cleanup pending; retargeted attachment refused")
@@ -402,10 +551,32 @@ Int Function SynchronizeInternal()
   EndIf
   Bool female = sex == 1
   If GetAcceptedLedgerCount() > 0 && female != _female
+    If poseSnapshot
+      Return SetStatus(6, "Actor sex changed before applying the pose snapshot")
+    EndIf
     CleanupInternal()
     If GetAcceptedLedgerCount() > 0
       Return SetStatus(6, "Previous sex capsule cleanup pending")
     EndIf
+  EndIf
+  If poseSnapshot
+    If !_morphRefresh && _acceptedNativeToken > 0 && CompletePoseLedger(target, female)
+      If _acceptedNativeToken == synchronizationToken
+        If !PoseSnapshotCurrent(target, synchronizationGeneration, synchronizationToken)
+          Return SetStatus(1, "Repeated pose snapshot is no longer current")
+        EndIf
+        Return SetStatus(4)
+      EndIf
+      Int[] slots = CLAWPhysicsNative.GetPoseChangedSlots(target, synchronizationGeneration, synchronizationToken, _acceptedNativeToken)
+      If ValidPoseChangedSlots(slots, female)
+        Return SynchronizePoseDelta(target, synchronizationGeneration, synchronizationToken, slots, female)
+      EndIf
+    EndIf
+    ; A missed predecessor, an old saved ledger or prior partial work needs a full refresh.
+    If !PoseSnapshotCurrent(target, synchronizationGeneration, synchronizationToken)
+      Return SetStatus(1, "Pose snapshot became stale before full synchronization")
+    EndIf
+    _morphRefresh = True
   EndIf
   If GetAcceptedLedgerCount() == CLAWPhysicsData.ExpectedCapsuleCountForSex(female) && !_morphRefresh
     If GetActorReference() != target || _modelGeneration != synchronizationGeneration || !AttachmentQualified(target) || _generationUnknown
@@ -414,7 +585,7 @@ Int Function SynchronizeInternal()
     Return SetStatus(4)
   EndIf
   If GetAcceptedLedgerCount() > 0
-    CleanupInternal()
+    CleanupInternal(synchronizationGeneration)
     If GetAcceptedLedgerCount() > 0
       Return SetStatus(6, "Partial previous capsule ledger cannot be replaced safely")
     EndIf
@@ -485,14 +656,21 @@ Int Function SynchronizeInternal()
   If !IsCurrentBeast(target) || !target.Is3DLoaded() || GetActorReference() != target || _generationUnknown || _modelGeneration != synchronizationGeneration || !AttachmentQualified(target)
     failed = True
   EndIf
+  If _nativeSnapshot && !CLAWPhysicsNative.SnapshotCurrent(target, synchronizationGeneration, synchronizationToken)
+    failed = True
+  EndIf
   If failed
-    CleanupInternal()
+    CleanupInternal(synchronizationGeneration)
     If GetAcceptedLedgerCount() > 0
       Return SetStatus(6, "Attach failed and rollback remains unproven; do not retry until resolved")
     EndIf
     Return SetStatus(5, "Attach rejected or lifecycle changed; accepted subset was removed")
   EndIf
   _morphRefresh = False
+  _acceptedNativeToken = 0
+  If _nativeSnapshot
+    _acceptedNativeToken = synchronizationToken
+  EndIf
   Return SetStatus(4, "All requested native appends accepted; TailBone04 motion only; simulation/contact readback unavailable")
 EndFunction
 

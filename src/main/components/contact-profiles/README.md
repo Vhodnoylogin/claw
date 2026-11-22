@@ -45,9 +45,22 @@ the provider's attachment lookup. A replaced graph or superseded observation
 cannot publish the queued pose. The candidate still requires the exact
 installed asset pins. A shape with the same extents is not a file hash.
 
-The existing provider ledger still owns attachment and cleanup. This candidate
-does not schedule pose-only replacements. Live provider coordinates, update
-timing and contacts require a separate qualified VR run.
+After the provider host acknowledges a complete snapshot, a VR-only 250 ms
+task samples one eligible actor in rotation. An independent rotation retries
+one unacknowledged pose event per tick through the ordinary observation guards.
+The two-second scan still handles morph updates and retries ordinary events.
+Pose-only fits older than 500 ms are discarded before publication. The pose worker
+fits the 32 pose-aware slots, comparing each with the last accepted capsule
+in the attachment bone's local coordinates. The initial movement threshold
+is 0.05 game units. Exchanging the ends of a capsule leaves its identity
+unchanged for the comparison.
+
+A pose event carries the new snapshot token. The host gets changed slots
+only against its own fully accepted previous token and uses the existing
+ledger to replace those slots. An incomplete or mismatched ledger uses the
+scoped full synchronization path. The native lane holds at most one
+unacknowledged update per actor, so a busy host can receive the same event again.
+Live coordinates, update timing and contacts need a qualified VR run.
 
 The enclosing profiles preserve sampled support coverage but are too loose to
 claim accurate VR touch boundaries. One separate three-pass contact experiment

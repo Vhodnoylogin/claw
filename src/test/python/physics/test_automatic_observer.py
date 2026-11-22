@@ -51,12 +51,12 @@ class AutomaticObserverTests(unittest.TestCase):
         generation = actor.split('Function MarkModelGenerationChanged()',1)[1].split('EndFunction',1)[0]
         self.assertNotIn('_nativeOwner = False',generation)
         self.assertIn('_nativeSnapshot = False',generation)
-        sync = actor.split('Int Function SynchronizeMorphs(',1)[1].split('EndFunction',1)[0]
+        sync = actor.split('Int Function SynchronizeObservedMorphs(',1)[1].split('EndFunction',1)[0]
         self.assertIn('CLAWPhysicsData.NativeFitRequired() && !nativeSnapshot',sync)
 
     def test_native_observer_reads_provider_aggregate_and_never_papyrus_key_sum(self):
         plugin = (ROOT.parents[3]/'src/main/cpp/src/Plugin.cpp').read_text()
-        observe = plugin.split('void observePhysics(RE::Actor* actor) {',1)[1].split('bool readback(',1)[0]
+        observe = plugin.split('void observePhysics(RE::Actor* actor, bool retryPose) {',1)[1].split('bool readback(',1)[0]
         self.assertIn('morphs->GetBodyMorphs',observe)
         self.assertIn('morphs->ApplyBodyMorphs(skeeReference(actor), false)',observe)
         self.assertNotIn('morphs->GetMorph(',observe)
@@ -69,6 +69,23 @@ class AutomaticObserverTests(unittest.TestCase):
         self.assertIn('physicsPopulationBlocked',plugin)
         self.assertNotIn('SetWeight(',plugin)
         self.assertIn('binding.observation.publishedWeight != job.weight',plugin)
+
+    def test_pose_retry_is_separate_from_capture_and_rechecks_observation(self):
+        plugin = (ROOT.parents[3]/'src/main/cpp/src/Plugin.cpp').read_text()
+        scan = plugin.split('void queuePhysicsPoseScan() {', 1)[1].split('void queueActor(', 1)[0]
+        self.assertIn('visitOne(deliveryCursor, true);', scan)
+        self.assertIn('visitOne(captureCursor, false);', scan)
+        self.assertIn('retry ? binding.delivered || !binding.poseBaseSnapshot : !binding.delivered', scan)
+        self.assertIn('if (retry) observePhysics(actor.get(), true);', scan)
+        self.assertIn('(retryPose || !binding.poseBaseSnapshot)', plugin)
+
+    def test_expired_pose_fit_does_not_replace_acknowledged_capsules(self):
+        plugin = (ROOT.parents[3]/'src/main/cpp/src/Plugin.cpp').read_text()
+        result = plugin.split('void startPhysicsWorker() {', 1)[1].split('void queuePhysicsFit(', 1)[0]
+        expires = result.index('now() - job.pose->captured > maxQueuedPoseAge)) return;')
+        self.assertLess(result.index('binding.fitPending = false;'), expires)
+        self.assertLess(expires, result.index('binding.capsules[slot] = capsules[i];'))
+        self.assertLess(expires, result.index('publishPhysics(actor, binding, job.poseBaseSnapshot'))
 
     def test_manual_intent_blocks_offer_and_claim_then_task_repeats_revocation(self):
         plugin = (ROOT.parents[3]/'src/main/cpp/src/Plugin.cpp').read_text()

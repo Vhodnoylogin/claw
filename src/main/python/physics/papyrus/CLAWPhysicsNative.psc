@@ -26,4 +26,6 @@ Float[] Function GetValues(Actor target, Int generation, Int token) Global Nativ
 Float Function GetWeight(Actor target, Int generation, Int token) Global Native
 ; p1 xyz, p2 xyz, radius. One capsule avoids Papyrus's 128-item array limit.
 Float[] Function GetCapsule(Actor target, Int generation, Int token, Int slot) Global Native
+; An empty array means the accepted ledger's exact predecessor cannot be used.
+Int[] Function GetPoseChangedSlots(Actor target, Int generation, Int token, Int previousToken) Global Native
 String Function GetModelIdentity() Global Native

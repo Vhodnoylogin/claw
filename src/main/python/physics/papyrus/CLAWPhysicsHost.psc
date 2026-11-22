@@ -326,7 +326,7 @@ EndFunction
 ; callable representation for a void function and an event handler.
 Function OnPhysicsObservation(String eventName, String kind, Float tokenValue, Form sender)
   String expectedRuntime = _runtimeSession
-  ; Native repeats unacknowledged observations at its bounded two-second scan.
+  ; Native retries unacknowledged observations on bounded scans.
   If _busy || !IntegrationEnabled() || !Initialize()
     Return
   EndIf
@@ -351,7 +351,7 @@ Function ProcessAutomatic(Int index, Actor target, String kind, Int token, Strin
     Return
   EndIf
   ; Event names are wakeups. Native cached authority decides whether they remain current.
-  If kind != "snapshot" && kind != "refit" && !CLAWPhysicsNative.ConditionCurrent(target, kind, expectedRuntime)
+  If kind != "snapshot" && kind != "pose" && kind != "refit" && !CLAWPhysicsNative.ConditionCurrent(target, kind, expectedRuntime)
     Return
   EndIf
   CLAWPhysicsActor helper = _slots[index]
@@ -361,11 +361,11 @@ Function ProcessAutomatic(Int index, Actor target, String kind, Int token, Strin
     Return
   EndIf
   Int generation = helper.GetModelGeneration()
-  If kind == "snapshot"
+  If kind == "snapshot" || kind == "pose"
     If !CLAWPhysicsNative.SnapshotCurrent(target, generation, token)
-      ; A Papyrus lifecycle event may precede the native receipt. Renew only
-      ; after actual scoped cleanup; no provider-reset inference is made.
-      If CLAWPhysicsNative.ConditionCurrent(target, "renew", expectedRuntime) && helper.Cleanup() != 8 && helper.GetAcceptedLedgerCount() == 0
+      ; Ordinary snapshots may wake an already waiting lifecycle renewal. A pose
+      ; event has no such authority, and the cleanup is scoped to this generation.
+      If kind == "snapshot" && CLAWPhysicsNative.ConditionCurrent(target, "renew", expectedRuntime) && helper.CleanupGeneration(generation) != 8 && helper.GetAcceptedLedgerCount() == 0
         If helper.QualifyForActor(target, generation, _automaticEvidence[index], _automaticProvider[index], _automaticIndices[index], _automaticFit[index])
           RegisterAutomatic(index, target, expectedRuntime)
         EndIf
@@ -373,18 +373,23 @@ Function ProcessAutomatic(Int index, Actor target, String kind, Int token, Strin
       Return
     EndIf
     Float[] values = CLAWPhysicsNative.GetValues(target, generation, token)
-    Int outcome = helper.SynchronizeMorphs(target, values, _automaticEvidence[index], True, token)
+    Int outcome
+    If kind == "pose"
+      outcome = helper.SynchronizePose(target, values, _automaticEvidence[index], token)
+    Else
+      outcome = helper.SynchronizeMorphs(target, values, _automaticEvidence[index], True, token)
+    EndIf
     If outcome == 4
       CLAWPhysicsNative.AcknowledgeSnapshot(target, generation, token)
-    ElseIf outcome == 6
+    ElseIf outcome == 6 && kind != "pose" && CLAWPhysicsNative.SnapshotCurrent(target, generation, token)
       ; Keep the native observation unacknowledged while old capsules need
       ; reported removal. The next bounded pass can retry after cleanup.
-      helper.Cleanup()
+      helper.CleanupGeneration(generation)
     EndIf
   ElseIf kind == "refit"
     ; A delayed old refit receipt cannot remove newly accepted current capsules.
     If CLAWPhysicsNative.RefitPending(target, generation, token)
-      helper.Cleanup()
+      helper.CleanupGeneration(generation)
     EndIf
   ElseIf kind == "ready"
     If helper.Cleanup() == 8 || helper.GetAcceptedLedgerCount() > 0

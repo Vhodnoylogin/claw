@@ -94,11 +94,47 @@ class LifecycleSourceContracts(unittest.TestCase):
         sync = body(self.actor, "SynchronizeInternal")
         append = sync.index("Bool accepted = CBPCPluginScript.AttachColliderCapsule(")
         remember = sync.index("_accepted[slot] = accepted", append)
-        rollback = sync.index("If failed\n    CleanupInternal()", remember)
+        rollback = sync.index("If failed\n    CleanupInternal(synchronizationGeneration)", remember)
         self.assertLess(remember, rollback)
         self.assertIn("GetActorReference() != target", sync[remember:rollback])
         self.assertIn("_modelGeneration != synchronizationGeneration", sync[remember:rollback])
         self.assertRegex(sync[rollback:], r"If GetAcceptedLedgerCount\(\) > 0\s+Return SetStatus\(6,")
+
+    def test_pose_uses_separate_entry_points_and_accepts_only_exact_delta_basis(self):
+        self.assertIn("Int Function Cleanup()\n  Return CleanupGeneration(-1)", self.actor)
+        original = "Int Function SynchronizeMorphs(Actor expectedActor, Float[] values, String evidence, Bool nativeSnapshot = False, Int snapshotToken = 0)"
+        self.assertIn(original, self.actor)
+        self.assertIn("True, snapshotToken, True)", body(self.actor, "SynchronizePose"))
+        dispatch = body(self.host, "ProcessAutomatic")
+        self.assertRegex(dispatch, r'If kind == "pose"\s+outcome = helper\.SynchronizePose\([^\n]+\)\s+Else\s+outcome = helper\.SynchronizeMorphs')
+        self.assertIn('ElseIf outcome == 6 && kind != "pose" && CLAWPhysicsNative.SnapshotCurrent', dispatch)
+        sync = body(self.actor, "SynchronizeInternal")
+        pose = sync[sync.index("If poseSnapshot\n    If !_morphRefresh"):]
+        self.assertIn("_acceptedNativeToken > 0 && CompletePoseLedger(target, female)", pose)
+        self.assertLess(pose.index("_acceptedNativeToken == synchronizationToken"), pose.index("GetPoseChangedSlots("))
+        self.assertIn("synchronizationToken, _acceptedNativeToken)", pose)
+        self.assertLess(pose.index("If ValidPoseChangedSlots"), pose.index("SynchronizePoseDelta("))
+        self.assertLess(pose.index("_morphRefresh = True"), pose.index("CleanupInternal(synchronizationGeneration)"))
+        self.assertIn("slot <= previous", body(self.actor, "ValidPoseChangedSlots"))
+        for name in ("MarkModelGenerationChanged", "AcknowledgeProviderReset", "ClearRetiredNativeObservation", "CleanupInternal"):
+            self.assertIn("_acceptedNativeToken = 0", body(self.actor, name))
+
+    def test_pose_replacement_requires_actual_detach_and_keeps_failed_ledger(self):
+        delta = body(self.actor, "SynchronizePoseDelta")
+        guard = "If !_accepted[slot] || !PoseAttachmentCurrent(target, generation, token, node, female)"
+        detach = "Bool removed = CBPCPluginScript.DetachCollider(target, node, 1, colliderIndex, True)"
+        self.assertLess(delta.index("GetCapsule("), delta.index(guard))
+        self.assertLess(delta.index(guard), delta.index(detach))
+        self.assertRegex(delta, r"If !removed\s+Return RollBackPoseDelta\([^\n]+\)\s+EndIf\s+_accepted\[slot\] = False")
+        attach = delta.index("Bool accepted = CBPCPluginScript.AttachColliderCapsule(")
+        self.assertLess(delta.index("If !PoseAttachmentCurrent", delta.index(detach)), attach)
+        self.assertLess(attach, delta.index("_accepted[slot] = accepted"))
+        self.assertLess(delta.index("_accepted[slot] = accepted"), delta.index("_acceptedNativeToken = token"))
+        rollback = body(self.actor, "RollBackPoseDelta")
+        self.assertLess(rollback.index("!PoseSnapshotCurrent(target, generation, token)"), rollback.index("CleanupInternal(generation)"))
+        self.assertIn("cleanup == 6 || GetAcceptedLedgerCount() > 0", rollback)
+        cleanup = body(self.actor, "CleanupInternal")
+        self.assertLess(cleanup.index("expectedGeneration != cleanupGeneration"), cleanup.index("_acceptedNativeToken = 0"))
 
     def test_model_events_expire_pose_but_preserve_cleanup_ledger(self):
         mark = body(self.actor, "MarkModelGenerationChanged")

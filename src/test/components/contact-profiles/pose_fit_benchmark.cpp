@@ -35,6 +35,14 @@ double maxDifference(const Capsule& actual, const Capsule& reference) {
 }
 
 bool checkDeformationAndRejections() {
+    constexpr auto tolerance = claw::physics::poseCapsuleTolerance;
+    const Capsule original{{0., 0., 0.}, {0., 0., 2.}, 1.};
+    const Capsule reversed{original.p2, original.p1, original.radius};
+    const Capsule small{{.02, 0., 0.}, {.02, 0., 2.}, 1.02};
+    const Capsule mixed{{.03, 0., 0.}, {.03, 0., 2.}, 1.03};
+    if (claw::physics::PoseCapsuleChanged(original, reversed, tolerance) ||
+        claw::physics::PoseCapsuleChanged(original, small, tolerance) ||
+        !claw::physics::PoseCapsuleChanged(original, mixed, tolerance)) return false;
     constexpr Influence links[]{{0, .25, {1., 0., 0.}, 0}, {1, .75, {0., 1., 0.}, 1}, {0, 1., {0., 0., 1.}, 0}};
     constexpr Vertex vertices[]{{0, 2}, {2, 1}};
     constexpr std::size_t points[]{0, 1};
@@ -110,6 +118,8 @@ int main() {
     std::array<Capsule, std::size(regions)> fitted{};
     const auto count = std::size(poses);
     double numericError{};
+    std::array<Capsule, std::size(regions)> previous{};
+    std::size_t changed{};
     for (std::size_t p = 0; p < count; ++p) {
         support.skin(poses[p].world, 0., {}, worldPoints);
         std::array<Matrix, std::size(poses[0].world)> inverse{};
@@ -119,15 +129,33 @@ int main() {
                 if (std::abs(inverse[bone][axis] - poses[p].inverse[bone][axis]) > 1e-9) return 1;
         }
         support.fit(inverse, worldPoints, ownerPoints, fitted);
+        if (p == 0) previous = fitted;
+        else for (std::size_t i = 0; i < fitted.size(); ++i)
+            if (claw::physics::PoseCapsuleChanged(previous[i], fitted[i], claw::physics::poseCapsuleTolerance)) ++changed;
         for (std::size_t i = 0; i < fitted.size(); ++i)
             numericError = std::max(numericError, maxDifference(fitted[i], expected[p][i]));
+    }
+    // Preserve the archived vector and move only the TailBone02–05 suffix of
+    // its fixed fifteen-bone pose. Ear geometry is the negative control.
+    std::array<Matrix, std::size(poses[0].world)> moved{}, inverse{};
+    std::ranges::copy(poses[0].world, moved.begin());
+    for (std::size_t i = 5; i <= 8; ++i) moved[i][3] += .5;
+    std::ranges::transform(moved, inverse.begin(), InvertPoseAffine);
+    support.skin(moved, 0., {}, worldPoints);
+    support.fit(inverse, worldPoints, ownerPoints, fitted);
+    std::size_t movedEar{}, movedTail{};
+    for (std::size_t i = 0; i < fitted.size(); ++i) {
+        if (claw::physics::PoseCapsuleChanged(previous[i], fitted[i], claw::physics::poseCapsuleTolerance))
+            ++(i < 16 ? movedEar : movedTail);
     }
     std::cout << std::setprecision(12)
               << "Posed contact deformation and malformed input controls passed\n"
               << "uniqueSupportVertices " << std::size(uniqueVertices) << " influences " << std::size(influences)
               << " slotPointMemberships " << std::size(slotPointIndices) << " slots " << std::size(regions)
-              << " poses " << count << " maxCapsuleAbsError " << numericError << '\n';
-    if (!std::isfinite(numericError) || numericError > 1e-6) return 1;
+              << " poses " << count << " maxCapsuleAbsError " << numericError << '\n'
+              << "archived stationary pose changed slots " << changed << '\n'
+              << "controlled tail motion changed ears " << movedEar << " tail " << movedTail << '\n';
+    if (!std::isfinite(numericError) || numericError > 1e-6 || changed || movedEar || !movedTail) return 1;
 
     using Clock = std::chrono::steady_clock;
     using Micros = std::chrono::duration<double, std::micro>;
