@@ -106,6 +106,22 @@ contact or impulse assertion requires observation before FSMP clears the
 manifolds. The fixture is test-only and file verification grants no launch
 slot or live acceptance.
 
+Use the [test provider](../../cpp/fsmp_pair_contact/README.md) to collect accepted
+contact points for only these two actors. Record each `Arm`, completed
+`Describe` and every `Read` page in the retained step log. Use the
+`claw-fsmp-pair-contact-reads/1` manifest layout shown in
+`test_fsmp_contact_windows.py` and run:
+
+```powershell
+python src/test/components/adult-anatomy/fsmp_contact_windows.py `
+  --manifest <contact-index.json> --steps <raw-steps.jsonl>
+```
+
+The reader requires completed separated and tag-mismatch controls and at
+least one accepted contact point on the chosen dynamic driver. Its result
+covers the direct provider data. Check the before/after World Observer pose
+and the held stimulus separately before interpreting the four controls.
+
 ## Focused checks
 
 ```powershell
