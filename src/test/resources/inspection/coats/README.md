@@ -148,6 +148,25 @@ restoration separately. Synthetic verifier controls exercise discrimination
 only. The offline package needs an admitted SE run to qualify attachment,
 slot exclusivity, and preservation of the root.
 
+`src/test/python/integration/coat_turnover_case.py` emits the
+`polygon-actions/1` subject fragment and declared checks. It sets the first
+settled coat audit as the factual boundary. To score a collected run, pass
+`--result <result.json> --expected <expected.json>`; the expected file
+contains the independently resolved `pattern` and `expected_paths` from the
+winning coat configuration. The case verifies the run's owned fixture record,
+the four observed worn-form pairs and actual audit evidence. Check the final
+Polygon custody, installation and process evidence before using this result.
+
+The proposed domain requires qualified reads of the fixture skin, fixed addon,
+actual worn forms and coat audit. It also requires owned inventory supply,
+direct equip and the stock BODY texture operation. An empty slot is a valid
+native observation. Admit only the exact test actor, variant records and stock
+texture set in the selected platform. Current guarded bindings lack distinct
+armor and texture-set input roles, and the candidate SE platform has no
+mapping for the coat observations. This fragment has no executor or launch
+authorization. The originating chat can finish the schema-2 order once the
+platform and the effective installed fixture are qualified.
+
 The frozen owned interactive platform can exercise the existing typed coat APIs
 for a bounded operator probe. Its transport/configuration stays outside this
 portable source fixture. A formal schema2 coat order additionally needs the
