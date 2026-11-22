@@ -86,9 +86,14 @@ The owning run prepares the disposable actor, loaded-module pins and a clean
 native Distribution session with the automatic collider host disabled. It
 also supplies the calibrated reference pose for the same loaded actor, the
 three acknowledged probe pairs, and the exact owned driver instance. The
-archived candidate reaches tracking Y = 0.817 m. The previous 0.90 m floor
-excludes it. Use a separately admitted movement envelope or choose a new point
-that meets the original envelope and both measured geometry margins.
+archived candidate reaches tracking Y = 0.817 m. Replaying the archived
+placement with `--min-height-metres 0.90` bounds the best contrast to 0.510 GU
+at 0.30 m travel and 0.640 GU at 0.40 m. Both are below the required 0.75 GU.
+Choose a different fixture placement or a separately admitted envelope and
+remeasure both geometry margins in the live session.
+As a placement sensitivity check, raising the archived tail frames by 6 GU
+yields a predicted 1.34 GU contrast within the original envelope. The live
+candidate needs stable footing and fresh tail observations at its chosen place.
 
 The CLAW runner uses bounded calibrated moves and independently measures
 arrival before issuing the single final 30-second logical hold. The capture
@@ -99,13 +104,11 @@ neutral and then for executor restoration. The recorded capture verifies the
 original driver ACKs through the sealed read, before the neutral return.
 
 ```python
-from run_tail_refit import Capture
-from verify_tail_refit import Subject
+from owned_tail_refit_case import bind_capture
 
-subject = Subject(game_pid, actor_ref, actor_base, fixture_cell, generation)
-capture = Capture.from_files(
-    session.tool, session.dir / "steps.jsonl", subject, vr_profile, fixed_bank,
-    deadline=capture_deadline,
+capture = bind_capture(
+    session, tag=owned_fixture_tag, resolved_base=resolved_fixture_base,
+    profile_path=vr_profile, basis_path=fixed_bank, deadline=capture_deadline,
 )
 index, verdict = capture.run_calibrated(
     owned_fixture_receipt_sha256, approved_world_waypoint,
@@ -125,6 +128,17 @@ interruption or refusal leaves the outer runner responsible for retiring the
 isolated game without saving. Loss of driver ownership or an unconfirmed
 mutation stops further case commands. Preserve the executor's independent
 process exit and restoration records alongside the capture result.
+
+The adapter consumes the ordinary Autotest fixture creation witness and
+compares every measured actor against its original World Observer
+incarnation. Its output adds the indexed creation row to the sealed ledger.
+No actor creation or launcher is part of the adapter. The current Polygon
+schema2 interface cannot dispatch this multi-phase action. Its usual semantic
+actor creation persists the NPC for save tests, whereas this capture needs a
+fresh nonpersistent fixture in a disposable no-save session. Use
+`verify_tail_refit.py --require-bound-fixture` for the owned fixture's replay.
+A subject order needs a qualified platform path for both the fixture producer
+and the capture.
 
 The fixed-sphere replay supplied all 16 original control frames to the new
 observer gate. Each failed the adaptive separation/overlap criterion under

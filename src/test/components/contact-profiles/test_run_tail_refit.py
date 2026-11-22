@@ -226,6 +226,11 @@ class CaptureTest(unittest.TestCase):
             driver = tool.driver
             case = Capture(tool.tool, path, Subject(PID, ACTOR, BASE, CELL, 9), MODEL, BASIS,
                            deadline=42., clock=tool)
+            spawned = {"tag": "claw-tail-refit", "creationId": "00000009" + "1" * 24,
+                       "incarnation": {"sessionId": f"{PID}-test", "loadGeneration": 1, "runtimeHandle": HANDLE}}
+            tool.append({"kind": "interactive-fixture-created", "reference": f"0x{ACTOR:08X}",
+                         "base": f"0x{BASE:08X}", **spawned})
+            case.manifest["fixtureCreation"] = {**spawned, "index": 0}
             reference = case.observe(contrast=False)[1]
             probes = []
             for axis in np.eye(3):
@@ -240,13 +245,17 @@ class CaptureTest(unittest.TestCase):
                 limits=MovementLimits(.4, .9), restore_deadline=45.,
             )
             self.assertTrue(result["fixedDriverCustodyVerified"])
+            self.assertTrue(result["fixtureCreationBound"])
             self.assertEqual(sum(duration == FIXED_HOLD_SECONDS for _, duration, _ in driver.publications), 1)
             np.testing.assert_allclose(driver.actual, START, atol=1e-9)
             rows = case.ledger()
             self.assertEqual(rows[manifest["driver"]["finished"] + 1]["action"], "status")
             raw = path.read_bytes()
             self.assertGreater(len(raw), manifest["stepsPrefix"]["bytes"])
-            self.assertEqual(verify(manifest, read_ledger(manifest, raw), MODEL, BASIS), result)
+            self.assertEqual(verify(manifest, read_ledger(manifest, raw), MODEL, BASIS, require_bound_fixture=True), result)
+            unbound = {key: value for key, value in manifest.items() if key != "fixtureCreation"}
+            with self.assertRaisesRegex(ValueError, "original fixture creation"):
+                verify(unbound, read_ledger(unbound, raw), MODEL, BASIS, require_bound_fixture=True)
             with self.assertRaisesRegex(ValueError, "prefix differs"):
                 read_ledger(manifest, raw.replace(b'"holdSeconds": 30.0', b'"holdSeconds": 29.0', 1))
 

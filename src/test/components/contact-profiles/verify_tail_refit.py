@@ -135,6 +135,27 @@ def ordered(indices, message):
             and indices == sorted(set(indices)), message)
 
 
+def fixture_generation(creation_id):
+    require(isinstance(creation_id, str) and re.fullmatch(r"[0-9a-f]{32}", creation_id),
+            "Expected the executor's exact fixture creation id")
+    return (int(creation_id[:8], 16) & 0x7FFFFFFF) or 1
+
+
+def fixture_creation(ledger, scope, subject):
+    index = scope["index"]
+    require(type(index) is int and 0 <= index < len(ledger), "Expected the original fixture creation row")
+    row = ledger[index]
+    incarnation = scope["incarnation"]
+    require(row.get("kind") == "interactive-fixture-created" and row.get("tag") == scope["tag"]
+            and row.get("reference") == subject.form["form"] and row.get("base") == f"0x{subject.base:08X}"
+            and row.get("creationId") == scope["creationId"] and row.get("incarnation") == incarnation
+            and subject.generation == fixture_generation(scope["creationId"])
+            and isinstance(incarnation.get("sessionId"), str) and incarnation["sessionId"]
+            and positive_int(incarnation.get("loadGeneration"))
+            and positive_int(incarnation.get("runtimeHandle")), "Owned fixture creation identity differs")
+    return incarnation["sessionId"], incarnation["loadGeneration"], incarnation["runtimeHandle"]
+
+
 def phase_bank(ledger, subject, model, proof, phase, number, previous_token, mutations):
     token = phase["token"]
     require(positive_int(token) and token < 0x01000000 and
@@ -310,7 +331,7 @@ def check_driver(ledger, driver, groups, capture):
         previous_sequence, previous_tick = sequence, observed
 
 
-def verify(manifest, ledger, model, proof):
+def verify(manifest, ledger, model, proof, *, require_bound_fixture=False):
     require(type(manifest) is dict and manifest.get("schema") in ("claw-vr-tail02-refit-reads/2", LEASED_SCHEMA),
             "Expected a tail refit index manifest for the original raw ledger")
     subject = Subject(**manifest["subject"])
@@ -376,6 +397,12 @@ def verify(manifest, ledger, model, proof):
     require(all(2 <= len(group) <= 8 for group in groups), "Expected bounded observed frame holds")
     if leased:
         check_driver(ledger, manifest["driver"], groups, capture)
+    binding = manifest.get("fixtureCreation")
+    require(not require_bound_fixture or binding is not None, "Require the executor's original fixture creation")
+    bound_actor = fixture_creation(ledger, binding, subject) if binding is not None else None
+    if bound_actor is not None:
+        require(leased and binding["index"] < manifest["driver"]["publication"],
+                "Fixture creation must precede the fixed controller command")
     origin = previous = None
     windows, ranges = {}, {}
     previous_end = 0
@@ -390,6 +417,8 @@ def verify(manifest, ledger, model, proof):
                     "Native SKEE lease samples do not bracket the observed hold")
         gaps = [[], []]
         for frame in frames:
+            require(bound_actor is None or (frame["session"], frame["epoch"], frame["actor"][0]["runtimeHandle"])
+                    == bound_actor, "Observed actor differs from the executor's original fixture")
             origin = frame if origin is None else origin
             require(frame["session"] == origin["session"] and frame["epoch"] == origin["epoch"] and
                     frame["actor"][0]["runtimeHandle"] == first["runtimeHandle"] and
@@ -416,6 +445,7 @@ def verify(manifest, ledger, model, proof):
             "slots": list(SLOT_IDS), "snapshotTokens": tokens, "holdQpc": windows, "worldGapRanges": ranges,
             "sameNodeCallbacks": counts, "callbacksOutsideHolds": outside,
             "fixedDriverCustodyVerified": leased,
+            **({"fixtureCreationBound": bound_actor is not None} if leased else {}),
             "perSlotCallbackAttribution": False, "providerShapeInventoryVerified": False,
             "havokContactQualified": False}
 
@@ -435,12 +465,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("manifest", "steps", "profile", "basis"):
         parser.add_argument("--" + name, required=True, type=Path)
+    parser.add_argument("--require-bound-fixture", action="store_true")
     args = parser.parse_args()
     try:
         manifest = json.loads(args.manifest.read_bytes())
         result = verify(manifest, read_ledger(manifest, args.steps.read_bytes()),
                         json.loads(read_pinned(args.profile, PROFILE_SHA)),
-                        json.loads(read_pinned(args.basis, PROOF_SHA)))
+                        json.loads(read_pinned(args.basis, PROOF_SHA)),
+                        require_bound_fixture=args.require_bound_fixture)
     except (OSError, ValueError, TypeError, KeyError, IndexError, OverflowError, struct.error) as error:
         print(json.dumps({"status": "unqualified-tail02-refit-evidence", "reason": str(error)}))
         return 2
