@@ -30,11 +30,11 @@ using Object = RE::NiAVObject;
 using Pin = RE::NiPointer<Object>;
 using Clock = std::chrono::steady_clock;
 using Path = std::vector<Pin>;
+using claw::npc_pose::Scope;
 using claw::npc_pose::Transform;
 
 constexpr auto name = "CLAWVRNpcPose";
 constexpr auto schema = "claw-vr-npc-pose/1";
-constexpr auto maxLifetime = std::chrono::seconds(12);
 constexpr std::size_t maxObjects = 4096, maxLinks = 8192, maxDepth = 64;
 constexpr RE::FormID beastRace = 0xCDD84;
 constexpr std::size_t motionNodeCount = 12;
@@ -56,12 +56,10 @@ constexpr auto femaleNodeNames = [] {
 }();
 constexpr std::size_t maximumPoseNodes = std::max(nodeNames.size(), femaleNodeNames.size());
 
-enum class Scope { motion, effectiveMorphs, earTailSupport, femaleMotion };
-
 std::span<const char* const> nodeNamesFor(Scope scope) {
     if (scope == Scope::femaleMotion) return femaleNodeNames;
     auto names = std::span<const char* const>(nodeNames);
-    return scope == Scope::earTailSupport ? names : names.first(motionNodeCount);
+    return observesContact(scope) ? names : names.first(motionNodeCount);
 }
 
 std::atomic<IBodyMorphInterface*> effectiveSource;
@@ -363,11 +361,11 @@ public:
         if (requested <= 0 || !claw::npc_pose::validFixture(
                 expected.actor, expected.base, expected.handle, expected.cell, expected.addon))
             return response("refused", requested, 0, "positive nonce and exact dynamic NPC fixture required").dump();
-        if ((requestedScope == Scope::effectiveMorphs || requestedScope == Scope::earTailSupport) &&
-            !claw::validPhysicsNames(names))
+        if (needsEffectiveMorphs(requestedScope) && !claw::validPhysicsNames(names))
             return response("refused", requested, 0, "invalid effective morph names").dump();
         if (nonce)
-            return nonce == requested && fixture == expected && sequence == 0 && scope == requestedScope && morphNames == names
+            return nonce == requested && fixture == expected && sameOpeningScope(scope, requestedScope, sequence) &&
+                    morphNames == names
                 ? readCurrent() : response("refused", requested, 0, "one NPC pose lease per process").dump();
         if (loading)
             return response("refused", requested, 0, "load in progress or failed").dump();
@@ -380,10 +378,11 @@ public:
         morphNames = std::move(names);
         watched.store(fixture.actor);
         leaseEpoch = epoch;
-        deadline = Clock::now() + maxLifetime;
+        deadline = Clock::now() + leaseLifetime(scope);
         // The deadline is enforced in each API/task. The one-shot watchdog also retires an abandoned lease.
+        using FileTimeTicks = std::chrono::duration<std::int64_t, std::ratio<1, 10000000>>;
         ULARGE_INTEGER due{};
-        due.QuadPart = static_cast<ULONGLONG>(-130000000LL);
+        due.QuadPart = static_cast<ULONGLONG>(-std::chrono::duration_cast<FileTimeTicks>(watchdogDelay(scope)).count());
         FILETIME relative{due.LowPart, due.HighPart};
         SetThreadpoolTimer(timer, &relative, 0, 0);
         queueSample();
@@ -410,7 +409,7 @@ public:
     std::string readSnapshot(std::int32_t requested, std::int32_t previous) {
         std::lock_guard lock(mutex);
         if (!snapshotsObserved || !nonce || requested != nonce || previous < 0 ||
-            scope != Scope::earTailSupport || !scene || !active() || expired() || unloaded.load() || leaseEpoch != epoch)
+            !observesContact(scope) || !scene || !active() || expired() || unloaded.load() || leaseEpoch != epoch)
             return response("refused", requested, sequence, "active contact lease required").dump();
         const auto entry = snapshots.readAfter(previous);
         auto out = response(entry.token ? "ready" : "pending", nonce, sequence);
@@ -520,7 +519,7 @@ private:
             const auto first = qpc();
             if (!scene) {
                 scene = std::make_unique<Scene>(fixture, scope);
-                if (scope == Scope::earTailSupport && snapshotsObserved) snapshots.observe(scene->eventSender());
+                if (observesContact(scope) && snapshotsObserved) snapshots.observe(scene->eventSender());
             }
             auto sample = scene->snapshot(morphNames);
             const auto last = qpc();
@@ -593,6 +592,7 @@ bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("BeginFemaleNpc", name, beginFemale);
     vm->RegisterFunction("BeginNpcWithMorphs", name, beginWithMorphs<Scope::effectiveMorphs>);
     vm->RegisterFunction("BeginNpcContact", name, beginWithMorphs<Scope::earTailSupport>);
+    vm->RegisterFunction("BeginNpcTailRefit", name, beginWithMorphs<Scope::tailRefit>);
     vm->RegisterFunction("SampleNpc", name, sample);
     vm->RegisterFunction("ReadNpc", name, read);
     vm->RegisterFunction("ReadPhysicsSnapshot", name, readSnapshot);

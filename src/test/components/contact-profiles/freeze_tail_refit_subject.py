@@ -5,7 +5,6 @@ from hashlib import sha256
 import json
 from pathlib import Path, PurePosixPath
 import shutil
-import subprocess
 
 from posed_contact import observed_geometry, read_pinned_asset
 from prepare_tail_refit_contrast import PROFILE_SHA, read_pinned
@@ -25,12 +24,12 @@ STOCK_CONTEXT_SHA = 'd11e45cbc30683668adc7ad020a06dc0379cc39219fb5baf8adbe0d6a14
 WAYPOINT_SHA = '51a54ba4196c666e5521291b2798dfe0dff76fb062f60282653bccde29784966'
 DISTRIBUTION_BUILD_SHA = '675b6a16dbadb696b9fce4869733c7c0908c5b211d8e4b1db046445f5f5ef37f'
 WITNESS_BUILD_SHA = 'fd649f8b2cf73368de4cc84d17c97f58d5304848e4b6217f2a68e8f8d0ca1d46'
+TAIL_REFIT_WITNESS_BUILD_SHA = 'b7aa1e0738b185628221e982fb5745492cc09ac6c91c6bd125e177d823de72d2'
+PRIOR_STAGE_SHA = '268a6a5ad9086f8c37b136811ec3832c0b60155701d9797deba57a6ceac2182e'
 RACEMENU = {'RaceMenu.esp': '15e009b7f219b1e95bd78a31cdf8be2d3b45a38b784dd04f34a71a4ab6f76602',
             'RaceMenuPlugin.esp': 'e0737c5629b67afe2272ad83d5d5555d9be08be66a998c76287c0d224a40b180',
             'RaceMenu.bsa': '2e4a47aefa8a12dad1b3d3dfa58f3b39e9672b24e66e4d0a3c2b0b7ddcc6c6ab'}
-FACADES = {'CLAWPhysicsNative': ('src/main/python/physics/papyrus',
-                                 ('RegisterQualifiedActor', 'SnapshotCurrent', 'GetCapsule')),
-           'CLAWDistributionNative': ('src/main/papyrus/claw', ('GetMorphFamily', 'GetStatus'))}
+FACADES = ('Scripts/CLAWPhysicsNative.pex', 'Scripts/CLAWDistributionNative.pex')
 
 
 def pin(path):
@@ -48,34 +47,6 @@ def write_member(destination, source):
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(source['path'], destination)
     same_bytes(pin(destination), source)
-
-
-def compile_facades(compiler, imports, staging):
-    compiler, imports = compiler.resolve(strict=True), imports.resolve(strict=True)
-    flags = imports / 'TESV_Papyrus_Flags.flg'
-    provenance = {'compiler': pin(compiler), 'flags': pin(flags),
-                  'imports': [pin(p) for p in sorted(imports.glob('*.psc'))], 'builds': []}
-    errors = staging / 'build-logs'
-    errors.mkdir()
-    outputs = staging / 'subject/Data/Scripts'
-    for script, (folder, methods) in FACADES.items():
-        source = ROOT / folder / f'{script}.psc'
-        original = pin(source)
-        command = [str(compiler), '--game', 'skyrim', '--async-read', '0', '--async-write', '0',
-                   '--flags', str(flags), '--output', str(outputs), '--import', str(imports), source.name]
-        result = subprocess.run(command, cwd=source.parent, capture_output=True, timeout=45)
-        log = errors / f'{script}.log'
-        log.write_bytes(result.stdout + result.stderr)
-        if result.returncode:
-            raise ValueError(f'{script} compilation failed (see {log})')
-        same_bytes(pin(source), original)
-        output = outputs / f'{script}.pex'
-        blob = output.read_bytes()
-        if blob[:4] != b'\xfa\x57\xc0\xde' or any(name.encode() not in blob for name in methods):
-            raise ValueError(f'{script} does not contain its expected Papyrus interface')
-        provenance['builds'].append({'source': original, 'output': pin(output), 'log': pin(log),
-                                     'result': result.returncode})
-    return provenance
 
 
 def freeze(args):
@@ -101,7 +72,8 @@ def freeze(args):
             raise ValueError('RaceMenu asset differs from the verified file: ' + name)
 
     distribution = json.loads(read_pinned(args.distribution_build, DISTRIBUTION_BUILD_SHA))
-    witness = json.loads(read_pinned(args.witness_build, WITNESS_BUILD_SHA))
+    witness = json.loads(read_pinned(args.witness_build, TAIL_REFIT_WITNESS_BUILD_SHA))
+    prior = json.loads(read_pinned(args.prior_stage, PRIOR_STAGE_SHA))
     for record in (distribution['dll'], distribution['fitWitness'], witness['dll'], witness['pex']):
         read_pinned_asset(record)
     bank = json.loads(read_pinned(Path(distribution['fitWitness']['path']), PROOF_SHA))
@@ -111,6 +83,11 @@ def freeze(args):
     members = {'SKSE/Plugins/CLAWDistribution.dll': distribution['dll'],
                'SKSE/Plugins/CLAWVRNpcPose.dll': witness['dll'],
                'Scripts/CLAWVRNpcPose.pex': witness['pex']}
+    # The previously compiled facades match the retained Distribution build.
+    same_bytes(distribution['dll'], prior['members']['SKSE/Plugins/CLAWDistribution.dll'])
+    for name in FACADES:
+        members[name] = prior['members'][name]
+        read_pinned_asset(members[name])
     for virtual in (*stock['cbpcConfigInventory'], *RETAINED):
         member = case / 'contact-inputs' / PurePosixPath(virtual)
         members[virtual] = pin(member)
@@ -120,7 +97,6 @@ def freeze(args):
     subject = out / 'subject/Data'
     for name, source in members.items():
         write_member(subject / PurePosixPath(name), source)
-    build = compile_facades(args.compiler, args.imports, out)
     reference = out / 'references'
     for name, source in (('fitted-capsules.json', pin(args.profile)), ('TAIL02-FIXED-SPHERE.json', distribution['fitWitness']),
                          ('TAIL02-WAYPOINT-R03-040M-REPLAY.json', pin(args.waypoint))):
@@ -129,7 +105,7 @@ def freeze(args):
         'schema': 'claw-vr-tail-refit-subject-staging/1', 'model': model['modelIdentity'],
         'fixture': {'baseLocalId': '000800', 'race': 'Skyrim.esm|0CDD84', 'sex': 'male', 'weight': 50,
                     'cell': '0A01A5C6', 'node': 'TailBone02', 'slots': [108, 109, 110, 111]},
-        'geometry': geometry, 'papyrusBuild': build,
+        'geometry': geometry, 'papyrusBuild': prior['papyrusBuild'], 'priorStage': pin(args.prior_stage),
         'nativeBuildReceipts': [pin(args.distribution_build), pin(args.witness_build)],
         'members': {p.relative_to(subject).as_posix(): pin(p) for p in sorted(subject.rglob('*')) if p.is_file()},
         'retainedOrigins': members, 'diskDependencies': installed,
@@ -148,7 +124,7 @@ def freeze(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('stock-case', 'distribution-build', 'witness-build', 'profile', 'pynifly', 'waypoint',
-                 'skeleton', 'racemenu', 'compiler', 'imports', 'out'):
+                 'skeleton', 'racemenu', 'prior-stage', 'out'):
         parser.add_argument('--' + name, type=Path, required=True)
     print(json.dumps(freeze(parser.parse_args())))
 

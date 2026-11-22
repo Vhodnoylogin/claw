@@ -17,7 +17,9 @@ The harness still owns the single spawn, addon pin and fixture provenance.
    It preserves signed and out-of-range values for the caller to validate.
    `BeginNpcContact` takes the same typed array and adds three required
    named transforms for the remaining ear and tail support partitions.
-   After that contact lease is ready, `ReadPhysicsSnapshot(nonce, previousToken)`
+   `BeginNpcTailRefit` takes the same arguments and uses the same 15-node
+   capture for a single neutral, changed and returned tail-morph trial.
+   After either contact lease is ready, `ReadPhysicsSnapshot(nonce, previousToken)`
    polls the latest Distribution `CLAWPhysics_Observation` snapshot for its
    exact pinned actor. Use zero for the first token. A ready response contains
    `snapshotToken`, `eventQpc` and the lease identity. Verify currentness with
@@ -31,10 +33,15 @@ The harness still owns the single spawn, addon pin and fixture provenance.
    for the selected fixture at every observation.
 2. Call `SampleNpc(nonce, i)` with successive indices 1–16. Poll
    `ReadNpc(nonce, i)` after each request and retain the sample before requesting
-   the next index. The lease stops accepting samples 12 seconds after Begin.
-3. Call `EndNpc(nonce)`, then poll the same call until `ended`. Any refusal or
+   the next index. The deadline is 30 seconds for `BeginNpcTailRefit` and 12
+   seconds for the other entry points. All use the same single lease per
+   process. A repeated opening with the exact same scope and arguments can
+   read sample zero without extending its deadline.
+3. Call `EndNpc(nonce)`, then poll `ReadNpc` for the final sequence until
+   `ended`. Any refusal or
    missing end evidence leaves the harness without a qualified run. A one-shot
-   watchdog also queues main-thread retirement for abandoned leases.
+   watchdog also queues main-thread retirement at 31 seconds for tail refit
+   and 13 seconds for the other entry points.
 
 Each `claw-vr-npc-pose/1` sample brackets engine reads with QPC ticks and
 reports the process, frequency, world epoch and opaque root token. The lease

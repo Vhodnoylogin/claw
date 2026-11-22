@@ -1,6 +1,7 @@
 """Capture the adaptive TailBone02 case inside an already owned VR session."""
 
 import json
+from math import isfinite
 from pathlib import Path
 import time
 
@@ -11,6 +12,11 @@ from verify_tail_refit import (
     POSE, PROFILE_SHA, PROOF_SHA, QPC, SLOT_IDS, STATES,
     bank_gap, f32, inspect_frame, positive_int, require, verify,
 )
+
+# A fixed 30-second driver publication leaves 29 seconds after its final margin.
+# The simulated capture needs about 27 seconds at 5.8 seconds per native fit.
+MIN_CAPTURE_SECONDS = 28.
+TAIL_POSE_SECONDS = 30.
 
 
 def signed_bits(value):
@@ -47,11 +53,18 @@ class IndexedCapture:
         remaining = self.deadline - self.clock.monotonic()
         require(remaining > 0, "The owned capture window expired")
         self.drain()
+        remaining = self.deadline - self.clock.monotonic()
+        require(remaining > 0, "The owned capture window expired")
+        if "timeoutMs" in packet:
+            timeout_ms = min(packet["timeoutMs"], int(remaining * 1000))
+            require(timeout_ms > 0, "No time remains for the native request")
+            packet = {**packet, "timeoutMs": timeout_ms}
         result = self.call(name, packet, timeout=min(2.6, remaining), deadline=self.deadline)
         start, rows = self.drain()
         matches = [index for index, row in enumerate(map(json.loads, rows), start) if row.get("kind") == "tool"
                    and row.get("tool") == name and row.get("args") == packet and row.get("result") == result]
         require(len(matches) == 1, "Executor did not retain exactly one matching raw step")
+        require(self.clock.monotonic() < self.deadline, "The confirmation arrived after the owned deadline")
         return matches[0], result
 
     def pap(self, script, function, args, kind):
@@ -135,14 +148,18 @@ class Capture(IndexedCapture):
         raise ValueError("Observed hold did not reach the minimum duration")
 
     def wait(self, read, seconds=1.):
-        until = min(self.deadline, self.clock.monotonic() + seconds)
-        while self.clock.monotonic() < until:
-            index, reply = read()
-            status = reply.get("status")
-            if status in ("ready", "ended"):
-                return index, reply
-            require(status in ("pending", "retiring"), "Native witness refused: " + str(reply.get("reason")))
-            self.clock.sleep(max(0., min(.12, until - self.clock.monotonic())))
+        outer = self.deadline
+        self.deadline = min(outer, self.clock.monotonic() + seconds)
+        try:
+            while self.clock.monotonic() < self.deadline:
+                index, reply = read()
+                status = reply.get("status")
+                if status in ("ready", "ended"):
+                    return index, reply
+                require(status in ("pending", "retiring"), "Native witness refused: " + str(reply.get("reason")))
+                self.clock.sleep(max(0., min(.12, self.deadline - self.clock.monotonic())))
+        finally:
+            self.deadline = outer
         raise ValueError("Native witness never reported a current result")
 
     def pose(self):
@@ -214,6 +231,8 @@ class Capture(IndexedCapture):
         require(0xFF000000 <= subject.actor < 0xFFFFFFFF and positive_int(self.nonce)
                 and subject.cell == 0x0A01A5C6 and type(evidence) is str and 0 < len(evidence) <= 1024,
                 "An admitted disposable VR actor and qualification record are required")
+        require(isfinite(self.deadline) and self.deadline - self.clock.monotonic() >= MIN_CAPTURE_SECONDS,
+                "The fixed controller window cannot fit the adaptive capture")
         self.observe()
         model_index, model = self.pap(NATIVE, "GetModelIdentity", [], "string")
         require(model == self.profile["modelIdentity"] == self.basis["model"], "Different native fit loaded")
@@ -227,7 +246,9 @@ class Capture(IndexedCapture):
         self.manifest["unattached"] = self.hold()
         _, self.session_token = self.write(NATIVE, "BeginSessionToken", [], "string")
         require(self.session_token, "Unable to open isolated native refit session")
-        _, opened = self.write(POSE, "BeginNpcContact", [
+        controller_deadline = self.deadline
+        self.deadline = min(controller_deadline, self.clock.monotonic() + TAIL_POSE_SECONDS)
+        _, opened = self.write(POSE, "BeginNpcTailRefit", [
             self.nonce, signed_bits(subject.actor), signed_bits(subject.base), signed_bits(self.owner[2]),
             signed_bits(subject.cell), 0xCDD87, self.profile["morphs"],
         ], "string")
@@ -247,6 +268,7 @@ class Capture(IndexedCapture):
         self.write(POSE, "EndNpc", [self.nonce], "string")
         _, ended = self.wait(lambda: self.json_pap(POSE, "ReadNpc", [self.nonce, self.sequence - 1]))
         require(ended["status"] == "ended", "Owned pose witness did not retire")
+        self.deadline = controller_deadline
         self.manifest["detached"] = self.hold()
         capture["seal"], _ = self.write(EVENTS, "Seal", [self.nonce, generation])
         capture["read"], _ = self.json_pap(EVENTS, "Read", [self.nonce, generation])

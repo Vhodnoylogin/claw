@@ -13,6 +13,22 @@ void verify(bool ok, const char* description) {
 }
 
 int main() {
+    using namespace std::chrono_literals;
+    for (const auto scope : {Scope::motion, Scope::effectiveMorphs, Scope::earTailSupport, Scope::femaleMotion})
+        verify(leaseLifetime(scope) == 12s && watchdogDelay(scope) == 13s, "existing scopes retain the short deadline");
+    verify(leaseLifetime(Scope::tailRefit) == 30s && watchdogDelay(Scope::tailRefit) == 31s,
+           "tail refit has a fixed deadline and one-second retirement cushion");
+    verify(observesContact(Scope::tailRefit) && observesContact(Scope::earTailSupport) &&
+           !observesContact(Scope::effectiveMorphs) && !observesContact(Scope::motion) &&
+           !observesContact(Scope::femaleMotion), "tail refit shares the original contact scope");
+    verify(needsEffectiveMorphs(Scope::tailRefit) && needsEffectiveMorphs(Scope::earTailSupport) &&
+           needsEffectiveMorphs(Scope::effectiveMorphs) && !needsEffectiveMorphs(Scope::motion) &&
+           !needsEffectiveMorphs(Scope::femaleMotion), "tail refit requires the same typed morph list");
+    verify(sameOpeningScope(Scope::tailRefit, Scope::tailRefit, 0), "same opening can be read at sample zero");
+    verify(!sameOpeningScope(Scope::earTailSupport, Scope::tailRefit, 0) &&
+           !sameOpeningScope(Scope::tailRefit, Scope::earTailSupport, 0), "an existing lease cannot switch scope");
+    verify(!sameOpeningScope(Scope::tailRefit, Scope::tailRefit, 1), "a later sample cannot reopen the lease");
+
     constexpr std::uint32_t newNpc = 0xFF000802, base = 0x09000800, handle = 0xC00021,
                             cell = 0x0A01A5C6, addon = 0xCDD87;
     verify(validFixture(newNpc, base, handle, cell, addon), "accept the signed Int bit pattern for an owned NPC");
@@ -51,5 +67,5 @@ int main() {
     verify(!finite(changed), "refuse negative scale");
     changed.scale = 0.f;
     verify(!finite(changed), "refuse zero scale");
-    std::cout << "26 VR NPC pose policy controls passed\n";
+    std::cout << "36 VR NPC pose policy controls passed\n";
 }

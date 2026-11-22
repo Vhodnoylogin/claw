@@ -31,7 +31,7 @@ Before a future adaptive capture, establish the same actor and actual native
 model, return tracked controls to neutral, publish one reviewed fixed command,
 and require the World Observer to show both margins at the reached point.
 Use the currently loaded actor's original model and recapture all three
-morph states on that actor. Once `BeginNpcContact` is ready, the test witness's
+morph states on that actor. Once `BeginNpcTailRefit` is ready, the test witness's
 `ReadPhysicsSnapshot` can retrieve the matching actor's
 `CLAWPhysics_Observation` token after explicit Distribution registration.
 Check `SnapshotCurrent` before reading each bank. Stock r03 neither stages
@@ -42,7 +42,7 @@ RaceMenu function signatures and absence of its private key. It sets only
 `CLAWTailLength` under `CLAWTest.TailRefit`, requests model updates, and
 clears the one key afterwards. A write without confirmed completion ends the
 trial without replay; the owning harness must retire that disposable game
-without saving. Capture the full 15-node `BeginNpcContact` pose and effective
+without saving. Capture the full 15-node `BeginNpcTailRefit` pose and effective
 morph vector at each hold before and after its World Observer samples.
 
 Use schema `claw-vr-tail02-refit-reads/2` for the raw index manifest.
@@ -59,10 +59,11 @@ The archived coordinates are evidence for setup and carry no adaptive contact re
 ## Detached subject staging
 
 Run `freeze_tail_refit_subject.py --help` for the file inputs. Use the original
-stock r03 case directory and the current paired native build and 15-node pose
-build receipts. Supply the authored VR fit, r03 waypoint replay with
-`--max-travel-metres 0.40`, installed XP32 werewolf skeleton and RaceMenu assets,
-and local Caprica imports.
+stock r03 case directory, the paired native fit receipt and the dedicated
+tail-refit pose build receipt. Supply the prior stage receipt for the two
+Papyrus facades that match the retained Distribution DLL. Supply the authored
+VR fit, r03 waypoint replay with `--max-travel-metres 0.40`, XP32 werewolf
+skeleton and RaceMenu assets.
 The script compares both archived carrier NIF endpoints and the TRI against the
 authored fit, and stages the exact reviewed CBPC overlay, NPC fixture and current
 native/Papyrus interfaces. The output records file pins and the archived waypoint
@@ -82,7 +83,13 @@ The owning run prepares the disposable actor, loaded-module pins, a clean
 native Distribution session with the automatic collider host disabled, and
 one acknowledged fixed controller command. The capture never publishes
 another controller command. Pass the fixed command's conservative deadline
-and the original executor step path to the CLAW-specific runner:
+and the original executor step path to the CLAW-specific runner. The caller
+must leave 28 seconds for the full capture. Use the admitted 30-second logical
+controller hold only after movement, calibration and setup have finished.
+Keep a margin before the controller expires and a separate session budget for
+restoration. The 30-second native pose lease starts at the dedicated opening.
+Requests and results must fit the outer and phase deadlines. Expiry requires the
+same no-save retirement path as other interrupted captures.
 
 ```python
 from run_tail_refit import Capture

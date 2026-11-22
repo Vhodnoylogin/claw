@@ -21,6 +21,9 @@ class Transport:
         self.fit_latency = 0.
         self.slots, self.has_key = set(), False
         self.ended = False
+        self.pose_opened = None
+        self.pose_ended = None
+        self.late_attach = False
         manifest, ledger = make_case()
         self.pose_template = json.loads(ledger[manifest["phases"][0]["poseBefore"]]["result"]["returned"])
         self.inspect_template = ledger[manifest["unattached"][0]]["result"]
@@ -37,6 +40,8 @@ class Transport:
         return round(self.now * QPC)
 
     def tool(self, name, args, *, timeout, deadline):
+        if not 0 < timeout <= deadline - self.now or args.get("timeoutMs", 0) > (deadline - self.now) * 1000:
+            raise AssertionError("Request exceeded its remaining observation window")
         self.sleep(.025)
         if name == "inspect":
             self.sample += 1
@@ -49,6 +54,8 @@ class Transport:
         else:
             value, kind = self.method(args["script"], args["function"], args["args"])
             result = {"called": True, "returnedType": kind, "returned": value}
+            if self.late_attach and args["function"] == "AttachColliderCapsule":
+                self.now = deadline + .01
         with self.path.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps({"kind": "tool", "tool": name, "args": args, "result": result}) + "\n")
         return result
@@ -72,8 +79,16 @@ class Transport:
                 }), "string"
             return True, "bool"
         if script == POSE:
-            if method in ("BeginNpcContact", "SampleNpc", "EndNpc"):
-                self.ended |= method == "EndNpc"
+            if method == "BeginNpcTailRefit":
+                assert self.pose_opened is None
+                self.pose_opened = self.now
+                return json.dumps({"status": "pending"}), "string"
+            if self.pose_opened is None or self.now >= self.pose_opened + 30.:
+                return json.dumps({"status": "refused", "reason": "expired"}), "string"
+            if method in ("SampleNpc", "EndNpc"):
+                if method == "EndNpc":
+                    self.ended = True
+                    self.pose_ended = self.now
                 return json.dumps({"status": "pending"}), "string"
             if method == "ReadPhysicsSnapshot":
                 if self.tick() < self.event:
@@ -142,8 +157,33 @@ class CaptureTest(unittest.TestCase):
                            deadline=30., clock=tool)
             manifest, _ = case.run("owned-test-fixture")
             self.assertEqual([phase["token"] for phase in manifest["phases"]], [15, 16, 17])
-            self.assertGreater(tool.now, 13.)
+            self.assertGreater(tool.pose_ended - tool.pose_opened, 12.)
+            self.assertLess(tool.pose_ended - tool.pose_opened, 30.)
             self.assertLess(tool.now, 30.)
+
+    def test_near_limit_snapshot_wait_finishes_inside_fixed_hold(self):
+        with TemporaryDirectory() as root:
+            path = Path(root) / "steps.jsonl"
+            path.touch()
+            tool = Transport(path)
+            tool.fit_latency = 5.8
+            case = Capture(tool.tool, path, Subject(PID, ACTOR, BASE, CELL, 9), MODEL, BASIS,
+                           deadline=29., clock=tool)
+            _, verdict = case.run("owned-test-fixture")
+            self.assertEqual(verdict["status"], "qualified-scoped-tail02-refit-evidence")
+            self.assertTrue(tool.ended)
+            self.assertLess(tool.now, 29.)
+
+    def test_short_controller_window_refuses_before_first_request(self):
+        with TemporaryDirectory() as root:
+            path = Path(root) / "steps.jsonl"
+            path.touch()
+            tool = Transport(path)
+            case = Capture(tool.tool, path, Subject(PID, ACTOR, BASE, CELL, 9), MODEL, BASIS,
+                           deadline=tool.now + 27., clock=tool)
+            with self.assertRaisesRegex(ValueError, "fixed controller window"):
+                case.run("owned-test-fixture")
+            self.assertEqual(path.read_bytes(), b"")
 
     def test_run_builds_exact_native_index_manifest(self):
         with TemporaryDirectory() as root:
@@ -151,7 +191,7 @@ class CaptureTest(unittest.TestCase):
             path.touch()
             tool = Transport(path)
             case = Capture(tool.tool, path, Subject(PID, ACTOR, BASE, CELL, 9), MODEL, BASIS,
-                           deadline=26., clock=tool)
+                           deadline=30., clock=tool)
             manifest, verdict = case.run("owned-test-fixture")
             self.assertEqual([verdict["sameNodeCallbacks"][phase] for phase in PHASES], [0, 0, 1, 0, 0])
             self.assertEqual([phase["token"] for phase in manifest["phases"]], [15, 16, 17])
@@ -166,11 +206,26 @@ class CaptureTest(unittest.TestCase):
             tool = Transport(path)
             tool.uncertain = True
             case = Capture(tool.tool, path, Subject(PID, ACTOR, BASE, CELL, 9), MODEL, BASIS,
-                           deadline=26., clock=tool)
+                           deadline=30., clock=tool)
             with self.assertRaisesRegex(UnconfirmedMutation, "AttachColliderCapsule"):
                 case.run("owned-test-fixture")
             self.assertEqual(case.waiting_on, "AttachColliderCapsule")
             self.assertEqual(tool.slots, {108})
+
+    def test_late_attach_receipt_is_retained_and_never_replayed(self):
+        with TemporaryDirectory() as root:
+            path = Path(root) / "steps.jsonl"
+            path.touch()
+            tool = Transport(path)
+            tool.late_attach = True
+            case = Capture(tool.tool, path, Subject(PID, ACTOR, BASE, CELL, 9), MODEL, BASIS,
+                           deadline=30., clock=tool)
+            with self.assertRaisesRegex(UnconfirmedMutation, "AttachColliderCapsule"):
+                case.run("owned-test-fixture")
+            functions = [row["args"].get("function") for row in case.ledger()]
+            self.assertEqual(functions.count("AttachColliderCapsule"), 1)
+            self.assertNotIn("DetachCollider", functions)
+            self.assertFalse(tool.ended)
 
 
 if __name__ == "__main__":

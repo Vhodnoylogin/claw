@@ -1,12 +1,35 @@
 #pragma once
 
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 
 namespace claw::npc_pose {
 
 constexpr std::int32_t maximumSequence = 16;
+
+enum class Scope { motion, effectiveMorphs, earTailSupport, femaleMotion, tailRefit };
+
+constexpr bool observesContact(Scope scope) {
+    return scope == Scope::earTailSupport || scope == Scope::tailRefit;
+}
+
+constexpr bool needsEffectiveMorphs(Scope scope) {
+    return scope == Scope::effectiveMorphs || observesContact(scope);
+}
+
+constexpr std::chrono::seconds leaseLifetime(Scope scope) {
+    return std::chrono::seconds(scope == Scope::tailRefit ? 30 : 12);
+}
+
+constexpr std::chrono::seconds watchdogDelay(Scope scope) {
+    return leaseLifetime(scope) + std::chrono::seconds(1);
+}
+
+constexpr bool sameOpeningScope(Scope active, Scope requested, std::int32_t sequence) {
+    return active == requested && sequence == 0;
+}
 
 constexpr bool validFixture(std::uint32_t actor, std::uint32_t base, std::uint32_t handle,
                             std::uint32_t cell, std::uint32_t addon) {
