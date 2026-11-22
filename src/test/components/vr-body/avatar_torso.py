@@ -37,6 +37,8 @@ def observation_plan(shape, records):
     skin = Skin(shape, {}, {})
     require(skin.faces.ndim == 2 and skin.faces.shape[1] == 3 and len(skin.faces) > 0
             and skin.faces.min() >= 0 and skin.faces.max() < len(skin.vertices), 'Invalid retained torso topology')
+    require(all(name == shape.name and 0 <= index < len(skin.vertices) for name, _, index in records),
+            'TRI index is outside the retained torso')
     weights = skin.weights[np.unique(skin.faces)]
     return {'shape': shape.name, 'vertices': len(skin.vertices), 'triangles': len(skin.faces),
             'bones': [name for index, name in enumerate(skin.names) if np.any(weights[:, index] > 0)],
@@ -77,7 +79,7 @@ def clearance(shape, records, observation):
     vertices = skin.support(selected, frames, None)
     surface = vertices[triangles.reshape(-1, 3)]
     distance = float(contact_fit.triangle_distance([camera], surface)[0])
-    return {'triangles': len(surface), 'closestTorsoDistanceGu': distance,
+    return {'triangles': len(surface), 'closestReconstructedTorsoDistanceGu': distance,
             'leftCameraBallMarginGu': distance - near, 'torsoSeparatesFromBall': distance > near,
             'renderedPixelsVerified': False}
 

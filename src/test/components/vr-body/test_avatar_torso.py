@@ -25,6 +25,12 @@ class AvatarTorsoTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'namespaced VR Body.tri path'):
             retained_torso({}, {'virtualPath': 'Meshes/Actors/WerewolfBeast/Character Assets/MaleBodyWereWolf.tri'}, None)
 
+    def test_rejects_out_of_range_tri_index_even_with_zero_effective_morph(self):
+        shape, records, sample = case()
+        records['head', 'CLAWTorsoNeckGirth', 3] = records['head', 'CLAWTorsoNeckGirth', 0]
+        with self.assertRaisesRegex(ValueError, 'TRI index is outside the retained torso'):
+            clearance(shape, records, sample)
+
     def test_triangle_interior_and_morph_change_the_camera_ball_margin(self):
         shape, records, sample = case()
         expected = {'shape': 'head', 'vertices': 3, 'triangles': 1,
