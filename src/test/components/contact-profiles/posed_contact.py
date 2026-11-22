@@ -82,10 +82,11 @@ def native_vector(model, pose):
 
 
 def owner_support(vertices, weights, binds, global_to_skin, frames, owner):
-    require(owner in frames, "Missing owner world transform: " + owner)
+    if owner is not None:
+        require(owner in frames, "Missing owner world transform: " + owner)
     missing = sorted(set(weights) - frames.keys())
     require(not missing, "Missing influential bone world transforms: " + ", ".join(missing))
-    inverse = np.linalg.inv(frames[owner])
+    inverse = np.eye(4) if owner is None else np.linalg.inv(frames[owner])
     names = list(weights)
     columns = np.stack([weights[name] for name in names], axis=1)
     require(np.isfinite(columns).all() and (columns >= 0).all() and (columns.sum(axis=1) > 0).all(),

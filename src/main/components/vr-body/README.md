@@ -72,6 +72,20 @@ The HIGGS callback supplied the observation point. Detailed ear and tail
 contacts are separate checks of CLAW's authored colliders. A change to those
 colliders does not require repeating the general tracking check.
 
+For the next headset probe, `src/test/components/vr-body/avatar_torso.py`
+reads the pinned active NIF and TRI and lists the exact influential torso
+bones and morph channels to capture. Run it with a JSON file containing `nif`
+and `tri` entries (`path`, `sha256`, `bytes`, plus the TRI's `virtualPath`) and
+`--pynifly <path>`. The NIF's typed `BODYTRI` links must use that path. With
+`--observation <file>`, it also uses one admitted post-VRIK/HIGGS envelope
+with current `effectiveMorphs` and the complete bone transforms to reconstruct
+the visible torso. It measures the signed distance from its triangles to a
+camera-centred ball with the engine's left near distance as radius. The
+archived player trial lacks eleven influential bones and the co-sampled
+effective TRI values. Its bounding spheres alone cannot supply that result.
+Headset visibility and clearance against the full stereo frusta need their
+own observations.
+
 Start from the retained [VR body design](../../docs/vr-body.md),
 [head policy](../../docs/vr-head-policy.md) and
 [loaded-graph notes](../../docs/vr-loaded-graphs.md). Shared matrix mathematics
