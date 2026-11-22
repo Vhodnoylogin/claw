@@ -190,15 +190,30 @@ int main(int argc, char** argv) {
             selected.variation > unchanged.variation, "selection lost the exact variation used inside an unchanged coat bin");
         const auto legacy = CoatMatrix::parse(R"(<CoatMatrix schemaVersion="1">
             <Rule source="seed.withHair" target="coat.variation" gain="1" cap="1"/>
+            <Rule source="seed.withoutHair" target="coat.selector" gain="1" cap="1"/>
         </CoatMatrix>)");
         require(legacy.evaluate(darkSkin, skinContrastSeed) == legacy.evaluate(lightSkin, skinContrastSeed) &&
             legacy.evaluate(lightSkin, skinContrastSeed).at("coat.variation") == noSkinOutputs.at("coat.variation"),
             "legacy coat matrix gained an implicit skin term");
-        const auto hairlessSkin = matrix.evaluate(Colours{{1, 1, 1}, {}, true, false}, skinContrastSeed);
-        require(actual.selectOutputs({}, hairlessSkin, false).pattern ==
-            actual.selectOutputs({}, matrix.evaluate({}, skinContrastSeed), false).pattern, "skin replaced the hairless fallback");
+        const Colours skinOnlyDark{{0, 0, 0}, {}, true, false};
+        const Colours skinOnlyLight{{1, 1, 1}, {}, true, false};
+        const auto hairlessSkin = matrix.evaluate(skinOnlyLight, skinContrastSeed);
+        const auto first = actual.selectOutputs({}, matrix.evaluate(skinOnlyDark, skinContrastSeed), false);
+        const auto second = actual.selectOutputs({}, hairlessSkin, false);
+        require(first.origin == CoatOrigin::fallback && second.origin == CoatOrigin::fallback &&
+            first.pattern == "elegant-2k-2.1/valley-brown" && second.pattern == "elegant-2k-2.1/timber",
+            "known skin must influence choice while using the numeric fallback");
+        const auto unavailable = Colours{{1, 1, 1}, {1, 1, 1}, false, false};
+        require(matrix.evaluate(unavailable, skinContrastSeed) == matrix.evaluate({}, skinContrastSeed) &&
+            evaluate({}, skinContrastSeed) == legacy.evaluate(skinOnlyLight, skinContrastSeed).at("coat.selector"),
+            "unavailable colours or legacy seed-only matrix changed");
+        const auto savedSkinOnly = AutomaticCoatRecord{7, 9, 0, {1, skinContrastSeed, {}, {second.pool, second.pattern}}};
+        const auto restoredSkinOnly = readAutomaticCoat(writeAutomaticCoat(savedSkinOnly));
+        require(actual.selectOutputs({}, matrix.evaluate(skinOnlyLight, restoredSkinOnly.automatic.seed), false).pattern == second.pattern,
+            "round-tripped seed changed the skin-only selection");
         const auto manual = actual.selectOutputs("elegant-2k-2.1/black", lightOutputs, true);
         require(manual.pattern == "elegant-2k-2.1/black" && !manual.variation &&
+            actual.selectOutputs(manual.pattern, hairlessSkin, false).pattern == manual.pattern &&
             !actual.selectOutputs({}, hairlessSkin, false).variation, "manual or hairless coat reported automatic colour variation");
         hair.hair = {.25F, .24F, .24F};
         require(actual.selectOutputs({}, matrix.evaluate(hair, 0), true).pool == "grey" &&

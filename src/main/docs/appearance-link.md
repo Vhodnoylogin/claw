@@ -19,11 +19,19 @@ must verify actual load and fade behaviour before acceptance.
 
 The supplied coat matrix uses known skin RGB to bias the variant within the
 hair-selected group. The normalized variant value combines 80% of the actor's
-stable seed with 20% of encoded skin luminance. An actor with hair and no known
-skin still uses the full seed. When hair is unavailable, the scalar fallback
-keeps its seed-only distribution. Variant selection retains the external
-texture's authored colours. The existing input names remain available for
-custom matrices, and a manual choice still takes precedence.
+stable seed with 20% of encoded skin luminance. When hair is unavailable and
+skin is known, the same blend feeds the scalar fallback's configured ranges.
+An actor with hair and no known skin uses the full seed within their hair group.
+With no known colours, the scalar fallback uses the full seed. Availability
+comes from captured source data. A bald model can still supply a record hair
+colour. The external textures retain their authored colours and a manual choice
+takes precedence.
+
+Existing custom matrices keep the original input names and their behavior.
+The new shipped matrix uses additional inputs and must be installed with its
+matching CLAW DLL. Previously generated skin-only choices may change once when
+switching to this matrix. Unchanged captured colours, seed and matrix repeat
+the same choice across transformations and loads.
 
 The legacy opt-in linked-tint path below remains separate, including its neutral
 fallback when a source colour is unavailable. Its NO_TINT marker protects the
