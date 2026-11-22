@@ -32,7 +32,22 @@ application before skinning. The shared native calculation used the archived
 VR67 pose at both the observed ear-size value and its zero control. All sixteen
 ear slots changed and the sixteen tail slots matched. The female model was
 checked against the independent solver at rest with two effective input
-vectors. The game provider still uses the existing rest-space update path.
+vectors.
+
+Pass `--paired-build <paired-profile-output>` to also emit the combined
+`physics-fit-model.h` for `-PhysicsModelHeader`. The exporter verifies the
+paired build receipt and enables the posed fit in that header. For VR, the worker uses the captured
+actor pose to fit those 32 original slots on first attachment and when the
+existing refresh detects a model, weight or morph update. The other slots
+use the regular fitter. Scene reads use the third-person Body32 and the actual
+skin palettes. The candidate checks the authored geometry extents, BODYTRI and
+the provider's attachment lookup. A replaced graph or superseded observation
+cannot publish the queued pose. The candidate still requires the exact
+installed asset pins. A shape with the same extents is not a file hash.
+
+The existing provider ledger still owns attachment and cleanup. This candidate
+does not schedule pose-only replacements. Live provider coordinates, update
+timing and contacts require a separate qualified VR run.
 
 The enclosing profiles preserve sampled support coverage but are too loose to
 claim accurate VR touch boundaries. One separate three-pass contact experiment

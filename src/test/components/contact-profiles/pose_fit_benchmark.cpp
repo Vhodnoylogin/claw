@@ -12,6 +12,7 @@
 #include "claw/PosedContactSupport.h"
 
 using claw::physics::Capsule;
+using claw::physics::InvertPoseAffine;
 using claw::physics::PoseMorphDelta;
 using claw::physics::PoseVertexFields;
 using claw::physics::PosedContactModel;
@@ -70,6 +71,7 @@ bool checkDeformationAndRejections() {
         catch (const std::invalid_argument&) { return true; }
         return false;
     };
+    if (InvertPoseAffine(world[0]) != inverse[0] || !rejects([] { InvertPoseAffine({}); })) return false;
     constexpr std::size_t badPoints[]{0, 2};
     constexpr Vertex badVertices[]{{0, 2}, {std::numeric_limits<std::size_t>::max(), 1}};
     const Influence badLinks[]{{2, .25, {1., 0., 0.}, 0}, links[1], links[2]};
@@ -110,7 +112,13 @@ int main() {
     double numericError{};
     for (std::size_t p = 0; p < count; ++p) {
         support.skin(poses[p].world, 0., {}, worldPoints);
-        support.fit(poses[p].inverse, worldPoints, ownerPoints, fitted);
+        std::array<Matrix, std::size(poses[0].world)> inverse{};
+        for (std::size_t bone = 0; bone < inverse.size(); ++bone) {
+            inverse[bone] = InvertPoseAffine(poses[p].world[bone]);
+            for (std::size_t axis = 0; axis < inverse[bone].size(); ++axis)
+                if (std::abs(inverse[bone][axis] - poses[p].inverse[bone][axis]) > 1e-9) return 1;
+        }
+        support.fit(inverse, worldPoints, ownerPoints, fitted);
         for (std::size_t i = 0; i < fitted.size(); ++i)
             numericError = std::max(numericError, maxDifference(fitted[i], expected[p][i]));
     }

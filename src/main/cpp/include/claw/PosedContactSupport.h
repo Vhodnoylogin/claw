@@ -14,6 +14,27 @@ namespace claw::physics {
 using PoseAffine = std::array<double, 12>; // Row-major 3x4 matrix.
 using PoseLinear = std::array<Vec3, 3>;
 
+inline PoseAffine InvertPoseAffine(const PoseAffine& matrix) {
+    const Vec3 x{matrix[0], matrix[1], matrix[2]}, y{matrix[4], matrix[5], matrix[6]},
+        z{matrix[8], matrix[9], matrix[10]};
+    const Vec3 origin{matrix[3], matrix[7], matrix[11]};
+    const std::array columns{cross(y, z), cross(z, x), cross(x, y)};
+    const double determinant = dot(x, columns[0]);
+    if (!std::isfinite(determinant) || determinant <= 0 || !finite(origin))
+        throw std::invalid_argument("Invalid world-to-capsule pose transform");
+    PoseAffine result{};
+    for (std::size_t axis = 0; axis < 3; ++axis) {
+        const Vec3 row{columns[0][axis] / determinant, columns[1][axis] / determinant,
+            columns[2][axis] / determinant};
+        const double translation = -dot(row, origin);
+        if (!finite(row) || !std::isfinite(translation))
+            throw std::invalid_argument("Nonfinite world-to-capsule pose transform");
+        std::copy(row.begin(), row.end(), result.begin() + 4 * axis);
+        result[4 * axis + 3] = translation;
+    }
+    return result;
+}
+
 struct PoseInfluence {
     std::size_t bone;
     double weight;
