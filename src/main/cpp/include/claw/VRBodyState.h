@@ -1,4 +1,5 @@
 #pragma once
+#include "TargetModelAvailability.h"
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -21,6 +22,7 @@ struct VRBodyInput {
     std::uintptr_t race{}, thirdRoot{}, firstRoot{};
     VRBodyParts partClones{}; // Ordered third/first, current/buffered, slot.
     float actorWeight{-1.0F}; // Raw actor base weight on the engine's 0..100 scale.
+    std::array<std::uintptr_t, targetModelRoles.size()> worldRoles{};
     bool operator==(const VRBodyInput&) const = default;
 };
 
@@ -93,6 +95,7 @@ private:
         if (!input.enabled || !input.vrPlayer) return {};
         if (!input.beast || !input.thirdRoot || !std::isfinite(input.actorWeight) ||
             input.actorWeight < 0.0F || input.actorWeight > 100.0F) input.actorWeight = -1.0F;
+        if (!input.beast || !input.thirdRoot) input.worldRoles = {};
         return input;
     }
 

@@ -143,6 +143,7 @@ struct VRBodyRetention {
     std::uint64_t runtime{}, world{};
     std::array<RE::NiPointer<RE::NiAVObject>, 2> graphs;
     std::array<RE::NiPointer<RE::NiAVObject>, claw::vrBipedPartCount> parts;
+    std::array<RE::NiPointer<RE::BSGeometry>, claw::targetModelRoles.size()> worldRoles;
 };
 auto& vrBodyRetention = *new VRBodyRetention();
 std::uint64_t nextPinSerial{1}, nextRuntimeSerial{1};
@@ -1201,7 +1202,7 @@ bool readback(RE::Actor* actor, const claw::Morphs& expected) {
     catch (const std::exception&) { return false; }
 }
 
-claw::VRBodyInput vrBodyInput(RE::Actor* actor, const State& state, bool beast) {
+claw::VRBodyInput vrBodyInput(RE::Actor* actor, const State& state, bool beast, const TargetModelSample* worldModel) {
     if (!REL::Module::IsVR() || actor != RE::PlayerCharacter::GetSingleton()) return {};
     const auto* base = actor->GetActorBase();
     if (!base) return {};
@@ -1224,6 +1225,9 @@ claw::VRBodyInput vrBodyInput(RE::Actor* actor, const State& state, bool beast) 
                 actual.partClones[offset + claw::vrBipedSlotCount + slot] = reinterpret_cast<std::uintptr_t>(biped->bufferedObjects[slot].partClone.get());
             }
         }
+        if (worldModel && reinterpret_cast<std::uintptr_t>(worldModel->root.get()) == actual.thirdRoot)
+            for (std::size_t i = 0; i < actual.worldRoles.size(); ++i)
+                actual.worldRoles[i] = reinterpret_cast<std::uintptr_t>(worldModel->roles[i].get());
     }
     return actual;
 }
@@ -1259,10 +1263,12 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         logError(*state, "actor has no readable NPC sex"); return;
     }
     std::optional<claw::VRBodyLease> vrLease;
+    std::optional<TargetModelSample> vrTargetModel;
     if (REL::Module::IsVR() && actor == RE::PlayerCharacter::GetSingleton()) {
         if (!state->vrBody) state->vrBody = std::make_unique<claw::VRBodyState>();
+        if (beast) vrTargetModel = sampleTargetModel(actor);
         auto& policy = *state->vrBody;
-        const auto graphTransition = policy.observe(vrBodyInput(actor, *state, beast));
+        const auto graphTransition = policy.observe(vrBodyInput(actor, *state, beast, vrTargetModel ? &*vrTargetModel : nullptr));
         if (graphTransition.changed || vrBodyRetention.runtime != state->runtimeSerial || vrBodyRetention.world != epoch) {
             const auto roots = policy.roots();
             for (std::size_t i = 0; i < vrBodyRetention.graphs.size(); ++i)
@@ -1270,6 +1276,9 @@ void refreshActor(RE::Actor* actor, bool force = false) {
             const auto& parts = policy.parts();
             for (std::size_t i = 0; i < vrBodyRetention.parts.size(); ++i)
                 vrBodyRetention.parts[i].reset(reinterpret_cast<RE::NiAVObject*>(parts[i]));
+            const auto& worldRoles = policy.input().worldRoles;
+            for (std::size_t i = 0; i < vrBodyRetention.worldRoles.size(); ++i)
+                vrBodyRetention.worldRoles[i].reset(reinterpret_cast<RE::BSGeometry*>(worldRoles[i]));
             vrBodyRetention.actor = actor->GetFormID();
             vrBodyRetention.runtime = state->runtimeSerial; vrBodyRetention.world = epoch;
         }
@@ -1350,13 +1359,13 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     // refresh, including matching coefficients under an unchanged world root.
     const auto modelWorld = epoch.load(), modelRuntime = state->runtimeSerial;
     const auto* modelBase = actor->GetActorBase();
-    const auto targetModel = sampleTargetModel(actor);
-    const auto modelCurrent = [&] {
+    const auto targetModel = vrTargetModel ? std::move(*vrTargetModel) : sampleTargetModel(actor);
+    const auto modelCurrent = [&](const TargetModelSample& sampled) {
         return enabled && modelWorld == epoch.load() && state->runtimeSerial == modelRuntime &&
             currentOwner(actor) && boundTo(*state, actor) && modelBase && actor->GetActorBase() == modelBase &&
             modelBase->GetSex() == actorSex && actor->GetRace() == beastRace && actor->Is3DLoaded() &&
             actor->Get3D(false) == targetModel.root.get() && reinterpret_cast<std::uintptr_t>(targetModel.root.get()) == root &&
-            (!vrLease || (state->vrBody && state->vrBody->current(*vrLease, vrBodyInput(actor, *state, true))));
+            (!vrLease || (state->vrBody && state->vrBody->current(*vrLease, vrBodyInput(actor, *state, true, &sampled))));
     };
     const auto requireTargetModel = [&](const claw::TargetModelObservation& actual, bool current) {
         const auto availability = claw::targetModelAvailability(actual, current);
@@ -1372,13 +1381,15 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         logError(*state, claw::targetModelDiagnostic(actual, current), status);
         return false;
     };
-    if (!requireTargetModel(targetModel.observation, modelCurrent())) return;
+    if (!requireTargetModel(targetModel.observation, modelCurrent(targetModel))) return;
     const bool matching = readback(actor, expected);
     if (force || state->dirty || state->lastRoot != root || (!linked && state->lastWeight != weight) || !matching) {
         state->status = Status::pending;
         if (!clearOwnMorphs(actor)) { logError(*state, "own-key preparation readback failed"); return; }
         // Recheck race/model immediately before writes; all operations stay on this main-thread task.
-        if (!requireTargetModel(targetModel.observation, modelCurrent())) return;
+        const auto vrBeforeWrite = vrLease ? std::optional{sampleTargetModel(actor)} : std::nullopt;
+        const auto& beforeWrite = vrBeforeWrite ? *vrBeforeWrite : targetModel;
+        if (!requireTargetModel(beforeWrite.observation, modelCurrent(beforeWrite))) return;
         for (const auto& [name, value] : expected) if (value != 0)
             morphs->SetMorph(skeeReference(actor), name.c_str(), claw::morphKey, value);
         morphs->ApplyBodyMorphs(skeeReference(actor), false);
@@ -1397,7 +1408,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     // publish applied. Optional/missing first-person roles are not requirements.
     const auto finalModel = sampleTargetModel(actor);
     const bool sameModel = finalModel.root == targetModel.root && finalModel.roles == targetModel.roles;
-    if (!requireTargetModel(finalModel.observation, modelCurrent() && sameModel)) return;
+    if (!requireTargetModel(finalModel.observation, sameModel && modelCurrent(finalModel))) return;
     state->sex = desiredSex; state->cache = std::move(expected); state->lastRoot = root; state->lastWeight = weight;
     state->dirty = false; state->status = Status::applied; state->error.clear();
 }

@@ -205,6 +205,35 @@ void changedWeightWithStableGraphs() {
     assert(!state.observe(input).changed);
 }
 
+void replacedWorldRoleUnderStableClone() {
+    claw::VRBodyState state;
+    auto input = beast();
+    input.firstRoot = 300;
+    input.partClones[2] = 400;
+    input.actorWeight = 50.0F;
+    input.worldRoles = {501, 502, 503, 504};
+    assert(state.observe(input).reapply);
+
+    for (auto& role : input.worldRoles) {
+        const auto beforeReplacement = *state.lease();
+        role += 100;
+        assert(!state.current(beforeReplacement, input)); // The live readback expired the old lease before a new scan.
+        assert(state.observe(input).reapply);
+        const auto afterReplacement = *state.lease();
+        assert(state.current(afterReplacement, input) && !state.current(beforeReplacement, input));
+        assert(!state.observe(input).reapply);
+    }
+    assert(state.roots().count == 2 && state.parts()[2] == 400);
+
+    input.thirdRoot = 0;
+    assert(state.observe(input).changed && !state.lease());
+    assert(state.input().worldRoles == decltype(input.worldRoles){});
+    input.worldRoles[0] += 100;
+    assert(!state.observe(input).changed);
+    input.thirdRoot = 200;
+    assert(state.observe(input).reapply);
+}
+
 }
 
 int main() {
@@ -216,5 +245,6 @@ int main() {
     replacedPartsUnderStableRoots();
     orderedPartsAndRelease();
     changedWeightWithStableGraphs();
+    replacedWorldRoleUnderStableClone();
     std::cout << "VR loaded-graph lifecycle contracts passed\n";
 }
