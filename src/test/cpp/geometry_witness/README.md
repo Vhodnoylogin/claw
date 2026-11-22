@@ -15,8 +15,8 @@ linking does not qualify runtime ABI or engine behavior. VR/AE refuse at load.
 
 ## Exact scope
 
-Generated external `SealedManifest.h` pins e5a9d6b5 baseline,74a068f3 private
-root578 candidate and34744d55 TRI. No NIF/TRI/generated header is stored here.
+Generated external `SealedManifest.h` pins e5a9d6b5 baseline, the 89965e15
+three-vertex attachment trial and 34744d55 TRI. No NIF/TRI/generated header is stored here.
 The generator records actual topology/ordered bone names and the two allowed
 selected-point FP16 support variants. It admits fur_belly577–582 and
 head779/1676/1677 only. Source BSTriShape counts are10810/7698 and9427/17456
@@ -148,3 +148,22 @@ test can temporarily stage two nondefault constant profiles (Neutral/FHeavy)
 through existing ConfigureMorphFamily, read actual family/status/SKEE31 values
 and keep production APIs unchanged. FHeavy is an authored vector, not an assumed
 preset name. No profiles, game case or deployment are prepared by this component.
+
+## Separate pose-based comparison
+
+`src/test/python/integration/breast_attachment_world.py` emits a read-only
+World Observer request for the six skinning bones and 31 effective SKEE morphs
+used by this fixture. Resolve the disposable actor and exact asset and provider
+winners in the owned session first. Use its runtime FormID in `--reference`.
+Without `--observations` the script emits the request only. With that argument
+it takes an ordered JSON array of two raw responses and requires the matching
+`--base`. Use the same original archive NIF, trial NIF and shared TRI when
+capturing and scoring. The observer must supply both node and SKEE data.
+
+The score compares the fur offset at vertex 578 with the offset transported
+by the corresponding head triangle's skin influences. It uses the same observed
+coefficients and six bone transforms for each file-based prediction, and
+reports raw packed and normalized weighting separately. This scene-data
+comparison is independent of the pre-skin CPU collector's renderer lock.
+A complete live qualification still needs an admitted owned session, measured
+movement and readback of the exact loaded variant.

@@ -3,7 +3,7 @@ from pathlib import Path
 import argparse,hashlib,json,struct,sys
 sys.dont_write_bytecode=True
 PINS={'baseline':'e5a9d6b5572dfeb101afe149e79cf1961f73614ce108b23f98b4237c3a2e1212',
-      'candidate':'74a068f397b824d61d0aa7ba117ada7359973624b5ded8e4ba82a86cb13f0ac4',
+      'candidate':'89965e15eda32bb01757a36aff1ee68eb44d303f8e4fc3caf51f324f608380fa',
       'tri':'34744d5599531026f53a36e5438b39be3f880cd2cb7d9a0056b00bf343d05192'}
 def pin(p):
  b=p.read_bytes();return {'path':str(p),'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}
@@ -28,7 +28,7 @@ def main():
  nifs={name:pynifly.NifFile(value['path']) for name,value in pins.items() if name!='tri'};shapes=[]
  for role,points in [('fur_belly',[577,578,579,580,581,582]),('head',[779,1676,1677])]:
   chosen={name:next(s for s in n.shapes if s.name==role) for name,n in nifs.items()};s=chosen['baseline'];t=chosen['candidate']
-  assert s.blockname==t.blockname=='BSTriShape' and s.bone_names==t.bone_names and s.tris==t.tris and len(s.verts)==len(t.verts)
+  assert s.blockname==t.blockname=='BSTriShape' and s.bone_names==t.bone_names and s.tris==t.tris and s.verts==t.verts
   assert len(s.bone_names)<=128 and len(s.tris)<=32768
   rows={}
   for variant,shape in chosen.items():
@@ -36,6 +36,8 @@ def main():
    for point in points:
     weights=[sum(v for i,v in shape.bone_weights.get(bone,[]) if i==point) for bone in shape.bone_names]
     rows[variant].append([struct.unpack('<H',struct.pack('<e',v))[0] for v in weights])
+  changed=[point for point,a,b in zip(points,rows['baseline'],rows['candidate'],strict=True) if a!=b]
+  if changed!=([578,581,582] if role=='fur_belly' else []):raise ValueError('Unexpected selected skin weight changes: '+role)
   shapes.append({'role':role,'vertices':len(s.verts),'triangles':len(s.tris),'pointCount':len(points),'points':points,'bones':len(s.bone_names),'boneNames':s.bone_names,'topologyHash':topology(s.tris),**rows})
  text='#pragma once\n#include <array>\n#include <cstdint>\nnamespace sealed {\n'
  text+='struct Shape {const char* role;unsigned vertices,triangles,pointCount;std::array<unsigned,6> points;unsigned bones;std::array<const char*,128> boneNames;std::uint64_t topologyHash;std::array<std::array<std::uint16_t,128>,6> baseline,candidate;};\n'
