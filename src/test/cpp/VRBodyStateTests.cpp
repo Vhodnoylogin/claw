@@ -172,6 +172,39 @@ void orderedPartsAndRelease() {
     assert(!state.observe(input).changed && !state.lease());
 }
 
+void changedWeightWithStableGraphs() {
+    claw::VRBodyState state;
+    auto input = beast();
+    input.firstRoot = 300;
+    input.partClones[0] = 400;
+    input.actorWeight = 50.0F;
+    assert(state.observe(input).reapply);
+    const auto initial = *state.lease();
+    input.actorWeight = 50.5F;
+    assert(!state.current(initial, input));
+    assert(state.observe(input).reapply);
+    assert(state.roots().count == 2 && state.parts()[0] == 400);
+    const auto updated = *state.lease();
+    assert(state.current(updated, input) && !state.observe(input).reapply);
+
+    input.actorWeight = std::numeric_limits<float>::quiet_NaN();
+    assert(!state.current(updated, input) && state.observe(input).reapply);
+    const auto unavailable = *state.lease();
+    input.actorWeight = 101.0F;
+    assert(state.current(unavailable, input) && !state.observe(input).reapply);
+    input.actorWeight = 100.0F;
+    assert(state.observe(input).reapply);
+
+    input.beast = false;
+    assert(state.observe(input).changed && !state.lease());
+    input.actorWeight = 0.0F;
+    assert(!state.observe(input).changed); // Human changes do not refresh the beast graph.
+    input.vrPlayer = false;
+    state.observe(input);
+    input.actorWeight = 25.0F;
+    assert(!state.observe(input).changed);
+}
+
 }
 
 int main() {
@@ -182,5 +215,6 @@ int main() {
     inactiveAndIncompleteContexts();
     replacedPartsUnderStableRoots();
     orderedPartsAndRelease();
+    changedWeightWithStableGraphs();
     std::cout << "VR loaded-graph lifecycle contracts passed\n";
 }

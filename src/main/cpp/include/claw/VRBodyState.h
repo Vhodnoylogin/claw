@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -19,6 +20,7 @@ struct VRBodyInput {
     std::uint64_t owner{}, lifecycle{};
     std::uintptr_t race{}, thirdRoot{}, firstRoot{};
     VRBodyParts partClones{}; // Ordered third/first, current/buffered, slot.
+    float actorWeight{-1.0F}; // Raw actor base weight on the engine's 0..100 scale.
     bool operator==(const VRBodyInput&) const = default;
 };
 
@@ -88,7 +90,10 @@ public:
 private:
     static VRBodyInput relevant(VRBodyInput input) {
         // Inactive SE/AE/NPC observations cannot cause graph-driven reapplication.
-        return input.enabled && input.vrPlayer ? input : VRBodyInput{};
+        if (!input.enabled || !input.vrPlayer) return {};
+        if (!input.beast || !input.thirdRoot || !std::isfinite(input.actorWeight) ||
+            input.actorWeight < 0.0F || input.actorWeight > 100.0F) input.actorWeight = -1.0F;
+        return input;
     }
 
     bool active() const {

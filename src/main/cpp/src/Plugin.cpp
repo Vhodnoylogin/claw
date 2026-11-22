@@ -1203,11 +1203,14 @@ bool readback(RE::Actor* actor, const claw::Morphs& expected) {
 
 claw::VRBodyInput vrBodyInput(RE::Actor* actor, const State& state, bool beast) {
     if (!REL::Module::IsVR() || actor != RE::PlayerCharacter::GetSingleton()) return {};
+    const auto* base = actor->GetActorBase();
+    if (!base) return {};
     const bool loaded = actor->Is3DLoaded();
-    claw::VRBodyInput actual{enabled.load(), true, beast, static_cast<int>(actor->GetActorBase()->GetSex()),
+    claw::VRBodyInput actual{enabled.load(), true, beast, static_cast<int>(base->GetSex()),
         state.runtimeSerial, epoch.load(), reinterpret_cast<std::uintptr_t>(actor->GetRace()),
         loaded ? reinterpret_cast<std::uintptr_t>(actor->Get3D(false)) : 0,
         loaded ? reinterpret_cast<std::uintptr_t>(actor->Get3D(true)) : 0};
+    actual.actorWeight = base->weight;
     static_assert(claw::vrBipedSlotCount == RE::BIPED_OBJECTS::kTotal);
     if (actual.enabled && beast && loaded) {
         // SKEE VisitBipedNodes traverses these two tables in each view; a fresh

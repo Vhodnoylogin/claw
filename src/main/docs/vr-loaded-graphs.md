@@ -10,6 +10,13 @@ invalidates application even when both skeleton roots stay the same. The existin
 SKEE application path is reused; there is no second morph cache or extra weight
 multiplier. SE, AE and NPC processing do not enter this VR policy.
 
+The same observation tracks the loaded VR player's werewolf actor-base weight.
+A change refreshes the ordinary SKEE application when the linked outputs and
+graph identities remain equal. Invalid readings share one unavailable state
+so they do not repeatedly invalidate the graph. This refresh uses the body
+already loaded by the engine. Selection of a mesh or weight endpoint remains
+an engine model-routing concern.
+
 `VRBodyState` is a pure policy over actual graph, race, sex, runtime owner and
 world identities and ordered biped clone identities. The engine adapter retains
 graph and clone references to prevent recycled addresses from impersonating the
