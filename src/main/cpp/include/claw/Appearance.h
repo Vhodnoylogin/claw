@@ -1,5 +1,6 @@
 #pragma once
 #include "claw/ColourMath.h"
+#include "claw/CoatGeometry.h"
 #include "claw/CoatMapping.h"
 #include "claw/MaterialLease.h"
 #include "claw/CoatSurfaceAudit.h"
@@ -65,6 +66,7 @@ private:
         RE::NiPointer<RE::BSGeometry> geometry;
         RE::NiPointer<RE::BSShaderProperty> original, own;
         std::optional<std::uint32_t> expectedTint;
+        std::size_t role{};
         bool tinted{};
         // Retain initialized identities: a later replacement cannot recycle an
         // old pointer into a false match while this surface lease is active.
@@ -86,7 +88,7 @@ private:
         Colours colours;
         RE::NiPointer<RE::NiAVObject> root; // Retain generation identity; prevents recycled-root pointer aliases.
         RE::ActorHandle handle;
-        bool loaded{}, yielded{};
+        bool loaded{};
         std::vector<Surface> surfaces;
         std::string status;
         std::string explicitPattern, appliedPattern, attemptedPattern;
@@ -99,6 +101,10 @@ private:
         std::uint64_t auditGeneration{};
         CoatSurfaceAuditCache yieldAudit; // Separate plain diagnostic cache; public request tokens unchanged.
         RE::NiPointer<RE::NiAVObject> yieldReportedRoot; // First diagnostic only per retained model root.
+        struct {
+            RE::NiPointer<RE::NiAVObject> root;
+            std::vector<RE::NiPointer<RE::BSGeometry>> surfaces;
+        } yield; // Pin conflicting geometries even if detached. Their addresses cannot be reused.
     };
     template<class F> static void visit(RE::NiAVObject* object, F&& f);
     static void unbind(Entry& entry);
@@ -159,7 +165,7 @@ inline void Runtime::unbind(Entry& entry) {
                 coatAuditQuote(surface.geometry->name.c_str() ? surface.geometry->name.c_str() : ""));
         }
     }
-    entry.surfaces.clear(); entry.root.reset(); entry.yielded = false; entry.appliedPattern.clear();
+    entry.surfaces.clear(); entry.root.reset(); entry.appliedPattern.clear();
     entry.appliedVariation.reset();
 }
 inline void Runtime::reset() {
@@ -176,6 +182,7 @@ inline void Runtime::restore(RE::Actor* actor) {
         const auto* currentRoot = actor->Is3DLoaded() ? actor->Get3D(false) : nullptr;
         if (entry.auditRoot.get() != currentRoot) { entry.auditRoot.reset(); entry.auditGeneration = 0; }
         if (entry.yieldReportedRoot.get() != currentRoot) { entry.yieldReportedRoot.reset(); entry.yieldAudit.invalidate(); }
+        if (entry.yield.root.get() != currentRoot) entry.yield = {};
     }
 }
 inline std::string_view Runtime::status(RE::FormID id) const {
@@ -228,12 +235,12 @@ inline bool Runtime::setPattern(RE::Actor* actor, std::string id) {
     if (!knowsPattern(id)) return false;
     auto* entry = entryFor(actor); if (!entry) return false;
     validatedPatterns_.erase(mapping_ ? std::string(mapping_->material(id)) : id);
-    unbind(*entry); entry->explicitPattern = std::move(id); entry->status = "coat selection pending"; return true;
+    unbind(*entry); entry->yield = {}; entry->explicitPattern = std::move(id); entry->status = "coat selection pending"; return true;
 }
 inline void Runtime::clearPattern(RE::Actor* actor) {
     if (!actor) return;
     if (auto found = entries_.find(actor->formID); found != entries_.end()) {
-        unbind(found->second); found->second.explicitPattern.clear();
+        unbind(found->second); found->second.yield = {}; found->second.explicitPattern.clear();
         // Clear only the manual layer. Keep both automatic caches, seed and
         // genuine source availability, including for a source-less born wolf.
     }
@@ -385,7 +392,8 @@ inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token, C
     // No apply/refresh/SKEE call occurs during this observation.
     const auto variation = entry.appliedVariation && completeCoatLease(rows, coatSurfaces.size())
         ? entry.appliedVariation : std::nullopt;
-    return cache.publish(token, entry.auditGeneration, auditClock(), entry.root.get() == root.get(), rows,
+    const bool rootCurrent = entry.root.get() == root.get() || entry.yield.root.get() == root.get();
+    return cache.publish(token, entry.auditGeneration, auditClock(), rootCurrent, rows,
         entry.appliedPattern, variation);
 }
 inline std::string Runtime::texturePath(RE::BSTextureSet* set, RE::BSTextureSet::Texture slot) {
@@ -679,6 +687,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     }
     if (entry.loaded) { entry.handle = actor->GetHandle(); entry.loaded = false; }
     auto* root = actor->Get3D(false);
+    if (entry.yield.root.get() != root) entry.yield = {};
     if (entry.yieldReportedRoot && entry.yieldReportedRoot.get() != root) {
         entry.yieldReportedRoot.reset(); entry.yieldAudit.invalidate();
     }
@@ -706,43 +715,51 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         return !resource.empty();
     }
     const auto mode = mapping_ ? TintMode::original : policy_.tintMode();
-    if (root == entry.root.get() && entry.attemptedPattern == requestedPattern && entry.attemptedMode == mode && !entry.surfaces.empty()) {
-        const bool stillInScene = std::all_of(entry.surfaces.begin(), entry.surfaces.end(), [root](const auto& surface) {
-            return root->GetObjectByName(surface.geometry->name) == surface.geometry.get();
-        });
+    std::array<RE::BSFixedString, coatSurfaces.size()> names;
+    for (std::size_t i = 0; i < names.size(); ++i) names[i] = RE::BSFixedString{coatSurfaces[i].name.data()};
+    // Use the engine's case-insensitive names. Check every reachable geometry
+    // for retained identities, including a conflicted geometry renamed in place.
+    const auto scene = collectCoatGeometry<RE::BSGeometry, coatSurfaces.size()>(root, [&](RE::NiAVObject* object) {
+        const auto found = std::ranges::find(names, object->name);
+        return std::pair{object->AsGeometry(), found == names.end() ? std::nullopt :
+            std::optional{static_cast<std::size_t>(found - names.begin())}};
+    }, [](RE::NiAVObject* object, auto&& push) {
+        if (auto* node = object->AsNode()) for (const auto& child : node->GetChildren())
+            if (!push(child.get())) return false;
+        return true;
+    });
+    if (!scene.complete()) { entry.status = "coat geometry observation incomplete"; return false; }
+    if (!scene.clearOf(entry.yield.surfaces)) { entry.status = "yielded to later coat writer"; return false; }
+
+    if (root == entry.root.get() && !entry.surfaces.empty()) {
         const bool firstReport = entry.yieldReportedRoot.get() != root;
+        bool sameSurfaces = true;
+        bool lostLease = false;
         std::vector<SurfaceLeaseFailure> failures;
-        bool stillTinted = true;
-        if (firstReport && stillInScene) {
-            for (const auto& surface : entry.surfaces) {
-                std::vector<MaterialLeaseDifference> differences;
-                const auto* current = surface.geometry->GetGeometryRuntimeData().shaderProperty.get();
-                bool healthy = current == surface.own.get();
-                if (!healthy) differences.push_back({"propertyIdentity",
+        for (const auto& surface : entry.surfaces) {
+            auto* geometry = surface.geometry.get();
+            sameSurfaces &= scene.unique(surface.role) == geometry;
+            if (!scene.contains(geometry)) continue;
+            std::vector<MaterialLeaseDifference> differences;
+            const auto* current = geometry->GetGeometryRuntimeData().shaderProperty.get();
+            if (current == surface.own.get()) {
+                if (inspectPrivateTint(surface, firstReport ? &differences : nullptr)) continue;
+            } else if (firstReport) {
+                differences.push_back({"propertyIdentity",
                     materialLeaseDiagnosticValue(reinterpret_cast<std::uintptr_t>(surface.own.get())),
                     materialLeaseDiagnosticValue(reinterpret_cast<std::uintptr_t>(current))});
-                else healthy = inspectPrivateTint(surface, &differences);
-                if (!healthy) {
-                    stillTinted = false;
-                    const auto* name = surface.geometry->name.c_str();
-                    failures.push_back({std::string(name ? name : "").substr(0, coatAuditMaxName), std::move(differences)});
-                }
             }
-        } else {
-            const bool stillOwned = std::all_of(entry.surfaces.begin(), entry.surfaces.end(), [](const auto& surface) {
-                return surface.geometry->GetGeometryRuntimeData().shaderProperty.get() == surface.own.get();
-            });
-            stillTinted = stillOwned && std::all_of(entry.surfaces.begin(), entry.surfaces.end(), healthyPrivateTint);
+            lostLease = true;
+            entry.yield.surfaces.push_back(surface.geometry);
+            if (firstReport) {
+                const auto* name = geometry->name.c_str();
+                failures.push_back({std::string(name ? name : "").substr(0, coatAuditMaxName), std::move(differences)});
+            }
         }
-        if (stillInScene && stillTinted) {
-            // A different score can keep the same material. Record the decision this lease just accepted.
-            if (!entry.appliedPattern.empty()) entry.appliedVariation = selectedChoice.variation;
-            return true;
-        }
-        // A later provider wins until model generation changes; no override war.
-        if (stillInScene) {
+        if (lostLease) {
+            entry.yield.root.reset(root);
             if (firstReport) { entry.yieldReportedRoot.reset(root); reportYieldDifferences(actor->formID, entry, failures); }
-            unbind(entry); entry.root.reset(root); entry.yielded = true; entry.status = "yielded to later coat writer";
+            unbind(entry); entry.status = "yielded to later coat writer";
             if (firstReport) {
                 // Observe AFTER cleanup into a separate plain cache. Do not
                 // alter public request tokens or re-publish known-stale leases.
@@ -755,8 +772,12 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
             }
             return false;
         }
+        if (sameSurfaces && entry.attemptedPattern == requestedPattern && entry.attemptedMode == mode) {
+            // A different score can keep the same material. Record the decision this lease just accepted.
+            if (!entry.appliedPattern.empty()) entry.appliedVariation = selectedChoice.variation;
+            return true;
+        }
     }
-    if (root == entry.root.get() && entry.yielded) return false;
     if (root == entry.root.get() && entry.attemptedPattern == requestedPattern && entry.attemptedMode == mode && entry.surfaces.empty()) return false;
     unbind(entry);
     std::vector<Surface> prepared;
@@ -771,38 +792,18 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     // already-working tint, and a source-less born wolf retains its donor.
     for (unsigned attempt = 0; attempt < 2; ++attempt) {
     prepared.clear(); bool retryWithoutPattern{};
-    for (const auto& surfaceSpec : coatSurfaces) {
+    for (std::size_t role = 0; role < coatSurfaces.size(); ++role) {
+        const auto& surfaceSpec = coatSurfaces[role];
         const auto name = surfaceSpec.name;
         const bool skin = name == "body" || name == "head";
         const bool hasColour = mode == TintMode::linked && (skin ? entry.colours.hasSkin : entry.colours.hasHair);
         if (!hasColour && !selected) continue;
-        RE::BSGeometry* geometry{}; unsigned count{};
-        // NiAVObject uses the engine's case-insensitive interned BSFixedString.
-        // Its retained spelling may come from another earlier model. A bytewise
-        // comparison can miss a surface that GetObjectByName correctly finds.
-        const RE::BSFixedString expected{name.data()};
-        visit(root, [&](RE::NiAVObject* object) {
-            if (object->name == expected) { ++count; geometry = object->AsGeometry(); }
-        });
-        if (count != 1 || !geometry) {
-            const auto reason = "coat surface " + std::string(name) + ": matches=" + std::to_string(count) +
-                ", geometry=" + (geometry ? "yes" : "no");
-            if (entry.status != reason) {
-                std::size_t objects{}, geometries{}; std::string inventory;
-                visit(root, [&](RE::NiAVObject* object) {
-                    ++objects;
-                    if (object->AsGeometry()) ++geometries;
-                    if (objects <= 96) {
-                        if (!inventory.empty()) inventory += "; ";
-                        inventory += object->name.c_str() ? object->name.c_str() : "<unnamed>";
-                        inventory += ":";
-                        const auto* type = object->GetRTTI();
-                        inventory += type ? type->GetName() : "<no RTTI>";
-                    }
-                });
-                SKSE::log::warn("CLAW appearance {:08X}: {}; visited {} objects / {} geometries; {}",
-                    actor->formID, reason, objects, geometries, inventory);
-            }
+        auto* geometry = scene.unique(role);
+        if (!geometry) {
+            const auto reason = "coat surface " + std::string(name) + ": matches=" + std::to_string(scene.matches[role]) +
+                ", geometry=" + (scene.roles[role] ? "yes" : "no");
+            if (entry.status != reason) SKSE::log::warn("CLAW appearance {:08X}: {}; visited {} objects / {} geometries",
+                actor->formID, reason, scene.graph.objects, scene.graph.geometries);
             entry.status = reason; return false;
         }
         auto* original = geometry->lightingShaderProp_cast();
@@ -836,7 +837,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         }
         if (!protectPrivateTint(copy.get(), original)) { entry.status = "private tint protection failed"; return false; }
         prepared.push_back({RE::NiPointer<RE::BSGeometry>{geometry}, RE::NiPointer<RE::BSShaderProperty>{original}, copy,
-            tint});
+            tint, role});
         auto& staged = prepared.back();
         auto* material = static_cast<RE::BSLightingShaderMaterialBase*>(copy->material);
         staged.initializedFeature = static_cast<std::int32_t>(material->GetFeature());
@@ -879,6 +880,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         surface.initializedTint = observedTint(surface.own->material);
         surface.tinted = true;
     }
+    entry.yield = {};
     entry.appliedPattern = selected ? requestedPattern : "";
     if (selected) entry.appliedVariation = selectedChoice.variation;
     entry.status = selected ? "applied private coat " + requestedPattern + " with " +

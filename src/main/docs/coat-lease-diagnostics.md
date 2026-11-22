@@ -55,3 +55,16 @@ alone, including when setup returns failure; its alpha is not overwritten.
 Native tests exercise the production content and rollback helpers, including
 the exact Q10 transition and failure paths. They do not execute engine shader
 initialization. A fresh full lifecycle game qualification remains necessary.
+
+## Same-root geometry replacement
+
+CLAW yields the material lease when a later writer changes a live coat
+surface. It retains the exact conflicting geometries until the model root
+changes or the geometry is replaced. Material changes, renames and replacement
+of unrelated parts do not release the conflict. A single bounded inventory
+checks the live graph for those identities and resolves the named coat surfaces.
+A partial or ambiguous inventory cannot establish a new binding. Once the
+conflicting geometry is absent, normal material staging must still succeed
+before the same selected coat can be bound to the new surfaces. The explicit
+manual apply and clear commands retain their existing override semantics.
+This lifecycle has offline regression coverage and awaits game verification.

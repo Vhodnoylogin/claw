@@ -1,5 +1,7 @@
 #include "claw/CoatSurfaceAudit.h"
+#include "claw/CoatGeometry.h"
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 
 namespace {
@@ -92,12 +94,54 @@ void appliedDecisionRequiresCompletePrivateMaterialEvidence() {
     rows[1].healthyLease = false;
     require(!completeCoatLease(rows, 2), "Unhealthy material lease retained coat decision evidence");
 }
+
+void sameRootReplacementRequiresNewUnambiguousGeometry() {
+    using namespace claw::appearance;
+    struct Node {
+        std::optional<std::size_t> role;
+        std::shared_ptr<int> geometry;
+        std::vector<Node*> children;
+    };
+    Node body{0, std::make_shared<int>(1)}, head{1, std::make_shared<int>(2)};
+    Node newBody{0, std::make_shared<int>(3)}, newHead{1, std::make_shared<int>(4)};
+    Node root{std::nullopt, {}, {&body, &head}};
+    const std::vector lost{body.geometry};
+    const auto observe = [&] {
+        return collectCoatGeometry<int, 2>(&root, [](auto* node) {
+            return std::pair{node->geometry.get(), node->role};
+        }, [](auto* node, auto&& push) {
+            return std::ranges::all_of(node->children, push);
+        });
+    };
+    *body.geometry = 9;
+    require(!observe().clearOf(lost), "A material change passed as geometry turnover");
+    root.children = {&body, &newHead};
+    require(!observe().clearOf(lost), "Replacement of another surface released the conflict");
+    root.children = {&newBody, &newHead, &body};
+    body.role.reset();
+    require(!observe().clearOf(lost), "Renaming the conflicted surface hid its retained identity");
+    root.children.pop_back();
+    const auto replaced = observe();
+    require(replaced.clearOf(lost) && replaced.unique(0) == newBody.geometry.get() &&
+        replaced.unique(1) == newHead.geometry.get(), "Unique full replacement under the same root was rejected");
+    const std::vector bothLost{body.geometry, head.geometry};
+    root.children = {&newBody, &head};
+    require(!observe().clearOf(bothLost), "Replacement of one of two conflicts released both");
+    root.children = {&newHead};
+    require(!observe().unique(0), "An incomplete replacement obtained a surface");
+    Node duplicateName{0, {}};
+    root.children = {&newBody, &duplicateName, &newHead};
+    require(!observe().unique(0), "An ambiguous replacement obtained a surface");
+    root.children = {&newBody, &newHead, &root};
+    require(!observe().clearOf(lost) && !observe().unique(0), "Incomplete traversal proved turnover");
+}
 }
 int main() {
     using namespace claw::appearance;
     try {
         chunksPreserveBoundedBytes(); maximumPublishedObservationUsesOneFreshPayload();
         appliedDecisionRequiresCompletePrivateMaterialEvidence();
+        sameRootReplacementRequiresNewUnambiguousGeometry();
         CoatSurfaceObservation row;
         row.name = "body"; row.managed = true; row.materialType = 2; row.feature = 5;
         row.diffusePath = "textures\\actual\\body.dds";
