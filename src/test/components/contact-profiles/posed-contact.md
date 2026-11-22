@@ -114,8 +114,12 @@ The optional replay uses the exact VR65 native input and geometry result
 recorded in the [VR evidence](../../docs/vr-readiness-20261119.md). It
 extracts packed skin weights and projects the current morph's vertices
 into each influencing bone's bind frame. Shared vertices are skinned
-once. The existing C++ enclosing fitter then consumes each slot's support
-in its owner's local frame. The generated header stays external.
+once by `claw/PosedContactSupport.h`. The existing C++ enclosing fitter
+then consumes each slot's support in its owner's local frame. The generated
+header stays external. The replay captures the original zero-morph VR65
+poses. Separate numerical controls exercise weight and TRI deltas before
+skinning, their combination and a return to neutral. The game plugin's
+collider update path still uses the current-vector rest-space fit.
 
 ```powershell
 python src/test/components/contact-profiles/export_pose_fit_benchmark.py --native <VR65-NATIVE-INPUTS.json> --geometry <VR65-POSED-GEOMETRY.json> --model <fitted-capsules.json> --out <external-input-directory>
