@@ -64,6 +64,39 @@ overlap comparison can use its actor/node/duration mod event with the
 same hand path before attach, after one attach and after removal. This
 requires a separately verified provider and exact target ownership.
 
+## Contact contrast for a pose-only ACK
+
+Retain the diagnostic log from the initial full acknowledgment through the
+selected pose delta. Use the same pinned VR profile and exact actor and
+generation as the run.
+
+```text
+python src/test/components/contact-profiles/prepare_pose_ack_contact.py --log <CLAWDistribution.log> --profile <vr/fitted-capsules.json> --actor <FormID> --generation <generation> --token <pose token> --node TailBone02 --hand-radius-gu <projected world radius> --out <new-external-report.json>
+```
+
+The tool reconstructs both accepted capsule banks, including the unchanged
+slots on the selected node. It projects both through the **same** attachment
+transform from the newer fit. This holds the animation pose constant while
+comparing the capsule shapes. It reports both directions of overlap change,
+the best sampled gap and an upper bound on the margin. The default target
+is 0.75 game units for both separation and overlap. An upper bound below
+that target rules out the requested margin for those banks and that pose.
+
+The result uses world axes with the fitted actor root as the origin. It is
+geometric input to the test. Derive an executable wand position from the
+live controller calibration and measured absolute attachment transform.
+Remeasure the sphere radius, actor, node pose, reach and clearance in the
+actual hold. Require the margin over the complete observed hold.
+
+Use a dedicated affected group containing only the named node (`TailBone02`
+or the chosen ear node), while the full host still has destinations for all
+enabled nodes and only the test hand sphere supplies the contact. Bracket
+near, far, repeat near and removal controls with the independently observed
+controller and native callback clocks; verify that no newer ACK replaced
+the bank during a hold. A CBPC callback identifies the actor and group.
+The fitter receipt and this numerical result leave solver geometry and
+runtime contact for independent observation.
+
 ## Stationary controller contrast for a TRI refit
 
 Run `prepare_tail_refit_contrast.py` with the retained VR `fitted-capsules.json`
