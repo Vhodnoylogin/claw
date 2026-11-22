@@ -2666,3 +2666,41 @@ hash-verified archive files reproduced the stock `TailBone03` slot-46 counts
 of 0/6/0/6/0 and two callbacks outside the measured holds. The new replay
 uses the original typed append, detach and sealed read as provenance. The
 archived game exit was 0 and the isolated profile was restored.
+
+Run `20261122-133309-807e55` verified the stock CBPC callback contrast for
+VR `TailBone02`, slot 108. The same loaded actor and fitted capsule passed
+live near and neutral-far checks before arming. The attached near windows
+overlapped by at least 3.612 and 4.249 game units. Neutral separation was
+at least 10.623 game units. One append and one detach yielded 0/5/0/4/0
+events before append, near, far, near again and after detach. Four other
+events fell outside those windows. The native shutdown exited with
+`0xC0000005`. All 123 preimages were restored and 52 VFS winners verified.
+Independent restoration SHA-256
+`43aff9424c491ea361e889c26567f07fbfc9071f8018517a6cfaeb1b53ce1448`.
+Canonical Morphbench `623c2e2` replayed all 40 exact native bone and
+controller poses. The largest difference from the retained signed
+clearances was `0.0000008225352` game units. The comparison uses the
+actual attached geometry and the original stock controller profile.
+Morphbench receipt SHA-256
+`eed08790adb8b1a223b520493f44f986dd5ea226d35175ab1717837ea8bcfa68`.
+
+The separate female human-origin FSMP run `20261122-132904-f72a97`
+identified the unique NPC and loaded human 3D. XP32 exposed `TailBone03`
+in all 12 retained human samples, so the previous bare node absence check
+refused before the first race change. The corrected human gate accepts
+all 12 original snapshots with exact actor identity, human race and root
+transform. The empty FSMP registration read and the round trip still
+require a fresh live run. The first run exited 0 and restored all 146
+preimages. Restoration SHA-256
+`b7b5b0b5de86eb57e1de444cde29e0ffc31ae08571a67e51f4197b01c09adce0`.
+
+Run `20261122-134215-068e08` passed the corrected human-origin lifecycle.
+The same third-person female NPC had no wolf-addon FSMP registration as a
+Nord, used `CLAWMotionFemale.xml` as a werewolf, and returned to an empty
+registration as a Nord. Its exact VR catalogue independently matched
+15 bodies and 11 links with 27 paired solver observations and measurable
+joint-relative motion. Two later observations confirmed the disabled
+actor was unloaded. The game exited 0 and all 146 preimages and 76 VFS
+winners were verified. This is one female NPC round trip in the pinned
+profile. Independent restoration SHA-256
+`db81b0689b18db15eb7ebfe0cab41c18ddcdb16cbd083e5670356b7d76cb9e79`.
