@@ -138,7 +138,7 @@ def assemble(esp, resource_candidate, archive, *, fixed_profile_fomod=False):
     manifest = candidate / "install-manifest.json"
     manifest_sha = sha256(manifest)
     files = resource_layout(read_json(manifest))
-    assets = {ADDON: (esp, sha256(esp))}
+    assets = {esp.name: (esp, sha256(esp))}
     for relative, digest in sorted(files.items()):
         source = candidate / "resources" / relative
         if source.resolve(strict=True) != source:

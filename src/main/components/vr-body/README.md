@@ -72,6 +72,31 @@ The HIGGS callback supplied the observation point. Detailed ear and tail
 contacts are separate checks of CLAW's authored colliders. A change to those
 colliders does not require repeating the general tracking check.
 
+### Scoped player outfit trial
+
+The fixed-profile alias occupies one global path. A separate diagnostic
+tests an ordinary equipped Body32 route using a new ARMO and ARMA. It declares
+different male and female models in both views, keeps both TRI families in the
+same archive, and leaves race, skin and NPC records as shipped by core CLAW.
+The weight-range flags stay clear in this trial. Both endpoints of each current
+sex have identical geometry, and CLAW's ordinary matrix supplies the weight
+input.
+
+```text
+python -B src/test/components/vr-body/stage_player_armor.py --resources <body-candidate-dir> --out <new-external-dir>
+```
+
+In a separately admitted game run, select the subject by the admitted player
+handle and give/equip only the fixture armor after the normal transformation.
+Use a same-run stock Body32 observation before equip and after removal. Match
+the active clone and both VFS model identities, report which view actually
+attaches the model, and compare the named CLAW outputs with the matrix for
+both sexes. Repeat the stock observation on a control NPC. Record item removal
+and the return to human. The existing stock-only marker walk classifies the
+fixture armor as foreign by design. The raw topology rows still report the
+item, addon, path and clone separately. The archive does not give, equip or
+serialize the outfit on its own.
+
 ### Optional world-body motion trial
 
 `world_motion.py` builds one detached FSMP overlay for each fixed-profile sex.
