@@ -60,7 +60,7 @@ def paired_bank_bound(clear, overlap):
     return bound / 2.
 
 
-def contrast(clear, overlap, minimum_margin):
+def contrast(clear, overlap, minimum_margin, admissible=None):
     # A point penetrating the destination union lies inside this box.
     lower = np.min([np.minimum(cap["p1"], cap["p2"]) - cap["radius"] for cap in overlap], axis=0)
     upper = np.max([np.maximum(cap["p1"], cap["p2"]) + cap["radius"] for cap in overlap], axis=0)
@@ -73,11 +73,21 @@ def contrast(clear, overlap, minimum_margin):
     separation = signed_capsules(points, clear)
     penetration = -signed_capsules(points, overlap)
     margin = np.minimum(separation, penetration)
-    index = int(np.argmax(margin))
     # The worst of the two signed gaps is 1-Lipschitz. Outside the box
     # the destination penetration is nonpositive.
     cover = math.hypot(*(span / divisions)) / 2.
-    upper_bound = min(paired_bank_bound(clear, overlap), max(0., float(margin[index]) + cover))
+    upper_bound = min(paired_bank_bound(clear, overlap), max(0., float(np.max(margin)) + cover))
+    if admissible is not None:
+        allowed = np.asarray(admissible(points))
+        require(allowed.shape == (len(points),) and allowed.dtype == np.dtype(bool),
+                "Controller reach must classify each sampled point")
+        if not np.any(allowed):
+            return {"testedCenters": len(points), "bestSampledMarginGu": None, "marginUpperBoundGu": upper_bound,
+                    "meetsRequestedMargin": False, "sphereCenterRootRelativeGu": None,
+                    "separationGu": None, "overlapGu": None}
+        index = int(np.argmax(np.where(allowed, margin, -np.inf)))
+    else:
+        index = int(np.argmax(margin))
     return {"testedCenters": len(points), "bestSampledMarginGu": float(margin[index]), "marginUpperBoundGu": upper_bound,
             "meetsRequestedMargin": bool(margin[index] >= minimum_margin),
             "sphereCenterRootRelativeGu": points[index].tolist(), "separationGu": float(separation[index]),

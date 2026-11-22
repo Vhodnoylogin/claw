@@ -162,6 +162,19 @@ active holds. It returns the manifest, exact raw input bytes and verdict.
 Keep the original log and ledger on failure. Resolve any unconfirmed
 operation with the owning executor's restoration path.
 
+`PoseContactCapture.run_calibrated` uses the executor's owned Protocol 2 file
+driver. Supply the acknowledged reference frame and same-room observations
+for the ordered +0.025 metre X, Y and Z probes and their neutral returns.
+The mapping uses the measured sphere center, including its local offset.
+The waypoint search considers the admitted reach and the estimated path
+clearance from the last measured position to each candidate. Only the left
+controller translation changes. Each motion step requires its own driver
+acknowledgment and a fresh Observer measurement before the next one.
+The collector restores the original position after sealing the callback
+capture and preserves the restoration receipts in the ledger. These sampled
+positions qualify the commanded steps. The path between samples is a
+geometric prediction.
+
 ## Stationary controller contrast for a TRI refit
 
 Run `prepare_tail_refit_contrast.py` with the retained VR `fitted-capsules.json`

@@ -3,7 +3,7 @@ from copy import deepcopy
 import json
 import unittest
 
-from prepare_pose_ack_contact import prepare
+from prepare_pose_ack_contact import contrast, prepare
 from test_pose_ack import ACTOR, GENERATION, PROFILE, lines, receipt
 
 
@@ -89,6 +89,19 @@ class PoseAckContactTests(unittest.TestCase):
         bone["worldToBone"][11] = -1.
         with self.assertRaisesRegex(ValueError, "uniform scale"):
             self.plan(self.full, self.delta)
+
+    def test_reachable_search_can_choose_a_different_qualifying_point(self):
+        clear = [{"p1": [0., 0., 0.], "p2": [0., 0., 0.], "radius": 1.}]
+        overlap = [{"p1": [6., 0., 0.], "p2": [6., 0., 0.], "radius": 1.}]
+        unrestricted = contrast(clear, overlap, .25)
+        limited = contrast(clear, overlap, .25, lambda points: points[:, 0] <= 5.5)
+        self.assertTrue(limited["meetsRequestedMargin"])
+        self.assertEqual(limited["sphereCenterRootRelativeGu"], [5.5, 0., 0.])
+        self.assertLess(limited["bestSampledMarginGu"], unrestricted["bestSampledMarginGu"])
+        self.assertEqual(limited["marginUpperBoundGu"], unrestricted["marginUpperBoundGu"])
+        empty = contrast(clear, overlap, .25, lambda points: points[:, 0] < 0.)
+        self.assertFalse(empty["meetsRequestedMargin"])
+        self.assertIsNone(empty["sphereCenterRootRelativeGu"])
 
 
 if __name__ == "__main__":

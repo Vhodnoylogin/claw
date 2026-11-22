@@ -20,12 +20,13 @@ from verify_tail_refit import (
 class PoseContactCapture(IndexedCapture):
     """Use the owner's existing driver and ledger; issue no process or profile operations."""
 
-    def __init__(self, call, ledger_path, ack_log, subject, profile_path, position, *, deadline, clock=time):
+    def __init__(self, call, ledger_path, ack_log, subject, profile_path, position=None, *, deadline, clock=time, reachable=None):
         super().__init__(call, ledger_path, deadline=deadline, clock=clock)
         self.log = Path(ack_log)
         self.profile_bytes = Path(profile_path).read_bytes()
         self.profile = json.loads(self.profile_bytes)
         self.subject, self.position = subject, position
+        self.reachable = reachable
         self.sequence = 0
         self.owner = None
 
@@ -111,10 +112,13 @@ class PoseContactCapture(IndexedCapture):
                     new = [bank[slot][1] for slot in slots]
                     transform = world_matrix(frame["targetPose"])[:3]
                     radius = 3. * frame["left"]["scale"]
-                    candidate = contrast(project(old, transform, radius), project(new, transform, radius), MARGIN)
-                    if candidate["meetsRequestedMargin"] and self.current(token)[1] is True:
-                        # The projector used the observed absolute owner transform.
-                        return token, candidate["sphereCenterRootRelativeGu"], cap_values(old), cap_values(new)
+                    admissible = None if self.reachable is None else lambda points: self.reachable(points, frame)
+                    previous, current = cap_values(old), cap_values(new)
+                    if min(bank_gap(frame, previous), bank_gap(frame, current)) >= MARGIN:
+                        candidate = contrast(project(old, transform, radius), project(new, transform, radius), MARGIN, admissible)
+                        if candidate["meetsRequestedMargin"] and self.current(token)[1] is True:
+                            # The projector used the observed absolute owner transform.
+                            return token, candidate["sphereCenterRootRelativeGu"], previous, current
             self.clock.sleep(.12)
         raise ValueError("Natural idle yielded no current pose delta with a measured controller contrast")
 
@@ -133,9 +137,18 @@ class PoseContactCapture(IndexedCapture):
         require(type(actual) is type(expected) and actual == expected, f"Scoped host operation refused: {name}")
         return index
 
-    def run(self, node, nonce, evidence):
+    def run_calibrated(self, node, nonce, evidence, *, state, reference_frame, reference, probes, driver_instance, limits):
+        from pose_contact_driver import CalibratedWand
+
+        wand = CalibratedWand(self.call, state, lambda _: self.observe()[1], reference_frame, reference, probes,
+                              driver_instance, limits, clock=self.clock)
+        self.position, self.reachable = wand, wand.reachable
+        return self.run(node, nonce, evidence, restore=wand.restore)
+
+    def run(self, node, nonce, evidence, *, restore=None):
         subject = self.subject
-        require(node in {"TailBone02", "NPC EarL [EarL]Bone01"} and positive_int(nonce) and nonce < 0x80000000 and
+        require(callable(self.position) and node in {"TailBone02", "NPC EarL [EarL]Bone01"} and
+                positive_int(nonce) and nonce < 0x80000000 and
                 0xFF000000 <= subject.actor < 0xFFFFFFFF and subject.base & 0xFFFFFF == 0x800 and
                 all(positive_int(value) for value in (subject.pid, subject.base, subject.cell)) and
                 type(evidence) is str and 0 < len(evidence) <= 1024, "An admitted fixture and provider scope are required")
@@ -197,6 +210,8 @@ class PoseContactCapture(IndexedCapture):
                   lambda pair: pair[1] == {**identity, "status": "sealed"},
                   lambda pair: pair[1] == {**identity, "status": "armed"}, 2.)
         capture["read"], _ = self.json_pap(EVENTS, "Read", [nonce, generation])
+        if restore is not None:
+            require(restore(deadline=self.deadline) is True, "The original controller position was not restored")
 
         manifest = {"schema": "claw-vr-pose-contact-reads/1", "clock": CLOCK, "subject": vars(self.subject),
                     "node": node, "token": token, "modelRead": model_read, "ledgerCount": count_index,
