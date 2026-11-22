@@ -173,6 +173,11 @@ publishing a partial inventory when it exceeds 512 scene objects, 64 geometries,
 Each row reports these observations independently of catalog selection:
 
 - `name`, actual material `materialType` and `feature` numeric engine enums.
+- `geometryId` is an opaque process-local decimal string. It identifies the
+  same object across consecutive completed public audits on the retained
+  root, including a geometry whose name or material changes. A missing or
+  replaced object breaks continuity. Older samples and the private diagnostic
+  payload may omit this field.
 - `diffusePath` from the current lighting material's texture set and
   `diffuseResource` from its currently bound diffuse texture's resource name.
   They are separate fields and can disagree; neither comes from the desired
@@ -188,7 +193,8 @@ Each row reports these observations independently of catalog selection:
   additionally checks the existing full lease/tint contract. These are
   comparisons, not claims to discover arbitrary external owners.
 
-`leaseRootCurrent` compares the sampled root with CLAW's applied lease root.
+`leaseRootCurrent` compares the sampled root with CLAW's retained root for
+application or cooperative yield.
 When a schema-2 automatic colour decision has an applied pattern on that root
 and the sample confirms ownership of all managed coat materials,
 `coatDecision.pattern` identifies it and `coatDecision.variation` records the

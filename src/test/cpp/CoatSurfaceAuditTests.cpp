@@ -135,6 +135,41 @@ void sameRootReplacementRequiresNewUnambiguousGeometry() {
     root.children = {&newBody, &newHead, &root};
     require(!observe().clearOf(lost) && !observe().unique(0), "Incomplete traversal proved turnover");
 }
+
+void publicGeometryIdsTrackAdjacentObjectsWithoutExposingPointers() {
+    using namespace claw::appearance;
+    using Geometry = CoatAuditGeometry<std::shared_ptr<int>>;
+    std::uint64_t next{1};
+    const Geometry empty;
+    Geometry first;
+    auto body = std::make_shared<int>(1), head = std::make_shared<int>(2);
+    const std::weak_ptr<int> retainedBody = body;
+    auto replacement = std::make_shared<int>(1);
+    require(first.observe(body, empty, next) == 1 && first.observe(head, empty, next) == 2,
+        "Initial managed geometry IDs are not distinct");
+    Geometry second;
+    require(second.observe(head, first, next) == 2 && second.observe(replacement, first, next) == 3,
+        "Geometry replacement or traversal order was confused with identity");
+    require(second.observe(replacement, first, next) == 0 && next == 4, "An aliased geometry received two IDs");
+    body.reset();
+    require(!retainedBody.expired(), "Previous observation let an address recycle during comparison");
+    first = std::move(second);
+    require(retainedBody.expired(), "Old geometry outlived its observation bracket");
+
+    std::uint64_t exhausted = std::numeric_limits<std::uint64_t>::max();
+    Geometry refused;
+    require(refused.observe(head, first, exhausted) == 2 &&
+        refused.observe(std::make_shared<int>(3), first, exhausted) == 0, "ID exhaustion reused an old token");
+    CoatSurfaceObservation managed;
+    managed.managed = true; managed.geometryId = 3;
+    const auto encoded = coatAuditRows({managed});
+    require(encoded.find("\"geometryId\":\"3\"") != encoded.npos, "Managed geometry has no opaque ID on the wire");
+    managed.managed = false;
+    require(coatAuditRows({managed}).find("\"geometryId\":\"3\"") != encoded.npos,
+        "Unmanaged geometry lost its identity after a rename");
+    managed.geometryId = 0;
+    require(coatAuditRows({managed}).find("geometryId") == std::string::npos, "An unobserved geometry acquired an ID");
+}
 }
 int main() {
     using namespace claw::appearance;
@@ -142,6 +177,7 @@ int main() {
         chunksPreserveBoundedBytes(); maximumPublishedObservationUsesOneFreshPayload();
         appliedDecisionRequiresCompletePrivateMaterialEvidence();
         sameRootReplacementRequiresNewUnambiguousGeometry();
+        publicGeometryIdsTrackAdjacentObjectsWithoutExposingPointers();
         CoatSurfaceObservation row;
         row.name = "body"; row.managed = true; row.materialType = 2; row.feature = 5;
         row.diffusePath = "textures\\actual\\body.dds";

@@ -50,6 +50,15 @@ can change beneath the same root, so an equal token does not certify unchanged
 inventory. Do not infer equality from the first matching name. Source strings use the
 documented byte-preserving `bytes-u00xx` encoding.
 
+Each geometry row in a current public audit includes an opaque decimal
+`geometryId`. On the same retained root, adjacent successful public samples
+keep the ID of the same attached geometry independently of its name, material
+or traversal order. A newly observed object receives a fresh ID. The previous
+sample retains its geometry until the new sample is published, which prevents
+address reuse from certifying a false match. Keep every sample in the sequence:
+an object absent from a sample loses that continuity. The private first-yield
+log does not advance the public geometry observations.
+
 This readback neither observes pixels nor certifies opaque renderer state or an
 arbitrary later writer. It does not sample the human-return renderer. Use cleanup
 status for that transition, retaining this limit. Technical acceptance needs no
@@ -84,6 +93,42 @@ The existing actor-race action changes current race and preserves the base; it
 does not erase retained hair history. Never add fabricated hair values to make
 this check pass. The pure policy tests cover these transitions; a live source-
 transition claim additionally requires actual source observations.
+
+## Same-root coat recovery
+
+Use one owned, transformed human with a verified automatic coat and all twelve
+managed surfaces. Collect four consecutive public audits with the bound run,
+process, world, reference, runtime handle and applied/manual coat diagnostics.
+Retain the actual equipment and refresh results separately with the run.
+
+1. **Baseline.** Read the complete applied coat and all geometry IDs.
+2. **Foreign material.** On BODY use the existing typed
+   `NetImmerse.SetNodeTextureSet` call with `firstPerson=false` and texture set
+   `Skyrim.esm:0C0AE7`. Refresh and verify the stock BODY diffuse in both
+   fields, complete geometry continuity and a yielded lease.
+3. **Sibling replacement.** Swap the independently equipped HEAD mesh.
+   Refresh. Verify the new HEAD ID, the original BODY ID and its foreign
+   material. The rest of the managed geometry must keep its IDs.
+4. **Conflicting replacement.** Swap the independently equipped BODY mesh.
+   Refresh. Verify a new BODY ID, that the old one is absent even among
+   unmanaged rows, and that the original automatic decision owns all twelve
+   surfaces again. Keep the original root token across all four phases.
+
+The fixture needs separate test-only armor addons for HEAD and BODY, with
+one copy of each role and two mesh paths per replaceable part. Keep each
+role out of the other equipped models. Use an isolated actor, replace each
+part through an ordinary equipment change and read back the equipped form.
+The engine's handling of those changes must be established by the four
+actual audits. A new root, duplicated part, or a change to other managed
+meshes does not pass this case. The recorded stock-TXST control from
+`20261112-162527-512364` covered foreign material and then a different root
+after load. It predates the geometry IDs and never covered this same-root case.
+
+`src/test/python/integration/coat_turnover_readback.py` scores those four
+audit observations against the expected pattern and actual material paths.
+The caller binds the packet to the qualified run and checks process exit and
+restoration separately. Synthetic verifier controls exercise discrimination
+only. The equipment assets still require preparation and an admitted run.
 
 The frozen owned interactive platform can exercise the existing typed coat APIs
 for a bounded operator probe. Its transport/configuration stays outside this

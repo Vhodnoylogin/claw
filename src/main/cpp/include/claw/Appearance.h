@@ -98,6 +98,7 @@ private:
         TintMode attemptedMode{TintMode::linked};
         CoatSurfaceAuditCache audit;
         RE::NiPointer<RE::NiAVObject> auditRoot; // Turnover/release occurs only in game tasks.
+        CoatAuditGeometry<RE::NiPointer<RE::BSGeometry>> auditGeometry;
         std::uint64_t auditGeneration{};
         CoatSurfaceAuditCache yieldAudit; // Separate plain diagnostic cache; public request tokens unchanged.
         RE::NiPointer<RE::NiAVObject> yieldReportedRoot; // First diagnostic only per retained model root.
@@ -135,7 +136,7 @@ private:
     std::optional<CoatMapping> mapping_;
     std::filesystem::path dataRoot_;
     std::map<std::string, PatternAssets, std::less<>> validatedPatterns_;
-    std::uint64_t nextAuditRequest_{1}, nextAuditGeneration_{1}; // Never saved or reused on reset.
+    std::uint64_t nextAuditRequest_{1}, nextAuditGeneration_{1}, nextAuditGeometry_{1}; // Never saved or reused on reset.
 };
 // Distribution owns synchronization and explicit game-safe reset/revert.
 inline Runtime runtime;
@@ -180,7 +181,7 @@ inline void Runtime::restore(RE::Actor* actor) {
     if (auto found = entries_.find(actor->formID); found != entries_.end()) {
         auto& entry = found->second; unbind(entry);
         const auto* currentRoot = actor->Is3DLoaded() ? actor->Get3D(false) : nullptr;
-        if (entry.auditRoot.get() != currentRoot) { entry.auditRoot.reset(); entry.auditGeneration = 0; }
+        if (entry.auditRoot.get() != currentRoot) { entry.auditRoot.reset(); entry.auditGeometry = {}; entry.auditGeneration = 0; }
         if (entry.yieldReportedRoot.get() != currentRoot) { entry.yieldReportedRoot.reset(); entry.yieldAudit.invalidate(); }
         if (entry.yield.root.get() != currentRoot) entry.yield = {};
     }
@@ -306,7 +307,7 @@ inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token, C
         entry.sex != static_cast<std::uint32_t>(actor->GetActorBase()->GetSex())) return fail();
     if (entry.auditRoot.get() != root.get() || !entry.auditGeneration) {
         if (nextAuditGeneration_ == std::numeric_limits<std::uint64_t>::max()) return fail();
-        entry.auditRoot = root; entry.auditGeneration = nextAuditGeneration_++;
+        entry.auditRoot = root; entry.auditGeometry = {}; entry.auditGeneration = nextAuditGeneration_++;
     }
     const auto text = [](const char* value, std::size_t limit) -> std::optional<std::string> {
         if (!value) return std::nullopt;
@@ -315,6 +316,8 @@ inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token, C
         return std::string(value, length);
     };
     std::vector<CoatSurfaceObservation> rows;
+    const bool publicAudit = &cache == &entry.audit;
+    CoatAuditGeometry<RE::NiPointer<RE::BSGeometry>> sampledGeometry;
     std::vector<RE::NiAVObject*> objects{root.get()};
     std::size_t visited{};
     while (!objects.empty()) {
@@ -333,6 +336,10 @@ inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token, C
         row.managed = std::any_of(coatSurfaces.begin(), coatSurfaces.end(), [object](const auto& spec) {
             return object->name == RE::BSFixedString{spec.name.data()};
         });
+        if (publicAudit) {
+            row.geometryId = sampledGeometry.observe(RE::NiPointer<RE::BSGeometry>{geometry}, entry.auditGeometry, nextAuditGeometry_);
+            if (!row.geometryId) return fail();
+        }
         const auto lease = std::find_if(entry.surfaces.begin(), entry.surfaces.end(), [geometry](const auto& surface) {
             return surface.geometry.get() == geometry;
         });
@@ -393,8 +400,10 @@ inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token, C
     const auto variation = entry.appliedVariation && completeCoatLease(rows, coatSurfaces.size())
         ? entry.appliedVariation : std::nullopt;
     const bool rootCurrent = entry.root.get() == root.get() || entry.yield.root.get() == root.get();
-    return cache.publish(token, entry.auditGeneration, auditClock(), rootCurrent, rows,
-        entry.appliedPattern, variation);
+    if (!cache.publish(token, entry.auditGeneration, auditClock(), rootCurrent, rows, entry.appliedPattern, variation))
+        return false;
+    if (publicAudit) entry.auditGeometry = std::move(sampledGeometry);
+    return true;
 }
 inline std::string Runtime::texturePath(RE::BSTextureSet* set, RE::BSTextureSet::Texture slot) {
     const auto* value = set ? set->GetTexturePath(slot) : nullptr; return value ? value : "";
@@ -692,7 +701,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         entry.yieldReportedRoot.reset(); entry.yieldAudit.invalidate();
     }
     if (entry.auditRoot && entry.auditRoot.get() != root) {
-        entry.audit.invalidate(); entry.auditRoot.reset(); entry.auditGeneration = 0;
+        entry.audit.invalidate(); entry.auditRoot.reset(); entry.auditGeometry = {}; entry.auditGeneration = 0;
     }
     if (!root) { unbind(entry); entry.status = "unloaded"; return false; }
     entry.coatOutputs = std::move(coatOutputs);

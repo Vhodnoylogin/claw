@@ -46,7 +46,7 @@
     "schema": 1,
     "stringEncoding": "bytes-u00xx",
     "record": ["sample", "modelGeneration", "ageMs", "leaseRootCurrent", "complete surfaces array", "coatDecision for a verified automatic hair-group lease"],
-    "modelGenerationMeaning": "Retained third-person root identity only. An unchanged token does not certify unchanged biped parts, children or geometry; compare the full observed inventory independently.",
+    "modelGenerationMeaning": "Retained third-person root identity only. Compare the public geometryId values across consecutive complete audits to distinguish retained and replaced geometry beneath that root.",
     "managedComparisons": ["actual texture-set diffusePath", "actual bound diffuseResource", "actual tint and alpha", "individual retained-lease identity comparisons"],
     "excludedComparisons": ["complete name multiplicity", "materialType", "feature", "diffusePath", "diffuseResource", "tint", "materialAlpha", "propertyAlpha", "shaderFlags", "noTint"],
     "onEmptyStaleOrIncomplete": "Unavailable; never substitute desired catalog paths, a prior sample or cached appearance status.",

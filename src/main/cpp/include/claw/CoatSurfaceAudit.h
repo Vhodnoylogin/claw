@@ -1,5 +1,6 @@
 #pragma once
 #include "claw/ColourMath.h"
+#include <algorithm>
 #include <charconv>
 #include <limits>
 #include <string>
@@ -15,6 +16,31 @@ inline constexpr std::size_t coatAuditMaxRowsBytes = 64000;
 // per-string limits. Chunks are ordered fragments, not independent JSON values.
 inline constexpr std::size_t coatAuditChunkBytes = 1024, coatAuditMaxChunks = 64;
 inline constexpr std::size_t coatAuditMaxPayloadBytes = coatAuditChunkBytes * coatAuditMaxChunks;
+
+// Each completed sample pins its geometry until the next one is published.
+// Addresses cannot recycle between adjacent observations. Only opaque IDs leave
+// the process; an object absent from the previous sample receives a fresh ID.
+template<class Handle>
+class CoatAuditGeometry final {
+public:
+    std::uint64_t observe(Handle handle, const CoatAuditGeometry& previous, std::uint64_t& nextId) {
+        if (!handle.get() || entries_.size() >= coatAuditMaxSurfaces) return 0;
+        const auto same = [&](const Entry& entry) { return entry.handle.get() == handle.get(); };
+        if (std::ranges::any_of(entries_, same)) return 0;
+        const auto found = std::ranges::find_if(previous.entries_, same);
+        if (found == previous.entries_.end() && (!nextId || nextId == std::numeric_limits<std::uint64_t>::max()))
+            return 0;
+        const auto id = found == previous.entries_.end() ? nextId++ : found->id;
+        entries_.push_back({std::move(handle), id});
+        return id;
+    }
+private:
+    struct Entry {
+        Handle handle;
+        std::uint64_t id{};
+    };
+    std::vector<Entry> entries_;
+};
 
 inline std::vector<std::string> coatAuditChunks(std::string_view payload) {
     if (payload.empty() || payload.size() > coatAuditMaxPayloadBytes) return {};
@@ -34,6 +60,7 @@ inline std::vector<std::string> coatAuditChunks(std::string_view payload) {
 struct CoatSurfaceObservation {
     std::string name;
     bool managed{};
+    std::uint64_t geometryId{};
     std::optional<std::int32_t> materialType, feature;
     std::optional<std::string> diffusePath, diffuseResource;
     std::optional<RGB> tint;
@@ -79,6 +106,7 @@ inline std::string coatAuditRows(const std::vector<CoatSurfaceObservation>& rows
             (row.diffuseResource && row.diffuseResource->size() > coatAuditMaxPath) || row.noTint < -1 || row.noTint > 3) return {};
         if (result.size() > 1) result += ',';
         result += "{\"name\":" + coatAuditQuote(row.name) + ",\"managed\":" + boolean(row.managed);
+        if (row.geometryId) result += ",\"geometryId\":" + coatAuditQuote(std::to_string(row.geometryId));
         result += ",\"materialType\":" + (row.materialType ? std::to_string(*row.materialType) : "null");
         result += ",\"feature\":" + (row.feature ? std::to_string(*row.feature) : "null");
         result += ",\"diffusePath\":" + (row.diffusePath ? coatAuditQuote(*row.diffusePath) : "null");
