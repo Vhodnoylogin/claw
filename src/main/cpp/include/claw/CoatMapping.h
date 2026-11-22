@@ -153,7 +153,7 @@ public:
         }
         if (!selected) return {{}, {}, CoatOrigin::none, "coat colour group unavailable"};
         const auto index = std::min(static_cast<std::size_t>(double(input[3]) * selected->variants.size()), selected->variants.size() - 1);
-        return {selected->variants[index], selected->id, CoatOrigin::hairPool, {}};
+        return {selected->variants[index], selected->id, CoatOrigin::hairPool, {}, input[3]};
     }
 private:
     struct Range { float maximum; std::string id; };

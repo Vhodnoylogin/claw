@@ -90,6 +90,7 @@ private:
         std::vector<Surface> surfaces;
         std::string status;
         std::string explicitPattern, appliedPattern, attemptedPattern;
+        std::optional<float> appliedVariation;
         AutomaticCoatState automatic;
         CoatValues coatOutputs;
         TintMode attemptedMode{TintMode::linked};
@@ -159,6 +160,7 @@ inline void Runtime::unbind(Entry& entry) {
         }
     }
     entry.surfaces.clear(); entry.root.reset(); entry.yielded = false; entry.appliedPattern.clear();
+    entry.appliedVariation.reset();
 }
 inline void Runtime::reset() {
     for (auto& [id, entry] : entries_) { (void)id; unbind(entry); }
@@ -381,7 +383,10 @@ inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token, C
         rows.push_back(std::move(row));
     }
     // No apply/refresh/SKEE call occurs during this observation.
-    return cache.publish(token, entry.auditGeneration, auditClock(), entry.root.get() == root.get(), rows);
+    const auto variation = entry.appliedVariation && completeCoatLease(rows, coatSurfaces.size())
+        ? entry.appliedVariation : std::nullopt;
+    return cache.publish(token, entry.auditGeneration, auditClock(), entry.root.get() == root.get(), rows,
+        entry.appliedPattern, variation);
 }
 inline std::string Runtime::texturePath(RE::BSTextureSet* set, RE::BSTextureSet::Texture slot) {
     const auto* value = set ? set->GetTexturePath(slot) : nullptr; return value ? value : "";
@@ -729,7 +734,11 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
             });
             stillTinted = stillOwned && std::all_of(entry.surfaces.begin(), entry.surfaces.end(), healthyPrivateTint);
         }
-        if (stillInScene && stillTinted) return true;
+        if (stillInScene && stillTinted) {
+            // A different score can keep the same material. Record the decision this lease just accepted.
+            if (!entry.appliedPattern.empty()) entry.appliedVariation = selectedChoice.variation;
+            return true;
+        }
         // A later provider wins until model generation changes; no override war.
         if (stillInScene) {
             if (firstReport) { entry.yieldReportedRoot.reset(root); reportYieldDifferences(actor->formID, entry, failures); }
@@ -871,6 +880,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         surface.tinted = true;
     }
     entry.appliedPattern = selected ? requestedPattern : "";
+    if (selected) entry.appliedVariation = selectedChoice.variation;
     entry.status = selected ? "applied private coat " + requestedPattern + " with " +
         (mode == TintMode::linked && (entry.colours.hasSkin || entry.colours.hasHair) ? "skin/fur tint" : "neutral original colours") : "applied private skin/fur tint";
     if (!patternFailure.empty()) entry.status += "; coat unavailable: " + patternFailure;

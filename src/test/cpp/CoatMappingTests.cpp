@@ -178,6 +178,16 @@ int main(int argc, char** argv) {
             darkOutputs.at("coat.selector") == noSkinOutputs.at("coat.selector"), "legacy scalar selector changed with skin");
         require(noSkinOutputs.at("coat.variation") == static_cast<float>(skinContrastSeed >> 40) / 16777215.F,
             "unknown skin changed the full seed contribution");
+        // Observed Runa skin DDDDDD. This seed moves the variation within the same Valley Brown bin.
+        constexpr auto sameCoatSeed = std::uint64_t{128} << 56;
+        const Colours runa{{221.F / 255, 221.F / 255, 221.F / 255}, auburn, true, true};
+        const auto withSkin = matrix.evaluate(runa, sameCoatSeed);
+        const auto seedOnly = matrix.evaluate(withoutSkin, sameCoatSeed);
+        const auto selected = actual.selectOutputs({}, withSkin, true);
+        const auto unchanged = actual.selectOutputs({}, seedOnly, true);
+        require(selected.pattern == "elegant-2k-2.1/valley-brown" && selected.pattern == unchanged.pattern &&
+            selected.variation == withSkin.at("coat.variation") && unchanged.variation == seedOnly.at("coat.variation") &&
+            selected.variation > unchanged.variation, "selection lost the exact variation used inside an unchanged coat bin");
         const auto legacy = CoatMatrix::parse(R"(<CoatMatrix schemaVersion="1">
             <Rule source="seed.withHair" target="coat.variation" gain="1" cap="1"/>
         </CoatMatrix>)");
@@ -187,8 +197,9 @@ int main(int argc, char** argv) {
         const auto hairlessSkin = matrix.evaluate(Colours{{1, 1, 1}, {}, true, false}, skinContrastSeed);
         require(actual.selectOutputs({}, hairlessSkin, false).pattern ==
             actual.selectOutputs({}, matrix.evaluate({}, skinContrastSeed), false).pattern, "skin replaced the hairless fallback");
-        require(actual.selectOutputs("elegant-2k-2.1/black", lightOutputs, true).pattern == "elegant-2k-2.1/black",
-            "skin overrode a manual coat choice");
+        const auto manual = actual.selectOutputs("elegant-2k-2.1/black", lightOutputs, true);
+        require(manual.pattern == "elegant-2k-2.1/black" && !manual.variation &&
+            !actual.selectOutputs({}, hairlessSkin, false).variation, "manual or hairless coat reported automatic colour variation");
         hair.hair = {.25F, .24F, .24F};
         require(actual.selectOutputs({}, matrix.evaluate(hair, 0), true).pool == "grey" &&
             actual.selectOutputs({}, matrix.evaluate(hair, UINT64_MAX), true).pool == "grey", "low-saturation grey became warm");

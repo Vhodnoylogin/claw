@@ -54,7 +54,7 @@ void maximumPublishedObservationUsesOneFreshPayload() {
         "Maximum accepted observation fixture did not reach the rows bound");
     CoatSurfaceAuditCache cache;
     constexpr auto largest = std::numeric_limits<std::uint64_t>::max();
-    require(cache.begin(largest) && cache.publish(largest, largest, 100, false, rows),
+    require(cache.begin(largest) && cache.publish(largest, largest, 100, true, rows, std::string(129, char(255)), .5733334F),
         "Maximum valid observed audit was rejected");
     const auto payload = cache.read(2100); // One time sample, even across 63 fragments.
     const auto chunks = coatAuditChunks(payload);
@@ -64,17 +64,40 @@ void maximumPublishedObservationUsesOneFreshPayload() {
     const auto age = payload.find("\"ageMs\":2000");
     require(age != payload.npos && payload.find("\"ageMs\":", age + 1) == payload.npos,
         "Fragments gained inconsistent or repeated sample ages");
+    require(payload.find("\"variation\":0.5733334") != payload.npos, "Bounded JSON lost selection variation");
     require(coatAuditChunks(cache.read(2101)).empty() && coatAuditChunks(cache.read(99)).empty(),
         "Stale or backward-clock audit escaped through fragments");
     require(cache.begin(7) && coatAuditChunks(cache.read(2100)).empty(), "Pending sample exposed old fragments");
     cache.invalidate();
     require(coatAuditChunks(cache.read(2100)).empty(), "Invalidated audit exposed old fragments");
+
+    const std::vector sample{row};
+    require(cache.begin(8) && cache.publish(8, 1, 3000, false, sample, "valley-brown", .57F) &&
+        cache.read(3000).find("\"coatDecision\"") == std::string::npos,
+        "A different model root acquired applied selection evidence");
+    require(cache.begin(9) && cache.publish(9, 1, 3001, true, sample, "valley-brown") &&
+        cache.read(3001).find("\"coatDecision\"") == std::string::npos,
+        "No variation was sampled, but an automatic selection was reported");
+}
+void appliedDecisionRequiresCompletePrivateMaterialEvidence() {
+    using namespace claw::appearance;
+    CoatSurfaceObservation managed;
+    managed.managed = managed.tracked = managed.healthyLease = managed.ownDiffuse = true;
+    std::vector<CoatSurfaceObservation> rows{managed, managed, CoatSurfaceObservation{}};
+    require(completeCoatLease(rows, 2), "Unmanaged geometry prevented a complete coat decision");
+    require(!completeCoatLease(rows, 3) && !completeCoatLease({}, 0), "Incomplete managed inventory was accepted");
+    rows[1].ownDiffuse = false;
+    require(!completeCoatLease(rows, 2), "External diffuse replacement retained coat decision evidence");
+    rows[1].ownDiffuse = true;
+    rows[1].healthyLease = false;
+    require(!completeCoatLease(rows, 2), "Unhealthy material lease retained coat decision evidence");
 }
 }
 int main() {
     using namespace claw::appearance;
     try {
         chunksPreserveBoundedBytes(); maximumPublishedObservationUsesOneFreshPayload();
+        appliedDecisionRequiresCompletePrivateMaterialEvidence();
         CoatSurfaceObservation row;
         row.name = "body"; row.managed = true; row.materialType = 2; row.feature = 5;
         row.diffusePath = "textures\\actual\\body.dds";

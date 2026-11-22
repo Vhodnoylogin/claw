@@ -188,6 +188,15 @@ Each row reports these observations independently of catalog selection:
   comparisons, not claims to discover arbitrary external owners.
 
 `leaseRootCurrent` compares the sampled root with CLAW's applied lease root.
+When a schema-2 automatic colour decision has an applied pattern on that root
+and the sample confirms ownership of all managed coat materials,
+`coatDecision.pattern` identifies it and `coatDecision.variation` records the
+normalized value actually used to choose the variant. Manual selections,
+scalar fallback and missing applied patterns leave this object absent. The
+variation can change within the same discrete variant. To verify the skin term,
+join this field to the sampled material and the same actor's saved hair, skin
+and seed. Compare the observed value to independent skin-aware and seed-only
+calculations. An audit without the decision cannot establish that contrast.
 Strings preserve source bytes: ordinary ASCII uses normal JSON escaping;
 non-ASCII bytes use `\u00xx` escapes (`stringEncoding="bytes-u00xx"`). This avoids
 inventing a Unicode decoding for engine paths. Compare names/paths as source

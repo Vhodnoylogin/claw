@@ -20,6 +20,7 @@ struct CoatDecision {
     std::string pattern, pool;
     CoatOrigin origin{CoatOrigin::none};
     std::string reason;
+    std::optional<float> variation{};
 };
 inline std::uint64_t coatHashByte(std::uint64_t hash, unsigned char byte) {
     return (hash ^ byte) * 1099511628211ULL;

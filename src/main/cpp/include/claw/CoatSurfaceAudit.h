@@ -44,6 +44,15 @@ struct CoatSurfaceObservation {
     int noTint{-1};
     bool tracked{}, ownProperty{}, ownMaterial{}, ownGuard{}, ownTextureSet{}, ownDiffuse{}, healthyLease{};
 };
+inline bool completeCoatLease(const std::vector<CoatSurfaceObservation>& rows, std::size_t expected) {
+    std::size_t count{};
+    for (const auto& row : rows) {
+        if (!row.managed) continue;
+        if (!row.tracked || !row.healthyLease || !row.ownDiffuse) return false;
+        ++count;
+    }
+    return count && count == expected;
+}
 inline std::string coatAuditQuote(std::string_view value) {
     constexpr char hex[] = "0123456789abcdef";
     std::string result{"\""};
@@ -108,14 +117,21 @@ public:
     bool pending(std::uint64_t token) const { return token && pending_ == token; }
     void cancel(std::uint64_t token) { if (pending(token)) invalidate(); }
     bool publish(std::uint64_t token, std::uint64_t generation, std::uint64_t now,
-        bool leaseRootCurrent, const std::vector<CoatSurfaceObservation>& rows) {
+        bool leaseRootCurrent, const std::vector<CoatSurfaceObservation>& rows,
+        std::string_view appliedPattern = {}, std::optional<float> appliedVariation = {}) {
         if (!pending(token)) return false;
         if (!generation) { cancel(token); return false; }
         auto body = coatAuditRows(rows);
         if (body.empty()) { cancel(token); return false; }
+        std::string decision;
+        if (leaseRootCurrent && appliedVariation && *appliedVariation >= 0 && *appliedVariation <= 1 &&
+            !appliedPattern.empty() && appliedPattern.size() <= 129) {
+            decision = ",\"coatDecision\":{\"pattern\":" + coatAuditQuote(appliedPattern) +
+                ",\"variation\":" + coatAuditNumber(*appliedVariation) + '}';
+        }
         payload_ = "{\"schema\":1,\"stringEncoding\":\"bytes-u00xx\",\"sample\":" + coatAuditQuote(std::to_string(token)) +
             ",\"modelGeneration\":" + coatAuditQuote(std::to_string(generation)) +
-            ",\"leaseRootCurrent\":" + (leaseRootCurrent ? "true" : "false") + ",\"surfaces\":" + body;
+            ",\"leaseRootCurrent\":" + (leaseRootCurrent ? "true" : "false") + decision + ",\"surfaces\":" + body;
         pending_ = 0; sampledAt_ = now; return true;
     }
     [[nodiscard]] std::string read(std::uint64_t now) const {
