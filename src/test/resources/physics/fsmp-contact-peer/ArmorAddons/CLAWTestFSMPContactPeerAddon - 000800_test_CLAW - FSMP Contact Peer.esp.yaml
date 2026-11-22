@@ -1,0 +1,20 @@
+FormKey: 000800:test_CLAW - FSMP Contact Peer.esp
+EditorID: CLAWTestFSMPContactPeerAddon
+FormVersion: 43
+BodyTemplate:
+  FirstPersonFlags:
+  - Amulet
+  ArmorType: Clothing
+Race: 013746:Skyrim.esm
+Priority:
+  Male: 0
+  Female: 0
+WeightSliderEnabled:
+  Male: False
+  Female: False
+Unknown2: 23
+WorldModel:
+  Male:
+    File: claw\test\anatomy-contact\probe.nif
+  Female:
+    File: claw\test\anatomy-contact\probe.nif

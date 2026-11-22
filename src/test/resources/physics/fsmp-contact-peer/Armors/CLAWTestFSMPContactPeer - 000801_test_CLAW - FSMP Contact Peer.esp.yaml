@@ -1,0 +1,13 @@
+FormKey: 000801:test_CLAW - FSMP Contact Peer.esp
+EditorID: CLAWTestFSMPContactPeer
+FormVersion: 43
+Name:
+  TargetLanguage: English
+  Value: CLAW FSMP Contact Probe
+BodyTemplate:
+  FirstPersonFlags:
+  - Amulet
+  ArmorType: Clothing
+Race: 013746:Skyrim.esm
+Armature:
+- 000800:test_CLAW - FSMP Contact Peer.esp

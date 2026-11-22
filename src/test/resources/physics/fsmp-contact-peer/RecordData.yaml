@@ -1,0 +1,13 @@
+SpriggitSource:
+  PackageName: Spriggit.Yaml.Skyrim
+  Version: 0.41
+ModKey: test_CLAW - FSMP Contact Peer.esp
+GameRelease: SkyrimSE
+ModHeader:
+  Stats:
+    Version: 1.7
+  Author: CLAW test fixture
+  Description: 'TEST ONLY: an equipable FSMP contact marker for a separately owned actor.'
+  MasterReferences:
+  - Master: Skyrim.esm
+    FileSize: 0

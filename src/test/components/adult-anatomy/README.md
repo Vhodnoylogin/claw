@@ -67,6 +67,36 @@ admission. Missing observations are an error. A configured rig is separate from
 its measured movement and from any anatomy collision implementation; the
 original combined XML contains no collision shapes.
 
+## Reciprocal FSMP contact fixture
+
+Use the installed Spriggit 0.41.0 translation to deserialize
+`src/test/resources/physics/fsmp-contact-peer`. Then give the ESP to
+`build_contact_peer.py` with explicit PyNifly, Morphbench and a new external
+output directory. The builder reopens the skin, verifies the packed FSMP
+coordinates and weights, and checks the two new armor records. Its payload
+contains the probe NIF, ESP, matching XML and a one-tag negative-control XML.
+
+```powershell
+spriggit deserialize -i src/test/resources/physics/fsmp-contact-peer -o <external-test-esp>
+python src/test/components/adult-anatomy/build_contact_peer.py `
+  --pynifly <installed-addon> --morphbench <source-checkout> `
+  --esp <external-test-esp> --out <new-external-directory>
+```
+
+Equip form `000801` from the fixture on a separately owned Nord actor. Use
+the observed pelvis pose and identity when positioning the probe against a
+dynamic face of the target surface. The local points and radius are in the
+receipt. Pin the same probe pose, provider configuration and actor identities
+across separated, reciprocal-overlap and mismatched-tag-overlap controls. The
+negative XML changes only the probe tag. Query each actor's active file and
+separately verify its attached provider system. Retain a final separated
+control after measuring the response.
+
+The stock witness can compare paired motion in those windows. A direct
+contact or impulse assertion requires observation before FSMP clears the
+manifolds. The fixture is test-only and file verification grants no launch
+slot or live acceptance.
+
 ## Focused checks
 
 ```powershell
