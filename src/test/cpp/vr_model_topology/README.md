@@ -112,3 +112,20 @@ The helper's female palette is checked against its NIF/TRI separately.
 Pass an independently admitted capture to the VR torso replay to reconstruct
 clearance. The candidate does not acquire rendered pixels or modify the game,
 and remains a separate test build.
+
+### Post-phase ear and stereo sample
+
+Use the same build command with `--subject ears` and a separate output
+directory. This variant captures the exact trial ear shape and its
+sex-specific `EarWorldTrial.tri` route on the player's active world Body32.
+The same post-phase callback reads six skin bones, five effective TRI values,
+both typed engine frusta and viewports, and OpenVR's per-eye projection extents
+and eye-to-head transforms. Camera, HMD, active Body32 and optics are checked
+again before publishing. Positive topology counts must match the trial. A zero
+runtime count is recorded as unavailable and requires independent asset proof.
+
+Use the retained R06 PEX and match the deployed mesh and TRI to the
+exact trial archive independently. OpenVR transforms retain their own basis
+and units. The stereo sample records `eyeProjectionQualified` and
+`atomicRenderSnapshot` as false. Calibrate eye orientation and game scale on
+controlled points and geometry before using the packet to judge clearance.

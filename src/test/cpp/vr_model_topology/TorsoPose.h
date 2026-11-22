@@ -7,6 +7,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <span>
 #include <stdexcept>
 #include <string_view>
 #include <vector>
@@ -72,27 +73,27 @@ inline bool validTorsoTransform(const RE::NiTransform& transform) {
 }
 }  // namespace detail
 
-// The outer post-phase observer owns the stable player, exact active Body32,
-// admitted asset hashes and camera. This returns a numerical sample only.
-// Engine references are retained locally and never leave the callback.
-inline TorsoPose captureTorsoPose(RE::Actor& actor, RE::NiAVObject& actorRoot, RE::NiAVObject& bodyClone,
-    RE::BSGeometry& torso, IBodyMorphInterface& morphs, TorsoClock::time_point deadline) {
+struct SkinPoseFields {
+    std::span<const char* const> bones, morphs, extraBones{}, extraMorphs{};
+};
+
+// Engine references stay inside the callback. The outer observer owns the
+// exact active Body32 and checks the admitted shape and camera independently.
+inline TorsoPose captureSkinPose(RE::Actor& actor, RE::NiAVObject& actorRoot, RE::NiAVObject& bodyClone,
+    RE::BSGeometry& shape, IBodyMorphInterface& morphs, TorsoClock::time_point deadline, SkinPoseFields fields) {
     using detail::requireTorso;
     auto* base = actor.GetActorBase();
     requireTorso(base && morphs.GetVersion() >= IBodyMorphInterface::kPluginVersion4,
         "Expected an owned actor and the SKEE BodyMorph ABI");
     const auto sex = base->GetSex();
     requireTorso(sex == RE::SEX::kMale || sex == RE::SEX::kFemale, "Unknown torso palette sex");
-    const bool female = sex == RE::SEX::kFemale;
-    const std::string_view name = torso.name.c_str();
-    requireTorso(name == "HEAD" || name == "head", "Expected the retained HEAD torso geometry");
     const auto currentRoute = [&] {
         return actor.GetActorBase() == base && base->GetSex() == sex && actor.Get3D(false) == &actorRoot &&
-            detail::torsoRoute(torso, bodyClone, true) && detail::torsoRoute(bodyClone, actorRoot, true);
+            detail::torsoRoute(shape, bodyClone, true) && detail::torsoRoute(bodyClone, actorRoot, true);
     };
     requireTorso(currentRoute(), "Retained torso is not in the admitted active world body");
 
-    const auto skin = torso.GetGeometryRuntimeData().skinInstance;
+    const auto skin = shape.GetGeometryRuntimeData().skinInstance;
     const auto data = skin ? skin->skinData : RE::NiPointer<RE::NiSkinData>{};
     const auto count = data ? data->GetBoneCount() : 0U;
     auto* const palette = skin ? skin->bones : nullptr;
@@ -102,10 +103,12 @@ inline TorsoPose captureTorsoPose(RE::Actor& actor, RE::NiAVObject& actorRoot, R
     for (std::size_t i = 0; i < count; ++i) bound[i].reset(palette[i]);
 
     TorsoPose result;
-    result.bones.reserve(torsoBones.size() + (female ? femaleTorsoBones.size() : 0));
-    result.effectiveMorphs.reserve(torsoMorphs.size() + (female ? femaleTorsoMorphs.size() : 0));
-    for (auto field : torsoMorphs) result.effectiveMorphs.push_back({field, 0});
-    if (female) for (auto field : femaleTorsoMorphs) result.effectiveMorphs.push_back({field, 0});
+    const auto boneFields = fields.bones.size() + fields.extraBones.size();
+    requireTorso(boneFields && boneFields <= maxPaletteBones, "Invalid observed skin field count");
+    result.bones.reserve(boneFields);
+    result.effectiveMorphs.reserve(fields.morphs.size() + fields.extraMorphs.size());
+    for (auto field : fields.morphs) result.effectiveMorphs.push_back({field, 0});
+    for (auto field : fields.extraMorphs) result.effectiveMorphs.push_back({field, 0});
     auto* reference = reinterpret_cast<::TESObjectREFR*>(static_cast<RE::TESObjectREFR*>(&actor));
     const auto readMorph = [&](const char* field) {
         requireTorso(TorsoClock::now() < deadline, "Torso capture budget expired");
@@ -115,7 +118,7 @@ inline TorsoPose captureTorsoPose(RE::Actor& actor, RE::NiAVObject& actorRoot, R
     };
     for (auto& field : result.effectiveMorphs) field.value = readMorph(field.name);
 
-    std::array<RE::NiAVObject*, torsoBones.size() + femaleTorsoBones.size()> captured{};
+    std::array<RE::NiAVObject*, maxPaletteBones> captured{};
     const auto captureBone = [&](const char* bone) {
         requireTorso(TorsoClock::now() < deadline, "Torso capture budget expired");
         RE::NiAVObject* selected = nullptr;
@@ -130,13 +133,13 @@ inline TorsoPose captureTorsoPose(RE::Actor& actor, RE::NiAVObject& actorRoot, R
         captured[result.bones.size()] = selected;
         result.bones.push_back({bone, world});
     };
-    for (auto bone : torsoBones) captureBone(bone);
-    if (female) for (auto bone : femaleTorsoBones) captureBone(bone);
+    for (auto bone : fields.bones) captureBone(bone);
+    for (auto bone : fields.extraBones) captureBone(bone);
     for (const auto& field : result.effectiveMorphs)
         requireTorso(readMorph(field.name) == field.value, "Effective torso morphs changed during capture");
 
     requireTorso(TorsoClock::now() < deadline && currentRoute() &&
-        torso.GetGeometryRuntimeData().skinInstance == skin && skin->skinData == data &&
+        shape.GetGeometryRuntimeData().skinInstance == skin && skin->skinData == data &&
         skin->bones == palette && data->GetBoneCount() == count, "Retained torso skin changed during capture");
     for (std::size_t i = 0; i < count; ++i)
         requireTorso(palette[i] == bound[i].get(), "Retained torso bone palette changed during capture");
@@ -147,5 +150,17 @@ inline TorsoPose captureTorsoPose(RE::Actor& actor, RE::NiAVObject& actorRoot, R
     }
     requireTorso(TorsoClock::now() < deadline, "Torso capture budget expired");
     return result;
+}
+
+inline TorsoPose captureTorsoPose(RE::Actor& actor, RE::NiAVObject& actorRoot, RE::NiAVObject& bodyClone,
+    RE::BSGeometry& torso, IBodyMorphInterface& morphs, TorsoClock::time_point deadline) {
+    const std::string_view name = torso.name.c_str();
+    detail::requireTorso(name == "HEAD" || name == "head", "Expected the retained HEAD torso geometry");
+    SkinPoseFields fields{torsoBones, torsoMorphs};
+    if (const auto* base = actor.GetActorBase(); base && base->GetSex() == RE::SEX::kFemale) {
+        fields.extraBones = femaleTorsoBones;
+        fields.extraMorphs = femaleTorsoMorphs;
+    }
+    return captureSkinPose(actor, actorRoot, bodyClone, torso, morphs, deadline, fields);
 }
 }  // namespace claw::vr_diagnostic

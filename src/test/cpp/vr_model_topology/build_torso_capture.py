@@ -1,4 +1,4 @@
-"""Build the CLAW test-only torso extension to the pinned private R06 observer."""
+"""Build a CLAW skin observer extension to the pinned private R06 source."""
 from argparse import ArgumentParser
 from datetime import datetime, timezone
 from hashlib import sha256
@@ -38,6 +38,19 @@ def replace(text, old, new):
     return text.replace(old, new)
 
 
+def morph_source_overlay(source, refusal):
+    source = replace(source, "        if (gate.loading()) return reply(nonce,", f"""        if (!torsoMorphSource.load()) return reply(nonce, "refused", diagnostics(), "{refusal}").dump();
+        if (gate.loading()) return reply(nonce,""")
+    return replace(source, "        auto* messaging = SKSE::GetMessagingInterface();", """        auto* messaging = SKSE::GetMessagingInterface();
+        InterfaceExchangeMessage exchange;
+        constexpr auto exchangeMessage = static_cast<std::uint32_t>(InterfaceExchangeMessage::kMessage_ExchangeInterface);
+        if (messaging->Dispatch(exchangeMessage, &exchange, sizeof(exchange), "skee") && exchange.interfaceMap) {
+            auto* bodyMorph = exchange.interfaceMap->QueryInterface("BodyMorph");
+            if (bodyMorph && bodyMorph->GetVersion() >= IBodyMorphInterface::kPluginVersion4)
+                torsoMorphSource.store(static_cast<IBodyMorphInterface*>(bodyMorph));
+        }""")
+
+
 def torso_overlay(source):
     source = replace(source, '#include "higgsinterface001.h"', '#include "higgsinterface001.h"\n#include "TorsoPose.h"')
     source = replace(source, "Json collect(Clock::time_point deadline,",
@@ -73,24 +86,102 @@ Json collect(Clock::time_point deadline,""")
         '''            {"nearLeft", nearLeft}, {"torsoCaptureVersion", 1}, {"torsoBodyTri", bodyTri},
             {"torsoBones", std::move(torsoBones)}, {"effectiveMorphs", std::move(effectiveMorphs)},
             {"renderedPixelsVerified", false}};''')
-    source = replace(source, "        if (gate.loading()) return reply(nonce,", """        if (!torsoMorphSource.load()) return reply(nonce, "refused", diagnostics(), "torso_skee_unavailable").dump();
-        if (gate.loading()) return reply(nonce,""")
-    source = replace(source, "        auto* messaging = SKSE::GetMessagingInterface();", """        auto* messaging = SKSE::GetMessagingInterface();
-        InterfaceExchangeMessage exchange;
-        constexpr auto exchangeMessage = static_cast<std::uint32_t>(InterfaceExchangeMessage::kMessage_ExchangeInterface);
-        if (messaging->Dispatch(exchangeMessage, &exchange, sizeof(exchange), "skee") && exchange.interfaceMap) {
-            auto* bodyMorph = exchange.interfaceMap->QueryInterface("BodyMorph");
-            if (bodyMorph && bodyMorph->GetVersion() >= IBodyMorphInterface::kPluginVersion4)
-                torsoMorphSource.store(static_cast<IBodyMorphInterface*>(bodyMorph));
-        }""")
-    return source
+    return morph_source_overlay(source, "torso_skee_unavailable")
+
+
+def ear_overlay(source):
+    source = replace(source, '#include "higgsinterface001.h"', '#include "higgsinterface001.h"\n#include "EarStereoPose.h"')
+    source = replace(source, '"claw-vr-vrik-world-avatar/1"', '"claw-vr-vrik-ear-stereo/1"')
+    source = replace(source, 'claw::vr_diagnostic::Body32Predicates predicates(', r'''bool femaleBodyPath(std::string_view path) {
+    constexpr std::string_view expected = R"(Actors\WerewolfBeast\Character Assets\FemaleBodyWereWolf_1.NIF)";
+    return std::ranges::equal(path, expected, {}, claw::vr_diagnostic::modelPathChar, claw::vr_diagnostic::modelPathChar);
+}
+
+claw::vr_diagnostic::Body32Predicates predicates(''')
+    source = replace(source, 'claw::vr_diagnostic::isStockMaleBodyPath(slot.model),',
+                     'claw::vr_diagnostic::isStockMaleBodyPath(slot.model) || femaleBodyPath(slot.model),')
+    source = replace(source, 'Json collect(Clock::time_point deadline,', r'''std::atomic<IBodyMorphInterface*> torsoMorphSource{};
+
+std::string earBodyTri(const RE::BSGeometry& ears) {
+    const auto* extra = netimmerse_cast<RE::NiStringExtraData*>(ears.GetExtraData("BODYTRI"));
+    return extra ? bounded(extra->value) : std::string{};
+}
+
+Json collect(Clock::time_point deadline,''')
+    source = replace(source, '    require(sex == 0 && weight == 0.f, "exact male weight-zero fixture required");',
+                     '    require(sex <= 1 && std::isfinite(weight) && weight >= 0.f && weight <= 100.f, "exact fixture sex/weight required");')
+    source = replace(source, '    require(root && biped && biped->root && vr && vr->HmdNode && vr->LeftWandNode && vr->RightWandNode,',
+                     '    require(root && biped && biped->root && biped->actorRef.get().get() == player && vr && vr->HmdNode && vr->LeftWandNode && vr->RightWandNode,')
+    source = replace(source, '    require(predicates(slot, root.get(), bipedRoot).qualified(), "exact engine-managed world Body32 required");',
+                     '''    require(predicates(slot, root.get(), bipedRoot).qualified() &&
+            (sex == 1 ? femaleBodyPath(slot.model) : claw::vr_diagnostic::isStockMaleBodyPath(slot.model)),
+            "exact sex-specific engine-managed world Body32 required");''')
+    source = replace(source, '''    const auto& opticData = optic.GetVRRuntimeData();
+    const auto* nearFrustum = opticData.viewFrustumArray;
+    require(readable(nearFrustum) && std::isfinite(nearFrustum->fNear) && nearFrustum->fNear > 0.f,
+            "positive engine left near clip unavailable");
+    const float nearLeft = nearFrustum->fNear;''', '''    const auto cameraRoot = camera->cameraRoot;
+    RE::NiPointer<RE::NiCamera> retainedOptic{&optic};
+    const auto hmdNode = vr->HmdNode;
+    const auto hmdWorld = hmdNode->world;
+    auto* provider = RE::BSOpenVR::GetIVRSystem();
+    require(provider && readable(provider) && Clock::now() < deadline, "Skyrim OpenVR system unavailable");
+    const auto readStereo = [&] {
+        return claw::vr_diagnostic::captureStereoOptics(optic, *provider, [](const auto* ptr) { return readable(ptr); });
+    };
+    const auto stereo = readStereo();
+    const float nearLeft = stereo.eyes[0].engineFrustum[4];''')
+    source = replace(source, '    Json shapes = Json::array();', '''    Json shapes = Json::array();
+    RE::NiPointer<RE::BSGeometry> ears;''')
+    source = replace(source, '        const auto& bound = object.worldBound;', '''        if (std::string_view(object.name.c_str()) == claw::vr_diagnostic::earShapeName) {
+            require(!ears, "ambiguous world ear skin");
+            ears.reset(geometry);
+        }
+        const auto& bound = object.worldBound;''')
+    source = replace(source, '    std::size_t index{};', r'''    auto* morphs = torsoMorphSource.load();
+    require(ears && morphs && ownsReciprocalRoute(*ears, *clone), "owned active ear skin or effective SKEE source unavailable");
+    const auto earTri = earBodyTri(*ears);
+    require(earTri == claw::vr_diagnostic::earTriPath(sex == 1), "wrong sex-specific ear BODYTRI");
+    const auto* earShape = ears->AsTriShape();
+    require(earShape, "ear geometry is not a triangle shape");
+    const auto& extent = earShape->GetTrishapeRuntimeData();
+    const auto vertices = extent.vertexCount;
+    const auto triangles = extent.triangleCount;
+    require((vertices == 0 || vertices == 1354) && (triangles == 0 || triangles == 2394), "unexpected native ear topology counts");
+    const auto measured = claw::vr_diagnostic::captureSkinPose(*player, *root, *clone, *ears, *morphs, deadline,
+        {claw::vr_diagnostic::earBones, claw::vr_diagnostic::earMorphs});
+    Json earBones = Json::object(), earMorphs = Json::object();
+    for (const auto& bone : measured.bones) earBones[bone.name] = {{"world", pose(bone.world)}};
+    for (const auto& morph : measured.effectiveMorphs) earMorphs[morph.name] = morph.value;
+    std::size_t index{};''')
+    source = replace(source, '    routeEvidence["stableChildCount"] = childIdentities.size();', '''    require(Clock::now() < deadline && player->GetVRNodeData() == vr && vr->HmdNode == hmdNode && hmdNode->world == hmdWorld &&
+            biped->actorRef.get().get() == player && earTri == earBodyTri(*ears) && ownsReciprocalRoute(*ears, *clone) &&
+            extent.vertexCount == vertices && extent.triangleCount == triangles && !parentCull(*ears) &&
+            camera->cameraRoot == cameraRoot && &activeCamera(*camera, deadline) == retainedOptic.get() &&
+            RE::BSOpenVR::GetIVRSystem() == provider && provider && readable(provider) && readStereo() == stereo && Clock::now() < deadline,
+            "ear route, stereo optics or HMD pose changed during capture");
+    Json eyeOptics = Json::array();
+    for (std::size_t eye = 0; eye < stereo.eyes.size(); ++eye) {
+        const auto& value = stereo.eyes[eye];
+        eyeOptics.push_back({{"eye", eye == 0 ? "left" : "right"}, {"engineFrustumLTRB_NF", value.engineFrustum},
+            {"engineOrthographic", value.engineOrthographic}, {"engineViewportLTRB", value.engineViewport},
+            {"openVrProjectionRawLTRB", value.providerProjection}, {"openVrEyeToHeadRows", value.providerEyeToHead}});
+    }
+    routeEvidence["stableChildCount"] = childIdentities.size();''')
+    source = replace(source, '{"hmd", pose(vr->HmdNode->world)}', '{"hmd", pose(hmdWorld)}')
+    source = replace(source, '{"camera", pose(optic.world)}', '{"camera", pose(stereo.opticWorld)}')
+    source = replace(source, '            {"nearLeft", nearLeft}, {"renderedPixelsVerified", false}};', '''            {"nearLeft", nearLeft}, {"earStereoCaptureVersion", 1}, {"earBodyTri", earTri},
+            {"earVerticesObserved", vertices}, {"earTrianglesObserved", triangles},
+            {"earBones", std::move(earBones)}, {"earEffectiveMorphs", std::move(earMorphs)}, {"eyeOptics", std::move(eyeOptics)},
+            {"eyeProjectionQualified", false}, {"atomicRenderSnapshot", false}, {"renderedPixelsVerified", false}};''')
+    return morph_source_overlay(source, "ear_skee_unavailable")
 
 
 def read_json(path):
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
 
-def build(r06, skee, environment, output):
+def build(r06, skee, environment, output, *, subject="torso"):
     receipt_pin = pin(r06 / "RECEIPT.json", R06_RECEIPT)
     commands_pin = pin(r06 / "commands.json", R06_COMMANDS)
     skee_pin = pin(skee, SKEE_HEADER)
@@ -99,6 +190,16 @@ def build(r06, skee, environment, output):
     source_files = [verify(row) for row in base["sources"]]
     original = next(path for path in source_files if path.name == "Plugin.cpp")
     header = pin(HERE / "TorsoPose.h")
+    if subject == "ears":
+        extra_headers = [pin(HERE / name) for name in ("EarStereoPose.h", "StereoOptics.h")]
+        overlay = ear_overlay
+        capture_version = {"schema": "claw-vr-vrik-ear-stereo/1", "earStereoCaptureVersion": 1}
+    elif subject == "torso":
+        extra_headers = []
+        overlay = torso_overlay
+        capture_version = {"schema": "claw-vr-vrik-world-avatar/1", "torsoCaptureVersion": 1}
+    else:
+        raise ValueError("Unknown R06 observer subject")
     pex = verify(base["pex"])
     dependencies = read_json(verify(base["referenceDependencies"]))["files"]
     trusted = {Path(name).resolve(): digest for name, digest in dependencies.items()}
@@ -106,6 +207,7 @@ def build(r06, skee, environment, output):
         trusted[verify(row)] = row["sha256"]
     trusted[Path(skee_pin["path"])] = skee_pin["sha256"]
     trusted[Path(header["path"])] = header["sha256"]
+    trusted.update((Path(row["path"]), row["sha256"]) for row in extra_headers)
 
     recipe = read_json(Path(commands_pin["path"]))
     baseline_compile = next(command for command in recipe if "/c" in command)
@@ -121,7 +223,7 @@ def build(r06, skee, environment, output):
     output = output.resolve()
     output.mkdir()
     source = output / "Plugin.cpp"
-    source.write_bytes(torso_overlay(original.read_text(encoding="utf-8")).encode("utf-8"))
+    source.write_bytes(overlay(original.read_text(encoding="utf-8")).encode("utf-8"))
     obj = output / "Plugin.obj"
     dll = output / "CLAWVRModelTopology.dll"
     depfile = output / "compiler-dependencies.json"
@@ -167,7 +269,9 @@ def build(r06, skee, environment, output):
               "baselineCommands": commands_pin, "environment": environment_pin, "builder": pin(Path(__file__)),
               "source": pin(source), "torsoPose": header, "skee": skee_pin, "includes": observed,
               "dll": pin(dll), "pex": pin(installed_pex, base["pex"]["sha256"]), "stages": stages,
-              "schema": "claw-vr-vrik-world-avatar/1", "torsoCaptureVersion": 1, "runtimeChecked": False}
+              **capture_version, "runtimeChecked": False}
+    if extra_headers:
+        report["additionalHeaders"] = extra_headers
     (output / "RECEIPT.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return report["dll"]
 
@@ -178,5 +282,6 @@ if __name__ == "__main__":
     parser.add_argument("--skee", type=Path, required=True, help="Pinned external RaceMenu IPluginInterface.h")
     parser.add_argument("--environment", type=Path, required=True, help="Retained MSVC capture-environment.cmd")
     parser.add_argument("--out", type=Path, required=True, help="New external build directory")
+    parser.add_argument("--subject", choices=("torso", "ears"), default="torso")
     args = parser.parse_args()
-    print(json.dumps(build(args.r06, args.skee, args.environment, args.out), indent=2))
+    print(json.dumps(build(args.r06, args.skee, args.environment, args.out, subject=args.subject), indent=2))
