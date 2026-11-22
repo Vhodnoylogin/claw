@@ -75,3 +75,22 @@ serialized resource application/readback to the caller. It edits no resources.
 Shift arithmetic is normalized to the caller's finite bounds; zero objective
 weights retain their constraints without setting the objective scale. Unsupported
 float64 response/metric ranges are rejected explicitly.
+
+
+## Isolated FSMP attachment trial
+
+Generate the trial from the original 0.10.0 archive with Faster HDT-SMP selected
+as its base. The four female model routes receive the same patched NIF. Use the
+original released TRI and female FSMP XML identified in the generated receipt.
+
+```powershell
+python -B src/main/python/physics/breast_attachment_trial.py --release '<original 0.10.0 ZIP>' --out '<new external trial directory>'
+```
+
+The transfer gives the right P1 bone a share of the left P1 influence at three
+vertices on one belly fur card. It updates the packed half weights and both
+float representations, preserves the row sum, and keeps every other weight and
+NIF block byte-for-byte. The release archive, the source carrier and all four
+FOMOD destinations are checked before writing. These resources are for a
+controlled comparison with the original FSMP carrier. Game qualification
+requires a separate run with the exact trial archive and its original inputs.
