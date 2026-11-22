@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "run": "20261113-064151-968880",
+  "caseInputs": {
+    "actual-male12-shape-fixture.json": "f9b2b58ad1a2dc6e2692553d5a23768f0151f496ed94b09e1d597ce7b16549c0",
+    "protocol.json": "e7cfec28d38a60c3afad125dc7e0fb36c6ddd1cb6fe737fd881eb19246cb32a9",
+    "postrun-verification.json": "f5df8ed5d623181fa58cc56c9a9fc8b13d5ea4d30d3f0756ec8e99b1c7fb6c7a",
+    "runtime/runs/20261113-064151-968880/result.json": "494d78e7a1ea281c5db20f6a12fe1b22f3a01b88fe26e27fb38663da4ba0f022",
+    "runtime/runs/20261113-064151-968880/fsmp-probe/state.json": "080c9c2adebd5983b069448f37064dad8ca6cb21ef3699d20de3dda8c19e3873",
+    "runtime/runs/20261113-064151-968880/fsmp-probe/diagnostic.json": "6cdb826a2a759ac1dc5cd22529520e94df2137fd90b900e708275fc35d63be83"
+  },
+  "candidateInputs": {
+    "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_0.nif": "f93d5038cb17493517cf8f80dba63601edbf1f98678d781c3ae31589da7ff89d",
+    "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf_1.nif": "f93d5038cb17493517cf8f80dba63601edbf1f98678d781c3ae31589da7ff89d",
+    "Meshes/Actors/WerewolfBeast/Character Assets/malebodywerewolf.tri": "3ff00f50493664ec68bbbfbe4843bd64f268df9a5659e6a6bd4baea14ae085fc",
+    "SKSE/Plugins/hdtSkinnedMeshConfigs/CLAW/CLAWMotionNeutralAnatomyMale.xml": "7cb169385c37b28038643c406c07d6b91937672b872c908420e2172822647d8e"
+  },
+  "xml": "SKSE/Plugins/hdtSkinnedMeshConfigs/CLAW/CLAWMotionNeutralAnatomyMale.xml",
+  "state": "runtime/runs/20261113-064151-968880/fsmp-probe/state.json",
+  "diagnostic": "runtime/runs/20261113-064151-968880/fsmp-probe/diagnostic.json",
+  "result": "runtime/runs/20261113-064151-968880/result.json",
+  "historicalFailure": "All twelve drivers must have observed selective response; no physics pass from binding alone"
+}
