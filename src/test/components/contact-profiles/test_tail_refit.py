@@ -137,9 +137,9 @@ def make_case():
             call(CBPC, "AttachColliderCapsule", [ACTOR_ARG, NODE, cap["p1"], cap["radius"], cap["p2"],
                  cap["radius"], 0., 0x434C0000 + slot, True], "bool", True)
             for slot, cap in zip(SLOT_IDS, bank, strict=True)]
-        phase["poseBefore"] = pose(2 * i, time - 100_000, value)
+        phase["poseBefore"] = pose(2 * i + 1, time - 100_000, value)
         phase["hold"] = hold(time)
-        phase["poseAfter"] = pose(2 * i + 1, time + 16_600_000, value)
+        phase["poseAfter"] = pose(2 * i + 2, time + 16_600_000, value)
         phase["end"] = call(NATIVE, "SnapshotCurrent", native_args, "bool", True)
         phase["detach"] = [call(CBPC, "DetachCollider", [ACTOR_ARG, NODE, 1, 0x434C0000 + slot, True], "bool", True)
                            for slot in SLOT_IDS]

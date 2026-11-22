@@ -55,3 +55,35 @@ exact slot bank. The one-node fixed-sphere stock witness cannot supply
 those receipts.
 
 The archived coordinates are evidence for setup and carry no adaptive contact result.
+
+## Capture from the admitted VR fixture
+
+The owning run prepares the disposable actor, loaded-module pins, a clean
+native Distribution session with the automatic collider host disabled, and
+one acknowledged fixed controller command. The capture never publishes
+another controller command. Pass the fixed command's conservative deadline
+and the original executor step path to the CLAW-specific runner:
+
+```python
+from run_tail_refit import Capture
+from verify_tail_refit import Subject
+
+subject = Subject(game_pid, actor_ref, actor_base, fixture_cell, generation)
+capture = Capture.from_files(
+    session.tool, session.dir / "steps.jsonl", subject, vr_profile, fixed_bank,
+    deadline=hold_deadline,
+)
+index, verdict = capture.run(owned_fixture_receipt_sha256)
+```
+
+Save the returned index and verdict next to the original log. Sample zero
+arms the pose listener before native registration. Each evidence sample
+is requested afterwards, so the native snapshot event must precede the
+phase's pose bracket. A completed capture confirms unregister, native
+session retirement, pose witness retirement and the detached control. An
+interruption or refusal leaves the outer runner responsible for retiring the
+isolated game without saving. An unconfirmed mutation is never replayed.
+
+The fixed-sphere replay supplied all 16 original control frames to the new
+observer gate. Each failed the adaptive separation/overlap criterion under
+the original controller command.

@@ -138,8 +138,8 @@ def phase_bank(ledger, subject, model, proof, phase, number, previous_token, mut
             all(len(phase[name]) == len(SLOT_IDS) for name in ("capsules", "attach", "detach")),
             "Expected one native snapshot and all four TailBone02 slot receipts")
     args = [subject.form, subject.generation, token]
-    before, values = tracked_pose(ledger, phase["poseBefore"], subject, model, number, 2 * number)
-    after, end_values = tracked_pose(ledger, phase["poseAfter"], subject, model, number, 2 * number + 1)
+    before, values = tracked_pose(ledger, phase["poseBefore"], subject, model, number, 2 * number + 1)
+    after, end_values = tracked_pose(ledger, phase["poseAfter"], subject, model, number, 2 * number + 2)
     event = json.loads(typed(ledger, phase["event"], POSE, "ReadPhysicsSnapshot", "string",
                              [before["rootToken"], previous_token]))
     tick = event["eventQpc"]
