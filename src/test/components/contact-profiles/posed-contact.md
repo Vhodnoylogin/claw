@@ -97,6 +97,30 @@ the bank during a hold. A CBPC callback identifies the actor and group.
 The fitter receipt and this numerical result leave solver geometry and
 runtime contact for independent observation.
 
+### Detached full-host fixture
+
+Use `stage_pose_contact_host.py --help` to assemble the test inputs in a new
+external directory. Supply the restored r03 case, the same fitted VR profile
+used by the trace DLL, its native and Papyrus receipts, the wide pose-witness
+receipt, and the checked `CLAW - Physics.esp`. Supply the original fitted
+male NIF/TRI assets and skeleton, the matching CLAW carrier, and the separate
+RaceMenu base and VR provider paths. The resulting `subject-staging.json`
+records the exact overlay members and expected VFS dependencies.
+
+The male fixture has 120 enabled slots on 25 bones. Each bone has a separate
+affected group and a master row limited to the fixture base. `MalePhysics=1`
+allows thigh and calf bindings. The inherited left-wand sphere and event
+settings stay fixed. The generated collision config has no static target
+capsules, so full and delta Host ACKs trace the submitted body capsules.
+
+In the admitted case, verify the installed winners, one fixture actor, the
+expected body clone and the scoped CBPC listener. Start the finite host and
+register the fixture with its own automatic alias. Preserve the initial full
+ACK and the unchanged effective morph vector before changing the pose.
+Use the independent pose witness for the absolute bone and root transforms,
+and the trace log for the pose token. Qualify the reached hand position and
+the near, far and teardown event windows separately.
+
 ## Stationary controller contrast for a TRI refit
 
 Run `prepare_tail_refit_contrast.py` with the retained VR `fitted-capsules.json`
