@@ -45,7 +45,10 @@ trial without replay; the owning harness must retire that disposable game
 without saving. Capture the full 15-node `BeginNpcTailRefit` pose and effective
 morph vector at each hold before and after its World Observer samples.
 
-Use schema `claw-vr-tail02-refit-reads/2` for the raw index manifest.
+Use schema `claw-vr-tail02-refit-reads/3` for the raw index manifest with
+the fixed driver publication, status receipts and a hash of the capture's
+original ledger prefix. The verifier still reads schema 2 for older evidence
+without driver custody.
 Record the registry description plus initial presence/value reads under
 `morph.describe` and `morph.initial`. Put each transition's change, update,
 presence and value indices in `morph.apply` and `morph.restore`. Each phase's
@@ -79,17 +82,21 @@ observed in that run.
 
 ## Capture from the admitted VR fixture
 
-The owning run prepares the disposable actor, loaded-module pins, a clean
-native Distribution session with the automatic collider host disabled, and
-one acknowledged fixed controller command. The capture never publishes
-another controller command. Pass the fixed command's conservative deadline
-and the original executor step path to the CLAW-specific runner. The caller
-must leave 28 seconds for the full capture. Use the admitted 30-second logical
-controller hold only after movement, calibration and setup have finished.
-Keep a margin before the controller expires and a separate session budget for
-restoration. The 30-second native pose lease starts at the dedicated opening.
-Requests and results must fit the outer and phase deadlines. Expiry requires the
-same no-save retirement path as other interrupted captures.
+The owning run prepares the disposable actor, loaded-module pins and a clean
+native Distribution session with the automatic collider host disabled. It
+also supplies the calibrated reference pose for the same loaded actor, the
+three acknowledged probe pairs, and the exact owned driver instance. The
+archived candidate reaches tracking Y = 0.817 m. The previous 0.90 m floor
+excludes it. Use a separately admitted movement envelope or choose a new point
+that meets the original envelope and both measured geometry margins.
+
+The CLAW runner uses bounded calibrated moves and independently measures
+arrival before issuing the single final 30-second logical hold. The capture
+needs at least 28 seconds after admission and reserves one second before
+the fixed command expires. The 30-second native pose lease starts at the
+dedicated opening. The caller reserves time after capture for the return to
+neutral and then for executor restoration. The recorded capture verifies the
+original driver ACKs through the sealed read, before the neutral return.
 
 ```python
 from run_tail_refit import Capture
@@ -98,9 +105,15 @@ from verify_tail_refit import Subject
 subject = Subject(game_pid, actor_ref, actor_base, fixture_cell, generation)
 capture = Capture.from_files(
     session.tool, session.dir / "steps.jsonl", subject, vr_profile, fixed_bank,
-    deadline=hold_deadline,
+    deadline=capture_deadline,
 )
-index, verdict = capture.run(owned_fixture_receipt_sha256)
+index, verdict = capture.run_calibrated(
+    owned_fixture_receipt_sha256, approved_world_waypoint,
+    state=session.state, reference_frame=restored_reference_command,
+    reference=reference_observation, probes=measured_probe_pairs,
+    driver_instance=owned_driver_instance, limits=approved_movement_limits,
+    restore_deadline=neutral_return_deadline,
+)
 ```
 
 Save the returned index and verdict next to the original log. Sample zero
@@ -109,7 +122,9 @@ is requested afterwards, so the native snapshot event must precede the
 phase's pose bracket. A completed capture confirms unregister, native
 session retirement, pose witness retirement and the detached control. An
 interruption or refusal leaves the outer runner responsible for retiring the
-isolated game without saving. An unconfirmed mutation is never replayed.
+isolated game without saving. Loss of driver ownership or an unconfirmed
+mutation stops further case commands. Preserve the executor's independent
+process exit and restoration records alongside the capture result.
 
 The fixed-sphere replay supplied all 16 original control frames to the new
 observer gate. Each failed the adaptive separation/overlap criterion under

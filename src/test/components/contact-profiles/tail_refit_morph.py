@@ -71,6 +71,8 @@ def run_states(call, describe, guard, phase, ref):
             if result is not None:
                 raise ValueError("Expected confirmed native void completion")
             guard()
+        except UnconfirmedMutation:
+            raise
         except Exception as error:
             raise UnconfirmedMutation("Could not confirm " + method + " on the original actor") from error
 

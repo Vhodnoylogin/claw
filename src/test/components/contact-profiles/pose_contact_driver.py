@@ -14,6 +14,7 @@ from verify_tail_refit import DRIFT, _same_pose, require
 TRANSLATION = (3, 7, 11)
 PROBE_METRES = .025
 HOLD_SECONDS = 5.
+FIXED_HOLD_SECONDS = 30.
 
 
 def public_frame(frame):
@@ -87,6 +88,38 @@ class MovementLimits:
                 "The admitted movement limits must be finite and positive")
 
 
+@dataclass(frozen=True)
+class FixedWandHold:
+    """Recheck the original acknowledged fixed command without moving it."""
+
+    expires: float
+    _publication: dict
+    _position: tuple
+    _until_tick: int
+    _wand: "CalibratedWand"
+
+    @property
+    def publication(self):
+        return deepcopy(self._publication)
+
+    def _current(self):
+        require(not self._wand.pending and self._wand.state.get("hardwareHoldUntilTickMs") == self._until_tick,
+                "The fixed controller hold changed or remains unresolved")
+        self._wand.require_owned_frame(self._position, self._publication)
+
+    def confirm(self, *, deadline):
+        end = min(deadline, self.expires)
+        require(self._wand.clock.monotonic() < end, "The fixed controller hold or capture deadline expired")
+        self._current()
+        status = self._wand.driver("status", end)
+        observed = status.get("observedTickMs")
+        require(acknowledges(status, self._publication, self._wand.driver_instance) and type(observed) is int and
+                self._publication["publishedTickMs"] <= observed < self._until_tick,
+                "Fixed controller hold lacks a current acknowledgment of its original command")
+        self._current()
+        return status
+
+
 class CalibratedWand:
     """Publish finite left-hand waypoints and independently confirm each one."""
 
@@ -148,23 +181,27 @@ class CalibratedWand:
             self.clock.sleep(.08)
         raise ValueError("Controller command lacks a matching owned-driver acknowledgment")
 
-    def require_owned_frame(self, xyz):
+    def require_owned_frame(self, xyz, expected=None):
+        if expected is None:
+            expected = self.expected
         current = self.state.get("hardwareFrame") or {}
         publication = current.get("_publication")
         self.check_publication(publication)
         require(public_frame(current) == moved_frame(self.reference_frame, xyz) and
-                publication["command"] == self.expected["command"] and publication["sequence"] >= self.expected["sequence"],
+                publication["command"] == expected["command"] and publication["sequence"] >= expected["sequence"],
                 "The current driver frame is outside case custody")
 
-    def publish(self, xyz, deadline):
+    def publish(self, xyz, deadline, *, hold_seconds=HOLD_SECONDS):
         self.require_owned_frame(self.xyz)
         frame = moved_frame(self.reference_frame, xyz)
         previous = self.expected
         self.pending = True
-        result = self.driver("publish", deadline, frame=frame, holdSeconds=HOLD_SECONDS)
+        issued = self.clock.monotonic()
+        result = self.driver("publish", deadline, frame=frame, holdSeconds=hold_seconds)
         publication = result.get("publication")
         self.check_publication(publication)
-        require(result.get("published") is True and publication["command"] != previous["command"] and
+        require(result.get("published") is True and (hold_seconds == HOLD_SECONDS or result.get("holdSeconds") == hold_seconds) and
+                publication["command"] != previous["command"] and
                 publication["sequence"] > previous["sequence"], "Controller publication was not newly confirmed")
         self.expected = publication
         self.confirm(deadline)
@@ -172,11 +209,13 @@ class CalibratedWand:
         predicted = self.world(xyz)
         for _ in range(4):
             measured = self.observe(deadline)
+            require(self.clock.monotonic() < deadline, "Controller observation exceeded the admitted deadline")
             require(same_room(self.reference, measured) and newer(self.measured, measured), "Stale or foreign pose after publication")
             self.measured = measured
             if dist(measured["source"], predicted) <= DRIFT:
+                self.require_owned_frame(xyz)
                 self.xyz, self.pending = xyz, False
-                return
+                return issued, publication
             self.clock.sleep(.08)
         raise ValueError("The World Observer did not measure the commanded hand position")
 
@@ -201,6 +240,17 @@ class CalibratedWand:
                     "The controller step exceeds reach or head/right swept clearance")
             self.publish(xyz, deadline)
         return True
+
+    def hold_fixed(self, waypoint, *, deadline):
+        self("near", waypoint, deadline=deadline)
+        issued, publication = self.publish(self.xyz, deadline, hold_seconds=FIXED_HOLD_SECONDS)
+        published = publication.get("publishedTickMs")
+        until = self.state.get("hardwareHoldUntilTickMs")
+        require(type(published) is int and 0 <= published and type(until) is int and
+                until >= published + int(FIXED_HOLD_SECONDS * 1000), "Fixed controller logical expiry does not match its publication")
+        hold = FixedWandHold(issued + FIXED_HOLD_SECONDS, deepcopy(publication), tuple(self.xyz), until, self)
+        hold.confirm(deadline=deadline)
+        return hold
 
     def restore(self, *, deadline):
         return self("far", None, deadline=deadline)

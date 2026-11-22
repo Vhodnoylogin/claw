@@ -11,7 +11,7 @@ import unittest
 import numpy as np
 
 from pose_contact_driver import (
-    CalibratedWand, HOLD_SECONDS, MovementLimits, PROBE_METRES, TRANSLATION, fit_columns,
+    CalibratedWand, FIXED_HOLD_SECONDS, HOLD_SECONDS, MovementLimits, PROBE_METRES, TRANSLATION, fit_columns,
     moved_frame, public_frame, tracking_xyz,
 )
 from run_pose_contact import PoseContactCapture
@@ -43,6 +43,8 @@ class AdmittedDriver:
         self.sample = 0
         self.sequence = 100
         self.inputs = []
+        self.publications = []
+        self.last_status = None
         self.ref_frame = reference_frame()
         self.state = {"hardwareOwner": OWNER, "inputBackend": "driver", "driverBackend": "file",
                       "focusInputPaused": False, "hardwareFrame": self.leased_frame(self.ref_frame)}
@@ -52,6 +54,9 @@ class AdmittedDriver:
         self.driver_instance = INSTANCE
         self.room_epoch = 4
         self.delay_ack = 0
+        self.fixed_reported_seconds = FIXED_HOLD_SECONDS
+        self.fixed_position_error = 0.
+        self.observed_tick_offset = 0
         self.reference = self.scene(START)
         self.reference["controls"]["right"]["translation"] = (np.asarray(self.reference["source"]) + right_offset).tolist()
         self.probes = []
@@ -61,8 +66,12 @@ class AdmittedDriver:
 
     def leased_frame(self, frame):
         publication = {"version": 2, "owner": OWNER, "command": f"{self.sequence:032x}",
-                       "sequence": self.sequence}
+                       "sequence": self.sequence, "publishedTickMs": self.tick_ms(),
+                       "expiresTickMs": self.tick_ms() + 5000}
         return {**deepcopy(frame), "_owner": OWNER, "_command": publication["command"], "_publication": publication}
+
+    def tick_ms(self):
+        return round(self.clock * 1000) + 100_000
 
     def monotonic(self):
         return self.clock
@@ -94,18 +103,26 @@ class AdmittedDriver:
     def call(self, name, request, *, timeout, deadline):
         if name != "driver" or not 0 < timeout <= min(deadline - self.clock, 1.5):
             raise AssertionError("Driver request left the admitted boundary")
+        started = self.clock
         self.sleep(.02)
         if request["action"] == "publish":
-            if set(request) != {"action", "frame", "holdSeconds"} or request["holdSeconds"] != HOLD_SECONDS:
+            duration = request["holdSeconds"]
+            if set(request) != {"action", "frame", "holdSeconds"} or duration not in (HOLD_SECONDS, FIXED_HOLD_SECONDS):
                 raise AssertionError("Inexact Protocol 2 publication")
             frame = deepcopy(request["frame"])
             self.inputs.append(frame)
             self.sequence += 10
             self.state["hardwareFrame"] = self.leased_frame(frame)
+            self.state["hardwareHoldUntilTickMs"] = self.tick_ms() + int(duration * 1000)
+            publication = deepcopy(self.state["hardwareFrame"]["_publication"])
+            self.publications.append((started, duration, publication))
             self.delay_ack = 1
             if self.motion_consumed:
                 self.actual = tracking_xyz(frame)
-            return {"published": True, "publication": deepcopy(self.state["hardwareFrame"]["_publication"])}
+                if duration == FIXED_HOLD_SECONDS:
+                    self.actual[0] += self.fixed_position_error
+            return {"published": True, "holdSeconds": self.fixed_reported_seconds if duration == FIXED_HOLD_SECONDS else duration,
+                    "publication": publication}
         if request != {"action": "status"}:
             raise AssertionError("Unexpected driver request outside publish/status")
         frame = self.state["hardwareFrame"]
@@ -116,9 +133,11 @@ class AdmittedDriver:
         # Simulate the executor heartbeat renewing the same command at a later sequence.
         active["sequence"] = self.sequence + 1
         raw = f"SKYRIM_AUTOTEST_ACK 2 {self.driver_instance} {OWNER} {active['sequence']} {active['command']} 100 5099 7 0 0\n"
-        return {"acknowledgedByDriver": True, "protocolVersion": 2, "rolesUpdated": 7, "errorRoles": 0,
-                "expired": False, "command": active["command"], "sequence": active["sequence"],
-                "driverInstance": self.driver_instance, "rawAcknowledgement": raw}
+        self.last_status = {"acknowledgedByDriver": True, "protocolVersion": 2, "rolesUpdated": 7, "errorRoles": 0,
+                            "expired": False, "command": active["command"], "sequence": active["sequence"],
+                            "driverInstance": self.driver_instance, "rawAcknowledgement": raw,
+                            "observedTickMs": self.tick_ms() + self.observed_tick_offset}
+        return self.last_status
 
     def binding(self, limits=MovementLimits(.45, .8, .10)):
         return CalibratedWand(self.call, self.state, self.observe, self.ref_frame, self.reference,
@@ -254,6 +273,70 @@ class PoseContactDriverTest(unittest.TestCase):
                 template["left"]["matrix"][index] = frame["left"]["matrix"][index]
             self.assertEqual(frame, template)
         self.assertEqual(public_frame(executor.state["hardwareFrame"]), executor.ref_frame)
+        self.assertTrue(all(duration == HOLD_SECONDS for _, duration, _ in executor.publications))
+
+    def test_fixed_hold_republishes_the_settled_pose_once_and_returns_exact_status(self):
+        executor = AdmittedDriver()
+        driver = executor.binding()
+        xyz = START + [.25, -.08, .06]
+        hold = driver.hold_fixed(executor.center(xyz), deadline=20.)
+        issued, duration, expected = executor.publications[-1]
+        self.assertEqual(duration, FIXED_HOLD_SECONDS)
+        self.assertEqual(hold.expires, issued + FIXED_HOLD_SECONDS)
+        self.assertEqual(hold.publication, expected)
+        self.assertEqual(hold.publication["owner"], OWNER)
+        self.assertTrue(all(duration == HOLD_SECONDS for _, duration, _ in executor.publications[:-1]))
+        self.assertEqual(executor.inputs[-2], executor.inputs[-1])
+        np.testing.assert_allclose(executor.actual, xyz, atol=1e-9)
+
+        before = len(executor.inputs)
+        self.assertIs(hold.confirm(deadline=20.), executor.last_status)
+        self.assertGreater(executor.last_status["sequence"], hold.publication["sequence"])
+        self.assertEqual(executor.last_status["driverInstance"], INSTANCE)
+        hold.publication["command"] = "poisoned copy"
+        self.assertEqual(hold.publication, expected)
+        self.assertEqual(len(executor.inputs), before)
+        self.assertTrue(driver.restore(deadline=20.))
+        self.assertEqual(executor.publications[-1][1], HOLD_SECONDS)
+        with self.assertRaisesRegex(ValueError, "custody|hold changed"):
+            hold.confirm(deadline=20.)
+
+    def test_fixed_hold_refuses_expired_shifted_or_unacknowledged_commands(self):
+        for reason in ("local expiry", "boot expiry", "retimed", "new instance", "pending ack", "foreign frame"):
+            with self.subTest(reason=reason):
+                executor = AdmittedDriver()
+                driver = executor.binding()
+                hold = driver.hold_fixed(executor.center(START + [.15, 0., 0.]), deadline=20.)
+                if reason == "local expiry":
+                    executor.clock = hold.expires
+                elif reason == "boot expiry":
+                    executor.observed_tick_offset = 30_000
+                elif reason == "retimed":
+                    executor.state["hardwareHoldUntilTickMs"] += 1000
+                elif reason == "new instance":
+                    executor.driver_instance = "43984-134396856009999999"
+                elif reason == "pending ack":
+                    executor.delay_ack = 1
+                elif reason == "foreign frame":
+                    executor.state["hardwareFrame"]["_publication"]["command"] = "3" * 32
+                before = len(executor.inputs)
+                with self.assertRaises(ValueError):
+                    hold.confirm(deadline=hold.expires + 2.)
+                self.assertEqual(len(executor.inputs), before)
+
+    def test_fixed_hold_requires_its_exact_duration_receipt_and_fresh_geometry(self):
+        for changed in ("duration", "geometry"):
+            with self.subTest(changed=changed):
+                executor = AdmittedDriver()
+                driver = executor.binding()
+                if changed == "duration":
+                    executor.fixed_reported_seconds = 29.
+                else:
+                    executor.fixed_position_error = .02
+                with self.assertRaisesRegex(ValueError, "not newly confirmed|World Observer did not measure"):
+                    driver.hold_fixed(executor.center(START + [.12, 0., 0.]), deadline=20.)
+                self.assertTrue(driver.pending)
+                self.assertEqual([duration for _, duration, _ in executor.publications].count(FIXED_HOLD_SECONDS), 1)
 
     def test_matching_ack_cannot_substitute_for_actual_motion(self):
         executor = AdmittedDriver()

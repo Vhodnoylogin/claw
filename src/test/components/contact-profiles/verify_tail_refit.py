@@ -8,9 +8,11 @@ effective provider-config isolation, snapshot collection and cleanup.
 """
 import argparse
 from dataclasses import dataclass
+from hashlib import sha256
 import json
 from math import dist
 from pathlib import Path
+import re
 import struct
 import sys
 
@@ -40,6 +42,7 @@ DRIFT = .35
 MIN_HOLD = 15_000_000
 MAX_GAP_NS = 900_000_000
 PHASES = ("unattached", "neutral", "morphed", "returned", "detached")
+LEASED_SCHEMA = "claw-vr-tail02-refit-reads/3"
 
 
 @dataclass(frozen=True)
@@ -248,8 +251,67 @@ def callback_counts(ledger, subject, capture, holds):
     return counts, outside
 
 
+def check_driver(ledger, driver, groups, capture):
+    """Bind each measured hold to the original acknowledged fixed command."""
+    handles = driver["holds"]
+    require(len(handles) == len(groups) and all(len(bracket) == 2 for bracket in handles),
+            "Every contact window needs two original driver statuses")
+    indices = [driver["publication"], driver["ready"], capture["arm"]]
+    for (before, after), frames in zip(handles, groups, strict=True):
+        indices.extend((before, frames[0], frames[-1], after))
+    indices.extend((capture["seal"], capture["read"], driver["finished"]))
+    ordered(indices, "Fixed driver receipts are out of phase")
+    require(indices[0] >= 0 and indices[-1] < len(ledger), "Driver ledger indices exceed the recorded prefix")
+    publication_row = ledger[indices[0]]
+    result = publication_row["result"]
+    publication = result["publication"]
+    owner, command = publication["owner"], publication["command"]
+    start_tick = publication["publishedTickMs"]
+    require(publication_row.get("kind") == "driver" and publication_row.get("action") == "publish"
+            and result.get("published") is True and result["holdSeconds"] == 30
+            and publication["version"] == 2 and publication_row["frame"]["_publication"] == publication
+            and all(isinstance(value, str) and re.fullmatch(r"[0-9a-f]{32}", value) for value in (owner, command))
+            and positive_int(publication["sequence"]) and type(start_tick) is int and start_tick >= 0
+            and publication["expiresTickMs"] == start_tick + 5000,
+            "Expected the exact owned 30-second driver publication")
+    require(not any(row.get("kind") in ("focus-input-paused", "focus-input-resumed")
+                    or row.get("kind") == "driver" and row.get("action") != "status"
+                    for row in ledger[indices[0] + 1:indices[-1] + 1]),
+            "The fixed controller command was interrupted")
+
+    instance, hold_until = None, None
+    previous_sequence, previous_tick = publication["sequence"], start_tick
+    statuses = [index for index in range(driver["ready"], driver["finished"] + 1)
+                if ledger[index].get("kind") == "driver" and ledger[index].get("action") == "status"]
+    required_statuses = {driver["ready"], driver["finished"], *(index for bracket in handles for index in bracket)}
+    require(required_statuses <= set(statuses), "Manifest driver brackets must point at original status rows")
+    for index in statuses:
+        row = ledger[index]
+        status = row["result"]
+        raw = status["rawAcknowledgement"].split()
+        require(row.get("kind") == "driver" and row.get("action") == "status" and len(raw) == 11
+                and raw[:2] == ["SKYRIM_AUTOTEST_ACK", "2"], "Missing original protocol-2 driver status")
+        _, _, observed_instance, raw_owner, sequence, raw_command, recorded, expires, roles, errors, expired = raw
+        sequence, recorded, expires = map(int, (sequence, recorded, expires))
+        observed = status["observedTickMs"]
+        current_until = status["holdUntil"]
+        require(status.get("published") is True and status.get("acknowledgedByDriver") is True
+                and status["protocolVersion"] == 2 and status["expired"] is False
+                and status["rolesUpdated"] == 7 and status["errorRoles"] == 0 and [roles, errors, expired] == ["7", "0", "0"]
+                and re.fullmatch(r"[1-9][0-9]*-[1-9][0-9]*", observed_instance)
+                and observed_instance == status["driverInstance"] and instance in (None, observed_instance)
+                and raw_owner == owner and raw_command == status["command"] == command
+                and sequence == status["sequence"] and sequence >= previous_sequence
+                and type(observed) is int and previous_tick <= observed < start_tick + 30_000
+                and start_tick <= recorded <= observed <= recorded + 2000 and observed < expires <= observed + 5000
+                and hold_until in (None, current_until) and 0 < current_until - row["at"] <= 30,
+                "Driver status is stale, foreign or outside the fixed hold")
+        instance, hold_until = observed_instance, current_until
+        previous_sequence, previous_tick = sequence, observed
+
+
 def verify(manifest, ledger, model, proof):
-    require(type(manifest) is dict and manifest.get("schema") == "claw-vr-tail02-refit-reads/2",
+    require(type(manifest) is dict and manifest.get("schema") in ("claw-vr-tail02-refit-reads/2", LEASED_SCHEMA),
             "Expected a tail refit index manifest for the original raw ledger")
     subject = Subject(**manifest["subject"])
     require(all(positive_int(value) for value in vars(subject).values()) and
@@ -263,7 +325,14 @@ def verify(manifest, ledger, model, proof):
     phases, capture = manifest["phases"], manifest["capture"]
     require(len(phases) == 3 and all(len(phase["hold"]) >= 2 for phase in phases),
             "Require three distinct morph stages with actual World Observer holds")
-    indices = [manifest["modelRead"], capture["idle"], capture["arm"], *manifest["unattached"]]
+    leased = manifest["schema"] == LEASED_SCHEMA
+    indices = [manifest["modelRead"], capture["idle"], capture["arm"]]
+    if leased:
+        indices.append(capture["armed"])
+        idle = json.loads(typed(ledger, capture["idle"], EVENTS, "GetCaptureState", "string", []))
+        armed = json.loads(typed(ledger, capture["armed"], EVENTS, "GetCaptureState", "string", []))
+        require(armed == {**idle, "status": "armed"}, "The callback witness was not armed on the original actor")
+    indices.extend(manifest["unattached"])
     tokens = []
     for phase in phases:
         tokens.append(phase["token"])
@@ -305,6 +374,8 @@ def verify(manifest, ledger, model, proof):
 
     groups = [manifest["unattached"], *(phase["hold"] for phase in phases), manifest["detached"]]
     require(all(2 <= len(group) <= 8 for group in groups), "Expected bounded observed frame holds")
+    if leased:
+        check_driver(ledger, manifest["driver"], groups, capture)
     origin = previous = None
     windows, ranges = {}, {}
     previous_end = 0
@@ -344,8 +415,20 @@ def verify(manifest, ledger, model, proof):
     return {"status": "qualified-scoped-tail02-refit-evidence", "model": model["modelIdentity"],
             "slots": list(SLOT_IDS), "snapshotTokens": tokens, "holdQpc": windows, "worldGapRanges": ranges,
             "sameNodeCallbacks": counts, "callbacksOutsideHolds": outside,
+            "fixedDriverCustodyVerified": leased,
             "perSlotCallbackAttribution": False, "providerShapeInventoryVerified": False,
             "havokContactQualified": False}
+
+
+def read_ledger(manifest, raw):
+    if isinstance(manifest, dict) and manifest.get("schema") == LEASED_SCHEMA:
+        prefix = manifest["stepsPrefix"]
+        size = prefix["bytes"]
+        require(type(size) is int and 0 < size <= len(raw), "Fixed-hold ledger prefix is incomplete")
+        raw = raw[:size]
+        require(raw.endswith(b"\n") and sha256(raw).hexdigest() == prefix["sha256"],
+                "Fixed-hold ledger prefix differs from the captured bytes")
+    return [json.loads(line) for line in raw.splitlines()]
 
 
 def main():
@@ -354,8 +437,8 @@ def main():
         parser.add_argument("--" + name, required=True, type=Path)
     args = parser.parse_args()
     try:
-        result = verify(json.loads(args.manifest.read_bytes()),
-                        [json.loads(line) for line in args.steps.read_bytes().splitlines()],
+        manifest = json.loads(args.manifest.read_bytes())
+        result = verify(manifest, read_ledger(manifest, args.steps.read_bytes()),
                         json.loads(read_pinned(args.profile, PROFILE_SHA)),
                         json.loads(read_pinned(args.basis, PROOF_SHA)))
     except (OSError, ValueError, TypeError, KeyError, IndexError, OverflowError, struct.error) as error:

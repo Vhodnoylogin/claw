@@ -1,5 +1,6 @@
 """Capture the adaptive TailBone02 case inside an already owned VR session."""
 
+from hashlib import sha256
 import json
 from math import isfinite
 from pathlib import Path
@@ -8,15 +9,16 @@ import time
 from prepare_tail_refit_contrast import read_pinned
 from tail_refit_morph import UnconfirmedMutation, run_states
 from verify_tail_refit import (
-    CBPC, CHANNEL, EVENTS, MARGIN, MAX_GAP_NS, MIN_HOLD, NANO, NATIVE, NODE,
+    CBPC, CHANNEL, EVENTS, LEASED_SCHEMA, MARGIN, MAX_GAP_NS, MIN_HOLD, NANO, NATIVE, NODE,
     POSE, PROFILE_SHA, PROOF_SHA, QPC, SLOT_IDS, STATES,
-    bank_gap, f32, inspect_frame, positive_int, require, verify,
+    bank_gap, f32, inspect_frame, positive_int, read_ledger, require, verify,
 )
 
 # A fixed 30-second driver publication leaves 29 seconds after its final margin.
 # The simulated capture needs about 27 seconds at 5.8 seconds per native fit.
 MIN_CAPTURE_SECONDS = 28.
 TAIL_POSE_SECONDS = 30.
+CONTROLLER_MARGIN_SECONDS = 1.
 
 
 def signed_bits(value):
@@ -105,11 +107,12 @@ class Capture(IndexedCapture):
         self.session_token = None
         self.sequence = 0
         self.owner = None
+        self.fixed = None
         self.morph_receipts = []
         self.banks = [[[*cap["p1"], *cap["p2"], cap["radius"]] for cap in bank]
                       for bank in basis["capsulesByPhase"]]
-        self.manifest = {"schema": "claw-vr-tail02-refit-reads/2", "subject": vars(subject),
-                         "phases": [], "capture": {}, "morph": {}}
+        self.manifest = {"schema": LEASED_SCHEMA, "subject": vars(subject),
+                         "phases": [], "capture": {}, "morph": {}, "driver": {"holds": []}}
 
     @classmethod
     def from_files(cls, call, ledger_path, subject, profile_path, basis_path, *, deadline):
@@ -117,7 +120,7 @@ class Capture(IndexedCapture):
         basis = json.loads(read_pinned(Path(basis_path), PROOF_SHA))
         return cls(call, ledger_path, subject, profile, basis, deadline=deadline)
 
-    def observe(self):
+    def observe(self, *, contrast=True):
         actor = self.subject.form["form"]
         index, raw = self.record("inspect", {
             "kind": "world_observer", "action": "snapshot", "refs": ["0x00000014", actor], "timeoutMs": 1500,
@@ -128,12 +131,32 @@ class Capture(IndexedCapture):
         identity = frame["actor"][0]
         current = (frame["session"], frame["epoch"], identity["runtimeHandle"])
         require(self.owner is None or self.owner == current, "Lost the original loaded actor or world")
-        require(all(gap >= MARGIN for gap in (bank_gap(frame, self.banks[0]), -bank_gap(frame, self.banks[1]))),
-                "Fixed controller fails the neutral/morphed contrast")
+        if contrast:
+            require(min(bank_gap(frame, self.banks[0]), -bank_gap(frame, self.banks[1])) >= MARGIN,
+                    "Fixed controller fails the neutral/morphed contrast")
         self.owner = current
         return index, frame
 
+    def fixed_status(self):
+        self.drain()
+        try:
+            status = self.fixed.confirm(deadline=self.deadline)
+            start, rows = self.drain()
+            indices = [index for index, row in enumerate(map(json.loads, rows), start)
+                       if row.get("kind") == "driver" and row.get("action") == "status"
+                       and row.get("result") == status]
+            require(len(indices) == 1 and self.clock.monotonic() < self.deadline,
+                    "The original driver status was not retained within the hold")
+        except Exception as error:
+            raise UnconfirmedMutation("Lost the fixed controller custody") from error
+        return indices[0]
+
+    def write(self, script, function, args, kind="bool"):
+        self.fixed_status()
+        return super().write(script, function, args, kind)
+
     def hold(self):
+        before = self.fixed_status()
         start = None
         samples = []
         for _ in range(8):
@@ -143,20 +166,21 @@ class Capture(IndexedCapture):
             require(not samples or 0 < sample_ns - samples[-1][1] <= MAX_GAP_NS, "Unstable World Observer cadence")
             samples.append((index, sample_ns))
             if (sample_ns - start) * QPC >= (MIN_HOLD + 2) * NANO:
+                self.manifest["driver"]["holds"].append([before, self.fixed_status()])
                 return [row[0] for row in samples]
             self.clock.sleep(.48)
         raise ValueError("Observed hold did not reach the minimum duration")
 
-    def wait(self, read, seconds=1.):
+    def wait(self, read, seconds=1., *, done=("ready", "ended"), pending=("pending", "retiring")):
         outer = self.deadline
         self.deadline = min(outer, self.clock.monotonic() + seconds)
         try:
             while self.clock.monotonic() < self.deadline:
                 index, reply = read()
                 status = reply.get("status")
-                if status in ("ready", "ended"):
+                if status in done:
                     return index, reply
-                require(status in ("pending", "retiring"), "Native witness refused: " + str(reply.get("reason")))
+                require(status in pending, "Native witness refused: " + str(reply.get("reason")))
                 self.clock.sleep(max(0., min(.12, self.deadline - self.clock.monotonic())))
         finally:
             self.deadline = outer
@@ -225,14 +249,43 @@ class Capture(IndexedCapture):
             phase["detach"].append(index)
         self.manifest["phases"].append(phase)
 
-    def run(self, evidence):
-        """Caller has verified loaded modules, fixture identity and disabled population host."""
+    def run_calibrated(self, evidence, waypoint, *, state, reference_frame, reference, probes, driver_instance,
+                       limits, restore_deadline):
+        """Use the admitted controller lease and retain a separate restoration window."""
+        from pose_contact_driver import CalibratedWand
+
+        self.check_subject(evidence)
+        wand = CalibratedWand(self.call, state, lambda _: self.observe(contrast=False)[1],
+                              reference_frame, reference, probes, driver_instance, limits, clock=self.clock)
+        fixed = wand.hold_fixed(waypoint, deadline=self.deadline)
+        result = self.run(evidence, fixed=fixed)
+        self.deadline = restore_deadline
+        wand.restore(deadline=restore_deadline)
+        return result
+
+    def check_subject(self, evidence):
         subject = self.subject
         require(0xFF000000 <= subject.actor < 0xFFFFFFFF and positive_int(self.nonce)
+                and positive_int(subject.pid) and subject.base & 0xFFFFFF == 0x800
                 and subject.cell == 0x0A01A5C6 and type(evidence) is str and 0 < len(evidence) <= 1024,
                 "An admitted disposable VR actor and qualification record are required")
-        require(isfinite(self.deadline) and self.deadline - self.clock.monotonic() >= MIN_CAPTURE_SECONDS,
+
+    def run(self, evidence, *, fixed):
+        """Caller has verified loaded modules, fixture identity and disabled population host."""
+        self.check_subject(evidence)
+        subject = self.subject
+        require(isfinite(self.deadline) and isfinite(fixed.expires), "A finite fixed controller window is required")
+        self.deadline = min(self.deadline, fixed.expires - CONTROLLER_MARGIN_SECONDS)
+        require(self.deadline - self.clock.monotonic() >= MIN_CAPTURE_SECONDS,
                 "The fixed controller window cannot fit the adaptive capture")
+        self.fixed = fixed
+        publication = [index for index, row in enumerate(self.ledger())
+                       if row.get("kind") == "driver" and row.get("action") == "publish"
+                       and row.get("result", {}).get("publication") == fixed.publication]
+        require(len(publication) == 1, "The exact fixed driver publication is missing or replayed")
+        driver = self.manifest["driver"]
+        driver["publication"], = publication
+        driver["ready"] = self.fixed_status()
         self.observe()
         model_index, model = self.pap(NATIVE, "GetModelIdentity", [], "string")
         require(model == self.profile["modelIdentity"] == self.basis["model"], "Different native fit loaded")
@@ -243,6 +296,9 @@ class Capture(IndexedCapture):
                 and idle.get("sinkRegistered") is True, "Callback witness was not idle and ready")
         generation = idle["generation"]
         capture["arm"], _ = self.write(EVENTS, "Arm", [self.nonce, generation, signed_bits(subject.actor), subject.cell])
+        capture["armed"], armed = self.wait(lambda: self.json_pap(EVENTS, "GetCaptureState", []),
+                                             done=("armed",), pending=("pending",))
+        require(armed == {**idle, "status": "armed"}, "Callback witness armed in a different world")
         self.manifest["unattached"] = self.hold()
         _, self.session_token = self.write(NATIVE, "BeginSessionToken", [], "string")
         require(self.session_token, "Unable to open isolated native refit session")
@@ -272,5 +328,8 @@ class Capture(IndexedCapture):
         self.manifest["detached"] = self.hold()
         capture["seal"], _ = self.write(EVENTS, "Seal", [self.nonce, generation])
         capture["read"], _ = self.json_pap(EVENTS, "Read", [self.nonce, generation])
-        result = verify(self.manifest, self.ledger(), self.profile, self.basis)
+        driver["finished"] = self.fixed_status()
+        raw = self.ledger_path.read_bytes()
+        self.manifest["stepsPrefix"] = {"bytes": len(raw), "sha256": sha256(raw).hexdigest()}
+        result = verify(self.manifest, read_ledger(self.manifest, raw), self.profile, self.basis)
         return self.manifest, result
