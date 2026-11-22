@@ -101,10 +101,8 @@ The first probe was too wide to establish that margin. The smaller probe
 selects face 201 on both rigs in the pinned rest pose. Re-evaluate point
 positions, scale and clearance in the game before running the contact trial.
 
-The stock witness can compare paired motion in those windows. A direct
-contact or impulse assertion requires observation before FSMP clears the
-manifolds. The fixture is test-only and file verification grants no launch
-slot or live acceptance.
+The stock witness can compare paired motion in those windows. This fixture
+and its direct-contact diagnostic are test-only.
 
 Use the [test provider](../../cpp/fsmp_pair_contact/README.md) to collect accepted
 contact points for only these two actors. Record each `Arm`, completed
@@ -119,8 +117,33 @@ python src/test/components/adult-anatomy/fsmp_contact_windows.py `
 
 The reader requires completed separated and tag-mismatch controls and at
 least one accepted contact point on the chosen dynamic driver. Its result
-covers the direct provider data. Check the before/after World Observer pose
-and the held stimulus separately before interpreting the four controls.
+covers the direct pre-solve provider data.
+
+For an admitted isolated SE Autotest session, load the retained inputs with
+`fsmp_contact_pose.load(aim_path, peer_report, surface_report, skeleton, pynifly, family)`
+and invoke
+`run_fsmp_contact_trial.run(session, subjects, geometry, fixture_policy, nonce=...)`
+from its test callback. Use `Subjects(surface_ref, surface_base, probe_ref,
+probe_base)` from the same run's creation receipts. Prepare a male wolf and
+a separately owned male Nord, with the test accessory already equipped.
+Resolve the winning NIF, TRI, XML, DLL and PEX in the test profile before
+starting the callback. The six exact target TRI morphs must be neutral in
+the current SE SKEE observer. Prepare that fixture state before the trial.
+The callback neither stages assets nor starts Skyrim.
+
+The callback reconstructs the retained contact faces from the observed
+bone poses. It holds the same commanded probe reference position during
+the two near trials, checks matching initial geometry and verifies that
+both snapshots still bracket a valid held stimulus. It brackets the provider
+QPC window using the same-session observer timestamps. The paired scene
+brackets do not sample every solver step or measure impulse. Completion
+retains `steps.jsonl`, `contact-index.json` and `pose-brackets.json` under the
+session's `fsmp-pair-contact` directory. Cleanup checks the original probe
+position, scene root displacement and selected XML path. An uncertain write
+leaves an intent and quarantines that owned session.
+
+The full first-party SKEE World Observer contract used here is qualified on
+SE only. VR needs an equivalent artifact and a separate game trial.
 
 ## Focused checks
 
