@@ -48,9 +48,11 @@ Use the companion private CLAW core archive, with Elegant Werewolf Replacer
 and compatible XP32 installed separately. Install this overlay after that core
 and let its male meshes win. Removing the overlay restores the core appearance.
 
-Select the motion setting used by the core. Anatomy physics is off by default;
-the chosen core ear/tail motion remains in effect. For optional anatomy motion,
-install the runtime-matched Faster HDT-SMP separately:
+The default, Keep current male meshes, installs only these notes and credits.
+It leaves the current appearance and motion unchanged. To add neutral anatomy,
+explicitly select the motion setting used by your core. Anatomy motion then
+defaults to Off, preserving that selected core ear/tail motion. For optional
+anatomy motion, install the runtime-matched Faster HDT-SMP separately:
 https://www.nexusmods.com/skyrimspecialedition/mods/57339
 The overlay cannot detect the core motion choice. Reinstall it when changing
 that setting to keep the selected motion in sync.
@@ -113,6 +115,7 @@ def choice(steps, name, flag, options):
         ET.SubElement(flags, 'flag', name=flag).text = value
         descriptor = ET.SubElement(plugin, 'typeDescriptor')
         ET.SubElement(descriptor, 'type', name='Recommended' if index == 0 else 'Optional')
+    return step
 
 
 def installer():
@@ -125,13 +128,18 @@ def installer():
         ET.SubElement(required, 'file', source=path, destination=path)
     steps = ET.SubElement(config, 'installSteps', order='Explicit')
     choice(steps, 'Core CLAW motion', 'coreMotion', (
-        ('none', 'None', 'Choose this if you installed the CLAW core with motion disabled.'),
-        ('fsmp', 'Faster HDT-SMP', 'Choose this if the CLAW core already uses Faster HDT-SMP for ear and tail motion.'),
+        ('keep', 'Keep current male meshes', 'Default: install notes only and leave current appearance and motion unchanged. To add anatomy, select your core motion setting below.'),
+        ('none', 'Add anatomy: core motion None', 'Choose this only if your CLAW core has motion disabled. Anatomy motion is a separate choice on the next page.'),
+        ('fsmp', 'Add anatomy: core motion Faster HDT-SMP', 'Choose this only if your CLAW core uses Faster HDT-SMP for ear and tail motion. Anatomy motion is a separate choice on the next page.'),
     ))
-    choice(steps, 'Anatomy motion', 'anatomyMotion', (
+    motion_step = choice(steps, 'Anatomy motion', 'anatomyMotion', (
         ('off', 'Off', 'Add the neutral anatomy and preserve your core motion setting.'),
         ('on', 'Faster HDT-SMP', 'Add neutral anatomy motion. Requires the separate Faster HDT-SMP provider.'),
     ))
+    visible = ET.Element('visible', operator='Or')
+    for mode in CORE_MESHES:
+        ET.SubElement(visible, 'flagDependency', flag='coreMotion', value=mode)
+    motion_step.insert(0, visible)
     patterns = ET.SubElement(ET.SubElement(config, 'conditionalFileInstalls'), 'patterns')
     for (core_motion, anatomy_motion), (folder, xml) in VARIANTS.items():
         pattern = ET.SubElement(patterns, 'pattern')
@@ -147,15 +155,16 @@ def installer():
     return ET.tostring(config, encoding='utf-8')
 
 
-def selection(entries, motion, reader, *, core_motion, active=('CLAW.esp',)):
-    """Evaluate the literal component XML with a declared baseline core choice."""
-    require((core_motion, motion) in VARIANTS, 'Explicit known component/core selection required')
+def _config(entries, reader, active):
     config = ET.fromstring(entries['fomod/ModuleConfig.xml'])
     expected = ET.fromstring(installer())
     require(ET.tostring(config) == ET.tostring(expected), 'Installer changed its exact exclusive default/mapping contract')
     require(reader.dependency(config.find('moduleDependencies'), '1.7.104.0', set(active), {}), 'CLAW.esp must be active')
+    return config
+
+
+def _selected_files(entries, config, reader, active, flags):
     files = list(config.findall('requiredInstallFiles/file'))
-    flags = {'coreMotion': core_motion, 'anatomyMotion': motion}
     for pattern in config.findall('conditionalFileInstalls/patterns/pattern'):
         if reader.dependency(pattern.find('dependencies'), '1.7.104.0', set(active), flags):
             files.extend(pattern.findall('files/file'))
@@ -166,6 +175,46 @@ def selection(entries, motion, reader, *, core_motion, active=('CLAW.esp',)):
                 'Missing source or duplicate component destination')
         installed[destination] = source
     return installed
+
+
+def selection(entries, motion, reader, *, core_motion, active=('CLAW.esp',)):
+    """Evaluate an explicit existing variant or the safe keep selection.
+
+    Keep has no anatomy-motion choice: that page is hidden. Stale flags are
+    refused by this API, and XML patterns also cannot match keep with any flag.
+    """
+    require((core_motion, motion) in VARIANTS or (core_motion == 'keep' and motion is None),
+            'Explicit known component/core selection required')
+    config = _config(entries, reader, active)
+    flags = {'coreMotion': core_motion}
+    if motion is not None:
+        flags['anatomyMotion'] = motion
+    return _selected_files(entries, config, reader, active, flags)
+
+
+def default_selection(entries, reader, *, active=('CLAW.esp',)):
+    """Replay literal Recommended options in visible steps; inject no core mode."""
+    config = _config(entries, reader, active)
+    flags, visible_steps = {}, []
+    for step in config.findall('installSteps/installStep'):
+        visible = step.find('visible')
+        if visible is not None and not reader.dependency(visible, '1.7.104.0', set(active), flags):
+            continue
+        visible_steps.append(step.get('name'))
+        step_flags = {}
+        for group in step.findall('optionalFileGroups/group'):
+            recommended = [p for p in group.findall('plugins/plugin')
+                           if reader.plugin_type(p, '1.7.104.0', set(active), flags) == 'Recommended']
+            require(group.get('type') == 'SelectExactlyOne' and len(recommended) == 1,
+                    'Exactly one literal default required per visible group')
+            for flag in recommended[0].findall('conditionFlags/flag'):
+                require(flag.get('name') not in flags and flag.get('name') not in step_flags, 'Duplicate default flag')
+                step_flags[flag.get('name')] = flag.text
+        flags.update(step_flags)
+    require(flags == {'coreMotion': 'keep'}, 'Literal defaults must keep current male resources')
+    installed = _selected_files(entries, config, reader, active, flags)
+    require(set(installed) == {GUIDE, NOTICE}, 'Literal defaults must install notes only')
+    return {'flags': flags, 'visibleSteps': visible_steps, 'files': installed}
 
 
 def check_motion(payload, xml, core_motion, package, materials, composition, drivers):
@@ -221,6 +270,7 @@ def audit(entries, base, core, package, reader):
     allowed = {name for name, _ in CORE_MESHES.values()} | {'fomod/ModuleConfig.xml', 'fomod/info.xml'}
     require(set(base) == set(core) and {name for name in base if base[name] != core[name]} == allowed,
             'Unexpected change to the companion core archive')
+    literal_default = default_selection(entries, reader)
     plans = []
     for plan in package.selection_audit(base):
         core_motion = plan['physics']
@@ -231,6 +281,12 @@ def audit(entries, base, core, package, reader):
         require(sha(baseline[MESH + 'malebodywerewolf.tri']) == TRI_SHA, 'Incompatible core male TRI selection')
         shared = {'maleFamily': plan['maleFamily'], 'femaleFamily': plan['family'], 'obody': plan['obody'], 'coreMotion': core_motion}
         plans.append({**shared, 'anatomy': 'absent', 'selectedFiles': {name: sha(baseline[name]) for name in DESTINATIONS}})
+        default_files = literal_default['files']
+        result = {**baseline, **{name: entries[source] for name, source in default_files.items()}}
+        require(all(result[name] == data for name, data in baseline.items()), 'Literal defaults replaced core resources')
+        plans.append({**shared, 'anatomy': 'default', 'coreProtectedDestinations': len(baseline),
+                      'maleModelOverrides': 0, 'physicsXmlOverrides': 0, 'literalFlags': literal_default['flags'],
+                      'selectedFiles': {name: sha(entries[source]) for name, source in default_files.items()}})
         for motion in ('off', 'on'):
             selected = selection(entries, motion, reader, core_motion=core_motion)
             result = {**baseline, **{destination: entries[source] for destination, source in selected.items()}}
@@ -243,7 +299,7 @@ def audit(entries, base, core, package, reader):
                     'Anatomy motion off must restore exact appearance and retain core motion')
             plans.append({**shared, 'anatomy': motion, 'coreProtectedDestinations': len(baseline)-len(changed),
                           'maleModelOverrides': len(changed), 'selectedFiles': {name: sha(entries[source]) for name, source in selected.items()}})
-    require(len(plans) == 120, 'All core-only and compatible overlay selections must be verified')
+    require(len(plans) == 160, 'All core-only, literal-default and compatible overlay selections must be verified')
     return plans
 
 
@@ -267,7 +323,7 @@ def build(*, core_archive, neutral, combined, out):
     base, visibility = build_core(core, visuals)
     package._check_motion_nif(materials, base[CORE_MESHES['none'][0]], base[CORE_MESHES['fsmp'][0]], 'male')
     entries = {GUIDE: RUNTIME_GUIDE, NOTICE: ASSET_NOTICE, 'fomod/ModuleConfig.xml': installer(),
-               'fomod/info.xml': b'<fomod><Name>'+NAME.encode()+b'</Name><Author>CLAW</Author><Version>0.2.0</Version></fomod>'}
+               'fomod/info.xml': b'<fomod><Name>'+NAME.encode()+b'</Name><Author>CLAW</Author><Version>0.3.0</Version></fomod>'}
     roots = {'none': Path(neutral).resolve(), 'fsmp': Path(combined).resolve()}
     inventories = {}
     for core_motion, root in roots.items():
@@ -312,7 +368,9 @@ def build(*, core_archive, neutral, combined, out):
               'inputs': {str(path): {'sha256': sha(data), 'bytes': len(data)} for path, data in inputs.records.items()},
               'members': {name: {'sha256': sha(data), 'bytes': len(data)} for name, data in entries.items()},
               'plans': plans, 'planCount': len(plans), 'baseVisibilityEdits': visibility,
-              'default': 'restore-neutral-appearance-with-core-motion',
+              'default': 'keep-current-male-resources-and-core-motion',
+              'literalDefault': default_selection(reopened, reader),
+              'explicitVariantPayloads': {name: sha(data) for name, data in reopened.items() if name.endswith(('.nif', '.xml')) and not name.startswith('fomod/')},
               'sharedCoreTriSha256': TRI_SHA, 'installed': False, 'gameStarted': False,
               'runtimeQualified': False, 'renderedAppearanceQualified': False, 'contactQualified': False,
               'retainedMotionResult': {'run': '20261113-064151-968880', 'result': 'failed'},

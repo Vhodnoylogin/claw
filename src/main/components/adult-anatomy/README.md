@@ -71,13 +71,15 @@ body sources. The optional add-on restores the exact visible neutral shape in
 both weight endpoints and both male `bodywerewolf` / `PlayerWerewolf` routes.
 The core's TRI, materials, female models, data and runtime stay byte-identical.
 
-In the add-on installer, choose the motion setting from the companion core.
-The next screen defaults to anatomy motion **Off** and preserves that core
-setting. Enabling anatomy motion selects either the separate three-driver rig
-or the combined ear/tail/anatomy rig, as appropriate. Repeat the add-on
-installation if the core setting changes. The original Elegant materials and
-shared core TRI apply to all four choices. Faster HDT-SMP remains a separate
-dependency when its motion is selected.
+The add-on installer defaults to **Keep current male meshes**. This installs
+only notes and credits, leaving current appearance and motion unchanged. To add
+neutral anatomy, explicitly choose the motion setting from the companion core.
+The next screen then defaults to anatomy motion **Off** and preserves that
+selected core setting. Enabling anatomy motion selects either the separate
+three-driver rig or the combined ear/tail/anatomy rig, as appropriate. Repeat
+the add-on installation if the core setting changes. The original Elegant
+materials and shared core TRI apply to all four explicit choices. Faster
+HDT-SMP remains a separate dependency when its motion is selected.
 
 This candidate exposes the original neutral procedural model. Adult-state
 morphs, motion measurements and contacts remain separate tasks. The retained
@@ -92,16 +94,20 @@ python src/main/components/adult-anatomy/python/package.py `
   --core-archive 'D:/Skyrim VR Modding/Builds/claw-010-physics-release-20261113/final-package-01/CLAW - Customizable Lycanthrope Appearance and Weight.zip' `
   --neutral 'D:/Skyrim VR Modding/Builds/claw-adult-anatomy-20261112/candidate-04/candidate' `
   --combined 'D:/Skyrim VR Modding/Builds/claw-fsmp-anatomy-compose-20261112/candidate-01/candidate' `
-  --out 'D:/Skyrim VR Modding/Builds/claw-adult-anatomy-package-20261122-02'
+  --out 'D:/Skyrim VR Modding/Builds/claw-adult-anatomy-package-20261123-01'
 ```
 
-The packager reopens both archives and checks 120 selections across the forty
+The packager reopens both archives and checks 160 selections across the forty
 core family/OBody/motion plans. Each plan covers the companion core alone,
-the add-on with static anatomy, and the add-on with anatomy motion. The add-on
-changes only the four male model destinations and optionally adds one local XML.
-The external report records exact input and payload identities. The add-on
-archive contains installer data, exact NIF/XML payloads, a brief guide and
-asset credits. Existing Elegant and XP32 conditions apply.
+the literal add-on defaults, the explicitly selected static anatomy, and the
+explicitly selected anatomy motion. Default replay reads the recommended
+options and step visibility from the serialized XML without supplying a core
+mode; it must leave every core destination exact. Each explicit choice changes
+only the four male model destinations and optionally adds one local XML. The
+four variants retain the exact previous six-member NIF/XML inventory. The
+external report records exact input and payload identities. The add-on archive
+contains installer data, exact NIF/XML payloads, a brief guide and asset credits.
+Existing Elegant and XP32 conditions apply.
 
 ### Offline FSMP collision candidate
 
