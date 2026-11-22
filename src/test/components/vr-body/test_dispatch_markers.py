@@ -6,10 +6,10 @@ import sys
 from tempfile import TemporaryDirectory
 import unittest
 
-from verify_dispatch_markers import ADDON, BODY, ITEM, ROUTES, SCHEMA, TOKENS, verify_dispatch_markers
+from verify_dispatch_markers import ADDON, BODY, ITEM, ROUTES, SCHEMA, SCHEMA_V5, SCHEMA_TOKENS, TOKENS, verify_dispatch_markers
 
 
-def capture():
+def capture(schema=SCHEMA_V5):
     sample = {'actor': 0x14, 'race': 0xCDD84, 'base': 7, 'cell': 0x1234, 'runtimeHandle': 80,
               'sex': 0, 'weight': 37.0, 'qpcBegin': 1200, 'qpcEnd': 1260, 'qpcFrequency': 10000000,
               'roots': {'default': 1, 'thirdPerson': 1, 'firstPerson': 2},
@@ -19,15 +19,15 @@ def capture():
         sample['views'][view][bank] = [dict(slot=BODY, clone=index + 3, item=ITEM, addon=ADDON,
                                            modelPath=r'Actors\Character\misleading-selection.nif', partHandlePresent=True)]
         sample['body32Markers'].append(dict(view=view, bank=bank, slot=BODY, clone=index + 3,
-                                            classification='unmarked', counts=[0] * len(TOKENS)))
+                                            classification='unmarked', counts=[0] * len(SCHEMA_TOKENS[schema])))
     mark(sample, 2, 'M1')
     mark(sample, 3, 'M0')
-    return dict(schema=SCHEMA, status='ready', pid=492, nonce=3, epoch=7, sample=sample)
+    return dict(schema=schema, status='ready', pid=492, nonce=3, epoch=7, sample=sample)
 
 
 def mark(sample, index, *markers, classification=None):
     row = sample['body32Markers'][index]
-    row['counts'] = [markers.count(token) for token in TOKENS]
+    row['counts'] = [markers.count(token) for token in TOKENS[:len(row['counts'])]]
     row['classification'] = classification or ('ambiguous' if len(markers) > 1 else 'marked' if markers else 'unmarked')
 
 
@@ -101,6 +101,65 @@ class DispatchMarkersTests(unittest.TestCase):
         self.assertEqual(verify(data)['status'], 'wrong_sex')
         data['sample']['sex'] = 0
         self.assertTrue(verify(data, expect='H_M0')['markerFixtureModel'].endswith('1stperson_werewolf_hands.nif'))
+
+    def test_v6_fsmp_aliases_identify_both_sexes_and_refuse_static_carriers(self):
+        for sex, motion_index, motion, static_index, static in (
+            (0, 7, 'H_M_FSMP', 5, 'H_M_STATIC'),
+            (1, 8, 'H_F_FSMP', 6, 'H_F_STATIC'),
+        ):
+            with self.subTest(sex=sex):
+                data = capture(SCHEMA)
+                sample = data['sample']
+                sample['sex'] = sex
+                active, buffered = sample['body32Markers'][:2]
+                active['classification'] = 'marked'
+                active['counts'][motion_index] = 1
+                result = verify(data, view='thirdPerson', expect=motion)
+                self.assertTrue(result['modelOriginVerified'])
+                self.assertEqual(result['observedMarker'], 'CLAW_VR_DISPATCH_PROBE_' + motion)
+                self.assertTrue(result['markerFixtureModel'].endswith('1stperson_werewolf_hands.nif'))
+                self.assertFalse(result['installedAssetWinnerVerified'])
+
+                sample['sex'] = 1 - sex
+                self.assertEqual(verify(data, view='thirdPerson', expect=motion)['status'], 'wrong_sex')
+                sample['sex'] = sex
+                active['counts'][motion_index] = 0
+                active['counts'][static_index] = 1
+                buffered['classification'] = 'marked'
+                buffered['counts'][motion_index] = 1
+                result = verify(data, view='thirdPerson', expect=motion)
+                self.assertEqual(result['status'], 'unexpected_origin')
+                self.assertEqual(result['observedMarker'], 'CLAW_VR_DISPATCH_PROBE_' + static)
+                self.assertEqual(result['observations'][1]['markers'], {motion: 1})
+                self.assertFalse(result['modelOriginVerified'])
+                self.assertTrue(verify(data, view='thirdPerson', expect=static)['modelOriginVerified'])
+
+    def test_legacy_male_marker_does_not_confirm_the_new_static_fixture(self):
+        data = capture(SCHEMA)
+        mark(data['sample'], 0, 'H_M0')
+        result = verify(data, view='thirdPerson', expect='H_M_STATIC')
+        self.assertEqual(result['status'], 'unexpected_origin')
+        self.assertFalse(result['modelOriginVerified'])
+
+    def test_v6_mixed_static_and_fsmp_or_duplicate_fsmp_markers_are_ambiguous(self):
+        data = capture(SCHEMA)
+        for markers in (('H_M_STATIC', 'H_M_FSMP'), ('H_M_FSMP', 'H_M_FSMP')):
+            with self.subTest(markers=markers):
+                mark(data['sample'], 0, *markers)
+                result = verify(data, view='thirdPerson', expect='H_M_FSMP')
+                self.assertEqual(result['status'], 'ambiguous')
+                self.assertIsNone(result['observedMarker'])
+                self.assertFalse(result['modelOriginVerified'])
+
+    def test_marker_width_and_expectations_are_bound_to_capture_version(self):
+        archived = capture(SCHEMA_V5)
+        self.assertTrue(verify(archived, expect='M1')['modelOriginVerified'])
+        for token in ('H_M_STATIC', 'H_F_STATIC', 'H_M_FSMP', 'H_F_FSMP'):
+            with self.subTest(token=token), self.assertRaisesRegex(ValueError, 'marker for capture schema'):
+                verify(archived, expect=token)
+        for data in (archived | {'schema': SCHEMA}, capture(SCHEMA) | {'schema': SCHEMA_V5}):
+            with self.subTest(schema=data['schema']), self.assertRaisesRegex(ValueError, 'marker counts'):
+                verify(data)
 
     def test_aliased_roots_and_clones_do_not_prove_distinct_views(self):
         data = capture()

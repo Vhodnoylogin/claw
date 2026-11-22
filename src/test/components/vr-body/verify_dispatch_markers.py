@@ -7,8 +7,11 @@ from math import isfinite
 from pathlib import Path
 
 
-SCHEMA = 'claw-vr-model-topology/5'
-TOKENS = ('M0', 'M1', 'F0', 'F1', 'H_M0')
+SCHEMA_V5 = 'claw-vr-model-topology/5'
+SCHEMA = 'claw-vr-model-topology/6'
+V5_TOKENS = ('M0', 'M1', 'F0', 'F1', 'H_M0')
+TOKENS = (*V5_TOKENS, 'H_M_STATIC', 'H_F_STATIC', 'H_M_FSMP', 'H_F_FSMP')
+SCHEMA_TOKENS = {SCHEMA_V5: V5_TOKENS, SCHEMA: TOKENS}
 VIEWS = ('thirdPerson', 'firstPerson')
 BANKS = ('active', 'buffered')
 ROUTES = tuple((view, bank) for view in VIEWS for bank in BANKS)
@@ -16,7 +19,7 @@ BODY = 2
 ITEM, ADDON, RACE = 0xCDD86, 0xCDD87, 0xCDD84
 EARLY = {'unloaded', 'foreign_slot', 'detached'}
 COMPLETE = {'unmarked', 'ambiguous', 'marked'}
-MARKER_SEX = dict(zip(TOKENS, (0, 0, 1, 1, 0)))
+MARKER_SEX = dict(zip(TOKENS, (0, 0, 1, 1, 0, 0, 1, 0, 1), strict=True))
 
 
 def require(condition, message):
@@ -48,13 +51,13 @@ def body_slot(slots):
 
 
 def origin(token):
-    if token == 'H_M0':
+    if token.startswith('H_'):
         return r'Meshes\Actors\character\character assets\1stperson_werewolf_hands.nif'
     sex = 'male' if MARKER_SEX[token] == 0 else 'female'
     return f'Meshes\\Actors\\WerewolfBeast\\CLAW\\FirstPerson\\{sex}\\Body_{token[-1]}.nif'
 
 
-def read_row(row, sample_view, root, view, bank, ids):
+def read_row(row, sample_view, root, view, bank, ids, tokens):
     row = object_value(row, 'marker row')
     require((row.get('view'), row.get('bank')) == (view, bank) and
             integer(row.get('slot'), 'marker slot', high=41) == BODY, 'Unexpected marker row route or slot')
@@ -66,7 +69,7 @@ def read_row(row, sample_view, root, view, bank, ids):
     reported_model = slot.get('modelPath') if slot is not None else ''
     require(isinstance(reported_model, str), 'Invalid reported modelPath')
     counts = row.get('counts')
-    require(isinstance(counts, list) and len(counts) == len(TOKENS), 'Invalid marker counts')
+    require(isinstance(counts, list) and len(counts) == len(tokens), 'Invalid marker counts')
     total = sum(integer(count, 'marker count', high=2) for count in counts)
     status = row.get('classification')
     require(isinstance(status, str) and status in EARLY | COMPLETE | {'indeterminate'}, 'Invalid marker classification')
@@ -79,16 +82,18 @@ def read_row(row, sample_view, root, view, bank, ids):
     if status in COMPLETE:
         expected = 'marked' if total == 1 else 'ambiguous' if total else 'unmarked'
         require(status == expected, 'Marker counts contradict classification')
-    markers = {token: count for token, count in zip(TOKENS, counts) if count}
+    markers = {token: count for token, count in zip(tokens, counts, strict=True) if count}
     return dict(view=view, bank=bank, clone=clone, actorRoot=root, item=item, addon=addon,
                 classification=status, markers=markers, reportedModelPath=reported_model)
 
 
 def verify_dispatch_markers(observation, *, view, pid, nonce, epoch, expect=None):
     observation = object_value(observation, 'capture')
-    require(observation.get('schema') == SCHEMA and observation.get('status') == 'ready',
-            'Expected a ready native VR topology /5 capture')
-    require(view in VIEWS and (expect is None or expect in TOKENS), 'Invalid requested view or marker')
+    schema = observation.get('schema')
+    require(isinstance(schema, str) and schema in SCHEMA_TOKENS and observation.get('status') == 'ready',
+            'Expected a ready native VR topology /5 or /6 capture')
+    tokens = SCHEMA_TOKENS[schema]
+    require(view in VIEWS and (expect is None or expect in tokens), 'Invalid requested view or marker for capture schema')
     for name, expected, limit in (('pid', pid, 0xFFFFFFFF), ('nonce', nonce, 0x7FFFFFFF), ('epoch', epoch, 2**64 - 1)):
         require(integer(observation.get(name), name, 1, limit) == integer(expected, f'expected {name}', 1, limit),
                 f'Capture {name} differs from requested observation')
@@ -119,7 +124,7 @@ def verify_dispatch_markers(observation, *, view, pid, nonce, epoch, expect=None
         root = alias(roots.get(route), ids, 'actor root')
         sample_view = object_value(views.get(route), 'topology view')
         require(type(sample_view.get('available')) is bool, 'Invalid biped availability')
-        row = read_row(observations[index], sample_view, root, route, bank, ids)
+        row = read_row(observations[index], sample_view, root, route, bank, ids, tokens)
         rows[route, bank] = row
         if row['classification'] in COMPLETE:
             counts = complete_counts.setdefault(row['clone'], row['markers'])
@@ -157,7 +162,7 @@ def unique_json_object(pairs):
 
 def main():
     parser = ArgumentParser(description=__doc__)
-    parser.add_argument('capture', type=Path, help='One admitted CaptureDispatch /5 JSON reply')
+    parser.add_argument('capture', type=Path, help='One admitted CaptureDispatch /5 or /6 JSON reply')
     parser.add_argument('--view', required=True, choices=VIEWS)
     parser.add_argument('--pid', type=int, required=True)
     parser.add_argument('--nonce', type=int, required=True)

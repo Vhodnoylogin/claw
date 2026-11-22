@@ -5,10 +5,12 @@
 #include <string_view>
 
 namespace claw::vr_diagnostic {
-inline constexpr std::array<std::string_view, 5> dispatchMarkerNames{
+inline constexpr std::array<std::string_view, 9> dispatchMarkerNames{
     "CLAW_VR_DISPATCH_PROBE_M0", "CLAW_VR_DISPATCH_PROBE_M1",
     "CLAW_VR_DISPATCH_PROBE_F0", "CLAW_VR_DISPATCH_PROBE_F1",
-    "CLAW_VR_DISPATCH_PROBE_H_M0"
+    "CLAW_VR_DISPATCH_PROBE_H_M0",
+    "CLAW_VR_DISPATCH_PROBE_H_M_STATIC", "CLAW_VR_DISPATCH_PROBE_H_F_STATIC",
+    "CLAW_VR_DISPATCH_PROBE_H_M_FSMP", "CLAW_VR_DISPATCH_PROBE_H_F_FSMP"
 };
 
 template<class Object>

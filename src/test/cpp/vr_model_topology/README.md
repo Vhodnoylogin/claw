@@ -39,7 +39,7 @@ not establish rendered geometry, continuous attachment or applied physics.
 
 ## Loaded Body32 origin
 
-Use `CaptureDispatch(nonce)` to add the schema 5 marker observation. The
+Use `CaptureDispatch(nonce)` to add the schema 6 marker observation. The
 original `Capture(nonce)` returns schema 4. `Read(nonce)` preserves the
 requested mode. The marker capture adds the runtime handle, actor-base sex
 and readable weight, and a native QPC interval for the same task.
@@ -47,16 +47,20 @@ and readable weight, and a native QPC interval for the same task.
 The four rows are ordered third-person active/buffered and first-person
 active/buffered. Each scans the exact Body32 clone only when it belongs to
 the current wolf's body item, armor addon and corresponding actor graph.
-The five count positions are `M0`, `M1`, `F0`, `F1` and `H_M0`. The walk
+The nine count positions are `M0`, `M1`, `F0`, `F1`, `H_M0`, `H_M_STATIC`,
+`H_F_STATIC`, `H_M_FSMP` and `H_F_FSMP`. The walk
 checks reciprocal attachment and the authored empty marker node, then
 repeats the observation to catch intervening changes. An absent clone,
 foreign slot, missing attachment, incomplete walk, zero markers or
 conflicting markers are distinct results.
 
 Use the detached marker assets only in an admitted test. In the retained
-fixture, `M0/M1` and `F0/F1` label the four namespaced NIFs and `H_M0`
-labels the explicit legacy hands-path candidate. Confirm the actual installed
-winners and the effective armor record alongside the capture. Review the
+fixture, `M0/M1` and `F0/F1` label the four namespaced NIFs. `H_M0` labels
+the older male legacy-path fixture. The four new markers identify the
+fixed-profile legacy-path candidates by sex and by static or FSMP binding.
+The verifier also reads schema 5 captures with the original five positions.
+Confirm the actual installed winner bytes and the effective
+armor record alongside each process-owned capture. Review the
 requested active slot with the verifier in `src/test/components/vr-body`:
 
 ```text
@@ -67,6 +71,16 @@ Use a fresh nonce for each observation. The verifier treats overlapping views
 and a marker only in a buffered clone as unresolved results. Its successful
 verdict identifies the observed marker's fixture asset. Weight interpolation
 and headset visibility require their own measurements.
+
+`stage_world_motion_markers.py` in `src/test/components/vr-body` prepares
+one common fixture and four mutually exclusive world-motion arms. Supply
+the exact fixed-profile ZIP, the directory containing the two exact motion
+ZIPs, the rebuilt witness directory with `WITNESS-BUILD.json`, PyNifly and a
+new output directory. The arms use the released core with physics set to
+None. Use the active third-person row for this test and compare it with
+the selected arm and VFS winner. An observed FSMP marker identifies the
+loaded mesh. A separate provider observation must establish registration
+of exactly one actor-owned system and its normal retirement.
 
 The initial offline build produced the DLL and PEX. The local build receipt
 is under Builds/claw-vr-model-topology-20261119/build-02, SHA-256
