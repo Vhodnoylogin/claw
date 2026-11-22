@@ -248,6 +248,21 @@ private:
 
 RE::FormID id(const RE::TESForm* value) { return value ? value->GetFormID() : 0; }
 
+using claw::vr_diagnostic::Body32Forms;
+
+std::optional<Body32Forms> resolvePlayerBody32Fixture() {
+    constexpr auto fileName = "test_CLAW - VR Player Body32.esp";
+    auto* data = RE::TESDataHandler::GetSingleton();
+    if (!data) return std::nullopt;
+    const auto* file = data->LookupModByName(fileName);
+    if (!file) return std::nullopt;
+    const auto* item = data->LookupForm<RE::TESObjectARMO>(0x801, fileName);
+    const auto* addon = data->LookupForm<RE::TESObjectARMA>(0x800, fileName);
+    if (!item || !addon || item->GetFile(0) != file || addon->GetFile(0) != file ||
+        item->armorAddons.size() != 1 || item->armorAddons[0] != addon) return std::nullopt;
+    return Body32Forms{id(item), id(addon)};
+}
+
 struct BodyMarkerRoute {
     Object* clone{};
     claw::vr_diagnostic::DispatchMarkers<Object> markers;
@@ -256,7 +271,8 @@ struct BodyMarkerRoute {
     bool operator==(const BodyMarkerRoute&) const = default;
 };
 
-std::array<BodyMarkerRoute, 4> observeBodyMarkers(const Routes& scene, std::uint32_t handle, Clock::time_point deadline) {
+std::array<BodyMarkerRoute, 4> observeBodyMarkers(const Routes& scene, std::uint32_t handle,
+                                                 const std::optional<Body32Forms>& fixture, Clock::time_point deadline) {
     using namespace claw::vr_diagnostic;
     std::array<BodyMarkerRoute, 4> result{};
     std::array<RE::BSFixedString, dispatchMarkerNames.size()> names;
@@ -274,7 +290,7 @@ std::array<BodyMarkerRoute, 4> observeBodyMarkers(const Routes& scene, std::uint
         auto& row = result[i];
         row.clone = slot.clone;
         if (!slot.clone) { row.classification = "unloaded"; continue; }
-        if (slot.item != 0xCDD86 || slot.addon != 0xCDD87 || !view.biped ||
+        if (!approvedBody32Forms({slot.item, slot.addon}, fixture) || !view.biped ||
             view.biped->actorRef.native_handle() != handle) {
             row.classification = "foreign_slot"; continue;
         }
@@ -350,8 +366,10 @@ Json collect(Clock::time_point deadline, bool dispatch) {
         vrRoots[vrRouteNames[i]] = inventory.identify(before.vrRoots[i]);
     auto rootDetails = inventory.summarizeRoots(deadline);
     Json markers;
+    std::optional<Body32Forms> fixture;
     if (dispatch) {
-        const auto observation = observeBodyMarkers(before, handle.native_handle(), deadline);
+        fixture = resolvePlayerBody32Fixture();
+        const auto observation = observeBodyMarkers(before, handle.native_handle(), fixture, deadline);
         markers = Json::array();
         for (std::size_t i = 0; i < observation.size(); ++i) {
             const auto& row = observation[i];
@@ -359,7 +377,9 @@ Json collect(Clock::time_point deadline, bool dispatch) {
                 {"bank", i % 2 ? "buffered" : "active"}, {"slot", bodySlot}, {"clone", inventory.identify(row.clone)},
                 {"counts", row.markers.counts}, {"classification", row.classification}});
         }
-        require(observation == observeBodyMarkers(before, handle.native_handle(), deadline),
+        const auto recheckedFixture = resolvePlayerBody32Fixture();
+        require(fixture == recheckedFixture, "player Body32 fixture pair changed during capture");
+        require(observation == observeBodyMarkers(before, handle.native_handle(), recheckedFixture, deadline),
                 "Body32 marker attachment changed during capture");
     }
     require(RE::PlayerCharacter::GetSingleton() == actor && actor->GetHandle() == handle &&
@@ -381,6 +401,7 @@ Json collect(Clock::time_point deadline, bool dispatch) {
                 "timing bracket unavailable");
         sample.update({{"body32Markers", std::move(markers)}, {"sex", sex}, {"weight", weight ? Json(*weight) : Json(nullptr)},
             {"runtimeHandle", handle.native_handle()}, {"qpcBegin", began}, {"qpcEnd", ended},
+            {"playerBody32Fixture", fixture ? Json{{"item", fixture->item}, {"addon", fixture->addon}} : Json(nullptr)},
             {"qpcFrequency", frequency.QuadPart}});
     }
     return sample;
@@ -430,7 +451,7 @@ public:
 
 private:
     static Json reply(std::int32_t nonce, bool dispatch, const char* status, const char* reason = "") {
-        return {{"schema", dispatch ? "claw-vr-model-topology/6" : "claw-vr-model-topology/4"}, {"pid", GetCurrentProcessId()},
+        return {{"schema", dispatch ? "claw-vr-model-topology/7" : "claw-vr-model-topology/4"}, {"pid", GetCurrentProcessId()},
                 {"nonce", nonce}, {"status", status}, {"reason", reason}};
     }
 

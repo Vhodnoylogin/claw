@@ -6,7 +6,10 @@ import sys
 from tempfile import TemporaryDirectory
 import unittest
 
-from verify_dispatch_markers import ADDON, BODY, ITEM, ROUTES, SCHEMA, SCHEMA_V5, SCHEMA_TOKENS, TOKENS, verify_dispatch_markers
+from verify_dispatch_markers import (ADDON, BODY, ITEM, ROUTES, SCHEMA, SCHEMA_V5, SCHEMA_V6, SCHEMA_TOKENS,
+                                     TOKENS, verify_dispatch_markers)
+
+FIXTURE = (0x0B000801, 0x0B000800)
 
 
 def capture(schema=SCHEMA_V5):
@@ -15,6 +18,8 @@ def capture(schema=SCHEMA_V5):
               'roots': {'default': 1, 'thirdPerson': 1, 'firstPerson': 2},
               'views': {view: {'available': True} for view, _ in ROUTES},
               'distinctRoots': [{'id': alias} for alias in range(1, 7)], 'body32Markers': []}
+    if schema == SCHEMA:
+        sample['playerBody32Fixture'] = None
     for index, (view, bank) in enumerate(ROUTES):
         sample['views'][view][bank] = [dict(slot=BODY, clone=index + 3, item=ITEM, addon=ADDON,
                                            modelPath=r'Actors\Character\misleading-selection.nif', partHandlePresent=True)]
@@ -108,7 +113,7 @@ class DispatchMarkersTests(unittest.TestCase):
             (1, 8, 'H_F_FSMP', 6, 'H_F_STATIC'),
         ):
             with self.subTest(sex=sex):
-                data = capture(SCHEMA)
+                data = capture(SCHEMA_V6)
                 sample = data['sample']
                 sample['sex'] = sex
                 active, buffered = sample['body32Markers'][:2]
@@ -135,14 +140,14 @@ class DispatchMarkersTests(unittest.TestCase):
                 self.assertTrue(verify(data, view='thirdPerson', expect=static)['modelOriginVerified'])
 
     def test_legacy_male_marker_does_not_confirm_the_new_static_fixture(self):
-        data = capture(SCHEMA)
+        data = capture(SCHEMA_V6)
         mark(data['sample'], 0, 'H_M0')
         result = verify(data, view='thirdPerson', expect='H_M_STATIC')
         self.assertEqual(result['status'], 'unexpected_origin')
         self.assertFalse(result['modelOriginVerified'])
 
     def test_v6_mixed_static_and_fsmp_or_duplicate_fsmp_markers_are_ambiguous(self):
-        data = capture(SCHEMA)
+        data = capture(SCHEMA_V6)
         for markers in (('H_M_STATIC', 'H_M_FSMP'), ('H_M_FSMP', 'H_M_FSMP')):
             with self.subTest(markers=markers):
                 mark(data['sample'], 0, *markers)
@@ -157,9 +162,45 @@ class DispatchMarkersTests(unittest.TestCase):
         for token in ('H_M_STATIC', 'H_F_STATIC', 'H_M_FSMP', 'H_F_FSMP'):
             with self.subTest(token=token), self.assertRaisesRegex(ValueError, 'marker for capture schema'):
                 verify(archived, expect=token)
-        for data in (archived | {'schema': SCHEMA}, capture(SCHEMA) | {'schema': SCHEMA_V5}):
+        for data in (archived | {'schema': SCHEMA_V6}, capture(SCHEMA_V6) | {'schema': SCHEMA_V5},
+                     capture(SCHEMA) | {'schema': SCHEMA_V6}):
             with self.subTest(schema=data['schema']), self.assertRaisesRegex(ValueError, 'marker counts'):
                 verify(data)
+
+    def test_v7_links_both_player_models_to_independently_admitted_forms(self):
+        for sex, marker, path in ((0, 'P_M', r'male\Body_1.nif'), (1, 'P_F', r'female\Body_1.nif')):
+            with self.subTest(sex=sex):
+                data = capture(SCHEMA)
+                sample = data['sample']
+                sample['sex'] = sex
+                sample['playerBody32Fixture'] = dict(zip(('item', 'addon'), FIXTURE, strict=True))
+                row = sample['views']['firstPerson']['active'][0]
+                row.update(sample['playerBody32Fixture'])
+                mark(sample, 2, marker)
+                outcome = verify(data, expect=marker, fixture_forms=FIXTURE)
+                self.assertEqual(outcome['status'], 'origin_observed')
+                self.assertTrue(outcome['markerFixtureModel'].endswith(path))
+                self.assertFalse(outcome['installedAssetWinnerVerified'])
+                self.assertEqual(verify(data, expect=marker)['status'], 'unadmitted_fixture')
+                with self.assertRaisesRegex(ValueError, 'admitted plugin'):
+                    verify(data, expect=marker, fixture_forms=(0x0C000801, 0x0C000800))
+                row.update(item=ITEM, addon=ADDON)
+                self.assertEqual(verify(data, expect=marker, fixture_forms=FIXTURE)['status'], 'wrong_fixture_route')
+
+    def test_v7_null_fixture_preserves_stock_and_refuses_partial_or_mixed_forms(self):
+        data = capture(SCHEMA)
+        self.assertTrue(verify(data, expect='M1')['modelOriginVerified'])
+        for invalid in ({'item': FIXTURE[0]}, {'item': FIXTURE[0], 'addon': ADDON}):
+            data['sample']['playerBody32Fixture'] = invalid
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(ValueError, 'fixture'):
+                verify(data)
+        data['sample']['playerBody32Fixture'] = dict(zip(('item', 'addon'), FIXTURE, strict=True))
+        row = data['sample']['views']['firstPerson']['active'][0]
+        row.update(item=FIXTURE[0])
+        with self.assertRaisesRegex(ValueError, 'foreign item or addon'):
+            verify(data, fixture_forms=FIXTURE)
+        row.update(addon=FIXTURE[1])
+        self.assertEqual(verify(data, fixture_forms=FIXTURE)['status'], 'wrong_fixture_route')
 
     def test_aliased_roots_and_clones_do_not_prove_distinct_views(self):
         data = capture()

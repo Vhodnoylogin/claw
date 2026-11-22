@@ -39,7 +39,7 @@ not establish rendered geometry, continuous attachment or applied physics.
 
 ## Loaded Body32 origin
 
-Use `CaptureDispatch(nonce)` to add the schema 6 marker observation. The
+Use `CaptureDispatch(nonce)` to add the schema 7 marker observation. The
 original `Capture(nonce)` returns schema 4. `Read(nonce)` preserves the
 requested mode. The marker capture adds the runtime handle, actor-base sex
 and readable weight, and a native QPC interval for the same task.
@@ -58,7 +58,20 @@ Use the detached marker assets only in an admitted test. In the retained
 fixture, `M0/M1` and `F0/F1` label the four namespaced NIFs. `H_M0` labels
 the older male legacy-path fixture. The four new markers identify the
 fixed-profile legacy-path candidates by sex and by static or FSMP binding.
-The verifier also reads schema 5 captures with the original five positions.
+Schema 7 recognizes the private player armor pair from `test_CLAW - VR Player Body32.esp`.
+The marker names `P_M` and `P_F` identify its two authored models. The capture
+resolves the exact two local forms before each scan, checks that the armor links
+to the addon, and reports their runtime IDs in `playerBody32Fixture`. The verifier
+requires separately observed fixture IDs before claiming its model origin:
+
+```text
+python src/test/components/vr-body/verify_dispatch_markers.py CAPTURE.json --view thirdPerson --pid PID --nonce NONCE --epoch EPOCH --fixture-forms ITEM ADDON --expect P_M
+```
+
+Use `P_F` for a female trial. Remove the armor and take a separate stock-route
+sample after the trial. Compare the installed winners to the staged archive in
+the same run. The marker reader also accepts historical schema 5 and 6 captures
+with their original widths.
 Confirm the actual installed winner bytes and the effective
 armor record alongside each process-owned capture. Review the
 requested active slot with the verifier in `src/test/components/vr-body`:

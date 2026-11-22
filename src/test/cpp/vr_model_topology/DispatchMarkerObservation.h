@@ -2,16 +2,29 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
+#include <optional>
 #include <string_view>
 
 namespace claw::vr_diagnostic {
-inline constexpr std::array<std::string_view, 9> dispatchMarkerNames{
+inline constexpr std::array<std::string_view, 11> dispatchMarkerNames{
     "CLAW_VR_DISPATCH_PROBE_M0", "CLAW_VR_DISPATCH_PROBE_M1",
     "CLAW_VR_DISPATCH_PROBE_F0", "CLAW_VR_DISPATCH_PROBE_F1",
     "CLAW_VR_DISPATCH_PROBE_H_M0",
     "CLAW_VR_DISPATCH_PROBE_H_M_STATIC", "CLAW_VR_DISPATCH_PROBE_H_F_STATIC",
-    "CLAW_VR_DISPATCH_PROBE_H_M_FSMP", "CLAW_VR_DISPATCH_PROBE_H_F_FSMP"
+    "CLAW_VR_DISPATCH_PROBE_H_M_FSMP", "CLAW_VR_DISPATCH_PROBE_H_F_FSMP",
+    "CLAW_VR_DISPATCH_PROBE_P_M", "CLAW_VR_DISPATCH_PROBE_P_F"
 };
+
+struct Body32Forms {
+    std::uint32_t item{}, addon{};
+    bool operator==(const Body32Forms&) const = default;
+};
+
+constexpr bool approvedBody32Forms(Body32Forms current, const std::optional<Body32Forms>& fixture) {
+    return current == Body32Forms{0xCDD86, 0xCDD87} ||
+           (fixture && fixture->item && fixture->addon && current == *fixture);
+}
 
 template<class Object>
 struct DispatchMarkers {

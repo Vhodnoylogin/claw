@@ -8,10 +8,13 @@ from pathlib import Path
 
 
 SCHEMA_V5 = 'claw-vr-model-topology/5'
-SCHEMA = 'claw-vr-model-topology/6'
+SCHEMA_V6 = 'claw-vr-model-topology/6'
+SCHEMA = 'claw-vr-model-topology/7'
 V5_TOKENS = ('M0', 'M1', 'F0', 'F1', 'H_M0')
-TOKENS = (*V5_TOKENS, 'H_M_STATIC', 'H_F_STATIC', 'H_M_FSMP', 'H_F_FSMP')
-SCHEMA_TOKENS = {SCHEMA_V5: V5_TOKENS, SCHEMA: TOKENS}
+V6_TOKENS = (*V5_TOKENS, 'H_M_STATIC', 'H_F_STATIC', 'H_M_FSMP', 'H_F_FSMP')
+PLAYER_TOKENS = ('P_M', 'P_F')
+TOKENS = (*V6_TOKENS, *PLAYER_TOKENS)
+SCHEMA_TOKENS = {SCHEMA_V5: V5_TOKENS, SCHEMA_V6: V6_TOKENS, SCHEMA: TOKENS}
 VIEWS = ('thirdPerson', 'firstPerson')
 BANKS = ('active', 'buffered')
 ROUTES = tuple((view, bank) for view in VIEWS for bank in BANKS)
@@ -19,7 +22,7 @@ BODY = 2
 ITEM, ADDON, RACE = 0xCDD86, 0xCDD87, 0xCDD84
 EARLY = {'unloaded', 'foreign_slot', 'detached'}
 COMPLETE = {'unmarked', 'ambiguous', 'marked'}
-MARKER_SEX = dict(zip(TOKENS, (0, 0, 1, 1, 0, 0, 1, 0, 1), strict=True))
+MARKER_SEX = dict(zip(TOKENS, (0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1), strict=True))
 
 
 def require(condition, message):
@@ -54,10 +57,28 @@ def origin(token):
     if token.startswith('H_'):
         return r'Meshes\Actors\character\character assets\1stperson_werewolf_hands.nif'
     sex = 'male' if MARKER_SEX[token] == 0 else 'female'
-    return f'Meshes\\Actors\\WerewolfBeast\\CLAW\\FirstPerson\\{sex}\\Body_{token[-1]}.nif'
+    endpoint = '1' if token in PLAYER_TOKENS else token[-1]
+    return f'Meshes\\Actors\\WerewolfBeast\\CLAW\\FirstPerson\\{sex}\\Body_{endpoint}.nif'
 
 
-def read_row(row, sample_view, root, view, bank, ids, tokens):
+def player_fixture(sample, schema, expected):
+    if schema != SCHEMA:
+        require(expected is None, 'Expected schema 7 for fixture forms')
+        return None
+    require('playerBody32Fixture' in sample, 'Expected fixture identity or explicit null')
+    fixture = sample['playerBody32Fixture']
+    pair = None
+    if fixture is not None:
+        require(type(fixture) is dict and set(fixture) == {'item', 'addon'}, 'Invalid fixture form pair')
+        pair = tuple(integer(fixture[key], 'fixture ' + key, 1) for key in ('item', 'addon'))
+        item, addon = pair
+        require(0 < item >> 24 < 0xfe and addon == item - 1 and item & 0xFFFFFF == 0x801,
+                'Invalid fixture plugin index or local forms')
+    require(expected is None or pair == expected, 'Fixture form IDs do not match the admitted plugin')
+    return pair
+
+
+def read_row(row, sample_view, root, view, bank, ids, tokens, fixture):
     row = object_value(row, 'marker row')
     require((row.get('view'), row.get('bank')) == (view, bank) and
             integer(row.get('slot'), 'marker slot', high=41) == BODY, 'Unexpected marker row route or slot')
@@ -77,7 +98,7 @@ def read_row(row, sample_view, root, view, bank, ids, tokens):
     require(not clone or sample_view['available'], 'Clone exists under unavailable biped')
     require(status not in EARLY or total == 0, 'Unscanned marker row carries counts')
     if status not in {'unloaded', 'foreign_slot'}:
-        require((item, addon) == (ITEM, ADDON), 'Marker walk used a foreign item or addon')
+        require((item, addon) in ((ITEM, ADDON), fixture), 'Marker walk used a foreign item or addon')
         require(root or status == 'detached', 'Marker walk lacks the requested actor root')
     if status in COMPLETE:
         expected = 'marked' if total == 1 else 'ambiguous' if total else 'unmarked'
@@ -87,17 +108,18 @@ def read_row(row, sample_view, root, view, bank, ids, tokens):
                 classification=status, markers=markers, reportedModelPath=reported_model)
 
 
-def verify_dispatch_markers(observation, *, view, pid, nonce, epoch, expect=None):
+def verify_dispatch_markers(observation, *, view, pid, nonce, epoch, expect=None, fixture_forms=None):
     observation = object_value(observation, 'capture')
     schema = observation.get('schema')
     require(isinstance(schema, str) and schema in SCHEMA_TOKENS and observation.get('status') == 'ready',
-            'Expected a ready native VR topology /5 or /6 capture')
+            'Expected a ready native VR topology /5, /6 or /7 capture')
     tokens = SCHEMA_TOKENS[schema]
     require(view in VIEWS and (expect is None or expect in tokens), 'Invalid requested view or marker for capture schema')
     for name, expected, limit in (('pid', pid, 0xFFFFFFFF), ('nonce', nonce, 0x7FFFFFFF), ('epoch', epoch, 2**64 - 1)):
         require(integer(observation.get(name), name, 1, limit) == integer(expected, f'expected {name}', 1, limit),
                 f'Capture {name} differs from requested observation')
     sample = object_value(observation.get('sample'), 'topology sample')
+    fixture = player_fixture(sample, schema, fixture_forms)
     require(integer(sample.get('actor'), 'actor') == 0x14 and integer(sample.get('race'), 'race') == RACE,
             'Expected the wolf player')
     integer(sample.get('base'), 'actor base', 1)
@@ -124,7 +146,7 @@ def verify_dispatch_markers(observation, *, view, pid, nonce, epoch, expect=None
         root = alias(roots.get(route), ids, 'actor root')
         sample_view = object_value(views.get(route), 'topology view')
         require(type(sample_view.get('available')) is bool, 'Invalid biped availability')
-        row = read_row(observations[index], sample_view, root, route, bank, ids, tokens)
+        row = read_row(observations[index], sample_view, root, route, bank, ids, tokens, fixture)
         rows[route, bank] = row
         if row['classification'] in COMPLETE:
             counts = complete_counts.setdefault(row['clone'], row['markers'])
@@ -137,7 +159,12 @@ def verify_dispatch_markers(observation, *, view, pid, nonce, epoch, expect=None
     marker = None
     if status == 'marked':
         marker = next(iter(chosen['markers']))
-        if MARKER_SEX[marker] != sex:
+        fixture_route = (chosen['item'], chosen['addon']) == fixture
+        if fixture_route != (marker in PLAYER_TOKENS):
+            status = 'wrong_fixture_route'
+        elif fixture_route and fixture_forms is None:
+            status = 'unadmitted_fixture'
+        elif MARKER_SEX[marker] != sex:
             status = 'wrong_sex'
         elif (chosen['actorRoot'] in (other['actorRoot'], other['clone'])
               or chosen['clone'] in (other['clone'], other['actorRoot'], chosen['actorRoot'])):
@@ -162,18 +189,20 @@ def unique_json_object(pairs):
 
 def main():
     parser = ArgumentParser(description=__doc__)
-    parser.add_argument('capture', type=Path, help='One admitted CaptureDispatch /5 or /6 JSON reply')
+    parser.add_argument('capture', type=Path, help='One admitted CaptureDispatch /5, /6 or /7 JSON reply')
     parser.add_argument('--view', required=True, choices=VIEWS)
     parser.add_argument('--pid', type=int, required=True)
     parser.add_argument('--nonce', type=int, required=True)
     parser.add_argument('--epoch', type=int, required=True)
     parser.add_argument('--expect', choices=TOKENS, help='Optional exact fixture marker token')
+    parser.add_argument('--fixture-forms', nargs=2, type=lambda value: int(value, 0), metavar=('ITEM', 'ADDON'),
+                        help='Independently observed active fixture form IDs from the run load order')
     args = parser.parse_args()
     try:
         payload = args.capture.read_bytes()
         capture = json.loads(payload, object_pairs_hook=unique_json_object)
         result = verify_dispatch_markers(capture, view=args.view, pid=args.pid, nonce=args.nonce, epoch=args.epoch,
-                                         expect=args.expect)
+                                         expect=args.expect, fixture_forms=tuple(args.fixture_forms) if args.fixture_forms else None)
     except (OSError, ValueError) as error:
         parser.error(str(error))
     result['captureSha256'] = sha256(payload).hexdigest()

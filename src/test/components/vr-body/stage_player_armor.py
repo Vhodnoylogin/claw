@@ -3,16 +3,19 @@ from __future__ import annotations
 
 from argparse import ArgumentParser
 from contextlib import closing
+from hashlib import sha256 as digest
 import json
 from pathlib import Path
 import sys
+from tempfile import TemporaryDirectory
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / 'src/main/components/vr-body'))
-from vr_dispatch import BASE, SEXES, armor_path, assemble
+from vr_dispatch import BASE, SEXES, armor_path, assemble, resource_layout
 from body_resource import safe_output, sha256
 from engine_audit import RACE, arma_summary, slot_summary
 from plugin import Spriggit, WRAPPER
 from record_reader import FormKey, PluginFile
+from stage_world_motion_markers import PLAYER_ARMOR_MARKERS, add_marker
 
 
 PLUGIN = 'test_CLAW - VR Player Body32.esp'
@@ -93,6 +96,30 @@ WorldModel:
             f'FormKey: {local_key}:{PLUGIN}\nEditorID: {editor}\n' + payload, encoding='utf-8')
 
 
+def stage_marked_resources(candidate, staging):
+    candidate = candidate.resolve(strict=True)
+    manifest_path = candidate / 'install-manifest.json'
+    manifest_bytes = manifest_path.read_bytes()
+    manifest = json.loads(manifest_bytes)
+    original = dict(resource_layout(manifest))
+    staged = {}
+    for relative, expected in original.items():
+        path = candidate / 'resources' / relative
+        if path.resolve(strict=True) != path:
+            raise ValueError('Expected an ordinary source resource: ' + relative)
+        data = path.read_bytes()
+        if digest(data).hexdigest() != expected:
+            raise ValueError('Body resource differs from its source manifest: ' + relative)
+        if path.suffix == '.nif':
+            data = add_marker(data, PLAYER_ARMOR_MARKERS[path.parent.name])
+        target = staging / 'resources' / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+        staged[relative] = digest(data).hexdigest()
+    (staging / manifest_path.name).write_text(json.dumps(manifest | {'files': staged}, sort_keys=True), encoding='utf-8')
+    return {'manifestSha256': digest(manifest_bytes).hexdigest(), 'payloadSha256': original}
+
+
 def build(body, output, compiler=WRAPPER):
     output = safe_output(output, [body, BASE])
     source = output / 'sources'
@@ -100,8 +127,12 @@ def build(body, output, compiler=WRAPPER):
     esp = output / PLUGIN
     Spriggit(compiler).build(source, esp)
     records = verify_record(esp)
-    report = {'schema': 'claw-vr-player-body32-outfit/1', **records,
-              **assemble(esp, body, output / (esp.stem + '.zip')),
+    with TemporaryDirectory(prefix='marked-resources-', dir=output) as scratch:
+        staging = Path(scratch)
+        inputs = stage_marked_resources(body, staging)
+        archive = assemble(esp, staging, output / (esp.stem + '.zip'))
+    report = {'schema': 'claw-vr-player-body32-outfit/2', **records, **archive,
+              'sourceResources': inputs, 'markers': PLAYER_ARMOR_MARKERS,
               'runtimeQualified': False}
     (output / 'player-body32.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
     return report

@@ -51,6 +51,30 @@ void fixedProfileMotionMarkers() {
     }
 }
 
+void playerBody32Fixture() {
+    static_assert(dispatchMarkerNames[9] == "CLAW_VR_DISPATCH_PROBE_P_M");
+    static_assert(dispatchMarkerNames[10] == "CLAW_VR_DISPATCH_PROBE_P_F");
+    constexpr Body32Forms legacy{0xCDD86, 0xCDD87};
+    constexpr Body32Forms fixture{0x17000801, 0x17000800};
+    static_assert(approvedBody32Forms(legacy, std::nullopt));
+    static_assert(approvedBody32Forms(legacy, fixture));
+    static_assert(approvedBody32Forms(fixture, fixture));
+    static_assert(!approvedBody32Forms(fixture, std::nullopt));
+    static_assert(!approvedBody32Forms({fixture.item, legacy.addon}, fixture));
+    static_assert(!approvedBody32Forms({legacy.item, fixture.addon}, fixture));
+    static_assert(!approvedBody32Forms({0x18000801, 0x18000800}, fixture));
+    static_assert(!approvedBody32Forms({fixture.addon, fixture.item}, fixture));
+    static_assert(!approvedBody32Forms({fixture.item, 0}, Body32Forms{fixture.item, 0}));
+    static_assert(!approvedBody32Forms({0, fixture.addon}, Body32Forms{0, fixture.addon}));
+
+    Node root, male, female;
+    DispatchMarkers<Node> markers;
+    markers.record(9, &male, &root, true);
+    assert(markers.counts[9] == 1 && markers.classify(true) == "marked");
+    markers.record(10, &female, &root, true);
+    assert(markers.counts[10] == 1 && markers.classify(true) == "ambiguous");
+}
+
 void reciprocalGraphMembership() {
     Node player, other, clone, marker;
     const auto linked = [](const Node& parent, const Node* child) {
@@ -72,6 +96,7 @@ void reciprocalGraphMembership() {
 int main() {
     markerClassification();
     fixedProfileMotionMarkers();
+    playerBody32Fixture();
     reciprocalGraphMembership();
     std::cout << "VR dispatch marker evidence contracts passed\n";
 }
