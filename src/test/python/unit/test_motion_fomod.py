@@ -56,7 +56,10 @@ class MotionFomodTests(unittest.TestCase):
                      for sex in ('male', 'female') for weight in (0, 1)}
         skeleton = self.f.write('target/motion-input/skeleton.nif', b'Synthetic pinned XP32 input, not an actual skeleton')
         resources['skeleton'] = self.pin(skeleton)
-        sources = [self.pin(self.f.root / name) for name in sorted(self.package.MOTION_SOURCES)]
+        # A legitimate builder can live in a separate checkout with identical rig source.
+        rig_source = self.package.FSMP_RIG_SOURCE.as_posix()
+        sources = [self.pin((ROOT if name == rig_source else self.f.root) / name)
+                   for name in sorted(self.package.MOTION_SOURCES)]
         result = {}
         for provider in ('cbpc', 'fsmp'):
             folder = self.f.root / ('target/motion-' + provider)
@@ -194,6 +197,36 @@ class MotionFomodTests(unittest.TestCase):
                 self.mutate_report('fsmp', lambda r: next(v for v in r['files'] if v['path'] == name).update(bytes=len(data), sha256=self.package.sha(data)))
                 with self.assertRaisesRegex(ValueError, 'FSMP motion system|motion scope'): self.package.build(**self.arguments())
         path.write_bytes(original)
+
+    def test_rehashed_invalid_motion_rig_is_rejected(self):
+        name = self.package.MOTION_XML + 'Female.xml'
+        path = self.receipts['fsmp'].parent / 'package' / name
+        original = path.read_bytes()
+        breast = 'NPC L Breast P1'
+        ear = 'NPC EarL [EarL]Bone01'
+        cases = (
+            ('opposite-breast-anchor', breast, lambda joint: joint.set('bodyA', 'NPC R PreBreast P1')),
+            ('wrong-breast-frame', breast, lambda joint: setattr(joint.find('frameInA'), 'tag', 'frameInB')),
+            ('self-constraint', ear, lambda joint: joint.set('bodyA', ear)),
+            ('cycle', ear, lambda joint: joint.set('bodyA', 'NPC EarL [EarL]Bone02')),
+            ('duplicate-damping', ear, lambda joint: joint.append(copy.deepcopy(joint.find('linearDamping')))),
+            ('nonfinite-damping', ear, lambda joint: joint.find('linearDamping').set('x', 'nan')),
+            ('overflow-damping', ear, lambda joint: joint.find('linearDamping').set('x', '1e39')),
+            ('invalid-damping-token', ear, lambda joint: joint.find('linearDamping').set('x', '1_0')),
+            ('reversed-linear-limits', ear, lambda joint: joint.find('linearLowerLimit').set('x', '1')),
+        )
+        for label, driver, change in cases:
+            with self.subTest(label=label):
+                parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+                root = ET.fromstring(original, parser=parser)
+                change(root.find(f"generic-constraint[@bodyB='{driver}']"))
+                ET.indent(root)
+                data = ET.tostring(root, encoding='utf-8', xml_declaration=True) + b'\n'
+                path.write_bytes(data)
+                self.mutate_report('fsmp', lambda report: next(row for row in report['files'] if row['path'] == name)
+                                   .update(bytes=len(data), sha256=self.package.sha(data)))
+                with self.assertRaisesRegex(ValueError, 'FSMP'):
+                    self.package.build(**self.arguments(output=label))
 
     def test_distinct_endpoints_keep_their_own_routes(self):
         self.f.write('target/bodies/femalebodywerewolf_1.nif', body_fixture('female', b'distinct-weight1'))

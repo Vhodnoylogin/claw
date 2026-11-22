@@ -1,11 +1,13 @@
 """Separate original FSMP motion XML and lossless hooks on cloned CLAW bodies."""
 from __future__ import annotations
 import argparse
+from functools import cache
 import hashlib
 import json
 from pathlib import Path
 import struct
 import sys
+from types import ModuleType
 import xml.etree.ElementTree as ET
 
 import motion_adapter as common
@@ -40,11 +42,20 @@ MATERIAL_SOURCE = TOOLS / "player_only_materials.py"
 if Path(materials.__file__).resolve() != MATERIAL_SOURCE.resolve():
     raise ValueError("A different PlayerOnly material adapter is already loaded")
 MATERIAL_SOURCE_BYTES = MATERIAL_SOURCE.read_bytes()
+RIG_SOURCE = Path(__file__).with_name("fsmp_rig.py").resolve()
 
 HOOK = "HDT Skinned Mesh Physics Object"
 MESH = "Meshes/Actors/WerewolfBeast/Character Assets/"
 XML_ROOT = "SKSE/Plugins/hdtSkinnedMeshConfigs/CLAW/"
 SOURCE = "https://github.com/DaymareOn/hdtSMP64/blob/e52ad960048c14e637d14fcbd65314ca017fc3b8/src/"
+
+
+@cache
+def _load_rig():
+    payload = RIG_SOURCE.read_bytes()
+    rig = ModuleType("claw_fsmp_rig")
+    exec(compile(payload, str(RIG_SOURCE), "exec"), rig.__dict__)
+    return rig, payload
 
 
 def body_paths(role):
@@ -90,18 +101,14 @@ def bind_nif(payload, xml_path):
 
 def render_xml(breast=False):
     """Original small-motion parameters using inspected FSMP parser names."""
-    chains = [("NPC Head [Head]", common.source.NODES[:2]),
-              ("NPC Head [Head]", common.source.NODES[2:4]),
-              ("Tails", common.source.NODES[4:])]
-    if breast:
-        chains += [("NPC L PreBreast P1", (common.source.BREAST_NODES[0],)),
-                   ("NPC R PreBreast P1", (common.source.BREAST_NODES[1],))]
+    rig, _ = _load_rig()
+    chains = rig.core_chains(common.source.NODES, common.source.BREAST_NODES if breast else ())
     root = ET.Element("system")
     root.append(ET.Comment(" Original CLAW motion-only adapter; no collision shapes or shared settings. "))
-    for anchor in dict.fromkeys(anchor for anchor, _ in chains):
+    for anchor in dict.fromkeys(anchor for anchor, _, _ in chains):
         bone = ET.SubElement(root, "bone", name=anchor)
         ET.SubElement(bone, "mass").text = "0"
-    for anchor, chain in chains:
+    for anchor, chain, frame in chains:
         parent = anchor
         for node in chain:
             bone = ET.SubElement(root, "bone", name=node)
@@ -114,7 +121,7 @@ def render_xml(breast=False):
             # A single P1 body needs its attachment at the PreBreast pivot,
             # rather than at its own center of mass. Chain links retain their
             # original frames; intermediary CME nodes remain untouched.
-            ET.SubElement(constraint, "frameInA" if node in common.source.BREAST_NODES else "frameInB")
+            ET.SubElement(constraint, frame)
             for name, value in (("linearLowerLimit", "-.15"), ("linearUpperLimit", ".15"),
                                 ("angularLowerLimit", "-.01"), ("angularUpperLimit", ".01"),
                                 ("linearStiffness", "1"), ("angularStiffness", ".5"),
@@ -124,11 +131,7 @@ def render_xml(breast=False):
             parent = node
     ET.indent(root)
     payload = ET.tostring(root, encoding="utf-8", xml_declaration=True) + b"\n"
-    parsed = ET.fromstring(payload)
-    dynamic = {bone.attrib["name"] for bone in parsed.findall("bone") if bone.findtext("mass") != "0"}
-    expected = set(common.source.NODES + (common.source.BREAST_NODES if breast else ()))
-    if dynamic != expected or len(parsed.findall("generic-constraint")) != len(expected):
-        raise ValueError("Incomplete FSMP driver/constraint graph")
+    rig.validate_core(payload, chains)
     return payload
 
 
@@ -154,8 +157,11 @@ def build_adapter(out, provider_snapshot, resources, pynifly, *, breast=False, a
     coverage = common.inspect_resources(api, resources, breast)
     if MATERIAL_SOURCE.read_bytes() != MATERIAL_SOURCE_BYTES:
         raise ValueError("PlayerOnly material adapter source changed since loading")
+    _, rig_source_bytes = _load_rig()
+    if RIG_SOURCE.read_bytes() != rig_source_bytes:
+        raise ValueError("FSMP rig adapter source changed since loading")
     sources = [common.pin(Path(__file__)), common.pin(Path(common.__file__)), *helper_source_pins(),
-               common.pin(MATERIAL_SOURCE),
+               common.pin(MATERIAL_SOURCE), common.pin(RIG_SOURCE),
                common.pin(common.ROOT / "motion-adapters.md")]
     files = {}
     for sex in ("male", "female"):

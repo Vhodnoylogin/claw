@@ -8,7 +8,6 @@ import copy
 import hashlib
 import importlib.util
 import json
-import math
 from pathlib import Path
 import struct
 import sys
@@ -29,111 +28,13 @@ FROZEN = {
 }
 MOTION_HASHES = {False: 'b42bfa436a4e53baa48ff2249d4659718603798dabdb1e6b9427dc37efa0ea34',
                  True: '8d3a1fd08901e0ef2a9a2defe34548ba0cf4112f352778c27832a4f85a697a35'}
-VECTORS = {'inertia', 'linearLowerLimit', 'linearUpperLimit', 'angularLowerLimit',
-           'angularUpperLimit', 'linearStiffness', 'angularStiffness', 'linearDamping',
-           'angularDamping', 'linearEquilibrium', 'angularEquilibrium'}
-BONE = {'mass', 'inertia', 'linearDamping', 'angularDamping', 'gravity-factor', 'wind-factor'}
-JOINT = VECTORS-{'inertia'} | {'frameInA', 'frameInB', 'useLinearReferenceFrameA'}
+PHYSICS = REPO / "src/main/python/physics"
+sys.path.insert(0, str(PHYSICS))
+from fsmp_rig import inspect_xml, signature
 
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
-
-
-def signature(node):
-    """Authored identities, parameter tokens and nesting, excluding formatting."""
-    return node.tag, tuple(sorted(node.attrib.items())), (node.text or '').strip(), tuple(signature(x) for x in node)
-
-
-def _finite(value):
-    try:
-        number = float(value)
-    except (TypeError, ValueError) as error:
-        raise ValueError('Finite explicit numeric parameter required') from error
-    if not math.isfinite(number):
-        raise ValueError('Finite explicit numeric parameter required')
-    return number
-
-
-def _properties(node, allowed):
-    seen = set()
-    for item in node:
-        if item.tag not in allowed or item.tag in seen:
-            raise ValueError('Unknown or duplicate motion parameter: '+str(item.tag))
-        if (item.tail or '').strip(): raise ValueError('Unexpected motion parameter text')
-        seen.add(item.tag)
-        if item.tag in ('frameInA', 'frameInB'):
-            if item.attrib or (item.text or '').strip():
-                raise ValueError('Only original explicit or identity frames admitted')
-            if len(item):
-                if [x.tag for x in item] != ['basis', 'origin']:
-                    raise ValueError('Unknown frame layout')
-                for part, keys in zip(item, ({'x','y','z','w'}, {'x','y','z'})):
-                    if set(part.attrib) != keys or len(part) or (part.text or '').strip():
-                        raise ValueError('Unknown frame parameter')
-                    for value in part.attrib.values(): _finite(value)
-        elif item.tag == 'useLinearReferenceFrameA':
-            if item.attrib or len(item) or (item.text or '').strip() not in ('true', 'false'):
-                raise ValueError('Explicit reference-frame boolean required')
-        elif item.attrib:
-            if item.tag not in VECTORS or set(item.attrib) != {'x','y','z'} or len(item) or (item.text or '').strip():
-                raise ValueError('Unknown vector parameter')
-            for value in item.attrib.values(): _finite(value)
-        else:
-            if len(item): raise ValueError('Unexpected nested motion parameter')
-            if item.tag == 'inertia' or node.tag == 'generic-constraint':
-                raise ValueError('Explicit three-axis parameter required')
-            _finite(item.text)
-    return seen
-
-
-def inspect_xml(payload, drivers, anchors):
-    """Bounded motion-only graph; reject implicit bodies, collisions and globals."""
-    if len(drivers) != len(set(drivers)) or len(anchors) != len(set(anchors)) or set(drivers) & set(anchors):
-        raise ValueError('Unique disjoint driver and anchor catalogs required')
-    if not isinstance(payload, bytes) or len(payload) > 100000 or any(x in payload.upper() for x in (b'<!DOCTYPE', b'<!ENTITY')):
-        raise ValueError('Bounded XML without DTD/entities required')
-    try:
-        root = ET.fromstring(payload)
-    except ET.ParseError as error:
-        raise ValueError('Malformed motion XML') from error
-    if root.tag != 'system' or root.attrib or (root.text or '').strip():
-        raise ValueError('Only an original local motion system is admitted')
-    bones, dynamic, static, incoming, folded = {}, set(), set(), {}, set()
-    for item in root:
-        if (item.tail or '').strip(): raise ValueError('Unexpected motion text')
-        if item.tag == 'bone':
-            name = item.get('name')
-            if set(item.attrib) != {'name'} or not name or name.casefold() in folded or (item.text or '').strip():
-                raise ValueError('Missing or duplicate bone identity')
-            folded.add(name.casefold())
-            props = _properties(item, BONE)
-            if 'mass' not in props: raise ValueError('Missing explicit bone mass')
-            mass = _finite(item.findtext('mass'))
-            if mass < 0: raise ValueError('Negative bone mass')
-            (dynamic if mass > 0 else static).add(name)
-            bones[name] = item
-        elif item.tag == 'generic-constraint':
-            if set(item.attrib) != {'bodyA','bodyB'} or (item.text or '').strip():
-                raise ValueError('Only explicit local body constraints admitted')
-            a, b = item.get('bodyA'), item.get('bodyB')
-            if a not in bones or b not in bones or a == b or b not in dynamic or b in incoming:
-                raise ValueError('Duplicate, missing or not-yet-declared constraint driver')
-            props = _properties(item, JOINT)
-            if len(props & {'frameInA','frameInB'}) != 1 or not VECTORS-{'inertia'} <= props:
-                raise ValueError('Complete original constraint parameters required')
-            incoming[b] = a
-        else:
-            raise ValueError('Unknown/global/collision XML record: '+str(item.tag))
-    if dynamic != set(drivers) or static != set(anchors) or set(incoming) != dynamic:
-        raise ValueError('Missing or unexpected dynamic drivers/anchors')
-    for name in dynamic:
-        visited = set()
-        while name in incoming:
-            if name in visited: raise ValueError('Cyclic constraint graph')
-            visited.add(name); name = incoming[name]
-        if name not in static: raise ValueError('Constraint chain lacks an explicit anchor')
-    return root, bones
 
 
 def compose_xml(motion, anatomy, motion_drivers, anatomy_drivers, motion_anchors, anatomy_anchors):

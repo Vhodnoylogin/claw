@@ -28,6 +28,7 @@ from pathlib import Path, PurePosixPath
 import re
 import subprocess
 import struct
+from types import ModuleType
 import xml.etree.ElementTree as ET
 import zipfile
 
@@ -43,6 +44,7 @@ MODEL_SWAP_SOURCE = "src/main/resources/compatibility/" + MODEL_SWAP_OVERRIDE
 MESH = "Meshes/Actors/WerewolfBeast/Character Assets"
 MOTION_PREFIX = "40 Motion/"
 MOTION_XML = "SKSE/Plugins/hdtSkinnedMeshConfigs/CLAW/CLAWMotion"
+FSMP_RIG_SOURCE = Path("src/main/python/physics/fsmp_rig.py")
 CBPC_FILES = {"SKSE/Plugins/" + prefix + suffix + ".txt"
               for prefix in ("CBPCMasterConfig_", "CBPConfig_") for suffix in ("CLAWMotion", "CLAWBreastMotion")}
 FSMP_FILES = {MOTION_XML + sex + ".xml" for sex in ("Male", "Female")} | {
@@ -68,7 +70,7 @@ HOST_SOURCES = {"src/main/papyrus/obody/CLAWOBodySourceHost.psc",
                 "src/main/python/physics/wiring.py"}
 MOTION_SOURCES = {"src/main/python/physics/" + name for name in
                   ("motion_adapter.py", "fsmp_motion.py", "build.py", "current_model.py", "recipe.json",
-                   "capsules.json", "breast-motion.json", "motion-adapters.md")}
+                   "capsules.json", "breast-motion.json", "motion-adapters.md")} | {FSMP_RIG_SOURCE.as_posix()}
 
 
 def sha(data):
@@ -405,24 +407,21 @@ def _motion_payload(inputs, receipt_path, provider, core_inputs, core_bodies, ma
             paths = [MESH + '/' + sex + route + '_' + weight + '.nif' for route in ('bodywerewolf', 'PlayerWerewolf')]
             if files[paths[0]] != files[paths[1]]: raise ValueError('FSMP armor routes differ')
             _check_motion_nif(materials, core, files[paths[0]], sex)
+        rig_path = ROOT / FSMP_RIG_SOURCE
+        rig_bytes = inputs.read(rig_path)
+        if not any(Path(row['path']).parts[-len(FSMP_RIG_SOURCE.parts):] == FSMP_RIG_SOURCE.parts
+                   and inputs.read(row['path']) == rig_bytes for row in sources):
+            raise ValueError('FSMP motion system requires identical builder and package rig source')
+        rig = ModuleType('claw_fsmp_rig')
+        exec(compile(rig_bytes, str(rig_path), 'exec'), rig.__dict__)
+        recipes = ROOT / 'src/main/python/physics'
+        nodes = tuple(node for group in json.loads(inputs.read(recipes / 'recipe.json'))['groups']
+                      for node in group['nodes'])
+        breast_nodes = tuple(node for group in json.loads(inputs.read(recipes / 'breast-motion.json'))['groups']
+                             for node in group['nodes'])
         for sex in ('Male', 'Female'):
-            root = ET.fromstring(files[MOTION_XML + sex + '.xml'])
-            if root.tag != 'system' or root.attrib or any(row.tag not in {'bone', 'generic-constraint'} for row in root):
-                raise ValueError('Expected a complete FSMP motion system')
-            recipe = json.loads(inputs.read(ROOT / 'src/main/python/physics/recipe.json'))
-            drivers = {node for group in recipe['groups'] for node in group['nodes']}
-            anchors = {'NPC Head [Head]', 'Tails'}
-            if sex == 'Female':
-                recipe = json.loads(inputs.read(ROOT / 'src/main/python/physics/breast-motion.json'))
-                drivers.update(node for group in recipe['groups'] for node in group['nodes'])
-                anchors.update({'NPC L PreBreast P1', 'NPC R PreBreast P1'})
-            bones, constraints = root.findall('bone'), root.findall('generic-constraint')
-            if ({row.get('name') for row in bones} != drivers | anchors or len(bones) != len(drivers | anchors) or
-                    any(set(row.attrib) != {'name'} or not math.isfinite(float(row.findtext('mass', 'nan'))) or
-                        (float(row.findtext('mass')) <= 0 if row.get('name') in drivers else float(row.findtext('mass')) != 0) for row in bones) or
-                    len(constraints) != len(drivers) or {row.get('bodyB') for row in constraints} != drivers or
-                    any(set(row.attrib) != {'bodyA', 'bodyB'} or row.get('bodyA') not in drivers | anchors for row in constraints)):
-                raise ValueError('FSMP graph is not the declared ear/tail/female-P1 motion scope')
+            chains = rig.core_chains(nodes, breast_nodes if sex == 'Female' else ())
+            rig.validate_core(files[MOTION_XML + sex + '.xml'], chains)
     return files, {'provider': provider, 'receiptSha256': sha(payload), 'resources': resources,
                    'runtimeQualified': False, 'sharedTriSha256': {sex: sha(core_inputs[sex + 'Tri']) for sex in ('male', 'female')}}
 

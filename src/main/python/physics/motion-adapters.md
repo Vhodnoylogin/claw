@@ -107,7 +107,11 @@ restoring linear/angular springs and no collision shapes. Tail constraints
 connect existing driver nodes across unchanged CME wrappers. Ear/tail identity
 `frameInB` uses actual loaded rest transforms. The two single-body P1 joints use
 identity `frameInA`, attaching at the kinematic PreBreast origin instead of the
-dynamic body's center. The pinned skeleton has a one-unit P1 lever; this pivot
+dynamic body's center. Package validation checks each ordered parent, pivot,
+explicit parameter and bound independently of the receipt hashes. Male and
+female core XML use the same motion graph contract as the generator. The
+adult composer reuses the motion-only parser for its separate explicit frames.
+The pinned skeleton has a one-unit P1 lever; this pivot
 change is mechanical. Earlier isolated cases recorded female11 and authored
 male9 sampled response after observed
 Disable/unloaded/Enable root recreation, with the actual pulse fenced to the
