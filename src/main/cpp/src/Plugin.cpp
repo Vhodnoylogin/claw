@@ -43,6 +43,14 @@
 #include <set>
 #include <thread>
 #include <utility>
+#if defined(CLAW_TRACE_VR_POSE_ACK)
+#if !defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+#error VR pose ACK tracing requires the generated posed VR model.
+#endif
+#include <iomanip>
+#include <locale>
+#include <sstream>
+#endif
 
 #ifdef interface
 #undef interface
@@ -163,6 +171,18 @@ const claw::physics::Model& compiledPhysicsModel(bool female) {
 #endif
 }
 #endif
+#if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+struct PhysicsPoseSample {
+    std::vector<claw::physics::PoseAffine> world, worldToBone;
+    std::chrono::steady_clock::time_point captured;
+};
+#endif
+#if defined(CLAW_TRACE_VR_POSE_ACK)
+struct PhysicsPoseReceipt {
+    PhysicsPoseSample pose;
+    std::chrono::steady_clock::time_point computed, published;
+};
+#endif
 struct PhysicsBinding {
     RE::ActorHandle actor;
     RE::Actor* pointer{};
@@ -179,6 +199,9 @@ struct PhysicsBinding {
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
     std::vector<claw::physics::Capsule> capsules;
     bool needsFit{}, fitPending{};
+#endif
+#if defined(CLAW_TRACE_VR_POSE_ACK)
+    std::optional<PhysicsPoseReceipt> poseReceipt;
 #endif
 };
 std::map<RE::FormID, PhysicsBinding> physicsBindings;
@@ -248,10 +271,6 @@ struct PhysicsPoseGraph {
     bool operator==(const PhysicsPoseGraph&) const = default;
 };
 
-struct PhysicsPoseSample {
-    std::vector<claw::physics::PoseAffine> world, worldToBone;
-    std::chrono::steady_clock::time_point captured;
-};
 #endif
 struct PhysicsRootLease {
     claw::PhysicsOwner owner;
@@ -264,6 +283,7 @@ struct PhysicsRootLease {
 };
 // At most sixteen active/pending/cleanup contexts. No engine releases at DLL teardown.
 auto& physicsRoots = *new std::map<RE::FormID, PhysicsRootLease>();
+struct PhysicsFitWork;
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
 struct PhysicsFitWork {
     RE::FormID id{}; // Numeric routing token; no engine object crosses to worker.
@@ -277,6 +297,9 @@ struct PhysicsFitWork {
     std::uint32_t poseBaseSnapshot{};
 #if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
     std::optional<PhysicsPoseSample> pose;
+#endif
+#if defined(CLAW_TRACE_VR_POSE_ACK)
+    std::chrono::steady_clock::time_point computed{};
 #endif
 };
 std::mutex physicsWorkMutex;
@@ -720,7 +743,7 @@ void signalPhysicsSnapshot(RE::Actor* actor, const PhysicsBinding& binding) {
 }
 
 void publishPhysics(RE::Actor* actor, PhysicsBinding& binding, std::uint32_t poseBaseSnapshot = 0,
-        std::vector<std::int32_t> poseChangedSlots = {}) {
+        std::vector<std::int32_t> poseChangedSlots = {}, PhysicsFitWork* job = nullptr) {
     const auto state = states.find(actor->GetFormID());
     if (state == states.end() || !state->second.physicsAuthority.publishable(physicsOwner(state->second), binding.authorityRevision)) return;
     if (!requirePhysicsTargetModel(actor, binding)) return;
@@ -728,6 +751,19 @@ void publishPhysics(RE::Actor* actor, PhysicsBinding& binding, std::uint32_t pos
     binding.poseBaseSnapshot = poseBaseSnapshot;
     binding.poseChangedSlots = std::move(poseChangedSlots);
     binding.snapshot = nextPhysicsSnapshot++; binding.ready = true; binding.delivered = false;
+#if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+    const auto published = std::chrono::steady_clock::now();
+    if (job && job->pose && !poseBaseSnapshot) SKSE::log::info("CLAW posed VR snapshot {} actor {:08X} age {} us",
+        binding.snapshot, actor->GetFormID(), std::chrono::duration_cast<std::chrono::microseconds>(
+            published - job->pose->captured).count());
+#endif
+#if defined(CLAW_TRACE_VR_POSE_ACK)
+    binding.poseReceipt.reset();
+    if (job && job->pose)
+        binding.poseReceipt.emplace(PhysicsPoseReceipt{std::move(*job->pose), job->computed, published});
+#elif !defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+    (void)job;
+#endif
     signalPhysicsSnapshot(actor, binding);
 }
 
@@ -883,6 +919,9 @@ void startPhysicsWorker() {
                 }
 #endif
             } catch (const std::exception& failure) { error = failure.what(); }
+#if defined(CLAW_TRACE_VR_POSE_ACK)
+            job.computed = std::chrono::steady_clock::now();
+#endif
             if (stop.stop_requested()) return;
             tasks->AddTask([job = std::move(job), capsules = std::move(capsules), error = std::move(error)]() mutable {
                 std::lock_guard lock(mutex);
@@ -962,12 +1001,7 @@ void startPhysicsWorker() {
                 } else
 #endif
                 { binding.capsules = std::move(capsules); }
-                publishPhysics(actor, binding, job.poseBaseSnapshot, std::move(changed));
-#if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
-                if (job.pose && binding.ready && !job.poseBaseSnapshot) SKSE::log::info("CLAW posed VR snapshot {} actor {:08X} age {} us",
-                    binding.snapshot, job.id, std::chrono::duration_cast<std::chrono::microseconds>(
-                        std::chrono::steady_clock::now() - job.pose->captured).count());
-#endif
+                publishPhysics(actor, binding, job.poseBaseSnapshot, std::move(changed), &job);
             });
         }
     });
@@ -2442,9 +2476,109 @@ bool physicsRefitPending(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t 
         found->second.active && !found->second.ready && found->second.generation == generation &&
         found->second.snapshot == static_cast<std::uint32_t>(previousSnapshot) && found->second.condition.empty();
 }
+#if defined(CLAW_PHYSICS_MODEL_HEADER)
+std::array<float, 7> capsuleGeometry(const claw::physics::Capsule& cap) {
+    return {static_cast<float>(cap.p1[0]), static_cast<float>(cap.p1[1]), static_cast<float>(cap.p1[2]),
+        static_cast<float>(cap.p2[0]), static_cast<float>(cap.p2[1]), static_cast<float>(cap.p2[2]), static_cast<float>(cap.radius)};
+}
+#endif
+
+#if defined(CLAW_TRACE_VR_POSE_ACK)
+template <class NumberRange>
+void writePoseArray(std::ostream& out, const NumberRange& values) {
+    out << '[';
+    bool first = true;
+    for (const auto value : values) {
+        if (!first) out << ',';
+        first = false;
+        out << value;
+    }
+    out << ']';
+}
+
+std::string physicsPoseAckJson(RE::FormID actor, const PhysicsBinding& binding, const PhysicsPoseReceipt& receipt,
+        bool delta, std::chrono::steady_clock::time_point acknowledged) {
+    const auto micros = [](auto stamp) { return std::chrono::duration_cast<std::chrono::microseconds>(stamp.time_since_epoch()).count(); };
+    const auto& compiled = compiledPhysicsModel(binding.female);
+    const auto& support = claw::physics::CompiledVRPoseSupport(binding.female);
+    std::ostringstream out;
+    out.imbue(std::locale::classic());
+    out << std::setprecision(std::numeric_limits<double>::max_digits10) << std::boolalpha
+        << "{\"schema\":\"claw-posed-vr-ack/1\",\"actor\":" << actor << ",\"generation\":" << binding.generation
+        << ",\"world\":" << binding.world << ",\"registration\":" << binding.registration
+        << ",\"token\":" << binding.snapshot << ",\"previousToken\":" << binding.poseBaseSnapshot
+        << ",\"model\":" << claw::jsonString(binding.model) << ",\"female\":" << binding.female
+        << ",\"application\":\"" << (delta ? "delta" : "full") << '"'
+        << ",\"capturedUs\":" << micros(receipt.pose.captured) << ",\"computedUs\":" << micros(receipt.computed)
+        << ",\"publishedUs\":" << micros(receipt.published) << ",\"acknowledgedUs\":" << micros(acknowledged)
+        << ",\"weight\":" << binding.observation.publishedWeight << ",\"morphs\":[";
+    for (std::size_t i = 0; i < binding.names.size(); ++i) {
+        if (i) out << ',';
+        out << "{\"name\":" << claw::jsonString(binding.names[i]) << ",\"value\":" << binding.observation.published[i] << '}';
+    }
+    out << "],\"bones\":[";
+    for (std::size_t i = 0; i < support.bones.size(); ++i) {
+        if (i) out << ',';
+        out << "{\"name\":" << claw::jsonString(support.bones[i]) << ",\"world\":";
+        writePoseArray(out, receipt.pose.world[i]);
+        out << ",\"worldToBone\":";
+        writePoseArray(out, receipt.pose.worldToBone[i]);
+        out << '}';
+    }
+    std::vector<std::int32_t> active;
+    for (std::size_t i = 0; i < compiled.slots.size(); ++i)
+        if (compiled.slots[i].active) active.push_back(static_cast<std::int32_t>(i));
+    out << "],\"changedSlots\":";
+    writePoseArray(out, binding.poseBaseSnapshot ? binding.poseChangedSlots : active);
+    out << ",\"capsules\":[";
+    bool first = true;
+    for (const auto slot : delta ? binding.poseChangedSlots : active) {
+        const auto geometry = capsuleGeometry(binding.capsules[slot]);
+        if (!std::ranges::all_of(geometry, [](float value) { return std::isfinite(value); }) || geometry.back() <= 0)
+            throw std::invalid_argument("Invalid capsule request in pose acknowledgment");
+        if (!first) out << ',';
+        first = false;
+        // Same owned index range as the generated CLAWPhysicsData.ColliderIndex.
+        out << "{\"slot\":" << slot << ",\"colliderIndex\":" << (0x434C0000 + slot)
+            << ",\"node\":" << claw::jsonString(compiled.slots[slot].node) << ",\"geometry\":";
+        writePoseArray(out, geometry);
+        out << '}';
+    }
+    out << "]}";
+    return std::move(out).str();
+}
+#endif
+
+void acknowledgePhysicsSnapshot(RE::Actor* actor, std::int32_t generation, std::int32_t snapshot,
+        std::optional<bool> poseDelta = std::nullopt) {
+#if defined(CLAW_TRACE_VR_POSE_ACK)
+    std::string evidence;
+#endif
+    {
+        std::lock_guard lock(mutex);
+        if (!physicsSnapshot(actor, generation, snapshot)) return;
+        auto& binding = physicsBindings.at(actor->formID);
+        if (binding.delivered || (poseDelta.has_value() && !binding.poseBaseSnapshot)) return;
+        binding.delivered = true;
+#if defined(CLAW_TRACE_VR_POSE_ACK)
+        if (auto receipt = std::exchange(binding.poseReceipt, std::nullopt);
+                receipt && (poseDelta.has_value() || !binding.poseBaseSnapshot)) {
+            const auto acknowledged = std::chrono::steady_clock::now();
+            try { evidence = physicsPoseAckJson(actor->formID, binding, *receipt, poseDelta.value_or(false), acknowledged); }
+            catch (const std::exception& error) { SKSE::log::warn("CLAW pose ACK trace omitted: {}", error.what()); }
+        }
+#endif
+    }
+#if defined(CLAW_TRACE_VR_POSE_ACK)
+    if (!evidence.empty()) SKSE::log::info("CLAW posed VR ACK {}", evidence);
+#endif
+}
+
 void physicsAcknowledge(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation, std::int32_t snapshot) {
-    std::lock_guard lock(mutex);
-    if (physicsSnapshot(actor, generation, snapshot)) physicsBindings.at(actor->formID).delivered = true;
+    acknowledgePhysicsSnapshot(actor, generation, snapshot);
+}
+void physicsAcknowledgePose(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation, std::int32_t snapshot, bool delta) {
+    acknowledgePhysicsSnapshot(actor, generation, snapshot, delta);
 }
 void physicsAcknowledgeLifecycle(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString condition) {
     if (!actor) return;
@@ -2477,9 +2611,8 @@ std::vector<float> physicsCapsule(RE::StaticFunctionTag*, RE::Actor* actor, std:
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
     if (binding && slot >= 0 && static_cast<std::size_t>(slot) < binding->capsules.size() &&
         compiledPhysicsModel(binding->female).slots[slot].active) {
-        const auto& cap = binding->capsules[slot];
-        return {static_cast<float>(cap.p1[0]), static_cast<float>(cap.p1[1]), static_cast<float>(cap.p1[2]),
-            static_cast<float>(cap.p2[0]), static_cast<float>(cap.p2[1]), static_cast<float>(cap.p2[2]), static_cast<float>(cap.radius)};
+        const auto geometry = capsuleGeometry(binding->capsules[slot]);
+        return {geometry.begin(), geometry.end()};
     }
 #else
     (void)binding; (void)slot;
@@ -2541,6 +2674,7 @@ bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("GetPoseChangedSlots", "CLAWPhysicsNative", physicsPoseChangedSlots);
     vm->RegisterFunction("RefitPending", "CLAWPhysicsNative", physicsRefitPending);
     vm->RegisterFunction("AcknowledgeSnapshot", "CLAWPhysicsNative", physicsAcknowledge);
+    vm->RegisterFunction("AcknowledgePoseSnapshot", "CLAWPhysicsNative", physicsAcknowledgePose);
     vm->RegisterFunction("AcknowledgeLifecycle", "CLAWPhysicsNative", physicsAcknowledgeLifecycle);
     vm->RegisterFunction("GetValues", "CLAWPhysicsNative", physicsValues);
     vm->RegisterFunction("GetWeight", "CLAWPhysicsNative", physicsWeight);

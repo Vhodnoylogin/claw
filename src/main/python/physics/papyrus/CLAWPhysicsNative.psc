@@ -19,6 +19,7 @@ Bool Function ActorCurrent(Actor target) Global Native
 Bool Function SnapshotCurrent(Actor target, Int generation, Int token) Global Native
 Bool Function RefitPending(Actor target, Int generation, Int previousToken) Global Native
 Function AcknowledgeSnapshot(Actor target, Int generation, Int token) Global Native
+Function AcknowledgePoseSnapshot(Actor target, Int generation, Int token, Bool delta) Global Native
 Function AcknowledgeLifecycle(Actor target, String condition) Global Native
 Float[] Function GetValues(Actor target, Int generation, Int token) Global Native
 ; Independent base interpolation input, actual TESNPC weight / 100; -1 stale.

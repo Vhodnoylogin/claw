@@ -63,7 +63,9 @@ class AutomaticObserverTests(unittest.TestCase):
         self.assertIn('binding.pointer != actor',observe)
         host = (ROOT/'papyrus/CLAWPhysicsHost.psc').read_text()
         self.assertIn('ElseIf outcome == 6',host)
-        self.assertIn('If outcome == 4\n      CLAWPhysicsNative.AcknowledgeSnapshot',host)
+        self.assertIn('If outcome == 4\n      If kind == "pose"',host)
+        self.assertIn('AcknowledgePoseSnapshot(target, generation, token, helper.UsedPoseDelta(token))',host)
+        self.assertIn('Else\n        CLAWPhysicsNative.AcknowledgeSnapshot(target, generation, token)',host)
         self.assertIn('Function OnPhysicsCandidate(',host)
         self.assertIn('helper.GetTrackedActor() == None && helper.GetAcceptedLedgerCount() == 0',host)
         self.assertIn('physicsPopulationBlocked',plugin)
@@ -86,6 +88,16 @@ class AutomaticObserverTests(unittest.TestCase):
         self.assertLess(result.index('binding.fitPending = false;'), expires)
         self.assertLess(expires, result.index('binding.capsules[slot] = capsules[i];'))
         self.assertLess(expires, result.index('publishPhysics(actor, binding, job.poseBaseSnapshot'))
+
+    def test_pose_trace_is_staged_before_dispatched_and_consumed_at_first_current_ack(self):
+        plugin = (ROOT.parents[3]/'src/main/cpp/src/Plugin.cpp').read_text()
+        publish = plugin.split('void publishPhysics(', 1)[1].split('RE::NiAVObject* physicsActorRoot', 1)[0]
+        self.assertLess(publish.index('binding.snapshot = nextPhysicsSnapshot++'), publish.index('binding.poseReceipt.emplace'))
+        self.assertLess(publish.index('binding.poseReceipt.emplace'), publish.index('signalPhysicsSnapshot'))
+        ack = plugin.split('void acknowledgePhysicsSnapshot(', 1)[1].split('void physicsAcknowledge(', 1)[0]
+        self.assertLess(ack.index('if (!physicsSnapshot('), ack.index('if (binding.delivered'))
+        self.assertLess(ack.index('if (binding.delivered'), ack.index('std::exchange(binding.poseReceipt'))
+        self.assertIn('poseDelta.has_value() || !binding.poseBaseSnapshot', ack)
 
     def test_manual_intent_blocks_offer_and_claim_then_task_repeats_revocation(self):
         plugin = (ROOT.parents[3]/'src/main/cpp/src/Plugin.cpp').read_text()

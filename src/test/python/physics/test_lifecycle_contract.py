@@ -336,6 +336,16 @@ class LifecycleSourceContracts(unittest.TestCase):
         self.assertLess(remember.index("If _retirementPending[index]"),
                         remember.index("_retirementRuntime[index] = expectedRuntime"))
 
+    def test_pose_ack_reports_only_the_application_path_of_the_accepted_token(self):
+        mode = body(self.actor, "UsedPoseDelta")
+        self.assertIn("snapshotToken > 0 && _acceptedNativeToken == snapshotToken && _acceptedWithPoseDelta", mode)
+        delta = body(self.actor, "SynchronizePoseDelta")
+        self.assertLess(delta.index("_accepted[slot] = accepted"), delta.index("_acceptedWithPoseDelta = True"))
+        full = body(self.actor, "SynchronizeInternal")
+        self.assertLess(full.index("_acceptedWithPoseDelta = False"), full.index("_acceptedNativeToken = synchronizationToken"))
+        host = body(self.host, "ProcessAutomatic")
+        self.assertLess(host.index("If outcome == 4"), host.index("AcknowledgePoseSnapshot(target, generation, token, helper.UsedPoseDelta(token))"))
+
     def test_completed_empty_withdrawal_clears_superseded_helper_owner_before_pending_context(self):
         completion = body(self.host, "CompleteNativeRetirement")
         request = completion.index("UnregisterActor(previousNativeActor, False, expectedRuntime)")

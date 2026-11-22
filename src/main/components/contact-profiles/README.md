@@ -62,6 +62,28 @@ scoped full synchronization path. The native lane holds at most one
 unacknowledged update per actor, so a busy host can receive the same event again.
 Live coordinates, update timing and contacts need a qualified VR run.
 
+For an isolated VR test, configure a fresh CMake tree with
+`-DCLAW_TRACE_VR_POSE_ACK=ON` and the posed model header. Use the matching host
+PEX. The default build leaves the trace disabled. At the first valid host
+acknowledgment, Distribution writes one `CLAW posed VR ACK` JSON record. It
+includes the exact matrices consumed by the fitter (row-major 3×4, relative
+to the actor root), weight and effective morphs, the published snapshot and
+predecessor, and capture, compute, publish and acknowledgment times. These
+times use one monotonic microsecond clock within the process.
+
+```text
+python src/test/components/contact-profiles/verify_pose_ack.py <CLAWDistribution.log> --actor <FormID> --generation <generation> --profile <vr/fitted-capsules.json> --require-delta
+```
+
+Retain the log from the start of the actor registration so the verifier has
+the initial full snapshot as a baseline. Pin the fitted profile to the build.
+`changedSlots` records the native fit decision. `application` records whether
+the host accepted a slot delta or synchronized the full set. `capsules` lists
+the Float32 requests for that path. A full synchronization can replace more
+slots than the native fit marked as changed. This receipt establishes what
+the pinned host acknowledged. CBPC solver state and hand contact still
+require independent observations.
+
 The enclosing profiles preserve sampled support coverage but are too loose to
 claim accurate VR touch boundaries. One separate three-pass contact experiment
 reuses the VR allocation. Its measured skin escape failed acceptance; it is

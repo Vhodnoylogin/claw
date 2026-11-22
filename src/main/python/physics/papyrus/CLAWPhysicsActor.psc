@@ -26,6 +26,7 @@ Bool _nativeSnapshot = False
 Bool _nativeOwner = False
 Int _nativeToken = 0
 Int _acceptedNativeToken = 0
+Bool _acceptedWithPoseDelta = False
 Float _nativeWeight = -1.0
 
 ; 0 dormant, 1 capability blocked, 2 not beast, 3 unloaded,
@@ -173,6 +174,10 @@ EndFunction
 
 Int Function SynchronizePose(Actor expectedActor, Float[] values, String evidence, Int snapshotToken)
   Return SynchronizeObservedMorphs(expectedActor, values, evidence, True, snapshotToken, True)
+EndFunction
+
+Bool Function UsedPoseDelta(Int snapshotToken)
+  Return snapshotToken > 0 && _acceptedNativeToken == snapshotToken && _acceptedWithPoseDelta
 EndFunction
 
 Int Function SynchronizeObservedMorphs(Actor expectedActor, Float[] values, String evidence, Bool nativeSnapshot, Int snapshotToken, Bool poseSnapshot)
@@ -496,6 +501,7 @@ Int Function SynchronizePoseDelta(Actor target, Int generation, Int token, Int[]
     Return RollBackPoseDelta(target, generation, token, "Pose snapshot changed before ledger acceptance")
   EndIf
   _acceptedNativeToken = token
+  _acceptedWithPoseDelta = True
   Return SetStatus(4, "Changed pose slots were replaced; simulation/contact readback unavailable")
 EndFunction
 
@@ -668,6 +674,7 @@ Int Function SynchronizeInternal(Bool poseSnapshot = False)
   EndIf
   _morphRefresh = False
   _acceptedNativeToken = 0
+  _acceptedWithPoseDelta = False
   If _nativeSnapshot
     _acceptedNativeToken = synchronizationToken
   EndIf

@@ -380,7 +380,11 @@ Function ProcessAutomatic(Int index, Actor target, String kind, Int token, Strin
       outcome = helper.SynchronizeMorphs(target, values, _automaticEvidence[index], True, token)
     EndIf
     If outcome == 4
-      CLAWPhysicsNative.AcknowledgeSnapshot(target, generation, token)
+      If kind == "pose"
+        CLAWPhysicsNative.AcknowledgePoseSnapshot(target, generation, token, helper.UsedPoseDelta(token))
+      Else
+        CLAWPhysicsNative.AcknowledgeSnapshot(target, generation, token)
+      EndIf
     ElseIf outcome == 6 && kind != "pose" && CLAWPhysicsNative.SnapshotCurrent(target, generation, token)
       ; Keep the native observation unacknowledged while old capsules need
       ; reported removal. The next bounded pass can retry after cleanup.
