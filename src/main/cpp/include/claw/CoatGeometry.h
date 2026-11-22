@@ -1,8 +1,20 @@
 #pragma once
 #include "claw/TargetModelAvailability.h"
 #include <ranges>
+#include <string_view>
 
 namespace claw::appearance {
+inline bool vrEarCoatBodyTriMatches(std::string_view observed, bool female) {
+    const std::string_view expected = female ?
+        R"(actors\werewolfbeast\claw\firstperson\female\earworldtrial.tri)" :
+        R"(actors\werewolfbeast\claw\firstperson\male\earworldtrial.tri)";
+    const auto normalized = [](char c) {
+        if (c == '/') return '\\';
+        return c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c;
+    };
+    return std::ranges::equal(observed, expected, {}, normalized);
+}
+
 template<class Geometry, std::size_t Roles>
 struct CoatGeometry {
     TargetModelObservation graph;

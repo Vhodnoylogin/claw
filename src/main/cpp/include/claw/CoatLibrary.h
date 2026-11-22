@@ -24,6 +24,12 @@ inline constexpr std::array<CoatSurface, 12> coatSurfaces{{
     {"fur_face", "furface.dds", "fur"}, {"fur_shoulders", "furshoulders.dds", "fur"},
     {"fur_tailtip", "furtail.dds", "fur"}, {"ChestBlend", "furback.dds", "fur"},
     {"FurfaceBlend", "furface.dds", "fur"}, {"ScalpFurBlend", "furback.dds", "fur"}}};
+// The optional VR ear mesh reuses the authored head UVs and existing DDS.
+// It is not a required surface in the serialised coat catalogue.
+inline constexpr CoatSurface vrEarCoatSurface{"head_CLAWHead_CLAWEars", "head.dds", "undercoat"};
+inline constexpr auto vrEarCoatRole = coatSurfaces.size();
+inline constexpr auto coatRuntimeRoleCount = vrEarCoatRole + 1;
+
 inline bool coatToken(std::string_view value) {
     const auto stem = value.substr(0, value.find('.'));
     const bool reserved = stem == "con" || stem == "prn" || stem == "aux" || stem == "nul" ||

@@ -105,8 +105,10 @@ The numerical readback covers skin influence on all four ear bones and the
 authored [0,1] TRI box in the inherited sphere. Before making it a player
 option, confirm the active body and its FSMP registration, measure movement
 using the actual skinned ear surfaces, and check both eye frusta with the
-matched bone and TRI sample. Use the installed base coat for these controls.
-The separate ear surface still needs live coat-material coverage.
+matched bone and TRI sample. The appearance adapter can reuse the head coat
+for the separate ear skin on the player's owned active Body32 with the matching
+trial TRI. The installed base coat remains its fallback. Live coat attachment,
+replacement and retirement have their own checks.
 
 For the next headset probe, `src/test/components/vr-body/avatar_torso.py`
 reads the pinned active NIF and TRI and lists the exact influential torso

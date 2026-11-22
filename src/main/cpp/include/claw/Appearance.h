@@ -94,6 +94,7 @@ private:
         std::uint32_t sex{};
         Colours colours;
         RE::NiPointer<RE::NiAVObject> root; // Retain generation identity; prevents recycled-root pointer aliases.
+        RE::NiPointer<RE::BSGeometry> attemptedEar; // Optional same-root route may appear or change after an attempt.
         RE::ActorHandle handle;
         bool loaded{};
         std::vector<Surface> surfaces;
@@ -118,6 +119,13 @@ private:
     bool unbind(Entry& entry, bool defer = true);
     static MaterialRelease releaseSurface(const Surface& surface);
     static bool attached(const RE::NiAVObject* object, const RE::NiAVObject* root);
+    struct CoatGeometryRoles {
+        CoatGeometryRoles(RE::Actor* actor, const RE::NiAVObject* root);
+        std::optional<std::size_t> match(const RE::NiAVObject* object, const RE::BSGeometry* geometry) const;
+        std::array<RE::BSFixedString, coatSurfaces.size()> names;
+        RE::NiPointer<RE::NiAVObject> worldBody;
+        bool female{};
+    };
     [[nodiscard]] std::string_view rollbackStatus(RE::FormID id) const;
     static std::string_view prepareMaterial(RE::BSShaderProperty* copy,
         const RE::BSShaderProperty* original, std::optional<std::uint32_t> tint);
@@ -161,6 +169,32 @@ template<class F> void Runtime::visit(RE::NiAVObject* object, F&& f) {
 }
 inline bool Runtime::attached(const RE::NiAVObject* object, const RE::NiAVObject* root) {
     return isMaterialGeometryAttached(object, root, targetModelMaxObjects);
+}
+inline Runtime::CoatGeometryRoles::CoatGeometryRoles(RE::Actor* actor, const RE::NiAVObject* root) {
+    for (std::size_t i = 0; i < names.size(); ++i) names[i] = RE::BSFixedString{coatSurfaces[i].name.data()};
+    if (!actor || !root || !REL::Module::IsVR() || actor != RE::PlayerCharacter::GetSingleton()) return;
+    const auto* base = actor->GetActorBase();
+    const auto* race = actor->GetRace();
+    if (!base || !race || race->GetFormID() != 0xCDD84) return;
+    const auto sex = base->GetSex();
+    if (sex != RE::SEX::kMale && sex != RE::SEX::kFemale) return;
+    const auto biped = actor->GetBiped(false);
+    if (!biped || biped->actorRef.get().get() != actor) return;
+    const auto& body = biped->objects[RE::BIPED_OBJECTS::kBody];
+    if (!body.item || body.item->GetFormID() != 0xCDD86 || !body.addon || body.addon->GetFormID() != 0xCDD87 ||
+        !attached(body.partClone.get(), root)) return;
+    worldBody = body.partClone;
+    female = sex == RE::SEX::kFemale;
+}
+inline std::optional<std::size_t> Runtime::CoatGeometryRoles::match(
+    const RE::NiAVObject* object, const RE::BSGeometry* geometry) const {
+    const auto base = std::ranges::find(names, object->name);
+    if (base != names.end()) return static_cast<std::size_t>(base - names.begin());
+    if (!worldBody || !geometry || object->name != RE::BSFixedString{vrEarCoatSurface.name.data()} ||
+        !attached(geometry, worldBody.get())) return std::nullopt;
+    const auto* tri = netimmerse_cast<RE::NiStringExtraData*>(geometry->GetExtraData("BODYTRI"));
+    return tri && tri->value && vrEarCoatBodyTriMatches(tri->value, female) ?
+        std::optional{vrEarCoatRole} : std::nullopt;
 }
 inline MaterialRelease Runtime::releaseSurface(const Surface& surface) {
     auto& current = surface.geometry->GetGeometryRuntimeData().shaderProperty;
@@ -216,7 +250,7 @@ inline bool Runtime::unbind(Entry& entry, bool defer) {
     }
     const bool complete = pending.surfaces.empty() && pending.yielded.empty();
     if (!complete) pendingRollbacks_.emplace(actor->formID, std::move(pending));
-    entry.surfaces.clear(); entry.root.reset(); entry.appliedPattern.clear();
+    entry.surfaces.clear(); entry.root.reset(); entry.attemptedEar.reset(); entry.appliedPattern.clear();
     entry.appliedVariation.reset();
     return complete;
 }
@@ -402,10 +436,11 @@ inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token, C
         return std::string(value, length);
     };
     std::vector<CoatSurfaceObservation> rows;
+    const CoatGeometryRoles roles{actor, root.get()};
     const bool publicAudit = &cache == &entry.audit;
     CoatAuditGeometry<RE::NiPointer<RE::BSGeometry>> sampledGeometry;
     std::vector<RE::NiAVObject*> objects{root.get()};
-    std::size_t visited{};
+    std::size_t visited{}, earMatches{};
     while (!objects.empty()) {
         auto* object = objects.back(); objects.pop_back();
         if (++visited > coatAuditMaxObjects) return fail();
@@ -419,9 +454,9 @@ inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token, C
         const auto name = text(object->name.c_str() ? object->name.c_str() : "", coatAuditMaxName);
         if (!name) return fail();
         row.name = *name;
-        row.managed = std::any_of(coatSurfaces.begin(), coatSurfaces.end(), [object](const auto& spec) {
-            return object->name == RE::BSFixedString{spec.name.data()};
-        });
+        const auto role = roles.match(object, geometry);
+        row.managed = role.has_value();
+        if (role == vrEarCoatRole) ++earMatches;
         if (publicAudit) {
             row.geometryId = sampledGeometry.observe(RE::NiPointer<RE::BSGeometry>{geometry}, entry.auditGeometry, nextAuditGeometry_);
             if (!row.geometryId) return fail();
@@ -483,7 +518,7 @@ inline bool Runtime::sampleSurfaceAudit(RE::Actor* actor, std::uint64_t token, C
         rows.push_back(std::move(row));
     }
     // No apply/refresh/SKEE call occurs during this observation.
-    const auto variation = entry.appliedVariation && completeCoatLease(rows, coatSurfaces.size())
+    const auto variation = entry.appliedVariation && completeCoatLease(rows, coatSurfaces.size(), earMatches)
         ? entry.appliedVariation : std::nullopt;
     const bool rootCurrent = entry.root.get() == root.get() || entry.yield.root.get() == root.get();
     if (!cache.publish(token, entry.auditGeneration, auditClock(), rootCurrent, rows, entry.appliedPattern, variation))
@@ -808,6 +843,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     const auto resource = mapping_ ? mapping_->material(selectedChoice.pattern) : std::string_view(selectedChoice.pattern);
     if (mapping_ && (resource.empty() || resource == installedCoatMaterial)) {
         if (!entry.surfaces.empty() && !unbind(entry)) return false;
+        entry.attemptedEar.reset();
         if (resource == installedCoatMaterial && entry.root.get() == root && entry.attemptedPattern == selectedChoice.pattern)
             return true;
         entry.root.reset(root);
@@ -818,14 +854,12 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         return !resource.empty();
     }
     const auto mode = mapping_ ? TintMode::original : policy_.tintMode();
-    std::array<RE::BSFixedString, coatSurfaces.size()> names;
-    for (std::size_t i = 0; i < names.size(); ++i) names[i] = RE::BSFixedString{coatSurfaces[i].name.data()};
+    const CoatGeometryRoles roles{actor, root};
     // Use the engine's case-insensitive names. Check every reachable geometry
     // for retained identities, including a conflicted geometry renamed in place.
-    const auto scene = collectCoatGeometry<RE::BSGeometry, coatSurfaces.size()>(root, [&](RE::NiAVObject* object) {
-        const auto found = std::ranges::find(names, object->name);
-        return std::pair{object->AsGeometry(), found == names.end() ? std::nullopt :
-            std::optional{static_cast<std::size_t>(found - names.begin())}};
+    const auto scene = collectCoatGeometry<RE::BSGeometry, coatRuntimeRoleCount>(root, [&](RE::NiAVObject* object) {
+        auto* geometry = object->AsGeometry();
+        return std::pair{geometry, roles.match(object, geometry)};
     }, [](RE::NiAVObject* object, auto&& push) {
         if (auto* node = object->AsNode()) for (const auto& child : node->GetChildren())
             if (!push(child.get())) return false;
@@ -833,6 +867,14 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     });
     if (!scene.complete()) { entry.status = "coat geometry observation incomplete"; return false; }
     if (!scene.clearOf(entry.yield.surfaces)) { entry.status = "yielded to later coat writer"; return false; }
+    if (scene.matches[vrEarCoatRole] > 1) {
+        if (!unbind(entry)) return false;
+        entry.status = "ambiguous VR ear coat geometry";
+        return false;
+    }
+    auto* ear = scene.unique(vrEarCoatRole);
+    const bool sameAttempt = root == entry.root.get() && entry.attemptedPattern == requestedPattern &&
+        entry.attemptedMode == mode && entry.attemptedEar.get() == ear;
 
     if (root == entry.root.get() && !entry.surfaces.empty()) {
         const bool firstReport = entry.yieldReportedRoot.get() != root;
@@ -875,13 +917,13 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
             }
             return false;
         }
-        if (sameSurfaces && entry.attemptedPattern == requestedPattern && entry.attemptedMode == mode) {
+        if (sameSurfaces && sameAttempt) {
             // A different score can keep the same material. Record the decision this lease just accepted.
             if (!entry.appliedPattern.empty()) entry.appliedVariation = selectedChoice.variation;
             return true;
         }
     }
-    if (root == entry.root.get() && entry.attemptedPattern == requestedPattern && entry.attemptedMode == mode && entry.surfaces.empty()) return false;
+    if (sameAttempt && entry.surfaces.empty()) return false;
     if (!unbind(entry)) return false;
     std::vector<Surface> prepared;
     const auto* selected = library_.find(resource);
@@ -895,10 +937,12 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     // already-working tint, and a source-less born wolf retains its donor.
     for (unsigned attempt = 0; attempt < 2; ++attempt) {
     prepared.clear(); bool retryWithoutPattern{};
-    for (std::size_t role = 0; role < coatSurfaces.size(); ++role) {
-        const auto& surfaceSpec = coatSurfaces[role];
+    for (std::size_t role = 0; role < coatRuntimeRoleCount; ++role) {
+        const bool optionalEar = role == vrEarCoatRole;
+        if (optionalEar && !ear) continue;
+        const auto& surfaceSpec = optionalEar ? vrEarCoatSurface : coatSurfaces[role];
         const auto name = surfaceSpec.name;
-        const bool skin = name == "body" || name == "head";
+        const bool skin = surfaceSpec.group == "undercoat";
         const bool hasColour = mode == TintMode::linked && (skin ? entry.colours.hasSkin : entry.colours.hasHair);
         if (!hasColour && !selected) continue;
         auto* geometry = scene.unique(role);
@@ -954,6 +998,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     if (!retryWithoutPattern) break;
     }
     entry.attemptedPattern = requestedPattern; entry.attemptedMode = mode;
+    entry.attemptedEar.reset(ear);
     if (prepared.empty()) {
         entry.root.reset(root); entry.status = patternFailure.empty() ?
             "original material retained; " + selectedChoice.reason : "coat unavailable: " + patternFailure; return false;

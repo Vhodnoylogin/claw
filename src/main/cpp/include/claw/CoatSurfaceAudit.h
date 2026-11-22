@@ -71,14 +71,16 @@ struct CoatSurfaceObservation {
     int noTint{-1};
     bool tracked{}, ownProperty{}, ownMaterial{}, ownGuard{}, ownTextureSet{}, ownDiffuse{}, healthyLease{};
 };
-inline bool completeCoatLease(const std::vector<CoatSurfaceObservation>& rows, std::size_t expected) {
+inline bool completeCoatLease(const std::vector<CoatSurfaceObservation>& rows, std::size_t expected,
+    std::size_t optionalEarMatches = 0) {
+    if (optionalEarMatches > 1) return false;
     std::size_t count{};
     for (const auto& row : rows) {
         if (!row.managed) continue;
         if (!row.tracked || !row.healthyLease || !row.ownDiffuse) return false;
         ++count;
     }
-    return count && count == expected;
+    return count && count == expected + optionalEarMatches;
 }
 inline std::string coatAuditQuote(std::string_view value) {
     constexpr char hex[] = "0123456789abcdef";

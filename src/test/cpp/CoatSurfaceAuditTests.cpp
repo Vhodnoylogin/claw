@@ -95,6 +95,31 @@ void appliedDecisionRequiresCompletePrivateMaterialEvidence() {
     require(!completeCoatLease(rows, 2), "Unhealthy material lease retained coat decision evidence");
 }
 
+void optionalEarRequiresItsTrialRouteAndOwnLease() {
+    using namespace claw::appearance;
+    const std::string_view male = "Actors/WerewolfBeast/CLAW/FirstPerson/Male/EarWorldTrial.tri";
+    const std::string_view female = R"(actors\werewolfbeast\claw\firstperson\female\earworldtrial.tri)";
+    require(vrEarCoatBodyTriMatches(male, false) && vrEarCoatBodyTriMatches(female, true),
+        "Valid sex-specific ear TRI was rejected");
+    require(!vrEarCoatBodyTriMatches(male, true) && !vrEarCoatBodyTriMatches(female, false) &&
+        !vrEarCoatBodyTriMatches({}, false) && !vrEarCoatBodyTriMatches("Meshes/" + std::string(male), false) &&
+        !vrEarCoatBodyTriMatches(R"(actors\werewolfbeast\claw\firstperson\male\body.tri)", false),
+        "An unrelated TRI acquired the optional ear lease");
+
+    CoatSurfaceObservation own;
+    own.managed = own.tracked = own.healthyLease = own.ownDiffuse = true;
+    std::vector rows(12, own);
+    require(completeCoatLease(rows, 12) && !completeCoatLease(rows, 12, 1),
+        "Legacy inventory or missing optional lease was classified incorrectly");
+    rows.push_back(own);
+    require(completeCoatLease(rows, 12, 1), "A fully managed ear prevented valid readback");
+    rows.back().ownDiffuse = false;
+    require(!completeCoatLease(rows, 12, 1), "An unowned ear diffuse passed as fully applied");
+    rows.back().ownDiffuse = true;
+    rows.push_back(own);
+    require(!completeCoatLease(rows, 12, 2), "An ambiguous ear inventory proved the automatic decision");
+}
+
 void sameRootReplacementRequiresNewUnambiguousGeometry() {
     using namespace claw::appearance;
     struct Node {
@@ -176,6 +201,7 @@ int main() {
     try {
         chunksPreserveBoundedBytes(); maximumPublishedObservationUsesOneFreshPayload();
         appliedDecisionRequiresCompletePrivateMaterialEvidence();
+        optionalEarRequiresItsTrialRouteAndOwnLease();
         sameRootReplacementRequiresNewUnambiguousGeometry();
         publicGeometryIdsTrackAdjacentObjectsWithoutExposingPointers();
         CoatSurfaceObservation row;

@@ -137,6 +137,9 @@ int main(int argc, char** argv) {
             ++observed; return coatDDSMatches(224, std::span(header).first(128));
         });
         require(complete && complete->size() == 9 && observed == 9, "Complete structural preflight failed");
+        require(coatSurfaces.size() == 12 && vrEarCoatRole == 12 && coatRuntimeRoleCount == 13 &&
+            vrEarCoatSurface.group == "undercoat" && complete->contains(vrEarCoatSurface.texture),
+            "The optional ear changed the base catalogue or required a separate DDS");
         const auto partial = coatPatternDimensions(*catalog.find("test/white"), [&](const CoatTexture& texture) {
             return coatDDSMatches(texture.path.ends_with("head.dds") ? 223 : 224, std::span(header).first(128));
         });
