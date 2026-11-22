@@ -16,6 +16,24 @@ pinned skeleton, reuses the existing fitter and emits external model/header/host
 source candidates. Compile each edition's matching host data with the existing
 host builder. No host is activated and no generated file belongs in source Git.
 
+`python/posed_support.py` uses that fitted VR model and the same six pinned
+runtime assets to emit `posed-vr-support.h` in a new external directory:
+
+```text
+python src/main/components/contact-profiles/python/posed_support.py --vr-model <vr/fitted-capsules.json> --runtime-inputs <runtime-inputs.json> --out <new-external-directory>
+```
+
+`CompiledVRPoseSupport` exposes both sexes with their required bones, the
+existing morph order, and the original indices of the 32 ear and tail slots.
+The exporter checks the actual oriented triangles and requires the same
+normalized weights and bind mappings across actor-weight endpoints. It emits
+the vertex endpoint differences and sparse TRI fields in shape space, for
+application before skinning. The shared native calculation used the archived
+VR67 pose at both the observed ear-size value and its zero control. All sixteen
+ear slots changed and the sixteen tail slots matched. The female model was
+checked against the independent solver at rest with two effective input
+vectors. The game provider still uses the existing rest-space update path.
+
 The enclosing profiles preserve sampled support coverage but are too loose to
 claim accurate VR touch boundaries. One separate three-pass contact experiment
 reuses the VR allocation. Its measured skin escape failed acceptance; it is
