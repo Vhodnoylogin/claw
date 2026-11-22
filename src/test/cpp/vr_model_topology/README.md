@@ -129,3 +129,31 @@ exact trial archive independently. OpenVR transforms retain their own basis
 and units. The stereo sample records `eyeProjectionQualified` and
 `atomicRenderSnapshot` as false. Calibrate eye orientation and game scale on
 controlled points and geometry before using the packet to judge clearance.
+
+Replay the admitted Papyrus reply with:
+
+```text
+python -B src/test/components/vr-body/avatar_ear_stereo.py --packet <raw-reply.json> --admission <run-evidence.json> --pynifly <path> [--calibration <controls.json>]
+```
+
+The executor supplies `claw-vr-ear-stereo-admission/1` with `pid`, `epoch`,
+`nonce`, actor `handle`, `sex`, `weight`, `higgsBuild`, the `static` or `fsmp`
+`mode`, and `armedAfterPhase` from the last completed post-phase count before
+the request. Use a fresh nonce and retain its request timestamp. `archive`
+and `witnessDll` each need `path`, `bytes` and `sha256`. Supply `mappedWitness`
+with its independently observed `pid`, `bytes` and `sha256` for the loaded
+module, and `effectiveVfs` with independently measured `bytes` and `sha256` for
+each trial archive member keyed by its archive path. Keep the request, exact
+asset pins and winner/module evidence in the same run record. The replay
+validates their agreement. The caller supplies their provenance.
+
+With just the admitted reply, the replay reconstructs the ear mesh from pose,
+skin weights and TRI offsets and reports world bounds in game units. Optional
+`claw-vr-ear-stereo-calibration/1` controls must match `captureSha256` for the
+inner reply. Provide disjoint `headFit` and `headHoldout` 3D point pairs with
+`providerHeadMeters` and `worldGu`, plus independently measured `left`, `right`,
+`bottom`, `top`, `near` and `interior` world points for each eye in `eyes`.
+`projectionControlsConsistent` reports numerical agreement with those
+points. Use `providerFrustumIntersection` for geometric counts and depths in
+metres. The captured engine side planes and rendered pixels remain separate
+evidence. `engineProjectionQualified` and `renderedPixelsVerified` stay false.
