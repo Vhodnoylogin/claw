@@ -17,6 +17,14 @@ target FaceGen shaders and do not apply to this path; ordinary property fades
 and general material-alpha traversal remain distinct. A fresh game regression
 must verify actual load and fade behaviour before acceptance.
 
+The supplied coat matrix uses known skin RGB to bias the variant within the
+hair-selected group. The normalized variant value combines 80% of the actor's
+stable seed with 20% of encoded skin luminance. An actor with hair and no known
+skin still uses the full seed. When hair is unavailable, the scalar fallback
+keeps its seed-only distribution. Variant selection retains the external
+texture's authored colours. The existing input names remain available for
+custom matrices, and a manual choice still takes precedence.
+
 The legacy opt-in linked-tint path below remains separate, including its neutral
 fallback when a source colour is unavailable. Its NO_TINT marker protects the
 inspected SKEE recursive path, not every engine or third-party colour writer.

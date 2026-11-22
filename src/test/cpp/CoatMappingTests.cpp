@@ -163,6 +163,32 @@ int main(int argc, char** argv) {
             }
         }
         require(warmVariants.size() == 3, "within-group seed diversity lost");
+        const std::uint64_t skinContrastSeed = std::uint64_t{102} << 56;
+        const Colours darkSkin{{0, 0, 0}, auburn, true, true};
+        const Colours lightSkin{{1, 1, 1}, auburn, true, true};
+        const Colours withoutSkin{{1, 1, 1}, auburn, false, true};
+        const auto darkOutputs = matrix.evaluate(darkSkin, skinContrastSeed);
+        const auto lightOutputs = matrix.evaluate(lightSkin, skinContrastSeed);
+        const auto noSkinOutputs = matrix.evaluate(withoutSkin, skinContrastSeed);
+        const auto darkChoice = actual.selectOutputs({}, darkOutputs, true);
+        const auto lightChoice = actual.selectOutputs({}, lightOutputs, true);
+        require(darkChoice.pool == "warm-brown" && lightChoice.pool == darkChoice.pool &&
+            lightChoice.pattern != darkChoice.pattern, "skin did not affect the coat variant within the same hair group");
+        require(darkOutputs.at("coat.selector") == lightOutputs.at("coat.selector") &&
+            darkOutputs.at("coat.selector") == noSkinOutputs.at("coat.selector"), "legacy scalar selector changed with skin");
+        require(noSkinOutputs.at("coat.variation") == static_cast<float>(skinContrastSeed >> 40) / 16777215.F,
+            "unknown skin changed the full seed contribution");
+        const auto legacy = CoatMatrix::parse(R"(<CoatMatrix schemaVersion="1">
+            <Rule source="seed.withHair" target="coat.variation" gain="1" cap="1"/>
+        </CoatMatrix>)");
+        require(legacy.evaluate(darkSkin, skinContrastSeed) == legacy.evaluate(lightSkin, skinContrastSeed) &&
+            legacy.evaluate(lightSkin, skinContrastSeed).at("coat.variation") == noSkinOutputs.at("coat.variation"),
+            "legacy coat matrix gained an implicit skin term");
+        const auto hairlessSkin = matrix.evaluate(Colours{{1, 1, 1}, {}, true, false}, skinContrastSeed);
+        require(actual.selectOutputs({}, hairlessSkin, false).pattern ==
+            actual.selectOutputs({}, matrix.evaluate({}, skinContrastSeed), false).pattern, "skin replaced the hairless fallback");
+        require(actual.selectOutputs("elegant-2k-2.1/black", lightOutputs, true).pattern == "elegant-2k-2.1/black",
+            "skin overrode a manual coat choice");
         hair.hair = {.25F, .24F, .24F};
         require(actual.selectOutputs({}, matrix.evaluate(hair, 0), true).pool == "grey" &&
             actual.selectOutputs({}, matrix.evaluate(hair, UINT64_MAX), true).pool == "grey", "low-saturation grey became warm");
