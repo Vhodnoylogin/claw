@@ -18,6 +18,7 @@ class Transport:
         self.now = 1.
         self.phase, self.sample, self.nonce = 0, 0, 9
         self.armed, self.event, self.contact = 0, 0, None
+        self.fit_latency = 0.
         self.slots, self.has_key = set(), False
         self.ended = False
         manifest, ledger = make_case()
@@ -75,6 +76,8 @@ class Transport:
                 self.ended |= method == "EndNpc"
                 return json.dumps({"status": "pending"}), "string"
             if method == "ReadPhysicsSnapshot":
+                if self.tick() < self.event:
+                    return json.dumps({"status": "pending"}), "string"
                 return json.dumps({"schema": "claw-vr-npc-pose/1", "status": "ready", "nonce": self.nonce,
                                    "pid": PID, "qpcFrequency": QPC, "actor": ACTOR, "base": BASE, "loadEpoch": 1,
                                    "runtimeHandle": HANDLE, "rootToken": self.nonce, "snapshotToken": 15 + self.phase,
@@ -92,7 +95,7 @@ class Transport:
             if method == "EndSession":
                 return "retired-physics-session", "string"
             if method == "RegisterQualifiedActor":
-                self.event = self.tick()
+                self.event = self.tick() + round(self.fit_latency * QPC)
             if method == "UnregisterActor":
                 return None, "none"
             if method == "ActorCurrent":
@@ -124,11 +127,24 @@ class Transport:
             assert args[1:3] == ["CLAWTailLength", TEST_KEY]
             self.has_key = method == "SetBodyMorph"
             self.phase += 1
-            self.event = self.tick()
+            self.event = self.tick() + round(self.fit_latency * QPC)
         return None, "none"
 
 
 class CaptureTest(unittest.TestCase):
+    def test_snapshot_wait_covers_two_native_scan_passes(self):
+        with TemporaryDirectory() as root:
+            path = Path(root) / "steps.jsonl"
+            path.touch()
+            tool = Transport(path)
+            tool.fit_latency = 4.
+            case = Capture(tool.tool, path, Subject(PID, ACTOR, BASE, CELL, 9), MODEL, BASIS,
+                           deadline=30., clock=tool)
+            manifest, _ = case.run("owned-test-fixture")
+            self.assertEqual([phase["token"] for phase in manifest["phases"]], [15, 16, 17])
+            self.assertGreater(tool.now, 13.)
+            self.assertLess(tool.now, 30.)
+
     def test_run_builds_exact_native_index_manifest(self):
         with TemporaryDirectory() as root:
             path = Path(root) / "steps.jsonl"

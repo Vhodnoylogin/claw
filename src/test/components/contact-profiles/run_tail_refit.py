@@ -122,14 +122,15 @@ class Capture:
             self.clock.sleep(.48)
         raise ValueError("Observed hold did not reach the minimum duration")
 
-    def wait(self, read):
-        for _ in range(12):
+    def wait(self, read, seconds=1.):
+        until = min(self.deadline, self.clock.monotonic() + seconds)
+        while self.clock.monotonic() < until:
             index, reply = read()
             status = reply.get("status")
             if status in ("ready", "ended"):
                 return index, reply
             require(status in ("pending", "retiring"), "Native witness refused: " + str(reply.get("reason")))
-            self.clock.sleep(.07)
+            self.clock.sleep(max(0., min(.12, until - self.clock.monotonic())))
         raise ValueError("Native witness never reported a current result")
 
     def pose(self):
@@ -160,7 +161,9 @@ class Capture:
         require(name == ("neutral", "morphed", "returned")[number], "Unexpected refit phase")
         self.manifest["morph"][("initial", "apply", "restore")[number]] = self.morph_receipts[:]
         self.morph_receipts.clear()
-        index, event = self.wait(lambda: self.json_pap(POSE, "ReadPhysicsSnapshot", [self.nonce, self.token]))
+        # Distribution can need two 2-second main-task scans before the fit worker publishes.
+        index, event = self.wait(lambda: self.json_pap(POSE, "ReadPhysicsSnapshot", [self.nonce, self.token]),
+                                 seconds=6.)
         token = event["snapshotToken"]
         require(type(token) is int and self.token < token < 0x01000000
                 and event["actor"] == self.subject.actor and event["runtimeHandle"] == self.owner[2],
