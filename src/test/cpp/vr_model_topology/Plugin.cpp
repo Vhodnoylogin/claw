@@ -1,6 +1,7 @@
 // Test-only VR scene-graph observation. No model mutation or render hooks.
 #include <RE/Skyrim.h>
 #include "CullObservation.h"
+#include "DispatchMarkerObservation.h"
 #include <SKSE/SKSE.h>
 #include <Windows.h>
 #include <nlohmann/json.hpp>
@@ -8,6 +9,7 @@
 #include "../../../main/cpp/include/claw/TargetModelAvailability.h"
 #include "../../../main/cpp/include/claw/WorldStartPolicy.h"
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <mutex>
 #include <optional>
@@ -23,6 +25,8 @@ using Json = nlohmann::json;
 using Object = RE::NiAVObject;
 using Clock = std::chrono::steady_clock;
 constexpr auto name = "CLAWVRModelTopology";
+constexpr auto bodySlot = static_cast<std::size_t>(RE::BIPED_OBJECTS::kBody);
+static_assert(bodySlot == 2);
 constexpr std::size_t slotCount = RE::BIPED_OBJECTS::kTotal;
 constexpr std::size_t maximumRoots = 48;
 constexpr std::size_t requestLimit = 8;
@@ -244,7 +248,79 @@ private:
 
 RE::FormID id(const RE::TESForm* value) { return value ? value->GetFormID() : 0; }
 
-Json collect(Clock::time_point deadline) {
+struct BodyMarkerRoute {
+    Object* clone{};
+    claw::vr_diagnostic::DispatchMarkers<Object> markers;
+    std::string_view classification;
+    bool traversed{};
+    bool operator==(const BodyMarkerRoute&) const = default;
+};
+
+std::array<BodyMarkerRoute, 4> observeBodyMarkers(const Routes& scene, std::uint32_t handle, Clock::time_point deadline) {
+    using namespace claw::vr_diagnostic;
+    std::array<BodyMarkerRoute, 4> result{};
+    std::array<RE::BSFixedString, dispatchMarkerNames.size()> names;
+    for (std::size_t i = 0; i < names.size(); ++i) names[i] = RE::BSFixedString{dispatchMarkerNames[i].data()};
+    const auto linked = [](const RE::NiNode& parent, const Object* child) {
+        return std::ranges::any_of(parent.GetChildren(), [child](const auto& current) {
+            return current.get() == child;
+        });
+    };
+    for (std::size_t i = 0; i < result.size(); ++i) {
+        require(Clock::now() < deadline, "capture expired during Body32 marker observation");
+        const auto viewIndex = i / 2;
+        const auto& view = scene.views[viewIndex];
+        const auto& slot = (i % 2 ? view.buffered : view.active)[bodySlot];
+        auto& row = result[i];
+        row.clone = slot.clone;
+        if (!slot.clone) { row.classification = "unloaded"; continue; }
+        if (slot.item != 0xCDD86 || slot.addon != 0xCDD87 || !view.biped ||
+            view.biped->actorRef.native_handle() != handle) {
+            row.classification = "foreign_slot"; continue;
+        }
+        if (!belongsToGraph(slot.clone, scene.roots[viewIndex + 1], ancestorDepthLimit, linked)) {
+            row.classification = "detached"; continue;
+        }
+        const auto earlier = std::find_if(result.begin(), result.begin() + i, [&](const auto& other) {
+            return other.traversed && other.clone == row.clone;
+        });
+        if (earlier != result.begin() + i) { row = *earlier; continue; }
+        const auto scan = claw::collectTargetModel<
+            diagnosticMaxObjects, diagnosticMaxGeometries, diagnosticMaxChildLinks>(slot.clone,
+            [&](Object* object) {
+                require(Clock::now() < deadline, "capture expired during Body32 graph walk");
+                const auto match = std::find(names.begin(), names.end(), object->name);
+                if (match != names.end()) {
+                    const auto* node = object->AsNode();
+                    const bool valid = object != slot.clone && node && node->GetChildren().empty() &&
+                        belongsToGraph(object, slot.clone, ancestorDepthLimit, linked);
+                    row.markers.record(static_cast<std::size_t>(match - names.begin()), object, object->parent, valid);
+                }
+                return claw::TargetModelObject{object->AsGeometry() != nullptr};
+            }, [](Object* object, auto&& push) {
+                if (const auto* node = object->AsNode())
+                    for (const auto& child : node->GetChildren())
+                        if (!push(child.get())) return false;
+                return true;
+            });
+        row.classification = row.markers.classify(scan.collection == claw::TargetModelCollection::complete);
+        row.traversed = true;
+    }
+    return result;
+}
+
+std::int64_t qpc() {
+    LARGE_INTEGER counter{};
+    require(QueryPerformanceCounter(&counter) && counter.QuadPart > 0, "performance counter unavailable");
+    return counter.QuadPart;
+}
+
+std::optional<float> actorWeight(const RE::TESNPC* actor) {
+    if (!actor || !std::isfinite(actor->weight) || actor->weight < 0 || actor->weight > 100) return std::nullopt;
+    return actor->weight;
+}
+
+Json collect(Clock::time_point deadline, bool dispatch) {
     auto* actor = RE::PlayerCharacter::GetSingleton();
     auto* ui = RE::UI::GetSingleton();
     require(actor && actor->GetFormID() == 0x14 && actor->Is3DLoaded() && ui &&
@@ -252,10 +328,15 @@ Json collect(Clock::time_point deadline) {
                 !ui->IsMenuOpen(RE::MainMenu::MENU_NAME), "loaded player required");
     const auto handle = actor->GetHandle();
     const auto race = id(actor->GetRace());
-    const auto base = id(actor->GetActorBase());
+    auto* actorBase = actor->GetActorBase();
+    const auto base = id(actorBase);
     const auto cell = id(actor->GetParentCell());
     const auto weaponState = actor->GetWeaponState();
     require(handle && race == 0xCDD84 && base && cell, "loaded wolf owner required");
+    const auto began = dispatch ? qpc() : 0;
+    const auto sex = dispatch ? static_cast<int>(actorBase->GetSex()) : -1;
+    const auto weight = dispatch ? actorWeight(actorBase) : std::nullopt;
+    require(!dispatch || sex == 0 || sex == 1, "wolf NPC sex unavailable");
     const auto before = routes(*actor);
     const auto camera = readCamera();
     Inventory inventory;
@@ -268,39 +349,65 @@ Json collect(Clock::time_point deadline) {
     for (std::size_t i = 0; i < before.vrRoots.size(); ++i)
         vrRoots[vrRouteNames[i]] = inventory.identify(before.vrRoots[i]);
     auto rootDetails = inventory.summarizeRoots(deadline);
+    Json markers;
+    if (dispatch) {
+        const auto observation = observeBodyMarkers(before, handle.native_handle(), deadline);
+        markers = Json::array();
+        for (std::size_t i = 0; i < observation.size(); ++i) {
+            const auto& row = observation[i];
+            markers.push_back({{"view", i < 2 ? "thirdPerson" : "firstPerson"},
+                {"bank", i % 2 ? "buffered" : "active"}, {"slot", bodySlot}, {"clone", inventory.identify(row.clone)},
+                {"counts", row.markers.counts}, {"classification", row.classification}});
+        }
+        require(observation == observeBodyMarkers(before, handle.native_handle(), deadline),
+                "Body32 marker attachment changed during capture");
+    }
     require(RE::PlayerCharacter::GetSingleton() == actor && actor->GetHandle() == handle &&
                 id(actor->GetRace()) == race && id(actor->GetActorBase()) == base &&
                 id(actor->GetParentCell()) == cell && actor->Is3DLoaded() &&
                 before == routes(*actor) && actor->GetWeaponState() == weaponState && camera == readCamera(),
                 "player, model route, or camera changed during capture");
-    return {{"actor", 0x14}, {"race", race}, {"base", base}, {"cell", cell},
+    Json sample = {{"actor", 0x14}, {"race", race}, {"base", base}, {"cell", cell},
             {"roots", std::move(roots)}, {"views", std::move(views)}, {"vrRoots", std::move(vrRoots)},
             {"weaponState", static_cast<unsigned>(weaponState)},
             {"cameraStateId", camera.id ? Json(*camera.id) : Json(nullptr)},
             {"roles", claw::targetModelRoles}, {"distinctRoots", std::move(rootDetails)}};
+    if (dispatch) {
+        require(actor->GetActorBase() == actorBase && static_cast<int>(actorBase->GetSex()) == sex &&
+                actorWeight(actorBase) == weight, "wolf sex or actor weight changed during capture");
+        LARGE_INTEGER frequency{};
+        const auto ended = qpc();
+        require(QueryPerformanceFrequency(&frequency) && frequency.QuadPart > 0 && ended > began,
+                "timing bracket unavailable");
+        sample.update({{"body32Markers", std::move(markers)}, {"sex", sex}, {"weight", weight ? Json(*weight) : Json(nullptr)},
+            {"runtimeHandle", handle.native_handle()}, {"qpcBegin", began}, {"qpcEnd", ended},
+            {"qpcFrequency", frequency.QuadPart}});
+    }
+    return sample;
 }
 
 class Capture {
 public:
-    std::string request(std::int32_t nonce) {
+    std::string request(std::int32_t nonce, bool dispatch = false) {
         std::unique_lock lock(mutex);
         if (nonce <= highest || busy || poisoned || loading || requests == requestLimit)
-            return reply(nonce, "refused", "busy, stale, loading or request limit").dump();
+            return reply(nonce, dispatch, "refused", "busy, stale, loading or request limit").dump();
         const auto generation = epoch;
         highest = nonce;
         ++requests;
         busy = true;
+        dispatch_ = dispatch;
         result.clear();
         deadline = Clock::now() + lifetime;
         const auto expires = deadline;
         lock.unlock();
         try {
-            SKSE::GetTaskInterface()->AddTask([=, this] { run(nonce, generation, expires); });
+            SKSE::GetTaskInterface()->AddTask([=, this] { run(nonce, generation, expires, dispatch); });
         } catch (...) {
             lock.lock();
             poisoned = true;
             result.clear();
-            return reply(nonce, "refused", "queue outcome unknown").dump();
+            return reply(nonce, dispatch, "refused", "queue outcome unknown").dump();
         }
         return read(nonce);
     }
@@ -308,10 +415,10 @@ public:
     std::string read(std::int32_t nonce) const {
         std::lock_guard lock(mutex);
         if (nonce <= 0 || nonce != highest || poisoned || loading)
-            return reply(nonce, "refused", "stale nonce or world").dump();
+            return reply(nonce, dispatch_, "refused", "stale nonce or world").dump();
         if (!result.empty()) return result;
-        if (busy && Clock::now() < deadline) return reply(nonce, "pending").dump();
-        return reply(nonce, "refused", "capture expired or invalidated").dump();
+        if (busy && Clock::now() < deadline) return reply(nonce, dispatch_, "pending").dump();
+        return reply(nonce, dispatch_, "refused", "capture expired or invalidated").dump();
     }
 
     void loadingWorld(bool loadingNow) {
@@ -322,12 +429,12 @@ public:
     }
 
 private:
-    static Json reply(std::int32_t nonce, const char* status, const char* reason = "") {
-        return {{"schema", "claw-vr-model-topology/4"}, {"pid", GetCurrentProcessId()},
+    static Json reply(std::int32_t nonce, bool dispatch, const char* status, const char* reason = "") {
+        return {{"schema", dispatch ? "claw-vr-model-topology/5" : "claw-vr-model-topology/4"}, {"pid", GetCurrentProcessId()},
                 {"nonce", nonce}, {"status", status}, {"reason", reason}};
     }
 
-    void run(std::int32_t nonce, std::uint64_t generation, Clock::time_point expires) {
+    void run(std::int32_t nonce, std::uint64_t generation, Clock::time_point expires, bool dispatch) {
         {
             std::lock_guard lock(mutex);
             if (epoch != generation || poisoned || loading || Clock::now() >= expires) {
@@ -337,13 +444,13 @@ private:
         }
         std::string captured;
         try {
-            auto response = reply(nonce, "ready");
+            auto response = reply(nonce, dispatch, "ready");
             response["epoch"] = generation;
-            response["sample"] = collect(expires);
+            response["sample"] = collect(expires, dispatch);
             captured = response.dump(-1, ' ', true, Json::error_handler_t::replace);
             require(captured.size() <= 32768, "capture byte limit");
         } catch (const Refusal& error) {
-            captured = reply(nonce, "refused", error.what()).dump();
+            captured = reply(nonce, dispatch, "refused", error.what()).dump();
         } catch (...) {
             captured.clear();
         }
@@ -357,18 +464,20 @@ private:
     std::uint64_t epoch{1};
     std::int32_t highest{};
     std::size_t requests{};
-    bool busy{}, poisoned{}, loading{};
+    bool busy{}, poisoned{}, loading{}, dispatch_{};
     Clock::time_point deadline{};
     std::string result;
 };
 
 Capture capture;
 std::string request(RE::StaticFunctionTag*, std::int32_t nonce) { return capture.request(nonce); }
+std::string requestDispatch(RE::StaticFunctionTag*, std::int32_t nonce) { return capture.request(nonce, true); }
 std::string read(RE::StaticFunctionTag*, std::int32_t nonce) { return capture.read(nonce); }
 
 bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     if (!vm) return false;
     vm->RegisterFunction("Capture", name, request);
+    vm->RegisterFunction("CaptureDispatch", name, requestDispatch);
     vm->RegisterFunction("Read", name, read);
     return true;
 }

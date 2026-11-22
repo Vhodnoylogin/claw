@@ -37,6 +37,37 @@ The pure chain traversal is covered by `claw-vr-root-cull` in CTest.
 The game paths are read-only. Graph membership and matching observations do
 not establish rendered geometry, continuous attachment or applied physics.
 
+## Loaded Body32 origin
+
+Use `CaptureDispatch(nonce)` to add the schema 5 marker observation. The
+original `Capture(nonce)` returns schema 4. `Read(nonce)` preserves the
+requested mode. The marker capture adds the runtime handle, actor-base sex
+and readable weight, and a native QPC interval for the same task.
+
+The four rows are ordered third-person active/buffered and first-person
+active/buffered. Each scans the exact Body32 clone only when it belongs to
+the current wolf's body item, armor addon and corresponding actor graph.
+The five count positions are `M0`, `M1`, `F0`, `F1` and `H_M0`. The walk
+checks reciprocal attachment and the authored empty marker node, then
+repeats the observation to catch intervening changes. An absent clone,
+foreign slot, missing attachment, incomplete walk, zero markers or
+conflicting markers are distinct results.
+
+Use the detached marker assets only in an admitted test. In the retained
+fixture, `M0/M1` and `F0/F1` label the four namespaced NIFs and `H_M0`
+labels the explicit legacy hands-path candidate. Confirm the actual installed
+winners and the effective armor record alongside the capture. Review the
+requested active slot with the verifier in `src/test/components/vr-body`:
+
+```text
+python src/test/components/vr-body/verify_dispatch_markers.py CAPTURE.json --view firstPerson --pid PID --nonce NONCE --epoch EPOCH
+```
+
+Use a fresh nonce for each observation. The verifier treats overlapping views
+and a marker only in a buffered clone as unresolved results. Its successful
+verdict identifies the observed marker's fixture asset. Weight interpolation
+and headset visibility require their own measurements.
+
 The initial offline build produced the DLL and PEX. The local build receipt
 is under Builds/claw-vr-model-topology-20261119/build-02, SHA-256
 544932afc4afc9852e61a6c7eec6ed689998f80f3f46c55517cd9745e8444832.
