@@ -72,6 +72,27 @@ The HIGGS callback supplied the observation point. Detailed ear and tail
 contacts are separate checks of CLAW's authored colliders. A change to those
 colliders does not require repeating the general tracking check.
 
+### Optional world-body motion trial
+
+`world_motion.py` builds one detached FSMP overlay for each fixed-profile sex.
+Use the pinned 0.10.0 core archive and the existing fixed-profile diagnostic
+archive as inputs. Each output contains the selected legacy NIF and its exact
+released FSMP XML. The matching namespaced TRI stays supplied by the
+fixed-profile diagnostic. A staged trial uses the same sex in both layers and
+the core installer setting **None**. Removing the optional layer restores the
+fixed-profile static mesh.
+
+```powershell
+python -B src/main/components/vr-body/world_motion.py --fixed-profile '<fixed profile ZIP>' --core-release '<original 0.10.0 ZIP>' --skeleton '<reviewed XP32 NIF>' --pynifly '<public PyNifly add-on>' --out '<new external trial directory>'
+```
+
+The NIF adds one Scene Root hook. The native file reader checks stored driver
+influence and the original TRI link. Tail and female breast influences include
+visible file shapes. Ear influences belong to shapes marked hidden in this
+carrier. Qualify the live world route first by checking the loaded Body32
+identity, one FSMP system for the actor and normal retirement. The separate
+native first-person graph needs its own qualification.
+
 For the next headset probe, `src/test/components/vr-body/avatar_torso.py`
 reads the pinned active NIF and TRI and lists the exact influential torso
 bones and morph channels to capture. Run it with a JSON file containing `nif`
