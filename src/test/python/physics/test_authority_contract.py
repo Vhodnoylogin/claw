@@ -32,7 +32,7 @@ class PhysicsAuthorityContracts(unittest.TestCase):
     def test_cached_events_are_current_wakeups_and_old_snapshot_cannot_clean_new(self):
         cached = body(HOST, "ProcessAutomatic")
         self.assertLess(cached.index("ConditionCurrent(target, kind, expectedRuntime)"), cached.index("helper.MarkModelGenerationChanged"))
-        stale = cached[cached.index('If !CLAWPhysicsNative.SnapshotCurrent'):cached.index('Float[] values')]
+        stale = cached[cached.index('If !CLAWPhysicsNative.ClaimSnapshot'):cached.index('Float[] values')]
         self.assertIn('kind == "snapshot" && CLAWPhysicsNative.ConditionCurrent(target, "renew", expectedRuntime) && helper.CleanupGeneration(generation)', stale)
         self.assertNotIn('kind == "pose"', stale)
         condition = PLUGIN.split("bool physicsConditionCurrent(", 1)[1].split("bool physicsSnapshotCurrent", 1)[0]
@@ -93,7 +93,7 @@ class PhysicsAuthorityContracts(unittest.TestCase):
         self.assertIn("collectPins();", quarantine)
     def test_cleanup_and_publication_use_separate_native_authority(self):
         cleanup = PLUGIN.split("bool physicsActorCurrent(", 1)[1].split("const PhysicsBinding* physicsSnapshot", 1)[0]
-        snapshot = PLUGIN.split("const PhysicsBinding* physicsSnapshot", 1)[1].split("bool physicsConditionCurrent", 1)[0]
+        snapshot = PLUGIN.split("PhysicsBinding* findPhysicsSnapshot", 1)[1].split("const PhysicsBinding* physicsSnapshot", 1)[0]
         self.assertIn("cleanupAllowed", cleanup)
         self.assertNotIn("renewable", cleanup)
         self.assertIn("publishable", snapshot)

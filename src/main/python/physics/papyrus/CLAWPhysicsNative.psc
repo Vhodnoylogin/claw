@@ -17,6 +17,10 @@ Bool Function SetPopulationEnabled(Bool optIn, String expectedSession = "") Glob
 Function UnregisterActor(Actor target, Bool retainForCleanup = False, String expectedSession = "") Global Native
 Bool Function ActorCurrent(Actor target) Global Native
 Bool Function SnapshotCurrent(Actor target, Int generation, Int token) Global Native
+; Claim checks pose capture age once, before provider mutation. SnapshotCurrent
+; then checks ownership through completion and any scoped rollback.
+Bool Function ClaimSnapshot(Actor target, Int generation, Int token) Global Native
+Function CancelSnapshot(Actor target, Int generation, Int token, Bool helperBusy) Global Native
 Bool Function RefitPending(Actor target, Int generation, Int previousToken) Global Native
 Function AcknowledgeSnapshot(Actor target, Int generation, Int token) Global Native
 Function AcknowledgePoseSnapshot(Actor target, Int generation, Int token, Bool delta) Global Native

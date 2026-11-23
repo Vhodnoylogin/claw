@@ -146,6 +146,15 @@ class PoseAckTests(unittest.TestCase):
         self.assertRaisesRegex(ValueError, "previous accepted inputs", self.verify, self.full,
                                dict(self.delta, weight=.5))
 
+    def test_host_claim_must_be_fresh_but_can_complete_after_the_deadline(self):
+        claimed = self.full["capturedUs"] + 500_000
+        receipt = dict(self.full, claimedUs=claimed, acknowledgedUs=claimed + 20_000)
+        self.verify(receipt)
+        self.assertRaisesRegex(ValueError, "Expired capture at host claim", self.verify,
+                               dict(receipt, claimedUs=claimed + 1))
+        self.assertRaisesRegex(ValueError, "Invalid claimedUs", self.verify,
+                               dict(receipt, claimedUs=self.full["publishedUs"] - 1))
+
     def test_numeric_domains_enforce_types_finiteness_and_exact_unit_float32(self):
         for field, value, pattern in (
             ("actor", True, "actor"), ("generation", 0, "generation"), ("token", 0x1000000, "token"),

@@ -6,6 +6,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <vector>
@@ -35,6 +36,25 @@ inline constexpr bool VRPoseCaptureCurrent(std::chrono::steady_clock::time_point
         std::chrono::steady_clock::time_point now) {
     return captured <= now && now - captured <= vrPoseMaxAge;
 }
+
+// Time limits admission, while an admitted write and its rollback share one offer.
+struct VRPoseOffer {
+    using TimePoint = std::chrono::steady_clock::time_point;
+    std::optional<TimePoint> captured;
+    bool claimed{};
+
+    bool expired(TimePoint now) const {
+        return captured && !claimed && !VRPoseCaptureCurrent(*captured, now);
+    }
+
+    bool claim(TimePoint now) {
+        if (!captured || claimed || expired(now)) return false;
+        claimed = true;
+        return true;
+    }
+
+    bool readable() const { return !captured || claimed; }
+};
 
 inline PoseAffine InvertPoseAffine(const PoseAffine& matrix) {
     const Vec3 x{matrix[0], matrix[1], matrix[2]}, y{matrix[4], matrix[5], matrix[6]},

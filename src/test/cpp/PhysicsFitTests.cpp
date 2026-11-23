@@ -23,6 +23,18 @@ int main() {
     assert(VRPoseCaptureCurrent(captured, captured + vrPoseMaxAge));
     assert(!VRPoseCaptureCurrent(captured, captured + vrPoseMaxAge + std::chrono::milliseconds(1)));
     assert(!VRPoseCaptureCurrent(captured, captured - std::chrono::milliseconds(1)));
+    const auto deadline = captured + vrPoseMaxAge;
+    const auto late = deadline + std::chrono::milliseconds(1);
+    VRPoseOffer unused;
+    assert(unused.readable() && !unused.expired(late));
+    VRPoseOffer delayed{captured};
+    assert(!delayed.readable() && !delayed.claim(late) && delayed.expired(late));
+    VRPoseOffer inFlight{captured};
+    assert(!inFlight.claim(captured - std::chrono::milliseconds(1)));
+    assert(inFlight.claim(deadline) && !inFlight.claim(deadline));
+    assert(inFlight.readable() && !inFlight.expired(late));
+    inFlight.claimed = false; // Busy helper returned before mutation.
+    assert(!inFlight.readable() && inFlight.expired(late));
     Model simple{"fixture",{"grow","shrink"},{{"TailBone01",
         {{-1,-1,-4},{1,1,-4},{-1,1,4},{1,-1,4}},
         {{0,{{-.5,-.5,-2},{.5,.5,-2},{-.5,.5,2},{.5,-.5,2}}},

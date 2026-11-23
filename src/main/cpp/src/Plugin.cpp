@@ -181,7 +181,7 @@ struct PhysicsPoseSample {
 #if defined(CLAW_TRACE_VR_POSE_ACK)
 struct PhysicsPoseReceipt {
     PhysicsPoseSample pose;
-    std::chrono::steady_clock::time_point computed, published;
+    std::chrono::steady_clock::time_point computed, published, claimed{};
 };
 #endif
 struct PhysicsBinding {
@@ -200,6 +200,10 @@ struct PhysicsBinding {
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
     std::vector<claw::physics::Capsule> capsules;
     bool needsFit{}, fitPending{};
+#endif
+#if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+    claw::physics::VRPoseOffer poseOffer;
+    std::vector<claw::physics::Capsule> offeredCapsules;
 #endif
 #if defined(CLAW_TRACE_VR_POSE_ACK)
     std::optional<PhysicsPoseReceipt> poseReceipt;
@@ -751,6 +755,8 @@ void publishPhysics(RE::Actor* actor, PhysicsBinding& binding, std::uint32_t pos
     binding.snapshot = nextPhysicsSnapshot++; binding.ready = true; binding.delivered = false;
 #if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
     const auto published = std::chrono::steady_clock::now();
+    binding.poseOffer = {};
+    if (job && job->pose) binding.poseOffer.captured = job->pose->captured;
     if (job && job->pose && !poseBaseSnapshot) SKSE::log::info("CLAW posed VR snapshot {} actor {:08X} age {} us",
         binding.snapshot, actor->GetFormID(), std::chrono::duration_cast<std::chrono::microseconds>(
             published - job->pose->captured).count());
@@ -764,6 +770,24 @@ void publishPhysics(RE::Actor* actor, PhysicsBinding& binding, std::uint32_t pos
 #endif
     signalPhysicsSnapshot(actor, binding);
 }
+
+#if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+void discardPhysicsPoseOffer(PhysicsBinding& binding, bool keepPredecessor) {
+    // An untouched delta leaves the accepted provider state intact. An attempted
+    // write may have changed that ledger and must go through a fresh full fit.
+    binding.snapshot = keepPredecessor ? binding.poseBaseSnapshot : 0;
+    binding.delivered = binding.snapshot != 0;
+    binding.ready = binding.delivered;
+    binding.needsFit = !binding.ready;
+    binding.poseBaseSnapshot = 0;
+    binding.poseChangedSlots.clear();
+    binding.offeredCapsules.clear();
+    binding.poseOffer = {};
+#if defined(CLAW_TRACE_VR_POSE_ACK)
+    binding.poseReceipt.reset();
+#endif
+}
+#endif
 
 RE::NiAVObject* physicsActorRoot(RE::Actor* actor) {
 #if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
@@ -988,15 +1012,19 @@ void startPhysicsWorker() {
                     if (capsules.size() != slots.size() || binding.capsules.size() != compiledPhysicsModel(job.female).slots.size()) {
                         rejectPhysics(actor, binding, claw::PhysicsRejection::model); return;
                     }
+                    std::vector<claw::physics::Capsule> offered;
                     for (std::size_t i = 0; i < slots.size(); ++i) {
                         const auto slot = slots[i];
                         if (claw::physics::PoseCapsuleChanged(binding.capsules[slot], capsules[i], claw::physics::poseCapsuleTolerance)) {
+                            if (changed.empty()) offered = binding.capsules;
                             changed.push_back(static_cast<std::int32_t>(slot));
-                            binding.capsules[slot] = capsules[i];
+                            offered[slot] = capsules[i];
                         }
                     }
                     if (changed.empty()) return;
-                } else
+                    binding.offeredCapsules = std::move(offered);
+                } else if (job.pose) binding.offeredCapsules = std::move(capsules);
+                else
 #endif
                 { binding.capsules = std::move(capsules); }
                 publishPhysics(actor, binding, job.poseBaseSnapshot, std::move(changed), &job);
@@ -1009,6 +1037,9 @@ void queuePhysicsFit(RE::Actor* actor, PhysicsBinding& binding, std::uint32_t po
     if (binding.fitPending || (!poseBaseSnapshot && !binding.needsFit) || binding.observation.stablePasses < 2 ||
         binding.observation.candidate != binding.observation.published ||
         binding.observation.weight != binding.observation.publishedWeight) return;
+#if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+    if (binding.poseOffer.claimed) return;
+#endif
     const auto id = actor->GetFormID();
     PhysicsFitWork job{id, binding.world, binding.registration, binding.observation.root,
         binding.generation, binding.female, binding.observation.published, binding.observation.publishedWeight,
@@ -1105,6 +1136,10 @@ void observePhysics(RE::Actor* actor, bool retryPose) {
         if (!binding.delivered) physicsEvent(actor, "ready");
         return; // Host must renew the exact generation after a lifecycle change.
     }
+#if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+    if (binding.ready && binding.poseOffer.expired(std::chrono::steady_clock::now()))
+        discardPhysicsPoseOffer(binding, true);
+#endif
     std::vector<float> values;
     const float normalizedWeight = rawWeight / 100.0F;
     for (const auto& name : binding.names) values.push_back(morphs->GetBodyMorphs(skeeReference(actor), name.c_str()));
@@ -1591,7 +1626,7 @@ void queuePhysicsPoseScan() {
                 auto& [id, binding] = *next++;
                 if (!binding.active || !binding.ready || binding.fitPending || binding.needsFit ||
                     binding.observation.dirty || binding.world != token || !binding.condition.empty()) continue;
-                if (retry ? binding.delivered || !binding.poseBaseSnapshot : !binding.delivered) continue;
+                if (retry ? binding.delivered || binding.poseOffer.claimed : !binding.delivered) continue;
                 const auto state = states.find(id);
                 const auto actor = std::as_const(binding.actor).get();
                 if (state == states.end() || !actor || actor.get() != binding.pointer || !currentOwner(actor.get()) ||
@@ -2341,6 +2376,9 @@ bool registerPhysics(RE::Actor* actor, std::int32_t generation,
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
             binding.fitPending = false;
 #endif
+#if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+            if (binding.poseOffer.captured) discardPhysicsPoseOffer(binding, false);
+#endif
             binding.condition.clear(); binding.observation.invalidate(); binding.observation.root = 0;
         } else {
             PhysicsBinding binding;
@@ -2446,16 +2484,58 @@ bool physicsActorCurrent(RE::StaticFunctionTag*, RE::Actor* actor) {
         state->second.runtimeSerial == found->second.runtime && state->second.physicsAuthority.cleanupAllowed(physicsOwner(state->second));
 }
 
-const PhysicsBinding* physicsSnapshot(RE::Actor* actor, std::int32_t generation, std::int32_t snapshot) {
+PhysicsBinding* findPhysicsSnapshot(RE::Actor* actor, std::int32_t generation, std::int32_t snapshot) {
     if (!enabled || !actor || snapshot <= 0) return nullptr;
     const auto found = physicsBindings.find(actor->formID);
     if (found == physicsBindings.end()) return nullptr;
-    const auto& binding = found->second;
+    auto& binding = found->second;
     const auto state = states.find(actor->formID);
     return binding.pointer == actor && binding.world == epoch && binding.ready && binding.generation == generation &&
         binding.snapshot == static_cast<std::uint32_t>(snapshot) && state != states.end() && !state->second.quarantined &&
         boundTo(state->second, actor) && state->second.runtimeSerial == binding.runtime &&
         state->second.physicsAuthority.publishable(physicsOwner(state->second), binding.authorityRevision) ? &binding : nullptr;
+}
+
+const PhysicsBinding* physicsSnapshot(RE::Actor* actor, std::int32_t generation, std::int32_t snapshot) {
+    const auto* binding = findPhysicsSnapshot(actor, generation, snapshot);
+#if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+    if (binding && !binding->poseOffer.readable()) return nullptr;
+#endif
+    return binding;
+}
+
+bool physicsClaimSnapshot(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation, std::int32_t snapshot) {
+    std::lock_guard lock(mutex);
+    auto* binding = findPhysicsSnapshot(actor, generation, snapshot);
+    if (!binding || binding->delivered) return false;
+#if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+    if (binding->poseOffer.captured) {
+        const auto now = std::chrono::steady_clock::now();
+        if (!binding->poseOffer.claim(now)) return false;
+#if defined(CLAW_TRACE_VR_POSE_ACK)
+        if (binding->poseReceipt) binding->poseReceipt->claimed = now;
+#endif
+    }
+#endif
+    return true;
+}
+
+void physicsCancelSnapshot(RE::StaticFunctionTag*, RE::Actor* actor, std::int32_t generation,
+        std::int32_t snapshot, bool helperBusy) {
+#if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+    if (!actor || snapshot <= 0) return;
+    std::lock_guard lock(mutex);
+    const auto found = physicsBindings.find(actor->formID);
+    if (found == physicsBindings.end()) return;
+    auto& binding = found->second;
+    // Release the exact claim even if the actor's lifecycle made it unreadable.
+    if (binding.pointer != actor || binding.world != epoch || binding.generation != generation ||
+        binding.snapshot != static_cast<std::uint32_t>(snapshot) || !binding.poseOffer.claimed) return;
+    if (helperBusy && binding.ready) binding.poseOffer.claimed = false;
+    else discardPhysicsPoseOffer(binding, false);
+#else
+    (void)actor; (void)generation; (void)snapshot; (void)helperBusy;
+#endif
 }
 
 bool physicsConditionCurrent(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString condition, RE::BSFixedString expectedSession) {
@@ -2522,7 +2602,8 @@ std::string physicsPoseAckJson(RE::FormID actor, const PhysicsBinding& binding, 
         << ",\"model\":" << claw::jsonString(binding.model) << ",\"female\":" << binding.female
         << ",\"application\":\"" << (delta ? "delta" : "full") << '"'
         << ",\"capturedUs\":" << micros(receipt.pose.captured) << ",\"computedUs\":" << micros(receipt.computed)
-        << ",\"publishedUs\":" << micros(receipt.published) << ",\"acknowledgedUs\":" << micros(acknowledged)
+        << ",\"publishedUs\":" << micros(receipt.published) << ",\"claimedUs\":" << micros(receipt.claimed)
+        << ",\"acknowledgedUs\":" << micros(acknowledged)
         << ",\"weight\":" << binding.observation.publishedWeight << ",\"morphs\":[";
     for (std::size_t i = 0; i < binding.names.size(); ++i) {
         if (i) out << ',';
@@ -2570,7 +2651,13 @@ void acknowledgePhysicsSnapshot(RE::Actor* actor, std::int32_t generation, std::
         std::lock_guard lock(mutex);
         if (!physicsSnapshot(actor, generation, snapshot)) return;
         auto& binding = physicsBindings.at(actor->formID);
-        if (binding.delivered || (poseDelta.has_value() && !binding.poseBaseSnapshot)) return;
+        if (binding.delivered || poseDelta.has_value() != (binding.poseBaseSnapshot != 0)) return;
+#if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+        if (binding.poseOffer.captured) {
+            binding.capsules = std::move(binding.offeredCapsules);
+            binding.poseOffer = {};
+        }
+#endif
         binding.delivered = true;
 #if defined(CLAW_TRACE_VR_POSE_ACK)
         if (auto receipt = std::exchange(binding.poseReceipt, std::nullopt);
@@ -2624,11 +2711,15 @@ std::vector<float> physicsCapsule(RE::StaticFunctionTag*, RE::Actor* actor, std:
     std::lock_guard lock(mutex);
     const auto* binding = physicsSnapshot(actor, generation, snapshot);
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
-    if (binding && slot >= 0 && static_cast<std::size_t>(slot) < binding->capsules.size() &&
-        compiledPhysicsModel(binding->female).slots[slot].active) {
-        const auto geometry = capsuleGeometry(binding->capsules[slot]);
-        return {geometry.begin(), geometry.end()};
-    }
+    if (!binding || slot < 0) return {};
+#if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+    const auto& capsules = binding->poseOffer.captured ? binding->offeredCapsules : binding->capsules;
+#else
+    const auto& capsules = binding->capsules;
+#endif
+    if (static_cast<std::size_t>(slot) >= capsules.size() || !compiledPhysicsModel(binding->female).slots[slot].active) return {};
+    const auto geometry = capsuleGeometry(capsules[slot]);
+    return {geometry.begin(), geometry.end()};
 #else
     (void)binding; (void)slot;
 #endif
@@ -2686,6 +2777,8 @@ bool registerPapyrus(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("UnregisterActor", "CLAWPhysicsNative", physicsUnregister);
     vm->RegisterFunction("ActorCurrent", "CLAWPhysicsNative", physicsActorCurrent);
     vm->RegisterFunction("SnapshotCurrent", "CLAWPhysicsNative", physicsSnapshotCurrent);
+    vm->RegisterFunction("ClaimSnapshot", "CLAWPhysicsNative", physicsClaimSnapshot);
+    vm->RegisterFunction("CancelSnapshot", "CLAWPhysicsNative", physicsCancelSnapshot);
     vm->RegisterFunction("GetPoseChangedSlots", "CLAWPhysicsNative", physicsPoseChangedSlots);
     vm->RegisterFunction("RefitPending", "CLAWPhysicsNative", physicsRefitPending);
     vm->RegisterFunction("AcknowledgeSnapshot", "CLAWPhysicsNative", physicsAcknowledge);

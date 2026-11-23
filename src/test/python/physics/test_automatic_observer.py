@@ -77,7 +77,7 @@ class AutomaticObserverTests(unittest.TestCase):
         scan = plugin.split('void queuePhysicsPoseScan() {', 1)[1].split('void queueActor(', 1)[0]
         self.assertIn('visitOne(deliveryCursor, true);', scan)
         self.assertIn('visitOne(captureCursor, false);', scan)
-        self.assertIn('retry ? binding.delivered || !binding.poseBaseSnapshot : !binding.delivered', scan)
+        self.assertIn('retry ? binding.delivered || binding.poseOffer.claimed : !binding.delivered', scan)
         self.assertIn('if (retry) observePhysics(actor.get(), true);', scan)
         self.assertIn('(retryPose || !binding.poseBaseSnapshot)', plugin)
 
@@ -87,8 +87,23 @@ class AutomaticObserverTests(unittest.TestCase):
         expires = result.index('if (vrRuntime && (!job.pose ||\n                    !claw::physics::VRPoseCaptureCurrent')
         self.assertLess(result.index('binding.fitPending = false;'), expires)
         self.assertLess(expires, result.index('binding.needsFit = false;'))
-        self.assertLess(expires, result.index('binding.capsules[slot] = capsules[i];'))
+        self.assertLess(expires, result.index('binding.offeredCapsules = std::move(offered);'))
+        self.assertNotIn('binding.capsules[slot] =', result)
         self.assertLess(expires, result.index('publishPhysics(actor, binding, job.poseBaseSnapshot'))
+
+    def test_pose_claim_gates_provider_attempts_and_keeps_last_accepted_baseline(self):
+        host = (ROOT/'papyrus/CLAWPhysicsHost.psc').read_text().split('Function ProcessAutomatic(', 1)[1]
+        self.assertLess(host.index('ClaimSnapshot('), host.index('GetValues('))
+        self.assertLess(host.index('ClaimSnapshot('), host.index('helper.SynchronizePose('))
+        self.assertLess(host.index('AcknowledgePoseSnapshot('), host.index('CancelSnapshot('))
+        plugin = (ROOT.parents[3]/'src/main/cpp/src/Plugin.cpp').read_text()
+        discard = plugin.split('void discardPhysicsPoseOffer(', 1)[1].split('RE::NiAVObject* physicsActorRoot', 1)[0]
+        self.assertIn('keepPredecessor ? binding.poseBaseSnapshot : 0', discard)
+        self.assertIn('binding.offeredCapsules.clear()', discard)
+        self.assertNotIn('binding.capsules', discard)
+        ack = plugin.split('void acknowledgePhysicsSnapshot(', 1)[1].split('void physicsAcknowledge(', 1)[0]
+        self.assertLess(ack.index('poseDelta.has_value() != (binding.poseBaseSnapshot != 0)'),
+                        ack.index('binding.capsules = std::move(binding.offeredCapsules)'))
 
     def test_pose_trace_is_staged_before_dispatched_and_consumed_at_first_current_ack(self):
         plugin = (ROOT.parents[3]/'src/main/cpp/src/Plugin.cpp').read_text()

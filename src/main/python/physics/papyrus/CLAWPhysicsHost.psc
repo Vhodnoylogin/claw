@@ -362,7 +362,7 @@ Function ProcessAutomatic(Int index, Actor target, String kind, Int token, Strin
   EndIf
   Int generation = helper.GetModelGeneration()
   If kind == "snapshot" || kind == "pose"
-    If !CLAWPhysicsNative.SnapshotCurrent(target, generation, token)
+    If !CLAWPhysicsNative.ClaimSnapshot(target, generation, token)
       ; Ordinary snapshots may wake an already waiting lifecycle renewal. A pose
       ; event has no such authority, and the cleanup is scoped to this generation.
       If kind == "snapshot" && CLAWPhysicsNative.ConditionCurrent(target, "renew", expectedRuntime) && helper.CleanupGeneration(generation) != 8 && helper.GetAcceptedLedgerCount() == 0
@@ -390,6 +390,9 @@ Function ProcessAutomatic(Int index, Actor target, String kind, Int token, Strin
       ; reported removal. The next bounded pass can retry after cleanup.
       helper.CleanupGeneration(generation)
     EndIf
+    ; An accepted claim is already cleared by its ACK. A busy helper attempted
+    ; no writes; any other unresolved result requires a fresh full snapshot.
+    CLAWPhysicsNative.CancelSnapshot(target, generation, token, outcome == 8)
   ElseIf kind == "refit"
     ; A delayed old refit receipt cannot remove newly accepted current capsules.
     If CLAWPhysicsNative.RefitPending(target, generation, token)

@@ -242,3 +242,15 @@ Run the resulting `claw_pose_support` executable. It checks all 64 fitted
 capsules against independent replay coordinates before printing separate
 reconstruction and fit timings. Timings omit provider updates, acquisition
 of game state and any model change. The executable is a test target.
+## Pose capture admission
+
+Both full VR fits and posed deltas require a host claim before provider work.
+The capture can wait at most 500 ms for the claim. A claimed transaction keeps
+its ownership checks through application and rollback. An expired, unclaimed
+delta is replaced using the last acknowledged capsule geometry. A failed or
+uncertain write goes through full reconciliation with a fresh capture.
+
+New trace receipts include `claimedUs`. Historical traces without that field
+can still verify placement and lifecycle but carry no claim timing evidence.
+For a live retry check, delay an offer past the claim deadline, confirm its
+token did not cause any provider writes, and observe the next accepted fit.

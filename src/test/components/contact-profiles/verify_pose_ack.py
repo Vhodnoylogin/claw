@@ -91,6 +91,9 @@ def typed_receipt(receipt):
     previous = integer(receipt.get("previousToken"), "previousToken", 0, token - 1)
     stage_times = [receipt[field] for field in STAGES]
     require(stage_times == sorted(stage_times), "Invalid capture, compute, publish or ACK stage order")
+    if "claimedUs" in receipt:
+        claimed = integer(receipt["claimedUs"], "claimedUs", receipt["publishedUs"], receipt["acknowledgedUs"])
+        require(claimed - receipt["capturedUs"] <= 500_000, "Expired capture at host claim")
     name(receipt.get("model"), "model")
     require(type(receipt.get("female")) is bool and unit(receipt.get("weight")), "Invalid sex or normalized weight")
     application = receipt.get("application")
