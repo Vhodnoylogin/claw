@@ -5,6 +5,7 @@ import struct
 
 _VR_SCHEMA = "claw-vr-cbpc-events/1"
 _VR_PLAYER_SCHEMA = "claw-vr-cbpc-player-events/1"
+_VR_STOCK_EAR_SCHEMA = "claw-vr-cbpc-stock-split-ear-events/1"
 _SE_SCHEMA = "claw-se-cbpc-events/1"
 _SE_RUNTIME = "SkyrimSE-1.7.104"
 PLAYER_BODY_CONTACT_NODES = {"NPC EarL [EarL]Bone01": (88, 89, 90, 91), "TailBone02": (108, 109, 110, 111)}
@@ -35,7 +36,7 @@ def positive_int(value):
 def matches_snapshot(snapshot, audience, *, schema=_VR_SCHEMA):
     identity = (audience.pid, audience.nonce, audience.generation, audience.actor, audience.base, audience.cell)
     keys = ("pid", "nonce", "generation", "actorFormId", "baseFormId", "cellFormId")
-    allowed = (audience.actor == 0x14 and audience.base == 7 if schema == _VR_PLAYER_SCHEMA
+    allowed = (audience.actor == 0x14 and audience.base == 7 if schema in (_VR_PLAYER_SCHEMA, _VR_STOCK_EAR_SCHEMA)
                else 0xFF000000 <= audience.actor < 0xFFFFFFFF)
     require(all(positive_int(value) for value in identity) and allowed
             and audience.sex in ("Male", "Female") and type(audience.bone) is str and audience.bone.strip(),
@@ -77,20 +78,28 @@ def score_se(snapshot, readiness, audience, holds, minimum_duration, minimum_hol
 
 
 def score_player(snapshot, readiness, audience, holds, *, body32, runtime_handle, minimum_hold_ticks,
-                 morph_refit=False):
+                 morph_refit=False, stock_split_ear=False):
     """Score the sole configured wand/target contrast after independent geometry admission."""
-    matches_snapshot(snapshot, audience, schema=_VR_PLAYER_SCHEMA)
-    require(readiness == {"schema": _VR_PLAYER_SCHEMA, "status": "idle", "pid": audience.pid,
+    schema = _VR_STOCK_EAR_SCHEMA if stock_split_ear else _VR_PLAYER_SCHEMA
+    matches_snapshot(snapshot, audience, schema=schema)
+    require(readiness == {"schema": schema, "status": "idle", "pid": audience.pid,
                           "generation": audience.generation, "sinkRegistered": True, "loading": False},
-            "Foreign or incomplete equipped-player callback producer receipt")
+            "Foreign or incomplete player callback producer receipt")
     item, addon = body32
-    require(positive_int(item) and positive_int(addon) and positive_int(runtime_handle) and 0 < item >> 24 < 0xFE
-            and item & 0xFFFFFF == 0x801 and addon == item - 1 and audience.bone in PLAYER_BODY_CONTACT_NODES,
-            "Expected independently admitted equipped player and single target node")
+    require(all(positive_int(value) for value in (item, addon, runtime_handle)),
+            "Expected exact player Body32 forms and runtime handle")
+    if stock_split_ear:
+        require((item, addon) == (0xCDD86, 0xCDD87) and audience.sex == "Male"
+                and audience.bone == "NPC EarL [EarL]Bone01" and not morph_refit,
+                "Expected independently admitted stock male split-ear fixture")
+    else:
+        require(0 < item >> 24 < 0xFE and item & 0xFFFFFF == 0x801 and addon == item - 1
+                and audience.bone in PLAYER_BODY_CONTACT_NODES,
+                "Expected independently admitted equipped player and single target node")
     observed = snapshot.get("body32", {})
     require((observed.get("item"), observed.get("addon"), observed.get("runtimeHandle")) == (item, addon, runtime_handle)
             and observed.get("female") is (audience.sex == "Female") and observed.get("checkedAtSeal") is True,
-            "Equipped player Body32 did not remain current at callback seal")
+            "Player Body32 did not remain current at callback seal")
     if morph_refit:
         return _score_holds(snapshot, audience, holds, .3, minimum_hold_ticks,
                             phases=MORPH_REFIT_PHASES, positive=("morphed",))

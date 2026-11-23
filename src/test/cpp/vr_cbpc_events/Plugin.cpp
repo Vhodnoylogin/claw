@@ -22,7 +22,11 @@ using Json = nlohmann::json;
 using cbpc::State;
 #if defined(CLAW_CBPC_PLAYER_WITNESS)
 constexpr auto plugin = "CLAWVRPlayerCBPCEvents";
+#if defined(CLAW_CBPC_STOCK_SPLIT_EAR)
+constexpr auto schema = "claw-vr-cbpc-stock-split-ear-events/1";
+#else
 constexpr auto schema = "claw-vr-cbpc-player-events/1";
+#endif
 constexpr bool playerWitness = true;
 #else
 constexpr auto plugin = "CLAWVRCBPCEvents";
@@ -64,6 +68,14 @@ const char* status(State state) {
 
 RE::FormID id(const RE::TESForm* form) { return form ? form->GetFormID() : 0; }
 
+cbpc::PlayerIdentity observePlayer(cbpc::Key key) {
+#if defined(CLAW_CBPC_STOCK_SPLIT_EAR)
+    return cbpc::stockSplitEarPlayer(key);
+#else
+    return cbpc::equippedPlayer(key);
+#endif
+}
+
 std::pair<RE::FormID, std::uintptr_t> observeSubject(cbpc::Key key) {
     auto* ui = RE::UI::GetSingleton();
     if (!ui || ui->IsMenuOpen(RE::LoadingMenu::MENU_NAME) || ui->IsMenuOpen(RE::MainMenu::MENU_NAME))
@@ -84,7 +96,7 @@ std::pair<RE::FormID, std::uintptr_t> observeSubject(cbpc::Key key) {
 void activate(cbpc::Key key) {
     try {
         if constexpr (playerWitness) {
-            const auto identity = cbpc::equippedPlayer(key);
+            const auto identity = observePlayer(key);
             std::lock_guard lock(gate);
             if (window->activate(key, identity.base, identity.sender, counter())) playerCapture = PlayerCapture{key, identity};
         } else {
@@ -130,7 +142,7 @@ bool sealPlayer(std::uint32_t nonce, std::uint32_t generation) {
     try {
         SKSE::GetTaskInterface()->AddTask([key] {
             cbpc::PlayerIdentity identity;
-            try { identity = cbpc::equippedPlayer(key); } catch (...) {}
+            try { identity = observePlayer(key); } catch (...) {}
             std::lock_guard lock(gate);
             window->seal(key.nonce, key.generation, counter(), identity == playerCapture->identity);
         });

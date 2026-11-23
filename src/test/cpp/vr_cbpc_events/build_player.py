@@ -27,7 +27,7 @@ def read(path):
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
 
-def build(base, out):
+def build(base, out, *, stock_split_ear=False):
     base, out = base.resolve(strict=True), out.resolve()
     baseline = pin(base / "RECEIPT.json", BASE_RECEIPT)
     recipe = pin(base / "commands.json", BASE_COMMANDS)
@@ -35,7 +35,8 @@ def build(base, out):
     paths = ("Plugin.cpp", "Window.h", "WindowTests.cpp", "PlayerSubject.h", MODULE + ".psc", "build_player.py")
     source_pins = [pin(SOURCE / name) for name in paths]
     include = SOURCE.parents[3] / "src/main/cpp/include"
-    product = [pin(include / "claw" / name) for name in ("RuntimeSupport.h", "WorldStartPolicy.h", "PhysicsContactRoute.h")]
+    product = [pin(include / "claw" / name) for name in
+               ("RuntimeSupport.h", "WorldStartPolicy.h", "PhysicsContactRoute.h", "TargetModelAvailability.h")]
     retained = receipt["earlyTools"] + receipt["linkedRetainedLibraries"] + [receipt["papyrusCompiler"]]
     shell = next(row for row in receipt["referenceInputs"] if Path(row["path"]).suffix == ".cmd")
     for row in retained + [shell]:
@@ -50,6 +51,8 @@ def build(base, out):
                 arg = arg.replace(old, new)
             command[index] = arg
     commands[2].append("/DCLAW_CBPC_PLAYER_WITNESS=1")
+    if stock_split_ear:
+        commands[2].append("/DCLAW_CBPC_STOCK_SPLIT_EAR=1")
     env = os.environ.copy()
     startup = subprocess.run(["cmd.exe", "/d", "/c", shell["path"]], capture_output=True, text=True, check=True)
     for line in startup.stdout.splitlines():
@@ -74,6 +77,8 @@ def build(base, out):
     record = {"schema": "claw-vr-player-cbpc-witness-build/1", "runtimeChecked": False, "module": MODULE,
               "baseline": baseline, "recipe": recipe, "sources": source_pins, "headers": observed,
               "stages": stages, "dll": pin(out / (MODULE + ".dll")), "pex": pin(out / (MODULE + ".pex"))}
+    if stock_split_ear:
+        record["subject"] = "stock-split-ear"
     (out / "RECEIPT.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
     return record["dll"], record["pex"]
 
@@ -82,5 +87,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline", type=Path, required=True, help="Retained NPC witness build-03")
     parser.add_argument("--out", type=Path, required=True, help="Fresh external build directory")
+    parser.add_argument("--stock-split-ear", action="store_true", help="Observe the stock male split-ear trial")
     args = parser.parse_args()
-    print(json.dumps(build(args.baseline, args.out), indent=2))
+    print(json.dumps(build(args.baseline, args.out, stock_split_ear=args.stock_split_ear), indent=2))

@@ -124,4 +124,17 @@ The launch needs a verified starting fixture with the Body32 armor equipped,
 or a qualified bounded action that equips it. The narrow replay also needs the
 actual capsule append/removal and native witness receipts. A generic scene or
 Havok contact observation provides separate evidence. Use the ordinary
-Polygon admission, installation and restoration process for a real run.
+owned-profile admission, installation and restoration process for a real run.
+
+### Stock split-ear trial
+
+Pass `--stock-split-ear` to `build_player.py` for the stock male route used by
+the legacy NIF comparison. Load this build in place of the equipped witness.
+It uses the same Papyrus declarations and returns
+`claw-vr-cbpc-stock-split-ear-events/1`. At arm and seal it requires the same
+attached stock `CDD86/CDD87` clone and the same unique left/right ear shape,
+with its exact `EarWorldTrial.tri` link and 1,354 vertices / 2,394 triangles.
+The observer validates skin partition counts when the VR shape header leaves
+them empty. Independently pin the legacy NIF and TRI winners. Use
+`score_player(..., stock_split_ear=True)` for the male left-ear contrast after
+admitting its live geometry and measuring the wand holds.

@@ -124,6 +124,31 @@ class CbpcEventControls(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "requires matching"):
             score_case(windows=self.holds)
 
+    def test_stock_split_ear_scope_requires_its_own_witness_and_forms(self):
+        audience = replace(self.audience, actor=0x14, base=7, bone="NPC EarL [EarL]Bone01")
+        schema = "claw-vr-cbpc-stock-split-ear-events/1"
+        forms = (0xCDD86, 0xCDD87)
+        body = {"item": forms[0], "addon": forms[1], "runtimeHandle": 80, "female": False, "checkedAtSeal": True}
+        snapshot = {**self.snapshot, "schema": schema, "actorFormId": audience.actor, "baseFormId": audience.base,
+                    "body32": body, "events": [{**event, "strArg": audience.bone, "senderFormId": audience.actor}
+                                               for event in self.snapshot["events"]]}
+        ready = {"schema": schema, "status": "idle", "pid": audience.pid, "generation": audience.generation,
+                 "sinkRegistered": True, "loading": False}
+        holds = {"unattachedNear": (100, 110), **self.holds}
+
+        def score_case(scope=audience, expected_forms=forms, **options):
+            return score_player(snapshot, ready, scope, holds, body32=expected_forms, runtime_handle=80,
+                                minimum_hold_ticks=10, **options)
+
+        self.assertEqual(score_case(stock_split_ear=True)["status"], "qualified-emission-contrast")
+        with self.assertRaisesRegex(ValueError, "unsupported"):
+            score_case()
+        for scope, candidate_forms in ((audience, (0xB000801, 0xB000800)),
+                                       (replace(audience, bone="TailBone02"), forms),
+                                       (replace(audience, sex="Female"), forms)):
+            with self.subTest(scope=scope, forms=candidate_forms), self.assertRaisesRegex(ValueError, "stock male"):
+                score_case(scope, candidate_forms, stock_split_ear=True)
+
     def test_zero_events_without_positive_controls_refuses(self):
         snap = {**self.snapshot, "lastSequence": 0, "events": []}
         result = score(snap, self.audience, self.holds, .3, 10)
