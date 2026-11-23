@@ -6,8 +6,8 @@ import sys
 from tempfile import TemporaryDirectory
 import unittest
 
-from verify_dispatch_markers import (ADDON, BODY, ITEM, ROUTES, SCHEMA, SCHEMA_V5, SCHEMA_V6, SCHEMA_TOKENS,
-                                     TOKENS, verify_dispatch_markers)
+from verify_dispatch_markers import (ADDON, BODY, ITEM, ROUTES, SCHEMA, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_TOKENS,
+                                     TOKENS, origin, verify_dispatch_markers)
 
 FIXTURE = (0x0B000801, 0x0B000800)
 
@@ -18,7 +18,7 @@ def capture(schema=SCHEMA_V5):
               'roots': {'default': 1, 'thirdPerson': 1, 'firstPerson': 2},
               'views': {view: {'available': True} for view, _ in ROUTES},
               'distinctRoots': [{'id': alias} for alias in range(1, 7)], 'body32Markers': []}
-    if schema == SCHEMA:
+    if schema in (SCHEMA_V7, SCHEMA):
         sample['playerBody32Fixture'] = None
     for index, (view, bank) in enumerate(ROUTES):
         sample['views'][view][bank] = [dict(slot=BODY, clone=index + 3, item=ITEM, addon=ADDON,
@@ -170,7 +170,7 @@ class DispatchMarkersTests(unittest.TestCase):
     def test_v7_links_both_player_models_to_independently_admitted_forms(self):
         for sex, marker, path in ((0, 'P_M', r'male\Body_1.nif'), (1, 'P_F', r'female\Body_1.nif')):
             with self.subTest(sex=sex):
-                data = capture(SCHEMA)
+                data = capture(SCHEMA_V7)
                 sample = data['sample']
                 sample['sex'] = sex
                 sample['playerBody32Fixture'] = dict(zip(('item', 'addon'), FIXTURE, strict=True))
@@ -188,7 +188,7 @@ class DispatchMarkersTests(unittest.TestCase):
                 self.assertEqual(verify(data, expect=marker, fixture_forms=FIXTURE)['status'], 'wrong_fixture_route')
 
     def test_v7_null_fixture_preserves_stock_and_refuses_partial_or_mixed_forms(self):
-        data = capture(SCHEMA)
+        data = capture(SCHEMA_V7)
         self.assertTrue(verify(data, expect='M1')['modelOriginVerified'])
         for invalid in ({'item': FIXTURE[0]}, {'item': FIXTURE[0], 'addon': ADDON}):
             data['sample']['playerBody32Fixture'] = invalid
@@ -201,6 +201,30 @@ class DispatchMarkersTests(unittest.TestCase):
             verify(data, fixture_forms=FIXTURE)
         row.update(addon=FIXTURE[1])
         self.assertEqual(verify(data, fixture_forms=FIXTURE)['status'], 'wrong_fixture_route')
+
+    def test_v8_world_only_carriers_require_the_admitted_item_view_and_path(self):
+        for sex, world, first in ((0, 'W_M', 'P_M'), (1, 'W_F', 'P_F')):
+            with self.subTest(sex=sex):
+                data = capture(SCHEMA)
+                sample = data['sample']
+                sample['sex'] = sex
+                sample['playerBody32Fixture'] = pair = dict(zip(('item', 'addon'), FIXTURE, strict=True))
+                world_row = sample['views']['thirdPerson']['active'][0]
+                world_row.update(pair, modelPath=origin(world).removeprefix('Meshes\\'))
+                first_row = sample['views']['firstPerson']['active'][0]
+                first_row.update(pair, modelPath=origin(first))
+                mark(sample, 0, world)
+                mark(sample, 2, first)
+                current = verify(data, view='thirdPerson', expect=world, fixture_forms=FIXTURE)
+                self.assertTrue(current['modelOriginVerified'])
+                self.assertEqual(current['markerFixtureModel'], origin(world))
+                self.assertTrue(verify(data, expect=first, fixture_forms=FIXTURE)['modelOriginVerified'])
+                self.assertEqual(verify(data, view='thirdPerson', expect=world)['status'], 'unadmitted_fixture')
+                world_row['modelPath'] = origin(first)
+                bad_path = verify(data, view='thirdPerson', expect=world, fixture_forms=FIXTURE)
+                self.assertEqual(bad_path['status'], 'wrong_model_path')
+                mark(sample, 2, world)
+                self.assertEqual(verify(data, expect=world, fixture_forms=FIXTURE)['status'], 'wrong_view')
 
     def test_aliased_roots_and_clones_do_not_prove_distinct_views(self):
         data = capture()

@@ -6,9 +6,9 @@ from tempfile import TemporaryDirectory
 import unittest
 from zipfile import ZipFile
 
-from stage_player_armor import PLUGIN, verify_record
-from stage_world_motion_markers import Nif, PLAYER_ARMOR_MARKERS, node_children
-from vr_dispatch import LEGACY_ALIAS, SEXES, resource_paths
+from stage_player_armor import PLUGIN, verify_record, world_ear_path
+from stage_world_motion_markers import Nif, PLAYER_ARMOR_MARKERS, PLAYER_WORLD_MARKERS, motion, node_children
+from vr_dispatch import LEGACY_ALIAS, ROOT, SEXES, resource_paths
 
 
 @unittest.skipUnless(os.getenv('CLAW_VR_PLAYER_ARMOR_ROOT'), 'Explicit built player outfit required')
@@ -67,3 +67,45 @@ class PlayerArmorArchiveTests(unittest.TestCase):
                     self.assertEqual(after.blocks[0][:prefix], before.blocks[0][:prefix])
                     self.assertEqual(after.blocks[0][end + 4:], before.blocks[0][end:])
                     self.assertEqual(node_children(after.blocks[added])[1], [])
+
+
+@unittest.skipUnless(os.getenv('CLAW_VR_PLAYER_WORLD_EAR_ROOT'), 'Explicit built world-ear outfit required')
+class PlayerWorldEarArchiveTests(unittest.TestCase):
+    def test_only_world_routes_get_the_optional_motion_binding(self):
+        root = Path(os.environ['CLAW_VR_PLAYER_WORLD_EAR_ROOT'])
+        esp = root / PLUGIN
+        pack = motion.open_tools(ROOT / 'src/main/python/build-tools/package-source-build.py')
+        archive = pack.read_zip(esp.with_suffix('.zip').read_bytes())
+        addon = pack.read_zip((root / (esp.stem + ' - World FSMP.zip')).read_bytes())
+        records = verify_record(esp, visible_ears=True)
+        self.assertEqual(len(archive), 11)
+        self.assertEqual(len(addon), 4)
+        self.assertNotIn(LEGACY_ALIAS, archive | addon)
+        for sex in SEXES:
+            world = world_ear_path(sex, '.nif')
+            first = resource_paths(sex, 1)
+            xml = pack.MOTION_XML + sex.title() + '.xml'
+            self.assertEqual(records['declaredWorldModels'][sex], world.removeprefix('Meshes/').replace('/', '\\'))
+            self.assertEqual(records['declaredModels'][sex], first.removeprefix('Meshes/').replace('/', '\\'))
+            self.assertEqual(set(addon) & set(archive) & {world, first}, {world})
+            self.assertIn(world_ear_path(sex, '.tri'), archive)
+            self.assertNotIn(world_ear_path(sex, '.tri'), addon)
+            static = Nif(archive[world])
+            first_view = Nif(archive[first])
+            self.assertIn(('CLAW_VR_DISPATCH_PROBE_' + PLAYER_WORLD_MARKERS[sex]).encode(), static.strings)
+            self.assertIn(('CLAW_VR_DISPATCH_PROBE_' + PLAYER_ARMOR_MARKERS[sex]).encode(), first_view.strings)
+            self.assertNotIn(pack.FSMP_HOOK, first_view.strings)
+            self.assertNotIn(pack.FSMP_HOOK, static.strings)
+            self.assertEqual(motion.fsmp_motion.bind_nif(archive[world], xml)[0], addon[world])
+            self.assertEqual(motion.fsmp_motion.render_xml(sex == 'female'), addon[xml])
+
+    def test_swapped_world_path_cannot_confirm_the_compiled_armor(self):
+        esp = Path(os.environ['CLAW_VR_PLAYER_WORLD_EAR_ROOT']) / PLUGIN
+        payload = esp.read_bytes()
+        route = b'\\male\\EarWorldTrial.nif'
+        self.assertEqual(payload.count(route), 1)
+        with TemporaryDirectory() as scratch:
+            wrong = Path(scratch) / PLUGIN
+            wrong.write_bytes(payload.replace(route, route.replace(b'male', b'mole')))
+            with self.assertRaisesRegex(ValueError, 'both views'):
+                verify_record(wrong, visible_ears=True)

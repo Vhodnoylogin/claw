@@ -56,7 +56,7 @@ def resource_layout(manifest):
     return files
 
 
-def require_static_nif(data, *, expected_sex=None):
+def require_static_nif(data, *, expected_sex=None, expected_tri=None):
     """Check static resources and, for packaged bodies, their actual shape TRI links."""
     from player_only_materials import Reader, container
 
@@ -65,7 +65,9 @@ def require_static_nif(data, *, expected_sex=None):
     count, _ = reader.unpack("<II")
     strings = [reader.string() for _ in range(count)]
     bodytri_blocks, shape_blocks = set(), []
-    expected_tri = bodytri_path(expected_sex).encode("ascii") if expected_sex is not None else None
+    if expected_sex is not None:
+        expected_tri = bodytri_path(expected_sex)
+    expected_tri = expected_tri.encode("ascii") if expected_tri is not None else None
     for index, (kind_index, block) in enumerate(zip(indices, blocks, strict=True)):
         kind = types[kind_index]
         if kind.casefold().startswith("bhk") or kind in COLLISION_BLOCKS:
@@ -80,7 +82,8 @@ def require_static_nif(data, *, expected_sex=None):
                 raise ValueError("Static VR body contains an FSMP binding")
             if expected_tri is not None and strings[name] == b"BODYTRI":
                 if strings[value] != expected_tri:
-                    raise ValueError("First-person BODYTRI must name its own sex's namespaced Body.tri")
+                    label = "namespaced Body.tri" if expected_sex is not None else "declared world TRI"
+                    raise ValueError("VR BODYTRI must name its own sex's " + label)
                 bodytri_blocks.add(index)
         if expected_tri is not None and kind.endswith(("TriShape", "TriStrips")):
             shape_blocks.append(block)

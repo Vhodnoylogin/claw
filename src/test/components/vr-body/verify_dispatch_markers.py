@@ -9,12 +9,15 @@ from pathlib import Path
 
 SCHEMA_V5 = 'claw-vr-model-topology/5'
 SCHEMA_V6 = 'claw-vr-model-topology/6'
-SCHEMA = 'claw-vr-model-topology/7'
+SCHEMA_V7 = 'claw-vr-model-topology/7'
+SCHEMA = 'claw-vr-model-topology/8'
 V5_TOKENS = ('M0', 'M1', 'F0', 'F1', 'H_M0')
 V6_TOKENS = (*V5_TOKENS, 'H_M_STATIC', 'H_F_STATIC', 'H_M_FSMP', 'H_F_FSMP')
 PLAYER_TOKENS = ('P_M', 'P_F')
-TOKENS = (*V6_TOKENS, *PLAYER_TOKENS)
-SCHEMA_TOKENS = {SCHEMA_V5: V5_TOKENS, SCHEMA_V6: V6_TOKENS, SCHEMA: TOKENS}
+WORLD_TOKENS = ('W_M', 'W_F')
+V7_TOKENS = (*V6_TOKENS, *PLAYER_TOKENS)
+TOKENS = (*V7_TOKENS, *WORLD_TOKENS)
+SCHEMA_TOKENS = {SCHEMA_V5: V5_TOKENS, SCHEMA_V6: V6_TOKENS, SCHEMA_V7: V7_TOKENS, SCHEMA: TOKENS}
 VIEWS = ('thirdPerson', 'firstPerson')
 BANKS = ('active', 'buffered')
 ROUTES = tuple((view, bank) for view in VIEWS for bank in BANKS)
@@ -22,7 +25,7 @@ BODY = 2
 ITEM, ADDON, RACE = 0xCDD86, 0xCDD87, 0xCDD84
 EARLY = {'unloaded', 'foreign_slot', 'detached'}
 COMPLETE = {'unmarked', 'ambiguous', 'marked'}
-MARKER_SEX = dict(zip(TOKENS, (0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1), strict=True))
+MARKER_SEX = dict(zip(TOKENS, (0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1), strict=True))
 
 
 def require(condition, message):
@@ -57,13 +60,17 @@ def origin(token):
     if token.startswith('H_'):
         return r'Meshes\Actors\character\character assets\1stperson_werewolf_hands.nif'
     sex = 'male' if MARKER_SEX[token] == 0 else 'female'
-    endpoint = '1' if token in PLAYER_TOKENS else token[-1]
-    return f'Meshes\\Actors\\WerewolfBeast\\CLAW\\FirstPerson\\{sex}\\Body_{endpoint}.nif'
+    if token in WORLD_TOKENS:
+        filename = 'EarWorldTrial.nif'
+    else:
+        endpoint = '1' if token in PLAYER_TOKENS else token[-1]
+        filename = f'Body_{endpoint}.nif'
+    return f'Meshes\\Actors\\WerewolfBeast\\CLAW\\FirstPerson\\{sex}\\{filename}'
 
 
 def player_fixture(sample, schema, expected):
-    if schema != SCHEMA:
-        require(expected is None, 'Expected schema 7 for fixture forms')
+    if schema not in (SCHEMA_V7, SCHEMA):
+        require(expected is None, 'Expected schema 7 or later for fixture forms')
         return None
     require('playerBody32Fixture' in sample, 'Expected fixture identity or explicit null')
     fixture = sample['playerBody32Fixture']
@@ -112,7 +119,7 @@ def verify_dispatch_markers(observation, *, view, pid, nonce, epoch, expect=None
     observation = object_value(observation, 'capture')
     schema = observation.get('schema')
     require(isinstance(schema, str) and schema in SCHEMA_TOKENS and observation.get('status') == 'ready',
-            'Expected a ready native VR topology /5, /6 or /7 capture')
+            'Expected a ready native VR topology /5 through /8 capture')
     tokens = SCHEMA_TOKENS[schema]
     require(view in VIEWS and (expect is None or expect in tokens), 'Invalid requested view or marker for capture schema')
     for name, expected, limit in (('pid', pid, 0xFFFFFFFF), ('nonce', nonce, 0x7FFFFFFF), ('epoch', epoch, 2**64 - 1)):
@@ -160,12 +167,18 @@ def verify_dispatch_markers(observation, *, view, pid, nonce, epoch, expect=None
     if status == 'marked':
         marker = next(iter(chosen['markers']))
         fixture_route = (chosen['item'], chosen['addon']) == fixture
-        if fixture_route != (marker in PLAYER_TOKENS):
+        if fixture_route != (marker in (*PLAYER_TOKENS, *WORLD_TOKENS)):
             status = 'wrong_fixture_route'
         elif fixture_route and fixture_forms is None:
             status = 'unadmitted_fixture'
         elif MARKER_SEX[marker] != sex:
             status = 'wrong_sex'
+        elif marker in WORLD_TOKENS and view != 'thirdPerson':
+            status = 'wrong_view'
+        elif marker in WORLD_TOKENS and (
+                chosen['reportedModelPath'].replace('/', '\\').casefold().removeprefix('meshes\\') !=
+                origin(marker).casefold().removeprefix('meshes\\')):
+            status = 'wrong_model_path'
         elif (chosen['actorRoot'] in (other['actorRoot'], other['clone'])
               or chosen['clone'] in (other['clone'], other['actorRoot'], chosen['actorRoot'])):
             status = 'aliased_view'
@@ -189,7 +202,7 @@ def unique_json_object(pairs):
 
 def main():
     parser = ArgumentParser(description=__doc__)
-    parser.add_argument('capture', type=Path, help='One admitted CaptureDispatch /5, /6 or /7 JSON reply')
+    parser.add_argument('capture', type=Path, help='One admitted CaptureDispatch /5 through /8 JSON reply')
     parser.add_argument('--view', required=True, choices=VIEWS)
     parser.add_argument('--pid', type=int, required=True)
     parser.add_argument('--nonce', type=int, required=True)

@@ -54,6 +54,8 @@ void fixedProfileMotionMarkers() {
 void playerBody32Fixture() {
     static_assert(dispatchMarkerNames[9] == "CLAW_VR_DISPATCH_PROBE_P_M");
     static_assert(dispatchMarkerNames[10] == "CLAW_VR_DISPATCH_PROBE_P_F");
+    static_assert(dispatchMarkerNames[11] == "CLAW_VR_DISPATCH_PROBE_W_M");
+    static_assert(dispatchMarkerNames[12] == "CLAW_VR_DISPATCH_PROBE_W_F");
     constexpr Body32Forms legacy{0xCDD86, 0xCDD87};
     constexpr Body32Forms fixture{0x17000801, 0x17000800};
     static_assert(approvedBody32Forms(legacy, std::nullopt));

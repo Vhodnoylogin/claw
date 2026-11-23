@@ -98,6 +98,20 @@ inspects the exact test armor on the active player graph. Its verifier needs
 independently observed fixture FormIDs. The archive does not give, equip or
 serialize the outfit on its own.
 
+Pass `--visible-ears <verified-control-directory> --fixed-profile <fixed-profile-ZIP>`
+to the same builder for the optional motion trial. The armor uses separate
+world and first-person records for both sexes. The base test archive installs
+static models and the TRI. The separate World FSMP overlay replaces only the
+two world NIFs and adds their two XML configs. Use the core setting **None** and
+keep the legacy motion overlays disabled. Disable World FSMP to return to the
+static trial.
+
+Use CaptureDispatch schema 8 to identify the world model by `W_M` or `W_F`
+and the first-person model by `P_M` or `P_F`. Verify the winning files in MO2
+and the live FSMP registration independently. This fixture covers equipped body
+dispatch and is intended for an isolated motion check. The stock-body coat
+and posed contact gates still require their own in-game fixtures.
+
 ### Optional world-body motion trial
 
 `world_motion.py` builds one detached FSMP overlay for each fixed-profile sex.

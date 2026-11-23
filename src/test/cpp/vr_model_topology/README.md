@@ -72,6 +72,14 @@ Use `P_F` for a female trial. Remove the armor and take a separate stock-route
 sample after the trial. Compare the installed winners to the staged archive in
 the same run. The marker reader also accepts historical schema 5 and 6 captures
 with their original widths.
+
+Schema 8 adds `W_M` and `W_F` for the equipped world models with visible
+ear skin. These markers require the admitted fixture pair, the active world
+clone and the matching reported `EarWorldTrial.nif` path. The first-person
+models retain the `P_M` and `P_F` markers. Both motion variants use the same
+world marker because the marker establishes the model route. Verify the
+exact installed NIF and its FSMP registration separately. The verifier still
+accepts schema 7 with its original marker counts.
 Confirm the actual installed winner bytes and the effective
 armor record alongside each process-owned capture. Review the
 requested active slot with the verifier in `src/test/components/vr-body`:

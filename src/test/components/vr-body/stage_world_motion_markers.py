@@ -23,6 +23,7 @@ MARKERS = {
     ("female", "fsmp"): "H_F_FSMP",
 }
 PLAYER_ARMOR_MARKERS = {"male": "P_M", "female": "P_F"}
+PLAYER_WORLD_MARKERS = {"male": "W_M", "female": "W_F"}
 MOTION_ZIPS = {
     "male": "d4f2313413a078d914fc06238d5525de70eda07c4e4be8ec6a6d47a02d6d1ca2",
     "female": "b2597f9d0204d7f53db21e73c69d472fd1ab0fa481ddc87cd92dc011c58c15f1",
@@ -31,7 +32,7 @@ MOTION_ZIPS = {
 
 def add_marker(payload, token):
     """Append only one empty NiNode; preserve skin data and any existing root hook."""
-    if token not in MARKERS.values() and token not in PLAYER_ARMOR_MARKERS.values():
+    if token not in (*MARKERS.values(), *PLAYER_ARMOR_MARKERS.values(), *PLAYER_WORLD_MARKERS.values()):
         raise ValueError("Unsupported dispatch marker token")
     name = "CLAW_VR_DISPATCH_PROBE_" + token
     nif = Nif(payload)

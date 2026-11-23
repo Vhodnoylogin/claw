@@ -451,7 +451,7 @@ public:
 
 private:
     static Json reply(std::int32_t nonce, bool dispatch, const char* status, const char* reason = "") {
-        return {{"schema", dispatch ? "claw-vr-model-topology/7" : "claw-vr-model-topology/4"}, {"pid", GetCurrentProcessId()},
+        return {{"schema", dispatch ? "claw-vr-model-topology/8" : "claw-vr-model-topology/4"}, {"pid", GetCurrentProcessId()},
                 {"nonce", nonce}, {"status", status}, {"reason", reason}};
     }
 

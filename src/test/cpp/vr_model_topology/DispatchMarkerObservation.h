@@ -7,13 +7,14 @@
 #include <string_view>
 
 namespace claw::vr_diagnostic {
-inline constexpr std::array<std::string_view, 11> dispatchMarkerNames{
+inline constexpr std::array<std::string_view, 13> dispatchMarkerNames{
     "CLAW_VR_DISPATCH_PROBE_M0", "CLAW_VR_DISPATCH_PROBE_M1",
     "CLAW_VR_DISPATCH_PROBE_F0", "CLAW_VR_DISPATCH_PROBE_F1",
     "CLAW_VR_DISPATCH_PROBE_H_M0",
     "CLAW_VR_DISPATCH_PROBE_H_M_STATIC", "CLAW_VR_DISPATCH_PROBE_H_F_STATIC",
     "CLAW_VR_DISPATCH_PROBE_H_M_FSMP", "CLAW_VR_DISPATCH_PROBE_H_F_FSMP",
-    "CLAW_VR_DISPATCH_PROBE_P_M", "CLAW_VR_DISPATCH_PROBE_P_F"
+    "CLAW_VR_DISPATCH_PROBE_P_M", "CLAW_VR_DISPATCH_PROBE_P_F",
+    "CLAW_VR_DISPATCH_PROBE_W_M", "CLAW_VR_DISPATCH_PROBE_W_F"
 };
 
 struct Body32Forms {
