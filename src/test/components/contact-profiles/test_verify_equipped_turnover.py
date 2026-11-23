@@ -6,16 +6,18 @@ import unittest
 
 from test_pose_ack import PROFILE, lines, receipt
 from verify_equipped_turnover import (
-    ACTOR, ACTOR_ID, CLOCK, CONTROL, FIXTURE_PLUGIN, NATIVE, PHASES, SCHEMA, TOPOLOGY, TOPOLOGY_SCHEMA,
+    ACTOR, ACTOR_ID, CLOCK, CONTROL, EAR_MORPHS, EAR_POSE, EAR_SCHEMA, FIXTURE_PLUGIN, NATIVE, PHASES, SCHEMA,
+    TOPOLOGY, TOPOLOGY_SCHEMA,
     TRANSITIONS, verify,
 )
 from test_dispatch_markers import FIXTURE, capture, mark, origin
 
 
-def case(female=False):
+def case(female=False, *, ears=False):
     ledger, acks = [], []
     stock = deepcopy(PROFILE)
     stock["slots"] = [dict(node="TailBone02", sexMask="both")]
+    stock["morphs"] = sorted(EAR_MORPHS)
     equipped = {**stock, "modelIdentity": "CLAW.Physics.Equipped.fixture"}
 
     def call(script, function, args, kind, value, *, target=None):
@@ -41,7 +43,8 @@ def case(female=False):
         binding = [ACTOR, generation, token]
         profile = equipped if phase == "equipped" else stock
         ack = dict(receipt(token, n * 100), actor=ACTOR_ID, generation=generation, registration=n,
-                   model=profile["modelIdentity"], female=female, changedSlots=[0])
+                   model=profile["modelIdentity"], female=female, changedSlots=[0],
+                   morphs=[{"name": name, "value": .25} for name in profile["morphs"]])
         ack["capsules"] = [dict(ack["capsules"][0], node="TailBone02")]
         acks.append(ack)
 
@@ -64,9 +67,23 @@ def case(female=False):
                "currentBefore": call(NATIVE, "SnapshotCurrent", binding, "Bool", True),
                "request": call(TOPOLOGY, "CaptureDispatch", [nonce], "String", json.dumps({
                    "schema": TOPOLOGY_SCHEMA, "status": "pending", "pid": 492, "nonce": nonce})),
-               "capture": call(TOPOLOGY, "Read", [nonce], "String", json.dumps(raw)),
-               "currentAfter": call(NATIVE, "SnapshotCurrent", binding, "Bool", True),
-               "count": call(CONTROL, "GetLedgerCount", [0], "Int", 1)}
+               "capture": call(TOPOLOGY, "Read", [nonce], "String", json.dumps(raw))}
+        if phase == "equipped" and ears:
+            ear_nonce = 1
+            gate = {"generation": 8, "postPhaseCount": 19, "loading": False, "higgsBuild": 42}
+            pending = {"schema": EAR_SCHEMA, "status": "pending", "pid": raw["pid"], "nonce": ear_nonce, "worldGate": gate}
+            ear = dict(pending, status="ready", epoch=8, worldGate=dict(gate, postPhaseCount=20),
+                       body32={"worldDispatchMarker": marker}, sample={
+                           "player": ACTOR_ID, "base": sample["base"], "race": sample["race"], "cell": sample["cell"],
+                           "handle": sample["runtimeHandle"], "sex": sample["sex"], "rawWeight": sample["weight"],
+                           "biped": dict(world["active"][0], slot=32), "phase": "PostVrikPostHiggs", "phaseSequence": 20,
+                           "higgsBuild": 42, "qpcBegin": sample["qpcEnd"] + 20, "qpcEnd": sample["qpcEnd"] + 40,
+                           "qpcFrequency": sample["qpcFrequency"], "earEffectiveMorphs": dict.fromkeys(EAR_MORPHS, .25)})
+            row["earPose"] = {"nonce": ear_nonce,
+                              "request": call(EAR_POSE, "Capture", [ear_nonce], "String", json.dumps(pending)),
+                              "capture": call(EAR_POSE, "Read", [ear_nonce], "String", json.dumps(ear))}
+        row["currentAfter"] = call(NATIVE, "SnapshotCurrent", binding, "Bool", True)
+        row["count"] = call(CONTROL, "GetLedgerCount", [0], "Int", 1)
         if phase in TRANSITIONS:
             row["equipmentAction"] = call("Actor", TRANSITIONS[phase], [item, False, True], "none", None, target=ACTOR)
             row["onModelChange"] = detach(binding)
@@ -165,8 +182,28 @@ class TurnoverTests(unittest.TestCase):
         reply = args[1][request]["result"]
         payload = json.loads(reply["returned"])
         reply["returned"] = json.dumps(dict(payload, pid=493))
-        with self.assertRaisesRegex(ValueError, "matching topology capture request"):
+        with self.assertRaisesRegex(ValueError, "matching CLAWVRModelTopology capture request"):
             self.check(*args)
+
+    def test_links_post_phase_ear_pose_to_the_same_equipped_ack(self):
+        for female in (False, True):
+            with self.subTest(female=female):
+                linked = self.check(*case(female, ears=True))["phases"]["equipped"]["earPose"]
+                self.assertEqual(linked, {"nonce": 1, "phase": 20, "qpcBegin": 2080, "qpcEnd": 2100, "token": 20,
+                                          "earPoseLinked": True})
+
+    def test_rejects_cross_actor_world_route_and_out_of_order_ear_pose(self):
+        for field, value in (("handle", 81), ("qpcBegin", 2060), ("phaseSequence", 19), ("qpcFrequency", 1000000),
+                             ("qpcEnd", 3001), ("earEffectiveMorphs", dict.fromkeys(EAR_MORPHS, .5))):
+            with self.subTest(field=field):
+                args = case(ears=True)
+                capture = args[0]["phases"]["equipped"]["earPose"]["capture"]
+                reply = args[1][capture]["result"]
+                raw = json.loads(reply["returned"])
+                raw["sample"][field] = value
+                reply["returned"] = json.dumps(raw)
+                with self.assertRaises(ValueError):
+                    self.check(*args)
 
     def test_retirement_receipts_cannot_be_reused_or_sorted_later(self):
         args = case()

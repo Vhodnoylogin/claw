@@ -14,6 +14,8 @@ R06_RECEIPT = "3637bdf0251903d7add1df144497424b2008a6cf9b3be6a083be151e419df4b4"
 R06_COMMANDS = "ec2547ae1c73074fceecd8ecec5035e0a5aae8e127b17d1b523c7d005aaa2359"
 SKEE_HEADER = "875410dd22230f76a014a6841004e7d346f5fa1c748cfff695f9f495234da277"
 BUILD_ENVIRONMENT = "28131403690b16b8256b5d85c37cf88511c7e0330b23ac77664c2555787cc1c5"
+EQUIPPED_MODULE = "CLAWVREquippedEarPose"
+TOPOLOGY_MODULE = "CLAWVRModelTopology"
 
 
 def pin(path, expected=None):
@@ -179,8 +181,21 @@ Json collect(Clock::time_point deadline,''')
 
 def equipped_ear_overlay(source):
     source = ear_overlay(source)
+    source = replace(source, f'constexpr auto name = "{TOPOLOGY_MODULE}";',
+                     f'constexpr auto name = "{EQUIPPED_MODULE}";')
     source = replace(source, 'claw-vr-vrik-ear-stereo/1', 'claw-vr-vrik-ear-stereo/2')
     source = replace(source, '{"earStereoCaptureVersion", 1}', '{"earStereoCaptureVersion", 2}')
+    source = replace(source, 'Json& routeEvidence) {', '''Json& routeEvidence) {
+    LARGE_INTEGER qpcBegin{}, qpcEnd{}, qpcFrequency{};
+    require(QueryPerformanceFrequency(&qpcFrequency) && qpcFrequency.QuadPart > 0 &&
+            QueryPerformanceCounter(&qpcBegin) && qpcBegin.QuadPart > 0, "ear clock unavailable");''')
+    source = replace(source, '        return reply(nonce, "pending", diagnostics()).dump();', '''        const auto armed = diagnostics();
+        armedAfter = armed["postPhaseCount"].get<std::uint64_t>();
+        return reply(nonce, "pending", armed).dump();''')
+    source = replace(source, '        if (!busy || sampling || gate.loading()) return;',
+                     '        if (!busy || sampling || gate.loading() || frame <= armedAfter) return;')
+    source = replace(source, '    std::atomic<std::uint64_t> sequence{};',
+                     '    std::atomic<std::uint64_t> sequence{};\n    std::uint64_t armedAfter{};')
     start = source.index('bool femaleBodyPath(')
     end = source.index('Json slotDiagnostic(', start)
     source = source[:start] + r"""struct ExpectedBodySlot {
@@ -302,6 +317,10 @@ struct EquippedMarker {
     routeEvidence["worldDispatchMarker"] = worldExpected.marker;
     routeEvidence["firstPersonDispatchMarker"] = firstActive.clone ? Json(firstExpected.marker) : Json(nullptr);
     routeEvidence["stableChildCount"] = childIdentities.size();''')
+    source = replace(source, '    return {{"phase", "PostVrikPostHiggs"},', '''    require(QueryPerformanceCounter(&qpcEnd) && qpcEnd.QuadPart > qpcBegin.QuadPart && Clock::now() < deadline,
+            "ear capture exceeded native clock bracket");
+    return {{"qpcBegin", qpcBegin.QuadPart}, {"qpcEnd", qpcEnd.QuadPart}, {"qpcFrequency", qpcFrequency.QuadPart},
+            {"phase", "PostVrikPostHiggs"},''')
     return replace(source, '{"item", bodyItem}, {"addon", bodyAddon}', '{"item", slot.item}, {"addon", slot.addon}')
 
 
@@ -309,7 +328,12 @@ def read_json(path):
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
 
-def build(r06, skee, environment, output, *, subject="torso"):
+def build(r06, skee, environment, output, *, subject="torso", papyrus=None):
+    equipped = subject == "equipped-ears"
+    if equipped and papyrus is None:
+        raise ValueError("The equipped ear observer requires the Papyrus compiler for its separate script class")
+    module = EQUIPPED_MODULE if equipped else TOPOLOGY_MODULE
+    papyrus_pin = pin(papyrus) if equipped else None
     receipt_pin = pin(r06 / "RECEIPT.json", R06_RECEIPT)
     commands_pin = pin(r06 / "commands.json", R06_COMMANDS)
     skee_pin = pin(skee, SKEE_HEADER)
@@ -320,7 +344,6 @@ def build(r06, skee, environment, output, *, subject="torso"):
     header = pin(HERE / "TorsoPose.h")
     if subject in ("ears", "equipped-ears"):
         extra_headers = [pin(HERE / name) for name in ("EarStereoPose.h", "StereoOptics.h")]
-        equipped = subject == "equipped-ears"
         overlay = equipped_ear_overlay if equipped else ear_overlay
         version = 2 if equipped else 1
         capture_version = {"schema": f"claw-vr-vrik-ear-stereo/{version}", "earStereoCaptureVersion": version}
@@ -330,7 +353,7 @@ def build(r06, skee, environment, output, *, subject="torso"):
         capture_version = {"schema": "claw-vr-vrik-world-avatar/1", "torsoCaptureVersion": 1}
     else:
         raise ValueError("Unknown R06 observer subject")
-    pex = verify(base["pex"])
+    pex = HERE / (module + ".psc") if equipped else verify(base["pex"])
     dependencies = read_json(verify(base["referenceDependencies"]))["files"]
     trusted = {Path(name).resolve(): digest for name, digest in dependencies.items()}
     for row in base["inputs"]:
@@ -355,7 +378,7 @@ def build(r06, skee, environment, output, *, subject="torso"):
     source = output / "Plugin.cpp"
     source.write_bytes(overlay(original.read_text(encoding="utf-8")).encode("utf-8"))
     obj = output / "Plugin.obj"
-    dll = output / "CLAWVRModelTopology.dll"
+    dll = output / (module + ".dll")
     depfile = output / "compiler-dependencies.json"
     compile_args = baseline_compile[:baseline_compile.index("/sourceDependencies")]
     compile_args = [arg for arg in compile_args
@@ -364,7 +387,7 @@ def build(r06, skee, environment, output, *, subject="torso"):
                          "/Fo" + str(obj), str(source), "/sourceDependencies", str(depfile)))
     link_args = [arg for arg in baseline_link if not arg.casefold().endswith(".obj")
                  and not arg.casefold().startswith(("/out:", "/pdb:", "/implib:"))]
-    link_args.extend(("/OUT:" + str(dll), "/IMPLIB:" + str(output / "CLAWVRModelTopology.lib"), str(obj)))
+    link_args.extend(("/OUT:" + str(dll), "/IMPLIB:" + str(output / (module + ".lib")), str(obj)))
 
     env = os.environ.copy()
     startup = subprocess.run(["cmd.exe", "/d", "/c", environment_pin["path"]], capture_output=True,
@@ -393,13 +416,19 @@ def build(r06, skee, environment, output, *, subject="torso"):
     exports = (output / "exports.log").read_text(encoding="utf-8")
     if not all(name in exports for name in ("SKSEPlugin_Query", "SKSEPlugin_Load")):
         raise ValueError("Missing legacy Skyrim VR loader exports")
-    installed_pex = output / pex.name
-    copyfile(pex, installed_pex)
+    installed_pex = output / (module + ".pex")
+    if equipped:
+        run("papyrus", [papyrus_pin["path"], str(pex), "-o=" + str(output), "-i=" + str(HERE)])
+    else:
+        copyfile(pex, installed_pex)
     report = {"utc": datetime.now(timezone.utc).isoformat(), "baseline": receipt_pin,
               "baselineCommands": commands_pin, "environment": environment_pin, "builder": pin(Path(__file__)),
               "source": pin(source), "torsoPose": header, "skee": skee_pin, "includes": observed,
-              "dll": pin(dll), "pex": pin(installed_pex, base["pex"]["sha256"]), "stages": stages,
+              "dll": pin(dll), "pex": pin(installed_pex, None if equipped else base["pex"]["sha256"]), "stages": stages,
               **capture_version, "runtimeChecked": False}
+    if equipped:
+        report.update({"papyrusCompiler": papyrus_pin, "papyrusSource": pin(pex), "script": module,
+                       "coDeployWith": TOPOLOGY_MODULE, "captureClock": "QueryPerformanceCounter"})
     if extra_headers:
         report["additionalHeaders"] = extra_headers
     (output / "RECEIPT.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
@@ -413,5 +442,7 @@ if __name__ == "__main__":
     parser.add_argument("--environment", type=Path, required=True, help="Retained MSVC capture-environment.cmd")
     parser.add_argument("--out", type=Path, required=True, help="New external build directory")
     parser.add_argument("--subject", choices=("torso", "ears", "equipped-ears"), default="torso")
+    parser.add_argument("--papyrus", type=Path, help="Bethesda PapyrusCompiler.exe for the equipped ear script")
     args = parser.parse_args()
-    print(json.dumps(build(args.r06, args.skee, args.environment, args.out, subject=args.subject), indent=2))
+    print(json.dumps(build(args.r06, args.skee, args.environment, args.out,
+                           subject=args.subject, papyrus=args.papyrus), indent=2))

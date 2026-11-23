@@ -192,10 +192,13 @@ Use matched static and provider-on controls to attribute motion to FSMP.
 
 ### Equipped player ear sample
 
-Use `--subject equipped-ears` with a separate build directory. Select this
-diagnostic DLL and its matching PEX in the test profile. The different
-topology observers share the same DLL and PEX destinations. This observer
-reports `claw-vr-vrik-ear-stereo/2`. It resolves the fixture ESP's own armor
+Use `--subject equipped-ears --papyrus <PapyrusCompiler.exe>` with a separate
+build directory. This produces `CLAWVREquippedEarPose.dll` and its own
+`CLAWVREquippedEarPose.pex`, which can be staged with the ordinary schema 8
+`CLAWVRModelTopology` DLL and PEX without a file or script override. Call
+`CLAWVREquippedEarPose.Capture(nonce)` and `Read(nonce)` for the ear sample. It
+reports `claw-vr-vrik-ear-stereo/2` with `qpcBegin`, `qpcEnd` and `qpcFrequency`
+from the post-VRIK/HIGGS callback. It resolves the fixture ESP's own armor
 and single addon at runtime, then checks the active sex-specific
 `EarWorldTrial.nif` world route and its `W_M` or `W_F` marker. It accepts an
 empty first-person slot or a separately owned, culled `Body_1.nif` slot with

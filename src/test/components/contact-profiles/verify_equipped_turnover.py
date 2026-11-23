@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import sys
 
-from verify_pose_ack import selected_receipts, unique_object, verify as verify_ack
+from verify_pose_ack import selected_receipts, unique_object, unit, verify as verify_ack
 from verify_pose_contact_window import CLOCK, CONTROL, TICKS_PER_US
 from verify_tail_refit import NATIVE, QPC, ordered, positive_int, require, typed
 
@@ -16,6 +16,9 @@ from verify_dispatch_markers import ADDON, BODY, ITEM, SCHEMA as TOPOLOGY_SCHEMA
 
 SCHEMA = "claw-vr-equipped-contact-turnover/1"
 TOPOLOGY = "CLAWVRModelTopology"
+EAR_POSE = "CLAWVREquippedEarPose"
+EAR_SCHEMA = "claw-vr-vrik-ear-stereo/2"
+EAR_MORPHS = {"CLAWHeadEarSize", "CLAWHeadEarTilt", "CLAWHeadMuzzleLong", "CLAWHeadMuzzleWide", "CLAWHeadSize"}
 FIXTURE_PLUGIN = "test_CLAW - VR Player Body32.esp"
 ACTOR_ID = 0x14
 ACTOR = {"form": "0x00000014"}
@@ -25,16 +28,16 @@ OBSERVATION_KEYS = ("generationRead", "currentBefore", "request", "capture", "cu
 DETACHMENT_KEYS = ("count", "snapshotCurrent")
 
 
-def capture(ledger, observation, pid, nonce):
-    request = json.loads(typed(ledger, observation["request"], TOPOLOGY, "CaptureDispatch", "string", [nonce]),
+def capture_pair(ledger, observation, script, method, schema, pid, nonce):
+    request = json.loads(typed(ledger, observation["request"], script, method, "string", [nonce]),
                          object_pairs_hook=unique_object)
-    require((request.get("schema"), request.get("pid"), request.get("nonce")) == (TOPOLOGY_SCHEMA, pid, nonce) and
-            request.get("status") in ("pending", "ready"), "Missing matching topology capture request")
-    raw = json.loads(typed(ledger, observation["capture"], TOPOLOGY, "Read", "string", [nonce]),
+    require((request.get("schema"), request.get("pid"), request.get("nonce")) == (schema, pid, nonce) and
+            request.get("status") in ("pending", "ready"), f"Missing matching {script} capture request")
+    raw = json.loads(typed(ledger, observation["capture"], script, "Read", "string", [nonce]),
                      object_pairs_hook=unique_object)
-    require(raw.get("schema") == TOPOLOGY_SCHEMA, "Equipped turnover requires native topology /8")
-    require(request["status"] == "pending" or request == raw, "Topology capture reply changed for the same nonce")
-    return raw
+    require((raw.get("schema"), raw.get("pid"), raw.get("nonce"), raw.get("status")) == (schema, pid, nonce, "ready") and
+            (request["status"] == "pending" or request == raw), f"Missing ready {script} reply for the same nonce")
+    return request, raw
 
 
 def route(raw, subject, nonce, fixture, equipped):
@@ -77,6 +80,38 @@ def phase_ack(lines, generation, token, profile, sex, clock):
     return first, selected, summary["enabledSlots"]
 
 
+def linked_ear_pose(ledger, observation, topology, route_result, ack):
+    nonce = observation["nonce"]
+    require(positive_int(nonce), "Invalid ear pose nonce")
+    request, raw = capture_pair(ledger, observation, EAR_POSE, "Capture", EAR_SCHEMA, topology["pid"], nonce)
+    pose, body = raw["sample"], topology["sample"]
+    biped, active = pose["biped"], route_result["observations"][0]
+    require((pose["player"], pose["base"], pose["race"], pose["cell"], pose["handle"], pose["sex"], pose["rawWeight"]) ==
+            (body["actor"], body["base"], body["race"], body["cell"], body["runtimeHandle"], body["sex"], body["weight"]) and
+            (biped["slot"], biped["item"], biped["addon"]) == (32, active["item"], active["addon"]) and
+            biped["modelPath"].replace('/', '\\').casefold() == active["reportedModelPath"].replace('/', '\\').casefold() and
+            "CLAW_VR_DISPATCH_PROBE_" + raw["body32"]["worldDispatchMarker"] == route_result["observedMarker"],
+            "Ear pose does not match the equipped actor and Body32 route")
+    armed, observed = request["worldGate"], raw["worldGate"]
+    phase = pose["phaseSequence"]
+    require(request["status"] == "pending" and pose["phase"] == "PostVrikPostHiggs" and
+            armed["loading"] is observed["loading"] is False and positive_int(raw["epoch"]) and
+            armed["generation"] == observed["generation"] == raw["epoch"] and
+            positive_int(pose["higgsBuild"]) and armed["higgsBuild"] == observed["higgsBuild"] == pose["higgsBuild"] and
+            type(phase) is int and 0 <= armed["postPhaseCount"] < phase <= observed["postPhaseCount"],
+            "Ear pose does not come from a new post-VRIK/HIGGS sample in the same observer world")
+    begin, end = pose["qpcBegin"], pose["qpcEnd"]
+    require(pose["qpcFrequency"] == QPC and positive_int(begin) and positive_int(end) and
+            route_result["captureClock"]["qpcEnd"] < begin < end and end - begin <= QPC * 4 // 1000,
+            "Ear sample is outside the ordered 10 MHz capture bracket")
+    morphs = pose["earEffectiveMorphs"]
+    expected = {row["name"]: row["value"] for row in ack["morphs"] if row["name"] in EAR_MORPHS}
+    require(set(morphs) == set(expected) == EAR_MORPHS and all(unit(value) for value in morphs.values()) and morphs == expected,
+            "Ear morph values do not match the acknowledged fitter inputs")
+    return {"nonce": nonce, "phase": phase, "qpcBegin": begin, "qpcEnd": end, "token": ack["token"],
+            "earPoseLinked": True}
+
+
 def check_detachment(ledger, indices, generation, token):
     count = typed(ledger, indices["count"], CONTROL, "GetLedgerCount", "int", [0])
     require(type(count) is int and count == 0 and
@@ -103,7 +138,11 @@ def verify(manifest, ledger, ack_lines, stock, equipped):
     indices = [manifest["fixtureReads"]["item"], manifest["fixtureReads"]["addon"], manifest["hostModel"]]
     for phase in PHASES:
         row = manifest["phases"][phase]
-        indices.extend(row[key] for key in OBSERVATION_KEYS)
+        indices.extend(row[key] for key in OBSERVATION_KEYS[:4])
+        if "earPose" in row:
+            require(phase == "equipped", "Ear sidecar accepts only the equipped phase")
+            indices.extend(row["earPose"][key] for key in ("request", "capture"))
+        indices.extend(row[key] for key in OBSERVATION_KEYS[4:])
         if phase in TRANSITIONS:
             indices.append(row["equipmentAction"])
             indices.extend(row["onModelChange"][key] for key in DETACHMENT_KEYS)
@@ -116,7 +155,7 @@ def verify(manifest, ledger, ack_lines, stock, equipped):
         generation = typed(ledger, row["generationRead"], CONTROL, "GetGeneration", "int", [0])
         token, nonce = row["token"], row["nonce"]
         require(positive_int(generation) and positive_int(token) and positive_int(nonce), "Invalid generation, token or nonce")
-        raw = capture(ledger, row, manifest["pid"], nonce)
+        _, raw = capture_pair(ledger, row, TOPOLOGY, "CaptureDispatch", TOPOLOGY_SCHEMA, manifest["pid"], nonce)
         sample = raw["sample"]
         subject = subject or (manifest["pid"], raw["epoch"], sample["base"], sample["cell"], sample["runtimeHandle"], sample["sex"])
         observed = route(raw, subject, nonce, fixture, phase == "equipped")
@@ -138,15 +177,20 @@ def verify(manifest, ledger, ack_lines, stock, equipped):
         require(typed(ledger, row["retirement"]["actorCurrent"], NATIVE, "ActorCurrent", "bool", [ACTOR]) is False,
                 "Explicitly released actor can still own a native cleanup lease")
         if preceding:
-            old, old_nonce, old_clock = preceding
-            require(nonce > old_nonce and old_clock["qpcEnd"] < first["capturedUs"] * TICKS_PER_US and
+            old, old_nonce, old_end = preceding
+            require(nonce > old_nonce and old_end < first["capturedUs"] * TICKS_PER_US and
                     old["world"] == first["world"] and old["generation"] < generation and
                     old["registration"] < first["registration"] and old["token"] < first["token"] and
                     old["acknowledgedUs"] <= first["capturedUs"],
                     "Expected a fresh binding after retiring the previous generation in the same world")
-        preceding = selected, nonce, clock
+        end = clock["qpcEnd"]
         output[phase] = {"generation": generation, "registration": selected["registration"], "token": token,
                          "model": selected["model"], "ledgerCount": count, "topology": observed}
+        if "earPose" in row:
+            ear = linked_ear_pose(ledger, row["earPose"], raw, observed, selected)
+            output[phase]["earPose"] = ear
+            end = ear["qpcEnd"]
+        preceding = selected, nonce, end
     return {"schema": SCHEMA, "actor": ACTOR_ID, "pid": subject[0], "phases": output,
             "routeTurnoverVerified": True, "hostLedgerRetirementVerified": True,
             "solverGeometryVerified": False, "controllerContactVerified": False}

@@ -294,3 +294,12 @@ The verifier checks native model topology, collider arguments acknowledged by
 the host and retirement of its ledger. Solver geometry and controller contact
 still require independent provider evidence scoped to the player. The NPC-only
 CBPC callback recorder cannot certify those parts of this case.
+
+The equipped phase may also include `earPose` with `nonce`, `request` and
+`capture` from the separately named `CLAWVREquippedEarPose` observer. Queue this
+request after the completed topology read and before `currentAfter`. The verifier
+checks that the ear sample comes from a new post-VRIK/HIGGS callback on the same
+player, Body32 slot and ACK token, with a QPC bracket after the preceding topology
+capture and matching effective ear morph values. The two observers carry separate load counters. Preserve both raw
+replies. Use the ear replay to evaluate the captured bone transforms and TRI
+values independently of the host's collider ACK.
