@@ -103,13 +103,17 @@ def tracked_pose(ledger, index, subject, model, phase, sequence):
     return sample, [morphs[name] for name in model["morphs"]]
 
 
-def inspect_frame(ledger, index, subject, node=NODE):
+def inspect_frame(ledger, index, subject, node=NODE, *, own_body=False):
     row = ledger[index]
     args, raw = row.get("args", {}), row["result"]
     require(row.get("tool") == "inspect" and args.get("kind") == "world_observer" and
             args.get("action") == "snapshot", "Expected a direct World Observer tool receipt")
+    if own_body:
+        nodes = [{"ref": subject.form["form"], "name": name, "firstPerson": False} for name in (node, "NPC Root [Root]")]
+        require(args.get("refs") == [subject.form["form"]] and args.get("nodes") in (nodes, nodes[::-1]),
+                "Expected request for only the player's target bone and root")
     measured = measure_frame(raw, actor=subject.actor, base=subject.base, cell=subject.cell, pid=subject.pid,
-                             target_offset=[0., 0., 0.], target_radius=1., target_node=node)
+                             target_offset=[0., 0., 0.], target_radius=1., target_node=node, own_body=own_body)
     require({item.get("name") for item in raw["nodes"]} == {node, "NPC Root [Root]"} and
             len(raw["nodes"]) == 2, "Expected the exact target node and its tracked actor root")
     roots = {item["name"]: item for item in raw["nodes"]}

@@ -74,9 +74,25 @@ Detach the exact indices and repeat the near hold. Seal on the same player
 before changing equipment. Store raw attach/detach calls, independently
 measured QPC hold intervals and original callback results. `score_player`
 checks a positive near/far/near event contrast and both silence controls.
-The same-task geometry reader returns individual measurements. The harness
-must establish the multi-capsule margins, source isolation and write custody
-for each hold before sending its QPC bounds to the scorer.
-The full fit and the game reach still require their own evidence. Zero
-events leave self-contact unresolved. The callback identifies a sustained
-contact group and recipient, without a capsule index or an impulse value.
+The CLAW replay in `src/test/components/contact-profiles/verify_player_contact.py`
+joins those receipts from one trial. See `test_verify_player_contact.py` for the
+manifest index layout. Point `association` to the run's original
+`devbench-and-game-associated` Bridge observation. Use `topology` entries
+`before`, `attached`, `detached` and `after` with fresh `CaptureDispatch`/`Read`
+nonce pairs before the first hold, after the fourth append, after the fourth
+detach and after the final hold. Capture all four within the listener window.
+Pass `--manifest`, `--steps`, `--profile`, `--state`, `--backing`, `--config`
+and `--body`. The manifest pins the exact `steps`, `state` and `backing` files
+by SHA-256. Supply the original run state, its mapped provider evidence,
+the pinned fitted profile, the staged config receipt and the static Body32 ZIP.
+The Bridge batch must report the full effective CBP config inventory and the
+absence of `CLAW - Physics.esp`, plus byte winners for the static trial and its
+observers. Stage the diagnostic ear and tail configuration arms separately.
+
+The replay measures the signed union distance to the four capsules in each
+world frame and credits callbacks only inside inward-rounded QPC holds. It
+requires positive near controls and silent baseline, far and detached holds.
+The test uses the pinned neutral capsule bank at weight zero. It leaves live
+TRI neutrality, adaptive fitting, exact solver occupancy, capsule-level event
+attribution and impulses outside its measured scope. Zero qualified contact
+events leave self-contact unresolved.
