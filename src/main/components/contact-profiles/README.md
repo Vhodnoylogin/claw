@@ -60,6 +60,9 @@ in the attachment bone's local coordinates. The initial movement threshold
 is 0.05 game units. A smaller change can keep the accepted capsule only if it
 still encloses all current support vertices at the Float32 coordinates used by
 the provider. Exchanging the ends leaves the coverage calculation unchanged.
+For new capsules, the worker rounds the endpoints to Float32 first. If that or
+radius rounding would expose a support vertex, it rounds the required radius up
+to the smallest enclosing Float32 value. The same coordinates are sent to CBPC.
 
 A pose event carries the new snapshot token. The host gets changed slots
 only against its own fully accepted previous token and uses the existing
@@ -109,6 +112,14 @@ and TRI deltas. Their poses are synthetic. A rigid capsule can cover a measured
 pose envelope at the same slot count by occupying more space. A tighter
 pose-dependent result needs evaluated bone transforms, the current TRI vector
 and observations of contact in the same provider frame.
+
+A separate slot 108 trial compared minimum-circle and PCA fits from the same
+current support while refitting the other 15 tail slots identically. All 32
+initial cases met both coverage and sampled whole-tail surface bounds. The
+full-morph transverse-X control increased whole-tail P95 by 0.05764 GU for
+the female mesh and 0.07803 GU for the male mesh. The sampled maxima also
+increased. The runtime therefore still uses the posed PCA fit. Radius alone
+would have selected the worse result in both cases.
 
 The male VR replay now uses 15 observed bone transforms and the co-sampled
 effective RaceMenu vector. It covers all 32 ear/tail slots. One tail-root

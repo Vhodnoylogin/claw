@@ -904,7 +904,8 @@ std::vector<claw::physics::Capsule> fitPhysicsPose(const PhysicsFitWork& job, co
     std::vector<claw::physics::Vec3> points(support.model.vertices.size()), scratch;
     std::vector<claw::physics::Capsule> posed(support.slotIndexes.size());
     model.skin(job.pose->world, job.weight, values, points);
-    model.fit(job.pose->worldToBone, points, scratch, posed, job.acceptedPoseCapsules);
+    model.fit(job.pose->worldToBone, points, scratch, posed, job.acceptedPoseCapsules,
+              claw::physics::PoseCapsulePrecision::provider);
     for (std::size_t i = 0; i < posed.size(); ++i) {
         const auto slot = support.slotIndexes[i];
         if (slot >= compiled.slots.size() || !compiled.slots[slot].active ||

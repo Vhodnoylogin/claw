@@ -48,6 +48,30 @@ int main() {
     const std::array<Vec3, 1> floatRounding{Vec3{1.00000002, 0., 1.}};
     assert(CapsuleDistance(floatRounding[0], precisionEdge) < 0.);
     assert(!CanKeepPoseCapsule(precisionEdge, accepted, floatRounding));
+    const auto radiusCorrected = EnclosingProviderPoseCapsule(precisionEdge, floatRounding);
+    assert(radiusCorrected.radius == std::nextafter(1.0F, 2.0F));
+    assert(CapsuleDistance(floatRounding[0], radiusCorrected) <= 0.);
+    assert(CanKeepPoseCapsule(radiusCorrected, precisionEdge, floatRounding));
+    const Capsule endpointEdge{{16777217., 0., 0.}, {16777217., 0., 2.}, 1.};
+    const std::array<Vec3, 1> endpointSupport{Vec3{16777217., 1., 1.}};
+    const auto endpointCorrected = EnclosingProviderPoseCapsule(endpointEdge, endpointSupport);
+    assert(endpointCorrected.p1[0] == 16777216. && endpointCorrected.p2[0] == 16777216.);
+    assert(CapsuleDistance(endpointSupport[0], endpointCorrected) <= 0.);
+    const Capsule oneStepSmaller{endpointCorrected.p1, endpointCorrected.p2,
+        std::nextafter(static_cast<float>(endpointCorrected.radius), 0.0F)};
+    assert(CapsuleDistance(endpointSupport[0], oneStepSmaller) > 0.);
+    assert(EnclosingProviderPoseCapsule(accepted, inward) == accepted);
+    const auto rejectsProviderRange = [](const Capsule& capsule, std::span<const Vec3> points) {
+        try { (void)EnclosingProviderPoseCapsule(capsule, points); }
+        catch (const std::invalid_argument&) { return true; }
+        return false;
+    };
+    const double tooWide = 2. * std::numeric_limits<float>::max();
+    const std::array<Vec3, 1> remoteSupport{Vec3{tooWide, 0., 0.}};
+    assert(rejectsProviderRange({{tooWide, 0., 0.}, accepted.p2, accepted.radius}, inward));
+    assert(rejectsProviderRange({accepted.p1, accepted.p2, tooWide}, inward));
+    assert(rejectsProviderRange({accepted.p1, accepted.p2, std::numeric_limits<double>::min()}, inward));
+    assert(rejectsProviderRange(accepted, remoteSupport));
     Model simple{"fixture",{"grow","shrink"},{{"TailBone01",
         {{-1,-1,-4},{1,1,-4},{-1,1,4},{1,-1,4}},
         {{0,{{-.5,-.5,-2},{.5,.5,-2},{-.5,.5,2},{.5,-.5,2}}},
@@ -75,10 +99,21 @@ int main() {
     auto unsupported=simple;unsupported.contactPasses=1;unsupported.slots[0].prescribedAxis=true;unsupported.slots[0].axis={1,0,0};
     rejected=false;try{(void)Evaluate(unsupported,{0,0});}catch(const std::runtime_error&){rejected=true;}assert(rejected);
 #if defined(CLAW_PHYSICS_MODEL_HEADER) && defined(CLAW_PHYSICS_FIXTURE_HEADER)
+    const auto modelForFixture = [](bool female, std::string_view identity) -> const Model& {
+#if defined(CLAW_PHYSICS_RUNTIME_PROFILES)
+        const auto& flat = CompiledModel(female, ContactRuntimeEdition::flat);
+        return flat.identity == identity ? flat : CompiledModel(female, ContactRuntimeEdition::vr);
+#else
+        (void)identity;
+        return CompiledModel(female);
+#endif
+    };
+    const auto& fixtures = CompiledFixtures();
+    assert(!fixtures.empty());
     double maximumError=0.;std::size_t capsules=0,activeCapsules=0;
     std::size_t fixtureIndex=0;
-    for (const auto& fixture:CompiledFixtures()) {
-        const auto& model=CompiledModel(fixture.female);
+    for (const auto& fixture:fixtures) {
+        const auto& model=modelForFixture(fixture.female, fixture.identity);
         assert(model.identity==fixture.identity);
         const auto actual=Evaluate(model,fixture.values,fixture.weight);
         assert(actual.size()==fixture.capsules.size());
@@ -98,11 +133,12 @@ int main() {
     }
     std::cout<<"maximum_error_before_assert="<<maximumError<<"\n";
     assert(maximumError<1e-8);
-    std::cout<<"fixtures="<<CompiledFixtures().size()<<" capsule_slot_outputs="<<capsules<<" active_capsule_outputs="<<activeCapsules<<" maximum_coordinate_or_radius_error="<<maximumError
+    std::cout<<"fixtures="<<fixtures.size()<<" capsule_slot_outputs="<<capsules<<" active_capsule_outputs="<<activeCapsules<<" maximum_coordinate_or_radius_error="<<maximumError
              <<"\n";
     constexpr unsigned repetitions=40;
     for(const auto female:{false,true}) {
-        const auto& model=CompiledModel(female);std::vector<double> mixed(model.morphs.size(),.35);
+        const auto& model=modelForFixture(female, fixtures.front().identity);
+        std::vector<double> mixed(model.morphs.size(),.35);
         for(const auto weight:std::vector<double>(model.weightDependent?std::vector<double>{0.,.5,1.}:std::vector<double>{0.})) {
             const auto start=std::chrono::steady_clock::now();
             for (unsigned i=0;i<repetitions;++i) {(void)Evaluate(model,mixed,weight);}

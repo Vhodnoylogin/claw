@@ -92,18 +92,46 @@ inline bool PoseCapsuleChanged(const Capsule& previous, const Capsule& next, dou
            (differs(previous.p1, next.p2) || differs(previous.p2, next.p1));
 }
 
-inline bool CanKeepPoseCapsule(const Capsule& accepted, const Capsule& fitted, std::span<const Vec3> support) {
-    if (PoseCapsuleChanged(accepted, fitted, poseCapsuleTolerance)) return false;
-    // CBPC received Float32 coordinates. Test the capsule it actually holds.
+inline float ProviderPoseCoordinate(double value) {
+    if (!std::isfinite(value) || std::abs(value) > std::numeric_limits<float>::max())
+        throw std::invalid_argument("Posed contact capsule exceeds provider precision");
+    return static_cast<float>(value);
+}
+
+inline Capsule ProviderPoseCapsule(const Capsule& fitted) {
     const auto narrow = [](Vec3 point) {
-        for (auto& component : point) component = static_cast<float>(component);
+        for (auto& component : point) component = ProviderPoseCoordinate(component);
         return point;
     };
-    const Capsule installed{narrow(accepted.p1), narrow(accepted.p2), static_cast<float>(accepted.radius)};
+    const auto radius = ProviderPoseCoordinate(fitted.radius);
+    if (radius <= 0.F) throw std::invalid_argument("Posed contact capsule needs a positive provider radius");
+    return {narrow(fitted.p1), narrow(fitted.p2), radius};
+}
+
+inline Capsule EnclosingProviderPoseCapsule(const Capsule& fitted, std::span<const Vec3> support) {
+    auto narrowed = ProviderPoseCapsule(fitted);
+    const Capsule segment{narrowed.p1, narrowed.p2, 0.};
+    double required = narrowed.radius;
+    for (const auto& point : support) {
+        const auto distance = CapsuleDistance(point, segment);
+        if (!std::isfinite(distance)) throw std::invalid_argument("Nonfinite posed contact support distance");
+        required = std::max(required, distance);
+    }
+    auto radius = ProviderPoseCoordinate(required);
+    if (radius < required) radius = std::nextafter(radius, std::numeric_limits<float>::infinity());
+    narrowed.radius = radius;
+    return narrowed;
+}
+
+inline bool CanKeepPoseCapsule(const Capsule& accepted, const Capsule& fitted, std::span<const Vec3> support) {
+    if (PoseCapsuleChanged(accepted, fitted, poseCapsuleTolerance)) return false;
+    const auto installed = ProviderPoseCapsule(accepted);
     return std::all_of(support.begin(), support.end(), [&](const Vec3& point) {
         return CapsuleDistance(point, installed) <= 0.;
     });
 }
+
+enum class PoseCapsulePrecision { fitted, provider };
 
 struct PoseInfluence {
     std::size_t bone;
@@ -211,7 +239,7 @@ public:
     // Use inverse transforms from the same pose and a scratch vector distinct from worldPoints.
     void fit(std::span<const PoseAffine> worldToOwner, std::span<const Vec3> worldPoints,
              std::vector<Vec3>& ownerPoints, std::span<Capsule> output,
-             std::span<const Capsule> accepted = {}) const {
+             std::span<const Capsule> accepted = {}, PoseCapsulePrecision precision = PoseCapsulePrecision::fitted) const {
         validateTransforms(worldToOwner);
         if (worldPoints.size() != model_.vertices.size() || output.size() != model_.regions.size() ||
             (!accepted.empty() && accepted.size() != output.size()))
@@ -224,8 +252,11 @@ public:
             const auto capsule = Fit(ownerPoints, region.padding);
             if (!finite(capsule.p1) || !finite(capsule.p2) || !std::isfinite(capsule.radius))
                 throw std::invalid_argument("Nonfinite posed contact capsule");
-            output[index] = !accepted.empty() && CanKeepPoseCapsule(accepted[index], capsule, ownerPoints)
-                ? accepted[index] : capsule;
+            if (!accepted.empty() && CanKeepPoseCapsule(accepted[index], capsule, ownerPoints))
+                output[index] = accepted[index];
+            else
+                output[index] = precision == PoseCapsulePrecision::provider
+                    ? EnclosingProviderPoseCapsule(capsule, ownerPoints) : capsule;
         }
     }
 
