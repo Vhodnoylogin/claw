@@ -8,6 +8,7 @@ _VR_PLAYER_SCHEMA = "claw-vr-cbpc-player-events/1"
 _SE_SCHEMA = "claw-se-cbpc-events/1"
 _SE_RUNTIME = "SkyrimSE-1.7.104"
 PLAYER_BODY_CONTACT_NODES = {"NPC EarL [EarL]Bone01": (88, 89, 90, 91), "TailBone02": (108, 109, 110, 111)}
+MORPH_REFIT_PHASES = ("baseline", "morphed", "returned")
 
 
 @dataclass(frozen=True)
@@ -75,7 +76,8 @@ def score_se(snapshot, readiness, audience, holds, minimum_duration, minimum_hol
     return _score_holds(snapshot, audience, holds, minimum_duration, minimum_hold_ticks)
 
 
-def score_player(snapshot, readiness, audience, holds, *, body32, runtime_handle, minimum_hold_ticks):
+def score_player(snapshot, readiness, audience, holds, *, body32, runtime_handle, minimum_hold_ticks,
+                 morph_refit=False):
     """Score the sole configured wand/target contrast after independent geometry admission."""
     matches_snapshot(snapshot, audience, schema=_VR_PLAYER_SCHEMA)
     require(readiness == {"schema": _VR_PLAYER_SCHEMA, "status": "idle", "pid": audience.pid,
@@ -89,12 +91,16 @@ def score_player(snapshot, readiness, audience, holds, *, body32, runtime_handle
     require((observed.get("item"), observed.get("addon"), observed.get("runtimeHandle")) == (item, addon, runtime_handle)
             and observed.get("female") is (audience.sex == "Female") and observed.get("checkedAtSeal") is True,
             "Equipped player Body32 did not remain current at callback seal")
+    if morph_refit:
+        return _score_holds(snapshot, audience, holds, .3, minimum_hold_ticks,
+                            phases=MORPH_REFIT_PHASES, positive=("morphed",))
     require("unattachedNear" in holds and "nearDetached" in holds,
             "Player callback contrast requires matching unappended and detached near controls")
     return _score_holds(snapshot, audience, holds, .3, minimum_hold_ticks)
 
 
-def _score_holds(snapshot, audience, holds, minimum_duration, minimum_hold_ticks):
+def _score_holds(snapshot, audience, holds, minimum_duration, minimum_hold_ticks, *,
+                 phases=None, positive=("nearBefore", "nearAfter")):
     require(type(minimum_duration) in (int, float) and math.isfinite(minimum_duration) and minimum_duration > 0,
             "Explicit positive configured engine-duration threshold required")
     try:
@@ -108,13 +114,15 @@ def _score_holds(snapshot, audience, holds, minimum_duration, minimum_hold_ticks
     require(all(positive_int(value) for value in (frequency, request, armed, closed)) and request <= armed < closed,
             "Invalid capture clock or interval")
     require(closed - request < 60 * frequency, "Capture closed at or beyond witness expiry")
-    phases = ("nearBefore", "far", "nearAfter")
-    if "nearDetached" in holds:
-        phases += ("nearDetached",)
-    baseline = next((name for name in ("unattachedNear", "unattachedFar") if name in holds), None)
-    if baseline:
-        phases = (baseline, *phases)
-    require(set(holds) == set(phases), "Complete near/far/near hold set required")
+    baseline = None
+    if phases is None:
+        phases = ("nearBefore", "far", "nearAfter")
+        if "nearDetached" in holds:
+            phases += ("nearDetached",)
+        baseline = next((name for name in ("unattachedNear", "unattachedFar") if name in holds), None)
+        if baseline:
+            phases = (baseline, *phases)
+    require(set(holds) == set(phases), "Complete contact hold set required")
     last = armed - 1
     for phase in phases:
         begin, end = holds[phase]
@@ -146,8 +154,8 @@ def _score_holds(snapshot, audience, holds, minimum_duration, minimum_hold_ticks
 
     unattached = collected.pop(baseline) if baseline else None
     require(not unattached, "Provider emitted a callback in the pre-append hold")
-    has_controls = bool(collected["nearBefore"] and collected["nearAfter"])
-    silent = not collected["far"] and not collected.get("nearDetached")
+    has_controls = all(collected[phase] for phase in positive)
+    silent = not any(values for phase, values in collected.items() if phase not in positive)
     result = {"status": "qualified-emission-contrast" if has_controls and silent else "insufficient-emission-contrast",
               "qualifiedHeldEventCounts": {phase: len(values) for phase, values in collected.items()},
               "minimumObservedEngineDurations": {phase: min(values) if values else None for phase, values in collected.items()},

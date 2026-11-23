@@ -97,6 +97,19 @@ slots than the native fit marked as changed. This receipt establishes what
 the pinned host acknowledged. CBPC solver state and hand contact still
 require independent observations.
 
+The equipped-player morph contact reader is
+`src/test/components/contact-profiles/verify_player_morph_contact.py`. Its
+manifest pins the exact raw tool ledger, ACK log and equipped fitted profile.
+Keep one player binding and record the full `baseline`, `morphed` and
+`returned` ACKs at fixed actor weight. Each hold needs a current-token check
+before and after, the equipped Body32 route and effective TRI sidecar, and
+three or more World Observer frames for the left wand, actor root and target
+bone. Keep the wand still. The reader evaluates every bank at every observed
+bone transform and scores a sealed CBPC event only inside the morphed hold.
+A succeeding pose publication ends the preceding token's measurement window.
+The resulting callback counts describe the scoped bone group. They do not
+identify which individual solver capsule emitted an event.
+
 The enclosing profiles preserve sampled support coverage but are too loose to
 claim accurate VR touch boundaries. One separate three-pass contact experiment
 reuses the VR allocation. Its measured skin escape failed acceptance; it is

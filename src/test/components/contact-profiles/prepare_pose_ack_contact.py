@@ -117,9 +117,7 @@ def prepare(lines, profile, *, actor, generation, token, node, hand_radius, mini
             "controllerReachChecked": False, "contactVerified": False}
 
 
-def prepare_morph_refit(lines, profile, *, actor, generation, tokens, node, hand_radius, minimum_margin=MIN_MARGIN):
-    require(math.isfinite(hand_radius) and hand_radius > 0., "The projected hand radius must be positive and finite")
-    require(math.isfinite(minimum_margin) and minimum_margin > 0., "The minimum margin must be positive and finite")
+def read_morph_refits(lines, profile, *, actor, generation, tokens):
     require(len(tokens) == 3 and list(tokens) == sorted(set(tokens)),
             "Expected three increasing baseline, morphed and returned tokens")
     verify(lines, actor=actor, generation=generation, profile=profile, expected_tokens=tokens)
@@ -137,6 +135,14 @@ def prepare_morph_refit(lines, profile, *, actor, generation, tokens, node, hand
             "Effective morphs must change and return at a fixed actor weight")
     require(baseline["acknowledgedUs"] < morphed["capturedUs"] and morphed["acknowledgedUs"] < returned["capturedUs"],
             "A refit sample predates the previous accepted bank")
+    return rows, selected
+
+
+def prepare_morph_refit(lines, profile, *, actor, generation, tokens, node, hand_radius, minimum_margin=MIN_MARGIN):
+    require(math.isfinite(hand_radius) and hand_radius > 0., "The projected hand radius must be positive and finite")
+    require(math.isfinite(minimum_margin) and minimum_margin > 0., "The minimum margin must be positive and finite")
+    rows, _ = read_morph_refits(lines, profile, actor=actor, generation=generation, tokens=tokens)
+    morphed = rows[1][2]
     slots = [slot for slot, (name, _) in rows[0][3].items() if name == node]
     require(slots, "The selected attachment node has no slots")
     transform = next((bone["world"] for bone in morphed["bones"] if bone["name"] == node), None)

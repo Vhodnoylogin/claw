@@ -86,7 +86,7 @@ def phase_ack(lines, generation, token, profile, sex, clock):
     return first, selected, summary["enabledSlots"]
 
 
-def linked_pose(ledger, observation, topology, route_result, ack, *, tail=False):
+def linked_pose(ledger, observation, topology, route_result, ack, *, tail=False, controller_node=None):
     name = "tail" if tail else "ear"
     script, schema, fields = (TAIL_POSE, TAIL_SCHEMA, TAIL_MORPHS) if tail else (EAR_POSE, EAR_SCHEMA, EAR_MORPHS)
     nonce = observation["nonce"]
@@ -121,6 +121,11 @@ def linked_pose(ledger, observation, topology, route_result, ack, *, tail=False)
             f"{name.capitalize()} morph values do not match the acknowledged fitter inputs")
     result = {"nonce": nonce, "phase": phase, "qpcBegin": begin, "qpcEnd": end, "token": ack["token"],
               name + "PoseLinked": True}
+    if controller_node is not None:
+        for key, value in (("left", pose["leftWand"]), ("targetPose", pose[name + "Bones"][controller_node]["world"])):
+            matrix(value)
+            result[key] = {"translation": value["position"], "scale": value["scale"],
+                           "rotationRowMajor": [number for row in value["rotation"] for number in row]}
     if tail:
         expected_tri = canonical_model(active["reportedModelPath"]).removesuffix(".nif") + ".tri"
         require(type(pose["tailCaptureVersion"]) is int and pose["tailCaptureVersion"] == 1 and pose["tailShape"] == "body" and
