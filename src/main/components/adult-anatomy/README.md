@@ -97,6 +97,13 @@ python src/main/components/adult-anatomy/python/package.py `
   --out 'D:/Skyrim VR Modding/Builds/claw-adult-anatomy-package-20261123-01'
 ```
 
+For a current source-built core, pass its ZIP as `--core-archive` and its
+`build-receipt.json` as `--core-receipt`. The packager rechecks the archive
+inventory and resolves the FOMOD choices independently. The selected male
+models, shared TRI and male FSMP XML still need the reviewed content pins.
+The resulting companion retains the new core DLL and default appearance
+without the visible optional anatomy. The two archives must be used as a pair.
+
 The packager reopens both archives and checks 160 selections across the forty
 core family/OBody/motion plans. Each plan covers the companion core alone,
 the literal add-on defaults, the explicitly selected static anatomy, and the
@@ -132,3 +139,5 @@ Actual archive checks require all three explicit environment inputs:
 `CLAW_ANATOMY_CORE_ARCHIVE`, `CLAW_ANATOMY_NEUTRAL` and
 `CLAW_ANATOMY_COMBINED`, using the paths above. Selecting none reports the
 actual-input class as skipped; missing or changed selected inputs fail.
+Set `CLAW_ANATOMY_CORE_RECEIPT` when selecting the current core build rather
+than the reviewed original ZIP.

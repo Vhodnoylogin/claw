@@ -110,10 +110,11 @@ class ActualCandidatePackage(unittest.TestCase):
             raise unittest.SkipTest('Explicit actual anatomy/core package inputs not selected')
         if not all(paths):
             raise AssertionError('Set all three actual anatomy/core package inputs')
+        receipt = os.environ.get('CLAW_ANATOMY_CORE_RECEIPT')
         cls.temp = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls.temp.cleanup)
         cls.report = p.build(core_archive=Path(paths[0]), neutral=Path(paths[1]), combined=Path(paths[2]),
-                             out=Path(cls.temp.name)/'fresh-output')
+                             out=Path(cls.temp.name)/'fresh-output', core_receipt=Path(receipt) if receipt else None)
         cls.package, cls.reader = helpers()
         cls.entries = cls.package.read_zip(Path(cls.report['archive']['path']).read_bytes())
         cls.base = cls.package.read_zip(Path(cls.report['baseArchive']['path']).read_bytes())
@@ -189,6 +190,14 @@ class ActualCandidatePackage(unittest.TestCase):
             changed = bytearray(entries[source]); changed[-1] ^= 1; entries[source] = bytes(changed)
             with self.subTest(source=source), self.assertRaisesRegex(ValueError, 'Changed component payload'):
                 p.audit(entries, self.base, self.core, self.package, self.reader)
+
+    def test_rejects_altered_core_male_motion_even_with_the_same_model_hook(self):
+        original = self.package.selection_audit(self.core)
+        source = next(row['source'] for plan in original if plan['physics'] == 'fsmp' for row in plan['files']
+                      if row['path'] == p.XML_ROOT+'CLAWMotionMale.xml')
+        changed = self.core | {source: self.core[source] + b'\n'}
+        with self.assertRaisesRegex(ValueError, 'combined rig input'):
+            p.require_compatible_core(changed, original)
 
 
 if __name__ == '__main__':

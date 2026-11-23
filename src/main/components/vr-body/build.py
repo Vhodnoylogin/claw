@@ -279,7 +279,8 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
     sources = [Path(__file__), *(Path(module.__file__) for module in
                (resource, core_archive, head_split, isolation, neck_bounds, rig, morph_quality, player_only_materials, vr_dispatch))]
     if core_archive_path is not None:
-        sources.extend((core_archive.PACKAGER, core_archive.PACKAGER.with_name('build-unified-release.py')))
+        sources.extend((core_archive.PACKAGER, core_archive.PACKAGER.with_name('build-unified-release.py'),
+                        core_archive.CORE_INPUT_SOURCE))
     pins = {**inputs, **dependencies, **{str(p): resource.sha256(p) for p in sources}}
     out.mkdir(parents=True)
     report = {'schemaVersion': 1, 'status': 'building', 'sourceVersion': '0.10.0', 'inputSha256': inputs,

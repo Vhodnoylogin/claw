@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 
 from vr_dispatch import LEGACY_ALIAS, ROOT, SEXES, require_static_nif, resource_paths
 from body_resource import bodytri, read_json, safe_output, visible_by_hidden_flags
-from core_archive import PACKAGER, open_tools, read_core_archive, require_reviewed_body, static_routes
+from core_archive import CORE_INPUT_SOURCE, PACKAGER, open_tools, read_core_archive, require_reviewed_body, static_routes
 
 PHYSICS = ROOT / "src/main/python/physics"
 sys.path.insert(0, str(PHYSICS))
@@ -60,7 +60,7 @@ def build(fixed_profile, core_release, skeleton, pynifly, out, *, core_receipt=N
     core, core_plans, core_pins = read_core_archive(pack, core_release, receipt_path=core_receipt, known_digest=CORE_SHA256)
     profile = Path(__file__).with_name('current-010.json')
     require_reviewed_body(pack, core, core_plans, read_json(profile))
-    sources = (Path(__file__), profile, PACKAGER, PACKAGER.with_name("build-unified-release.py"),
+    sources = (Path(__file__), profile, PACKAGER, PACKAGER.with_name("build-unified-release.py"), CORE_INPUT_SOURCE,
                Path(sys.modules["core_archive"].__file__),
                Path(fsmp_motion.__file__), Path(common.__file__), fsmp_motion.RIG_SOURCE,
                Path(fsmp_motion.head_split.__file__), Path(fsmp_motion.materials.__file__),

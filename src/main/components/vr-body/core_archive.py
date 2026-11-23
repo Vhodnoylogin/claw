@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
-import re
 
 from body_resource import parse_json
+import core_package_input
 
 ROOT = Path(__file__).resolve().parents[4]
 PACKAGER = ROOT / 'src/main/python/build-tools/package-source-build.py'
+CORE_INPUT_SOURCE = Path(core_package_input.__file__)
 
 
 def open_tools(path):
@@ -29,22 +30,10 @@ def read_core_archive(pack, archive, *, receipt_path=None, known_digest=None):
         receipt_path = Path(receipt_path).resolve(strict=True)
         receipt_raw = receipt_path.read_bytes()
         receipt = parse_json(receipt_raw.decode('utf-8-sig'))
-        commit = receipt.get('sourceCommit') if isinstance(receipt, dict) else None
-        if (not isinstance(commit, str) or re.fullmatch(r'[0-9a-f]{40}', commit) is None or
-                receipt.get('schemaVersion') != 1 or receipt.get('sourceCheckoutHead') != commit or
-                receipt.get('sourceWorktreeHasTrackedChanges') is not False or receipt.get('sha256') != digest or
-                receipt.get('bytes') != len(raw)):
-            raise ValueError('Core archive does not match its clean-source build receipt')
+        if receipt is None:
+            raise ValueError('Expected an object in the core build receipt')
         provenance[str(receipt_path)] = pack.sha(receipt_raw)
-    elif digest != known_digest:
-        raise ValueError('Expected the reviewed core archive or its clean-source build receipt')
-
-    files = pack.read_zip(raw)
-    plans = pack.selection_audit(files)
-    if receipt is not None:
-        actual = {name: {'bytes': len(payload), 'sha256': pack.sha(payload)} for name, payload in files.items()}
-        if receipt.get('payloads') != actual or receipt.get('selections') != plans:
-            raise ValueError('Core build receipt file inventory or installer selections differ')
+    files, plans = core_package_input.read_core_package(pack, raw, receipt=receipt, known_digest=known_digest)
     return files, plans, provenance
 
 
