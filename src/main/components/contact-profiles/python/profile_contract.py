@@ -26,6 +26,8 @@ host = load_module('claw_contact_profile_host', PHYSICS / 'build.py')
 settings = fit._settings_module
 PROFILES = {'flat': ('flat-coarse.json', settings.FLAT_PROFILE, 52),
             'vr': ('vr-detailed.json', settings.VR_PROFILE, 128)}
+EQUIPPED_EARS = 'head_CLAWHead_CLAWEars'
+EQUIPPED_SKIN = ('body', 'head', 'claws', EQUIPPED_EARS)
 EAR_TAIL_CONTACT_NODES = {'NPC EarL [EarL]Bone01', 'NPC EarL [EarL]Bone02',
                           'NPC EarR [EarR]Bone01', 'NPC EarR [EarR]Bone02',
                           'TailBone01', 'TailBone02', 'TailBone03', 'TailBone05'}

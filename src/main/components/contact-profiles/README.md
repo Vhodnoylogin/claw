@@ -173,3 +173,26 @@ near, far, return and detached intervals. The unattached near control emitted
 zero. The engine then faulted during process shutdown. The test verified the
 scoped capsule on one born werewolf. Full profile activation and human-to-wolf
 provider binding remain separate work.
+
+## Equipped player world model
+
+Build a separate fit against the actual player Body32 diagnostic archive:
+
+```text
+python -B src/main/components/contact-profiles/python/build_equipped.py --package <player-body32-package-dir> --skeleton <xp32-skeleton.nif> --pynifly <path> --out <new-external-directory>
+python -B src/main/components/contact-profiles/python/posed_support.py --equipped --vr-model <fit/fitted-capsules.json> --runtime-inputs <inputs/runtime-inputs.json> --pynifly <path> --out <new-pose-output>
+```
+
+The fit uses the visible body, head remainder, claws and separate ear skin on
+`EarWorldTrial.nif`, with the packaged `EarWorldTrial.tri` for each sex. Parts
+hidden for the VR world-body trial are outside this fit. The detailed profile
+keeps the original 128 slot indices and assigned bones. Both weight endpoints
+use the exact same fixed-world-model bytes, as declared by the fixture.
+
+The posed exporter writes a separate header and preserves the 42 head, ear and
+tail slots. It verifies the fitted sources against the actual NIF triangles,
+skin weights, binds and TRI. Both static and optional FSMP world layers use
+the same skin geometry. Compare the fitted contact geometry with native
+equipment and model-route evidence before using it in a controller test.
+The current game DLL still selects the stock support bank. The equipped bank
+requires independent runtime selection and provider registration checks.

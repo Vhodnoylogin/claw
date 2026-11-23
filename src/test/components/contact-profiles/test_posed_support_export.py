@@ -10,7 +10,8 @@ from unittest.mock import patch
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / 'src/main/components/contact-profiles/python'))
-from posed_support import HEAD, Skin, compose_sex, contract, read_paired_build, region_vertices, selected_slots, selected_source_shapes
+from posed_support import (EQUIPPED_EARS, HEAD, Skin, compose_sex, contract, read_paired_build,
+                           region_vertices, selected_slots, selected_source_shapes)
 
 
 class PosedSupportExportTests(unittest.TestCase):
@@ -67,6 +68,26 @@ class PosedSupportExportTests(unittest.TestCase):
         model['regions']['male/' + HEAD]['sources'] = [{'shape': 'head'}, {'shape': 'claws'}]
         with self.assertRaisesRegex(ValueError, 'must use the native head shape'):
             selected_source_shapes(model, selected, 'male')
+
+
+    def test_equipped_ear_and_tail_routes_exclude_hidden_head_geometry(self):
+        left = 'NPC EarL [EarL]Bone01'
+        tail = 'TailBone02'
+        selected = [(20, {'node': HEAD}), (88, {'node': left}), (108, {'node': tail})]
+        model = {'regions': {
+            'male/' + HEAD: {'sources': [{'shape': 'head'}, {'shape': EQUIPPED_EARS}]},
+            'male/' + left: {'sources': [{'shape': EQUIPPED_EARS}]},
+            'male/' + tail: {'sources': [{'shape': 'body'}]},
+        }}
+        self.assertEqual(selected_source_shapes(model, selected, 'male', equipped=True),
+                         {'body', 'head', EQUIPPED_EARS})
+        model['regions']['male/' + HEAD]['sources'] = [{'shape': 'head_CLAWHead'}]
+        with self.assertRaisesRegex(ValueError, 'visible equipped shapes'):
+            selected_source_shapes(model, selected, 'male', equipped=True)
+        model['regions']['male/' + HEAD]['sources'] = [{'shape': 'head'}]
+        model['regions']['male/' + left]['sources'] = [{'shape': 'head'}]
+        with self.assertRaisesRegex(ValueError, EQUIPPED_EARS):
+            selected_source_shapes(model, selected, 'male', equipped=True)
 
     def test_head_preserves_jaw_influence_and_muzzle_field(self):
         field = 'CLAWHeadMuzzleLong'

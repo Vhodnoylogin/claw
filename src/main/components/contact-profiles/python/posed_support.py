@@ -10,6 +10,7 @@ import sys
 import numpy as np
 
 import profile_contract as contract
+from profile_contract import EQUIPPED_EARS, EQUIPPED_SKIN
 from build_profiles import runtime_inputs
 
 TOOLS = contract.ROOT / 'src/main/python/build-tools'
@@ -18,6 +19,7 @@ from breast_rig import load_pynifly, matrix, read_weights
 from tri_patch import offsets
 
 HEAD = 'NPC Head [Head]'
+NIF_HIDDEN = 1  # NiAVObject::Flag::kHidden
 
 
 def require(value, message):
@@ -70,14 +72,19 @@ def selected_slots(model, *, ear_tail_only=False):
     return selected
 
 
-def selected_source_shapes(model, selected, sex):
+def selected_source_shapes(model, selected, sex, *, equipped=False):
     shapes = set()
+    head_source = EQUIPPED_EARS if equipped else 'head'
     for node in {slot['node'] for _, slot in selected}:
-        expected = 'body' if node.startswith('TailBone') else 'head'
-        sources = model['regions'][sex + '/' + node]['sources']
-        require([source['shape'] for source in sources] == [expected],
-                f'Posed contact region {sex}/{node} must use the native {expected} shape')
-        shapes.add(expected)
+        sources = [source['shape'] for source in model['regions'][sex + '/' + node]['sources']]
+        if equipped and node == HEAD:
+            allowed = {'body', 'head', EQUIPPED_EARS}
+            require(sources and len(set(sources)) == len(sources) and set(sources) <= allowed,
+                    f'Posed head region for {sex} must use visible equipped shapes')
+        else:
+            expected = 'body' if node.startswith('TailBone') else head_source
+            require(sources == [expected], f'Posed contact region {sex}/{node} must use the native {expected} shape')
+        shapes.update(sources)
     return shapes
 
 
@@ -178,21 +185,24 @@ def values(row):
     return repr(float(row)) if isinstance(row, (float, np.floating)) else str(int(row))
 
 
-def render(model, sexes):
+def render(model, sexes, *, equipped=False):
+    route_type = 'EquippedPoseShapeRoute' if equipped else 'PoseShapeRoute'
+    support_type = 'CompiledEquippedPosedVRSupport' if equipped else 'CompiledPosedVRSupport'
+    accessor = 'CompiledEquippedVRPoseSupport' if equipped else 'CompiledVRPoseSupport'
     lines = ['#pragma once', '#include "claw/PosedContactSupport.h"', '#include <string_view>',
-             'namespace claw::physics {', 'struct PoseShapeRoute {',
+             'namespace claw::physics {', f'struct {route_type} {{',
              '    std::string_view name, bodyTri;', '    std::size_t vertices, triangles, bones;', '};',
-             'struct CompiledPosedVRSupport {',
+             f'struct {support_type} {{',
              '    std::string_view modelIdentity;', '    std::span<const std::string_view> bones, morphs;',
              '    std::span<const std::size_t> slotIndexes;', '    PosedContactModel model;',
-             '    std::span<const PoseShapeRoute> shapes;', '};',
-             'inline const CompiledPosedVRSupport& CompiledVRPoseSupport(bool female) {',
+             f'    std::span<const {route_type}> shapes;', '};',
+             f'inline const {support_type}& {accessor}(bool female) {{',
              'static constexpr std::string_view morphs[] = ' + values(model['morphs']) + ';']
     for sex, data in sexes.items():
         lines.append(f'static const auto {sex} = [] {{')
         for kind, key in (('std::string_view', 'bones'), ('PoseInfluence', 'influences'), ('PoseVertex', 'vertices'),
                           ('std::size_t', 'memberships'), ('std::size_t', 'slotIndexes'), ('PoseRegion', 'ranges'),
-                          ('PoseLinear', 'binds'), ('PoseShapeRoute', 'shapes')):
+                          ('PoseLinear', 'binds'), (route_type, 'shapes')):
             rows = [(bind,) for bind in data[key]] if key == 'binds' else data[key]
             lines.append(f'    static constexpr {kind} {key}[] = {{')
             lines.extend('        ' + values(row) + ',' for row in rows)
@@ -202,7 +212,7 @@ def render(model, sexes):
         lines.extend(['    }};', '    static constexpr PoseVertexFields fields[] = {'])
         for delta, begin, count in data['fields']:
             lines.append(f'        {{{values(delta)}, std::span{{deltas}}.subspan({begin}, {count})}},')
-        lines.extend(['    };', f'    return CompiledPosedVRSupport{{{values(model["modelIdentity"])}, bones, morphs, slotIndexes,',
+        lines.extend(['    };', f'    return {support_type}{{{values(model["modelIdentity"])}, bones, morphs, slotIndexes,',
                       '        {influences, vertices, memberships, ranges, std::size(bones), std::size(morphs), fields, binds}, shapes};',
                       '}();'])
     lines.extend(['    return female ? femaleData : maleData;', '}', '} // namespace claw::physics', ''])
@@ -224,10 +234,13 @@ def read_paired_build(directory, model_pin, *, ear_tail_only=False):
     return content
 
 
-def build(model_path, runtime_manifest, pynifly, output, *, paired_build=None, ear_tail_only=False):
+def build(model_path, runtime_manifest, pynifly, output, *, paired_build=None, ear_tail_only=False, equipped=False):
+    require(not equipped or paired_build is None, 'An equipped support bank cannot modify the stock paired header')
     model_pin = contract.pin(model_path)
     paired = read_paired_build(paired_build, model_pin, ear_tail_only=ear_tail_only) if paired_build is not None else None
     model = json.loads(model_path.read_bytes())
+    if equipped:
+        require(model.get('coveredShapes') == list(EQUIPPED_SKIN), 'Expected fitted visible equipped body and ear skin')
     selected = selected_slots(model, ear_tail_only=ear_tail_only)
     files = runtime_inputs(runtime_manifest)
     fitted_pins = {Path(row['path']).name: {key: row[key] for key in ('bytes', 'sha256')}
@@ -239,13 +252,20 @@ def build(model_path, runtime_manifest, pynifly, output, *, paired_build=None, e
     for sex in ('male', 'female'):
         prefix = sex + 'bodywerewolf'
         endpoint_meshes = [api.NifFile(str(files[prefix + suffix])) for suffix in ('_0.nif', '_1.nif')]
-        shapes = selected_source_shapes(model, selected, sex)
+        shapes = selected_source_shapes(model, selected, sex, equipped=equipped)
+        if equipped:
+            for mesh in endpoint_meshes:
+                observed = [shape for shape in mesh.shapes if shape.name in EQUIPPED_SKIN]
+                require(sorted(shape.name for shape in observed) == sorted(EQUIPPED_SKIN) and
+                        all(not shape.flags & NIF_HIDDEN for shape in observed),
+                        'Equipped contact input has a hidden or duplicate skin role')
         low, high = ({name: Skin(mesh.shape_dict[name]) for name in shapes} for mesh in endpoint_meshes)
         data = compose_sex(model, selected, sex, low, high, offsets(files[prefix+'.tri'].read_bytes()))
+        body_tri = (rf'actors\werewolfbeast\claw\firstperson\{sex}\earworldtrial.tri' if equipped else
+                    rf'actors\werewolfbeast\character assets\{prefix}.tri')
         routes = []
         for name, skin in sorted(low.items()):
-            require(len(skin.bodytri) == 1 and skin.bodytri[0].replace('/', '\\').casefold()
-                    == 'actors\\werewolfbeast\\character assets\\' + prefix + '.tri',
+            require(len(skin.bodytri) == 1 and skin.bodytri[0].replace('/', '\\').casefold() == body_tri,
                     'The posed shape must link the pinned world TRI')
             routes.append((name, skin.bodytri[0], len(skin.points), len(skin.faces), len(skin.bones)))
         data['shapes'] = routes
@@ -254,8 +274,8 @@ def build(model_path, runtime_manifest, pynifly, output, *, paired_build=None, e
             'Posed support inputs changed during extraction')
     out = contract.host.destination(output)
     out.mkdir(parents=True, exist_ok=False)
-    header = out / 'posed-vr-support.h'
-    payload = render(model, profiles).encode('ascii')
+    header = out / ('posed-equipped-vr-support.h' if equipped else 'posed-vr-support.h')
+    payload = render(model, profiles, equipped=equipped).encode('ascii')
     header.write_bytes(payload)
     record = {'modelIdentity': model['modelIdentity'], 'model': model_pin, 'source': contract.pin(Path(__file__)),
               'assets': {name: fitted_pins[name] for name in files}, 'generatedHeader': contract.pin(header),
@@ -264,6 +284,8 @@ def build(model_path, runtime_manifest, pynifly, output, *, paired_build=None, e
               'sexes': {key.removesuffix('Data'): {'bones': value['bones'], 'shapes': value['shapes'],
                         **{field: len(value[field]) for field in ('vertices', 'memberships', 'influences', 'deltas')}}
                         for key, value in profiles.items()}, 'providerRuntimeVerified': False}
+    if equipped:
+        record['modelRoute'] = 'equipped-world-ear'
     if paired is not None:
         combined = out / 'physics-fit-model.h'
         combined.write_bytes(paired + b'\n#define CLAW_PHYSICS_POSED_VR_SUPPORT 1\n' + payload)
@@ -279,10 +301,11 @@ def main():
     parser.add_argument('--pynifly', type=Path)
     parser.add_argument('--paired-build', type=Path, help='Also emit a native header from the exact paired build')
     parser.add_argument('--ear-tail-only', action='store_true', help='Reproduce the retained 32-slot support without Head')
+    parser.add_argument('--equipped', action='store_true', help='Emit a separate equipped world-model pose bank')
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
     print(json.dumps(build(args.vr_model, args.runtime_inputs, args.pynifly, args.out,
-                           paired_build=args.paired_build, ear_tail_only=args.ear_tail_only), indent=2))
+                           paired_build=args.paired_build, ear_tail_only=args.ear_tail_only, equipped=args.equipped), indent=2))
 
 
 if __name__ == '__main__':
