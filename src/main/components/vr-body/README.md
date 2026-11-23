@@ -98,6 +98,16 @@ inspects the exact test armor on the active player graph. Its verifier needs
 independently observed fixture FormIDs. The archive does not give, equip or
 serialize the outfit on its own.
 
+The [split-view probe](../../../test/components/vr-body/probe_player_dispatch.py)
+runs inside a verified disposable VR session. It waits for natural quest
+initialization, casts the vanilla transformation, observes the stock body,
+equips one test outfit, and captures both views. It records a missing stock
+model separately, removes the outfit and checks that the original slot state
+returns. The caller pins the exact VFS
+winners and mapped DLLs before invoking the probe. The probe does not save
+the game. The reported route and application cull describe the scene graph.
+Headset rendering needs a separate observation.
+
 Pass `--visible-ears <verified-control-directory> --fixed-profile <fixed-profile-ZIP>`
 to the same builder for the optional motion trial. The armor uses separate
 world and first-person records for both sexes. The base test archive installs
