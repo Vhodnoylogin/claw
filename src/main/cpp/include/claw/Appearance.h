@@ -283,12 +283,15 @@ inline void Runtime::retryPendingRollbacks() {
         if (!actor || actor->formID != it->first) {
             it = pendingRollbacks_.erase(it); continue;
         }
+        const auto entry = entries_.find(it->first);
+        const bool ownsAudit = entry != entries_.end() && entry->second.handle.get().get() == actor.get();
         const auto reachable = [&](const auto& geometry) {
             const auto* root = actor->Is3DLoaded() ? actor->Get3D(false) : nullptr;
             return root && attached(geometry.get(), root);
         };
         std::erase_if(pending.surfaces, [&](const Surface& surface) {
             if (!reachable(surface.geometry)) return true;
+            if (ownsAudit) entry->second.audit.invalidate();
             const auto result = releaseSurface(surface);
             if (result == MaterialRelease::yielded || result == MaterialRelease::unowned)
                 pending.yielded.push_back(surface.geometry);
@@ -320,8 +323,13 @@ inline void Runtime::forget(RE::FormID id) {
 inline void Runtime::restore(RE::Actor* actor) {
     if (!actor) return;
     if (auto found = entries_.find(actor->formID); found != entries_.end()) {
-        auto& entry = found->second; unbind(entry);
-        const auto* currentRoot = actor->Is3DLoaded() ? actor->Get3D(false) : nullptr;
+        auto& entry = found->second;
+        const auto loadedRoot = [&] { return actor->Is3DLoaded() ? actor->Get3D(false) : nullptr; };
+        const auto* currentRoot = loadedRoot();
+        if (coatRestorationNeedsUnbind(currentRoot, entry.root.get(), entry.auditRoot.get(), !entry.surfaces.empty())) {
+            unbind(entry);
+            currentRoot = loadedRoot();
+        }
         if (entry.auditRoot.get() != currentRoot) { entry.auditRoot.reset(); entry.auditGeometry = {}; entry.auditGeneration = 0; }
         if (entry.yieldReportedRoot.get() != currentRoot) { entry.yieldReportedRoot.reset(); entry.yieldAudit.invalidate(); }
         if (entry.yield.root.get() != currentRoot) entry.yield = {};

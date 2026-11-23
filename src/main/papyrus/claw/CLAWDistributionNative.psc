@@ -61,7 +61,7 @@ String Function GetAppliedCoatPattern(Actor target) Global Native
 ; Includes the resolved logical ID when the adapter retains the installed material.
 String Function GetCoatPatternStatus(Actor target) Global Native
 
-; Explicit read-only main-task sample of the currently loaded beast model.
+; Explicit read-only main-task sample of the current human or werewolf world model.
 ; True means queued; it does not refresh/apply materials. A new request clears
 ; the previous sample. False means admission unavailable or already pending.
 Bool Function RequestCoatSurfaceAudit(Actor target) Global Native

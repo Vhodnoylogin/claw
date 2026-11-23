@@ -144,9 +144,12 @@ appearance entry returns `false`. Poll `GetCoatSurfaceAudit(actor)` promptly aft
 admission. It returns empty while pending, invalidated, unavailable or more than
 2,000 milliseconds old. A new request immediately hides the previous sample.
 An accepted body/coat request, a model/race/load notification, material unbind,
-unload, deletion or world reset invalidates the sample. The VM getter reads only
-plain retained data and a monotonic clock; scene/material access stays in the
-queued task with the actor, Distribution runtime and world checked again.
+actual morph cleanup or application, unload, deletion or world reset invalidates
+the sample. A routine refresh with the same human model and no appearance writes
+keeps the pending request or sample until its normal completion or expiry. The VM
+getter reads only plain retained data and a monotonic clock. The queued main task
+checks the actor, Distribution runtime and world again before accessing the model
+and materials.
 
 The result is JSON schema 1. Its `sample` and `modelGeneration` are process-local
 decimal-string tokens, not saved reference IDs or pointer addresses. The model

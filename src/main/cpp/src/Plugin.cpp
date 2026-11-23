@@ -1245,6 +1245,7 @@ void observePhysics(RE::Actor* actor, bool retryPose) {
     if (binding.observation.candidate != values || binding.observation.weight != normalizedWeight) {
         binding.ready = false;
         physicsEvent(actor, "refit", binding.snapshot); // Old capsules are no longer current geometry.
+        claw::appearance::runtime.invalidateSurfaceAudit(actor->GetFormID());
         morphs->ApplyBodyMorphs(skeeReference(actor), false);
         if (!currentOwner(actor) || actor->GetRace() != beastRace || reinterpret_cast<std::uintptr_t>(physicsActorRoot(actor)) != root) {
             if (currentOwner(actor)) observePhysicsContext(actor, state->second);
@@ -1447,6 +1448,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
         try { hasOwnValue |= !ownMorphSnapshot(actor).empty(); }
         catch (const std::exception&) { hasOwnValue = true; }
         if (force || state->dirty || hasOwnValue || state->lastRoot != root) {
+            claw::appearance::runtime.invalidateSurfaceAudit(actor->GetFormID());
             if (!clearOwnMorphs(actor)) { logError(*state, "own-key cleanup readback failed"); return; }
             morphs->ApplyBodyMorphs(skeeReference(actor), false);
             invalidatePhysics(actor->GetFormID());
@@ -1510,6 +1512,7 @@ void refreshActor(RE::Actor* actor, bool force = false) {
     const bool matching = readback(actor, expected);
     if (force || state->dirty || state->lastRoot != root || (!linked && state->lastWeight != weight) || !matching) {
         state->status = Status::pending;
+        claw::appearance::runtime.invalidateSurfaceAudit(actor->GetFormID());
         if (!clearOwnMorphs(actor)) { logError(*state, "own-key preparation readback failed"); return; }
         // Recheck race/model immediately before writes; all operations stay on this main-thread task.
         const auto vrBeforeWrite = vrLease ? std::optional{sampleTargetModel(actor)} : std::nullopt;

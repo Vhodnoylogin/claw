@@ -81,6 +81,38 @@ void maximumPublishedObservationUsesOneFreshPayload() {
         cache.read(3001).find("\"coatDecision\"") == std::string::npos,
         "No variation was sampled, but an automatic selection was reported");
 }
+void routineRefreshKeepsAnUnchangedHumanAudit() {
+    using namespace claw::appearance;
+    int humanRoot{}, replacementRoot{};
+    CoatSurfaceAuditCache cache;
+    const auto restore = [&](const void* current, const void* attempt, const void* sampled, bool bound = false) {
+        if (coatRestorationNeedsUnbind(current, attempt, sampled, bound)) cache.invalidate();
+    };
+    CoatSurfaceObservation hair;
+    hair.name = "hair";
+    require(cache.begin(1), "Initial human observation could not queue");
+    restore(&humanRoot, nullptr, nullptr);
+    require(cache.pending(1) && cache.publish(1, 7, 100, false, {hair}),
+        "The ordinary scan dropped the pending first human observation");
+    restore(&humanRoot, nullptr, &humanRoot);
+    require(cache.read(166).find("\"sample\":\"1\"") != std::string::npos &&
+        !cache.read(100 + coatAuditMaxAgeMs).empty() && cache.read(101 + coatAuditMaxAgeMs).empty(),
+        "The ordinary scan erased the original sample or altered its expiry");
+
+    require(cache.begin(2), "Replacement observation could not queue");
+    restore(&replacementRoot, nullptr, &humanRoot);
+    require(!cache.pending(2) && cache.begin(3), "Root replacement did not fence the old request");
+    cache.cancel(2);
+    require(!cache.publish(2, 7, 2200, false, {hair}) && cache.pending(3),
+        "Late observation of the old model disturbed a newer request");
+    restore(nullptr, nullptr, nullptr);
+    require(!cache.pending(3) && cache.begin(4), "Unload kept a pending request without a sampled root");
+    restore(&humanRoot, &humanRoot, &humanRoot);
+    require(!cache.pending(4) && cache.begin(5), "Returning to a model with a previous coat attempt retained its audit");
+    restore(&humanRoot, nullptr, &humanRoot, true);
+    require(!cache.pending(5), "Actual material restoration left its old audit pending");
+}
+
 void appliedDecisionRequiresCompletePrivateMaterialEvidence() {
     using namespace claw::appearance;
     CoatSurfaceObservation managed;
@@ -200,6 +232,7 @@ int main() {
     using namespace claw::appearance;
     try {
         chunksPreserveBoundedBytes(); maximumPublishedObservationUsesOneFreshPayload();
+        routineRefreshKeepsAnUnchangedHumanAudit();
         appliedDecisionRequiresCompletePrivateMaterialEvidence();
         optionalEarRequiresItsTrialRouteAndOwnLease();
         sameRootReplacementRequiresNewUnambiguousGeometry();

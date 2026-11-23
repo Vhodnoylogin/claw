@@ -17,6 +17,13 @@ inline constexpr std::size_t coatAuditMaxRowsBytes = 64000;
 inline constexpr std::size_t coatAuditChunkBytes = 1024, coatAuditMaxChunks = 64;
 inline constexpr std::size_t coatAuditMaxPayloadBytes = coatAuditChunkBytes * coatAuditMaxChunks;
 
+// A loaded human can already have a queued audit before its first sampled root.
+// Only a real coat attempt, binding, unload or observed root change needs unbind.
+constexpr bool coatRestorationNeedsUnbind(const void* currentRoot, const void* attemptedRoot,
+    const void* sampledRoot, bool boundSurfaces) {
+    return !currentRoot || attemptedRoot || boundSurfaces || (sampledRoot && sampledRoot != currentRoot);
+}
+
 // Each completed sample pins its geometry until the next one is published.
 // Addresses cannot recycle between adjacent observations. Only opaque IDs leave
 // the process; an object absent from the previous sample receives a fresh ID.
