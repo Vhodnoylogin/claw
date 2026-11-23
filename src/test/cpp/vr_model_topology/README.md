@@ -178,3 +178,14 @@ inner reply. Provide disjoint `headFit` and `headHoldout` 3D point pairs with
 points. Use `providerFrustumIntersection` for geometric counts and depths in
 metres. The captured engine side planes and rendered pixels remain separate
 evidence. `engineProjectionQualified` and `renderedPixelsVerified` stay false.
+
+For motion, pass `--baseline-packet` and `--baseline-request` alongside the measured
+packet. The baseline request has its own `nonce` and `armedAfterPhase`. Use the
+same admitted actor, world and assets, and complete that request before arming
+the measured one. Both captures must have the same effective ear morphs.
+
+The replay reports movement in world coordinates and in the head frame. It
+also reconstructs the later pose carrying the earlier ear drivers relative to
+the head, with the later non-ear support intact. The difference isolates the
+ear driver contribution. Head-relative distances use the head's local scale.
+Use matched static and provider-on controls to attribute motion to FSMP.

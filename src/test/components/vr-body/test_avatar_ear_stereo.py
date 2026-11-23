@@ -4,13 +4,15 @@ from hashlib import sha256
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 import unittest
 from zipfile import ZipFile
 
 import numpy as np
 
-from avatar_ear_stereo import (ADDON, BASE, CAPTURE_SCHEMA, CELL, EAR_SHAPE, ITEM, LEGACY_ALIAS, PLAYER, RACE,
-                               RUN_SCHEMA, admitted_assets, admitted_sample, read_reply)
+from avatar_ear_stereo import (ADDON, BASE, CAPTURE_SCHEMA, CELL, EAR_DRIVERS, EAR_SHAPE, HEAD_BONE, ITEM,
+                               LEGACY_ALIAS, PLAYER, RACE, RUN_SCHEMA, admitted_assets, admitted_baseline,
+                               admitted_sample, ear_motion, read_reply)
 from stereo_calibration import calibrate_head, calibrated_eye, transform_points
 
 TRI = r'actors\werewolfbeast\claw\firstperson\female\earworldtrial.tri'
@@ -46,6 +48,11 @@ def payload():
 
 def packet(reply):
     return {'called': True, 'returnedType': 'string', 'returned': json.dumps(reply)}
+
+
+def transform(position=(0, 0, 0), rotation=None, scale=1):
+    return {'position': list(position), 'rotation': np.eye(3).tolist() if rotation is None else rotation,
+            'scale': scale}
 
 
 class StereoAdmissionTests(unittest.TestCase):
@@ -98,6 +105,62 @@ class StereoAdmissionTests(unittest.TestCase):
             vfs[tri]['sha256'] = '0' * 64
             with self.assertRaisesRegex(ValueError, 'loaded VFS'):
                 admitted_assets(admission)
+
+    def test_ear_motion_baseline_is_same_session_and_precedes_current_request(self):
+        reply, expected = payload()
+        reply['sample'].update(hmd=transform(), camera=transform())
+        current = expected | {'nonce': 4, 'armedAfterPhase': 8}
+        request = {key: expected[key] for key in ('nonce', 'armedAfterPhase')}
+        sample, digest = admitted_baseline(packet(reply), request, current, TRI)
+        self.assertEqual(sample['phaseSequence'], 8)
+        self.assertEqual(len(digest), 64)
+        with self.assertRaisesRegex(ValueError, 'must complete'):
+            admitted_baseline(packet(reply), request, current | {'armedAfterPhase': 7}, TRI)
+        with self.assertRaisesRegex(ValueError, 'epoch'):
+            admitted_baseline(packet(reply), request, current | {'epoch': 8}, TRI)
+        with self.assertRaisesRegex(ValueError, 'distinct'):
+            admitted_baseline(packet(reply), request, current | {'nonce': request['nonce']}, TRI)
+
+
+class EarMotionTests(unittest.TestCase):
+    def setUp(self):
+        self.spine = 'NPC Spine2 [Spn2]'
+        bones = (HEAD_BONE, self.spine, *EAR_DRIVERS)
+        count = 1354
+        bind = SimpleNamespace(rotation=np.eye(3), scale=1, translation=(0, 0, 0))
+        self.shape = SimpleNamespace(
+            name=EAR_SHAPE, verts=[(i % 11, i % 3, i % 7) for i in range(count)],
+            tris=[tuple((i + step) % count for step in range(3)) for i in range(2394)],
+            bone_weights={bone: [(index, 1) for index in range(column, count, len(bones))]
+                          for column, bone in enumerate(bones)},
+            global_to_skin=bind, get_shape_skin_to_bone=lambda name: bind)
+        self.records = {(EAR_SHAPE, 'CLAWHeadEarSize', 0): SimpleNamespace(packed=(1, 0, 0), scale=1)}
+        self.baseline = {'earBones': {name: {'world': transform()} for name in bones},
+                         'earEffectiveMorphs': {'CLAWHeadEarSize': .5}}
+
+    def test_common_translation_rotation_and_scale_leave_head_relative_ears_fixed(self):
+        moved = deepcopy(self.baseline)
+        rigid = transform((20, 4, 9), [[0, -1, 0], [1, 0, 0], [0, 0, 1]], 1.5)
+        for row in moved['earBones'].values():
+            row['world'] = rigid
+        moved['camera'] = transform((-10, 0, 14))
+        result = ear_motion(self.shape, self.records, self.baseline, moved)
+        self.assertGreater(result['worldDisplacementGu']['max'], 10)
+        self.assertLess(result['headRelativeDisplacement']['max'], 1e-12)
+        self.assertLess(result['earDriverContribution']['max'], 1e-12)
+
+    def test_spine_and_ear_changes_are_separated_on_the_same_pose(self):
+        moved = deepcopy(self.baseline)
+        moved['earBones'][self.spine]['world'] = transform((0, 3, 0))
+        moved['earBones'][EAR_DRIVERS[1]]['world'] = transform((0, 0, 2))
+        result = ear_motion(self.shape, self.records, self.baseline, moved)
+        self.assertEqual(result['vertices'], 1354)
+        self.assertAlmostEqual(result['nonEarSkinContribution']['max'], 3)
+        self.assertAlmostEqual(result['earDriverContribution']['max'], 2)
+        self.assertAlmostEqual(result['headRelativeDisplacement']['max'], 3)
+        moved['earEffectiveMorphs']['CLAWHeadEarSize'] = .6
+        with self.assertRaisesRegex(ValueError, 'morphs changed'):
+            ear_motion(self.shape, self.records, self.baseline, moved)
 
 
 class StereoCalibrationTests(unittest.TestCase):

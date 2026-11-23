@@ -12,7 +12,7 @@ from zipfile import BadZipFile, ZipFile
 import numpy as np
 
 from avatar_torso import Skin, matrix, observation_plan, offsets, read_pinned_asset, require
-from stage_visible_ears import EAR_SHAPE, LEGACY_ALIAS, bodytri, motion, resource_paths
+from stage_visible_ears import EAR_DRIVERS, EAR_SHAPE, LEGACY_ALIAS, bodytri, motion, resource_paths
 from stereo_calibration import calibrate_head, calibrated_eye, finite_array, transform_points
 from stereo_frustum import clip_frustum
 
@@ -20,6 +20,7 @@ CAPTURE_SCHEMA = 'claw-vr-vrik-ear-stereo/1'
 RUN_SCHEMA = 'claw-vr-ear-stereo-admission/1'
 CALIBRATION_SCHEMA = 'claw-vr-ear-stereo-calibration/1'
 PLAYER, BASE, RACE, CELL, ITEM, ADDON = 0x14, 7, 0xCDD84, 0x0A01A5C6, 0xCDD86, 0xCDD87
+HEAD_BONE = 'NPC Head [Head]'
 
 
 def read_json(raw):
@@ -155,25 +156,75 @@ def admitted_assets(admission):
     return files[LEGACY_ALIAS], files[tri], tri
 
 
-def reconstruct(shape, records, sample):
-    plan = observation_plan(shape, records)
-    require((plan['vertices'], plan['triangles']) == (1354, 2394), 'Wrong authored ear topology')
+def ear_frames(plan, sample):
     transforms, values = sample['earBones'], sample['earEffectiveMorphs']
     require(set(plan['bones']) == set(transforms) and set(plan['morphs']) == set(values) and
             all(type(value) in (float, int) and np.isfinite(value) for value in values.values()),
             'Expected the exact co-sampled ear bone and morph inventory')
-    frames = {name: matrix(transforms[name]['world']) for name in plan['bones']}
-    skin = Skin(shape, records, values)
+    return {name: matrix(transforms[name]['world']) for name in plan['bones']}
+
+
+def reconstruct(shape, records, sample):
+    plan = observation_plan(shape, records)
+    require((plan['vertices'], plan['triangles']) == (1354, 2394), 'Wrong authored ear topology')
+    frames = ear_frames(plan, sample)
+    skin = Skin(shape, records, sample['earEffectiveMorphs'])
     used, triangles = np.unique(skin.faces, return_inverse=True)
     return skin.support(used, frames, None)[triangles.reshape(-1, 3)]
 
 
-def replay(packet, admission, pynifly, calibration=None):
+def ear_motion(shape, records, baseline, sample):
+    """Compare the observed ear with the same pose carrying the baseline ear bones."""
+    plan = observation_plan(shape, records)
+    require((plan['vertices'], plan['triangles']) == (1354, 2394), 'Wrong authored ear topology')
+    require({HEAD_BONE, *EAR_DRIVERS} <= set(plan['bones']), 'Expected the head and all four ear drivers')
+    old, current = ear_frames(plan, baseline), ear_frames(plan, sample)
+    values = sample['earEffectiveMorphs']
+    require(baseline['earEffectiveMorphs'] == values, 'Effective ear morphs changed between captures')
+    skin = Skin(shape, records, values)
+    vertices = np.unique(skin.faces)
+    carry = current[HEAD_BONE] @ np.linalg.inv(old[HEAD_BONE])
+    held = current | {name: carry @ old[name] for name in EAR_DRIVERS}
+    old_world = skin.support(vertices, old, None)
+    current_world = skin.support(vertices, current, None)
+    old_local = skin.support(vertices, old, HEAD_BONE)
+    held_local = skin.support(vertices, held, HEAD_BONE)
+    current_local = skin.support(vertices, current, HEAD_BONE)
+
+    def displacement(delta):
+        lengths = np.linalg.norm(delta, axis=1)
+        return {'max': float(lengths.max()), 'rms': float(np.sqrt(np.mean(lengths ** 2)))}
+
+    return {'vertices': len(vertices),
+            'worldDisplacementGu': displacement(current_world - old_world),
+            'headRelativeDisplacement': displacement(current_local - old_local),
+            'nonEarSkinContribution': displacement(held_local - old_local),
+            'earDriverContribution': displacement(current_local - held_local)}
+
+
+def admitted_baseline(packet, request, admission, ear_tri):
+    require(set(request) == {'nonce', 'armedAfterPhase'} and request['nonce'] != admission['nonce'],
+            'Expected a distinct independently admitted baseline request')
+    expected = admission | request
+    reply, digest = read_reply(packet, expected)
+    sample, _ = admitted_sample(reply, expected, ear_tri)
+    require(sample['phaseSequence'] <= admission['armedAfterPhase'],
+            'Baseline must complete before the measured request is armed')
+    matrix(sample['camera'])
+    matrix(sample['hmd'])
+    return sample, digest
+
+
+def replay(packet, admission, pynifly, calibration=None, *, baseline_packet=None, baseline_request=None):
+    require((baseline_packet is None) == (baseline_request is None), 'Both the baseline packet and its request are required')
     nif, tri, tri_path = admitted_assets(admission)
     reply, digest = read_reply(packet, admission)
     sample, eyes = admitted_sample(reply, admission, tri_path)
     hmd_world = matrix(sample['hmd'])
     matrix(sample['camera'])
+    paired = {}
+    if baseline_packet is not None:
+        baseline, baseline_digest = admitted_baseline(baseline_packet, baseline_request, admission, tri_path)
     api, _ = motion.fsmp_motion.common.load_pynifly(Path(pynifly))
     with TemporaryDirectory(prefix='claw-ear-stereo-replay-') as scratch:
         path = Path(scratch) / 'trial.nif'
@@ -181,10 +232,15 @@ def replay(packet, admission, pynifly, calibration=None):
         parsed = api.NifFile(str(path))
         shape, = [row for row in parsed.shapes if row.name == EAR_SHAPE]
         require(bodytri(shape) == [('BODYTRI', sample['earBodyTri'])], 'Serialized ear does not bind the observed TRI')
-        points = reconstruct(shape, {k: v for k, v in offsets(tri).items() if k[0] == EAR_SHAPE}, sample)
+        records = {k: v for k, v in offsets(tri).items() if k[0] == EAR_SHAPE}
+        points = reconstruct(shape, records, sample)
+        if baseline_packet is not None:
+            paired = {'baselineCaptureSha256': baseline_digest, 'baselinePhaseSequence': baseline['phaseSequence'],
+                      'earMotion': ear_motion(shape, records, baseline, sample)}
     report = {'schema': 'claw-vr-ear-stereo-replay/1', 'captureSha256': digest, 'phaseSequence': sample['phaseSequence'],
               'triangles': len(points), 'worldBoundsGu': [points.min(axis=(0, 1)).tolist(), points.max(axis=(0, 1)).tolist()],
-              'projectionControlsConsistent': False, 'engineProjectionQualified': False, 'renderedPixelsVerified': False}
+              'projectionControlsConsistent': False, 'engineProjectionQualified': False, 'renderedPixelsVerified': False,
+              **paired}
     if calibration is not None:
         require(calibration['schema'] == CALIBRATION_SCHEMA and calibration['captureSha256'] == digest,
                 'Calibration controls are for another capture')
@@ -205,11 +261,15 @@ def main():
     parser.add_argument('--admission', type=Path, required=True)
     parser.add_argument('--pynifly', type=Path, required=True)
     parser.add_argument('--calibration', type=Path)
+    parser.add_argument('--baseline-packet', type=Path, help='Earlier native ear packet from the same admitted trial')
+    parser.add_argument('--baseline-request', type=Path, help='JSON with the baseline nonce and armedAfterPhase')
     args = parser.parse_args()
     try:
         report = replay(read_json(args.packet.read_bytes()), read_json(args.admission.read_bytes()), args.pynifly,
-                        read_json(args.calibration.read_bytes()) if args.calibration else None)
-    except (BadZipFile, OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
+                        read_json(args.calibration.read_bytes()) if args.calibration else None,
+                        baseline_packet=read_json(args.baseline_packet.read_bytes()) if args.baseline_packet else None,
+                        baseline_request=read_json(args.baseline_request.read_bytes()) if args.baseline_request else None)
+    except (BadZipFile, OSError, ValueError, KeyError, TypeError, RuntimeError, np.linalg.LinAlgError) as error:
         parser.exit(2, f'CLAW ear stereo replay: {error}\n')
     print(json.dumps(report, indent=2, allow_nan=False))
 
