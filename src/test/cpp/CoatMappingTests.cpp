@@ -72,6 +72,14 @@ int main(int argc, char** argv) {
         rejectsXml(colourManifest(groups, R"(lightnessWeight="0" chromaWeight="0")"));
         rejectsXml(colourManifest(groups, R"(chromaWeight="nan")"));
         rejectsXml(colourManifest(groups, R"(lightnessWeight="-1")"));
+        rejectsXml(colourManifest(groups, R"(variantTolerance="0.015")"));
+        rejectsXml(colourManifest(groups, R"(variantTolerance="nan")"));
+        const std::string measured = R"(<Group id="both">
+            <Anchor red="1" green="0" blue="0" variant="test/a"/><Anchor red="0" green="0" blue="1" variant="test/b"/>
+            <Variant id="test/a"/><Variant id="test/b"/></Group>)";
+        rejectsXml(colourManifest(measured));
+        const auto filtered = CoatMapping::parse(colourManifest(measured, R"(variantTolerance="0")"));
+        require(filtered.selectOutputs({}, colourValues, true).pattern == "test/a", "seed escaped the exact nearest variant");
         rejectsXml(colourManifest(R"(<Group id="first"><Anchor red="2" green="0" blue="0"/><Variant id="test/a"/></Group>)"));
         rejectsXml(colourManifest(R"(<Group id="first"><Variant id="test/a"/></Group>)"));
         rejectsXml(colourManifest(R"(<Group id="first"><Anchor red="0" green="0" blue="0"/></Group>)"));
@@ -147,8 +155,7 @@ int main(int argc, char** argv) {
             const auto selected = actual.selectOutputs({}, outputs, true);
             require(selected.pool == "warm-brown", "auburn escaped its warm colour group");
             require(actual.material(selected.pattern) == "randomized/timber-dark" ||
-                actual.material(selected.pattern) == "randomized/valley-brown" || actual.material(selected.pattern) == "randomized/brown",
-                "seed escaped eligible warm variants");
+                actual.material(selected.pattern) == "randomized/valley-brown", "seed selected a more distant warm variant");
             warmVariants.insert(selected.pattern);
             const auto record = AutomaticCoatRecord{7, 9, 0, {1, seed ? seed : 1, {selected.pool, selected.pattern}}};
             require(readAutomaticCoat(writeAutomaticCoat(record)).automatic == record.automatic, "group choice codec changed");
@@ -162,7 +169,12 @@ int main(int argc, char** argv) {
                     "neutral grey selected a warm coat");
             }
         }
-        require(warmVariants.size() == 3, "within-group seed diversity lost");
+        require(warmVariants.size() == 2, "similarly close within-group variants must remain eligible");
+        const Colours edda{{}, {90.F / 255, 95.F / 255, 105.F / 255}, false, true};
+        const auto eddaLow = actual.selectOutputs({}, matrix.evaluate(edda, 0), true);
+        const auto eddaHigh = actual.selectOutputs({}, matrix.evaluate(edda, UINT64_MAX), true);
+        require(eddaLow.pattern == "elegant-2k-2.1/valley-grey" && eddaHigh.pattern == "elegant-2k-2.1/grey",
+            "similar greys must remain eligible for the measured Edda colour");
         const std::uint64_t skinContrastSeed = std::uint64_t{102} << 56;
         const Colours darkSkin{{0, 0, 0}, auburn, true, true};
         const Colours lightSkin{{1, 1, 1}, auburn, true, true};

@@ -601,11 +601,21 @@ def audit_external_coats(entries):
         if (not groups or len(variants) != len(set(variants)) or set(variants) != choices or
                 any(not group.findall("Anchor") or not group.findall("Variant") for group in groups)):
             raise ValueError("Coat colour groups and logical choices do not agree")
+        tolerance = mapping.get("variantTolerance")
+        if tolerance is not None and not 0 <= float(tolerance) <= 1:
+            raise ValueError("Invalid coat variant tolerance")
+        rgb = {"red", "green", "blue"}
         for group in groups:
+            measured = set()
             for anchor in group.findall("Anchor"):
-                if (set(anchor.attrib) != {"red", "green", "blue"} or
-                        any(not math.isfinite(float(value)) or not 0 <= float(value) <= 1 for value in anchor.attrib.values())):
+                if (set(anchor.attrib) not in (rgb, rgb | {"variant"}) or
+                        any(not 0 <= float(anchor.get(channel)) <= 1 for channel in rgb)):
                     raise ValueError("Invalid coat colour anchor")
+                if "variant" in anchor.attrib:
+                    measured.add(anchor.get("variant"))
+            expected = {row.get("id") for row in group.findall("Variant")} if tolerance is not None else set()
+            if measured != expected:
+                raise ValueError("Coat variant tolerance and measurements do not agree")
     elif mapping.get("schemaVersion") != "1" or groups:
         raise ValueError("Unsupported coat mapping schema")
 

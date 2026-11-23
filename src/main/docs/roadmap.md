@@ -150,12 +150,19 @@ Its component directory is `src/main/components/adult-anatomy/`, with tests unde
 `src/test/components/adult-anatomy/`, in this same CLAW repository. Keep it
 optional and isolated from the base runtime package.
 
-## Deferred
+## Aesthetic work split
+
+1. Audit self-intersections on the actual wolf meshes. Compare neutral states
+   with individual morph extremes and targeted combined extremes. Prioritize
+   reproducible new penetrations and preserve existing shapes while fixing them.
+2. Improve hair-to-coat colour matching from measured available textures. Verify
+   which selection is controlled by hair and skin, and document the difference
+   between selecting authored textures and applying a continuous shader tint.
+3. Review human-to-wolf shape mapping, proportions, limits and new morphs jointly
+   with the owner. This full visual review remains deferred.
 
 The independent Morphbench comparison-plugin UI/public update remains deferred.
-The final visual review covers female breast refinement, musculature, lean/bulky extremes, cosmetic
-self-intersection tuning and new morph authoring. Fix functional
-defects such as missing textures or broken animation as they are found.
+Fix functional defects such as missing textures or broken animation as they are found.
 
 ## Immediate corrections — owner update, 13 November
 
