@@ -130,8 +130,9 @@ Use a fully qualified ID returned by `GetCoatPatterns`, for example
 game-thread queue; `true` does not mean the material has been applied. The first
 getter returns the requested override, while `GetAppliedCoatPattern` returns the
 last successfully bound pattern ID, or empty. Status explains pending, unavailable,
-fallback or yielded application. These reads are cached diagnostics from CLAW,
-not independent renderer measurements.
+fallback or yielded application. If the coat configuration fails to load, CLAW
+retains the installed material and reports the configuration error on evaluation.
+These reads are cached diagnostics from CLAW, not independent renderer measurements.
 
 ### Explicit current-surface observations
 

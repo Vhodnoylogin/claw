@@ -10,6 +10,12 @@ inline constexpr std::string_view installedCoatMaterial = "installed";
 // The resource of a logical choice may be shared by any number of choices.
 class CoatMapping final {
 public:
+    static CoatMapping unavailable(std::string reason) {
+        CoatMapping result;
+        result.error_ = std::move(reason);
+        return result;
+    }
+
     static CoatMapping parse(std::string_view xml) {
         if (xml.empty() || xml.size() > 65536 || xml.find('&') != xml.npos ||
             xml.find("<!") != xml.npos || xml.find("<?") != xml.npos ||
@@ -117,6 +123,8 @@ public:
         return found == resources_.end() ? std::string_view{} : std::string_view(found->second);
     }
     [[nodiscard]] CoatDecision select(std::string_view manual, std::optional<float> output, bool hasHair) const {
+        if (!error_.empty())
+            return {{}, {}, manual.empty() ? CoatOrigin::none : CoatOrigin::manual, error_};
         if (!manual.empty()) {
             if (!material(manual).empty()) return {std::string(manual), {}, CoatOrigin::manual, {}};
             return {{}, {}, CoatOrigin::manual, "manual pattern unavailable"};
@@ -183,7 +191,7 @@ private:
             throw std::invalid_argument("Invalid normalized coat range boundary");
         return value;
     }
-    std::string output_;
+    std::string error_, output_;
     std::vector<std::string> channels_;
     std::vector<Group> groups_;
     float lightnessWeight_{1}, chromaWeight_{1};

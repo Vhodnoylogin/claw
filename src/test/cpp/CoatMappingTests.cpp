@@ -43,6 +43,15 @@ int main(int argc, char** argv) {
         for (auto invalid : {-1.F, 1.1F, std::numeric_limits<float>::quiet_NaN()})
             require(mapping.select({}, invalid, true).pattern.empty(), "out-of-domain output accepted");
         require(mapping.select({}, {}, false).pattern.empty(), "missing matrix output fabricated");
+        const std::string reason = "Malformed coat mapping XML";
+        const auto disabled = CoatMapping::unavailable(reason);
+        const CoatValues availableOutput{{"coat.selector", .25F}};
+        const auto disabledAutomatic = disabled.selectOutputs({}, availableOutput, true);
+        const auto disabledManual = disabled.selectOutputs("test/extra", availableOutput, false);
+        require(disabledAutomatic.pattern.empty() && disabledAutomatic.origin == CoatOrigin::none &&
+            disabledAutomatic.reason == reason, "configuration failure lost from automatic coat decision");
+        require(disabledManual.pattern.empty() && disabledManual.origin == CoatOrigin::manual &&
+            disabledManual.reason == reason, "configuration failure lost from manual coat decision");
         rejects(low);
         rejects(low + R"(<Range min=".6" max="1" id="test/high" material="installed"/>)");
         rejects(low + R"(<Range min=".4" max="1" id="test/high" material="installed"/>)");

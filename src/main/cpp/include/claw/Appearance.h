@@ -320,9 +320,7 @@ inline void Runtime::setCoatMapping(CoatMapping mapping) {
     mapping_ = std::move(mapping);
 }
 inline void Runtime::unavailableCoatMapping(std::string reason) {
-    // An explicitly requested but invalid mapping must leave the model alone.
-    unavailablePolicy(std::move(reason));
-    mapping_.emplace();
+    setCoatMapping(CoatMapping::unavailable(std::move(reason)));
 }
 inline Colours Runtime::humanColours(RE::FormID id) const {
     const auto found = entries_.find(id);
