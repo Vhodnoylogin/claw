@@ -105,8 +105,9 @@ Use the pinned 0.10.0 core archive and the existing fixed-profile diagnostic
 archive as inputs. Each output contains the selected legacy NIF and its exact
 released FSMP XML. The matching namespaced TRI stays supplied by the
 fixed-profile diagnostic. A staged trial uses the same sex in both layers and
-the core installer setting **None**. Removing the optional layer restores the
-fixed-profile static mesh.
+the core installer setting **None**. To disable CLAW motion in this setup,
+keep the core on **None** and disable the separate VR motion mod in MO2.
+This restores the fixed-profile static mesh.
 
 ```powershell
 python -B src/main/components/vr-body/world_motion.py --fixed-profile '<fixed profile ZIP>' --core-release '<original 0.10.0 ZIP>' --skeleton '<reviewed XP32 NIF>' --pynifly '<public PyNifly add-on>' --out '<new external trial directory>'

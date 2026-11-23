@@ -44,6 +44,7 @@ MODEL_SWAP_SOURCE = "src/main/resources/compatibility/" + MODEL_SWAP_OVERRIDE
 MESH = "Meshes/Actors/WerewolfBeast/Character Assets"
 MOTION_PREFIX = "40 Motion/"
 MOTION_XML = "SKSE/Plugins/hdtSkinnedMeshConfigs/CLAW/CLAWMotion"
+FSMP_HOOK = b'HDT Skinned Mesh Physics Object'
 FSMP_RIG_SOURCE = Path("src/main/python/physics/fsmp_rig.py")
 CBPC_FILES = {"SKSE/Plugins/" + prefix + suffix + ".txt"
               for prefix in ("CBPCMasterConfig_", "CBPConfig_") for suffix in ("CLAWMotion", "CLAWBreastMotion")}
@@ -315,14 +316,33 @@ def profiles(data, family, male_family="HIMBO"):
     return ET.tostring(tree, encoding="utf-8") + b"\n"
 
 
-def _nif_fields(materials, payload):
-    """Reuse the existing bounded SSE container reader; do not rewrite a mesh."""
+def _material_adapter():
+    spec = importlib.util.spec_from_file_location("claw_player_only_materials",
+        ROOT / "src/main/python/build-tools/player_only_materials.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _nif_string_records(materials, payload):
     _, middle, types, indices, blocks, _ = materials.container(payload)
     reader = materials.Reader(middle)
     count, _ = reader.unpack('<II')
     strings = [reader.string() for _ in range(count)]
-    if reader.unpack('<I') != (0,) or reader.pos != len(middle) or types[indices[0]] != 'NiNode':
-        raise ValueError('Unsupported motion Scene Root/string table')
+    records = {}
+    for index, (kind_index, block) in enumerate(zip(indices, blocks, strict=True)):
+        if types[kind_index] == 'NiStringExtraData':
+            if len(block) != 8: raise ValueError('Unsupported motion string extra')
+            key, value = struct.unpack('<II', block)
+            if max(key, value) >= len(strings): raise ValueError('Invalid motion string extra index')
+            records[index] = (strings[key], strings[value])
+    return types, indices, blocks, strings, records
+
+
+def _nif_fields(materials, payload):
+    types, indices, blocks, strings, records = _nif_string_records(materials, payload)
+    if types[indices[0]] != 'NiNode':
+        raise ValueError('Unsupported motion Scene Root')
     root = blocks[0]
     if len(root) < 8:
         raise ValueError('Truncated motion Scene Root')
@@ -330,29 +350,26 @@ def _nif_fields(materials, payload):
     if 8 + 4 * count > len(root):
         raise ValueError('Truncated motion root extras')
     refs = struct.unpack_from('<' + str(count) + 'I', root, 8)
-    extras, records = {}, []
+    extras = {}
     if any(index >= len(blocks) for index in refs): raise ValueError('Invalid motion root reference')
-    for index, block in enumerate(blocks):
-        if types[indices[index]] == 'NiStringExtraData':
-            if len(block) != 8: raise ValueError('Unsupported motion string extra')
-            key, value = struct.unpack('<II', block)
-            if max(key, value) >= len(strings): raise ValueError('Invalid motion string extra index')
-            records.append((strings[key], strings[value]))
-            if index in refs:
-                if strings[key] in extras: raise ValueError('Ambiguous motion root string extra')
-                extras[strings[key]] = strings[value]
-    return types, indices, blocks, strings, refs, extras, records
+    for index in refs:
+        if index in records:
+            key, value = records[index]
+            if key in extras: raise ValueError('Ambiguous motion root string extra')
+            extras[key] = value
+    return types, indices, blocks, strings, refs, extras, records.values()
 
 
 def _check_motion_nif(materials, core, hooked, sex):
     before, after = _nif_fields(materials, core), _nif_fields(materials, hooked)
     bt, bi, bb, bs, br, be, records = before
     at, ai, ab, ass, ar, ae, _ = after
-    hook = b'HDT Skinned Mesh Physics Object'
+    hook = FSMP_HOOK
     xml = (MOTION_XML + sex.title() + '.xml').encode('ascii')
     # BODYTRI may belong to individual geometries, not the Scene Root.
     tris = {value.decode('ascii').replace('\\', '/').casefold().removeprefix('meshes/') for key, value in records if key == b'BODYTRI'}
-    if tris != {'actors/werewolfbeast/character assets/' + sex + 'bodywerewolf.tri'} or any(key == hook for key, _ in records):
+    if tris != {'actors/werewolfbeast/character assets/' + sex + 'bodywerewolf.tri'} or any(
+            key.strip().lower() == hook.lower() for key, _ in records):
         raise ValueError('Core motion input has mismatched BODYTRI or an existing FSMP hook')
     expected_types = bt if 'NiStringExtraData' in bt else bt + ['NiStringExtraData']
     if (at != expected_types or ai[:-1] != bi or len(ab) != len(bb) + 1 or ab[1:-1] != bb[1:] or
@@ -530,8 +547,8 @@ def installer(template, entries, motion=False):
             option = ET.SubElement(options, 'plugin', name=name)
             provider_url = 'https://www.nexusmods.com/skyrimspecialedition/mods/57339'
             ET.SubElement(option, 'description').text = ('No CLAW werewolf motion configuration.' if mode == 'none' else
-                'Install the matching ' + name + ' provider separately: ' + provider_url +
-                '. Adds motion to ears, tail and female breasts. Choose one option. No contact colliders.')
+                'Requires ' + name + ': ' + provider_url +
+                '. Choose None if the provider is missing. Adds motion to ears, tail and female breasts.')
             ET.SubElement(ET.SubElement(option, 'conditionFlags'), 'flag', name='physicsMode').text = mode
             ET.SubElement(ET.SubElement(option, 'typeDescriptor'), 'type', name='Recommended' if mode == 'none' else 'Optional')
             pattern = ET.SubElement(patterns, 'pattern')
@@ -635,6 +652,7 @@ def selection_audit(entries):
     if json.loads(entries["00 Base/" + MODEL_SWAP_OVERRIDE]) != []:
         raise ValueError("Elegant model-swap compatibility override must be an empty JSON array")
     audit_external_coats(entries)
+    materials = _material_adapter()
     for name, data in entries.items():
         if (name.startswith(MOTION_PREFIX + 'CBPC/') or
                 Path(name).name.casefold().startswith(('cbpcmasterconfig', 'cbpconfig', 'cbpcollisionconfig'))):
@@ -642,6 +660,19 @@ def selection_audit(entries):
         if (Path(name).suffix.lower() == ".dds" or "textures" in PurePosixPath(name.casefold()).parts
                 or data.startswith(b"DDS ")):
             raise ValueError("Texture redistribution is not part of this runtime: " + name)
+        if not name.lower().endswith(".nif"):
+            continue
+        if name.startswith("00 Base/"):
+            *_, records = _nif_string_records(materials, data)
+            if any(key.strip().lower() == FSMP_HOOK.lower() for key, _ in records.values()):
+                raise ValueError("Motion-disabled model contains an FSMP binding: " + name)
+        elif name.startswith(MOTION_PREFIX + 'FSMP/'):
+            *_, root_extras, records = _nif_fields(materials, data)
+            sex = 'Female' if PurePosixPath(name).name.startswith('female') else 'Male'
+            xml = (MOTION_XML + sex + '.xml').encode('ascii')
+            bindings = [value for key, value in records if key.strip().lower() == FSMP_HOOK.lower()]
+            if bindings != [xml] or root_extras.get(FSMP_HOOK) != xml:
+                raise ValueError("Motion-enabled model must bind its own FSMP rig at the Scene Root: " + name)
     if required is None or len(required) != 7 + len(extra_base) + len(player_models) - (8 if motion else 0) or any(row.tag != "file" for row in required):
         raise ValueError("Literal serialized FOMOD must contain body/base mappings, four PlayerOnly model aliases and all coat resources")
     rows = []
@@ -763,10 +794,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     motion = fsmp_motion_build is not None
     inputs = Inputs()
     inputs.read(ROOT / "src/main/python/build-tools/player_only_materials.py")
-    material_spec = importlib.util.spec_from_file_location("claw_player_only_materials",
-        ROOT / "src/main/python/build-tools/player_only_materials.py")
-    materials = importlib.util.module_from_spec(material_spec)
-    material_spec.loader.exec_module(materials)
+    materials = _material_adapter()
     material_adaptations = {}
     core_inputs, core_bodies = {}, {}
     entries = {"00 Base/CLAW.esp": inputs.runtime(game_esp, b"TES4", "game ESP"),

@@ -170,6 +170,34 @@ class MotionFomodTests(unittest.TestCase):
         self.mutate_report('fsmp', lambda r: r['resources'].update(male0=self.pin(foreign)))
         with self.assertRaisesRegex(ValueError, 'selected core endpoint'): self.package.build(**self.arguments())
 
+    def test_motion_disabled_rejects_hooks_in_the_base_meshes(self):
+        name = self.package.MESH + '/malebodywerewolf_0.nif'
+        xml = self.package.MOTION_XML + 'Male.xml'
+        hooked, _ = fsmp_motion.bind_nif(body_fixture('male'), xml)
+        for with_menu in (False, True):
+            with self.subTest(with_menu=with_menu):
+                arguments = self.arguments(output=f'base-hook-{with_menu}') if with_menu else self.f.arguments()
+                result = self.package.build(**arguments)
+                entries = self.package.read_zip(Path(result['archive']).read_bytes())
+                entries['00 Base/' + name] = hooked
+                readback = self.package.read_zip(self.package.zip_bytes(entries))
+                with self.assertRaisesRegex(ValueError, 'Motion-disabled model contains an FSMP binding'):
+                    self.package.selection_audit(readback)
+        self.f.write('target/bodies/malebodywerewolf_0.nif', hooked)
+        with self.assertRaisesRegex(ValueError, 'Motion-disabled model contains an FSMP binding'):
+            self.package.build(**self.f.arguments(output='attempted-hooked-core'))
+
+    def test_motion_enabled_requires_its_own_root_hook_in_the_archive(self):
+        result = self.package.build(**self.arguments())
+        entries = self.package.read_zip(Path(result['archive']).read_bytes())
+        name = self.package.MESH + '/malebodywerewolf_0.nif'
+        active = '40 Motion/FSMP/' + name
+        for substitute in ('00 Base/' + name, active.replace('/male', '/female')):
+            with self.subTest(member=substitute):
+                readback = self.package.read_zip(self.package.zip_bytes(entries | {active: entries[substitute]}))
+                with self.assertRaisesRegex(ValueError, 'Motion-enabled model must bind its own FSMP rig'):
+                    self.package.selection_audit(readback)
+
     def test_cbpc_receipts_and_injected_payloads_cannot_enter_working_installer(self):
         for fsmp in (None, self.receipts['fsmp']):
             with self.subTest(fsmp=fsmp), self.assertRaisesRegex(ValueError, 'CBPC motion remains research-only'):
