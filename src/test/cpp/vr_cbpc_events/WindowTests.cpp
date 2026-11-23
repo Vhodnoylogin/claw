@@ -153,6 +153,33 @@ void cutoffAndRegressedClock() {
         require(terminal(current).state == State::clockInvalid);
     }
 }
+
+void equippedPlayerRequiresExplicitScopeAndMatchingSeal() {
+    constexpr Key player{109, 1, 0x14, key.cell};
+    for (const bool sameSubject : {false, true}) {
+        Window window(frequency, Subject::equippedPlayer);
+        window.sinkReady();
+        require(!window.request(key, initial));
+        require(window.request(player, initial));
+        require(window.activate(player, 7, owner, initial + 1));
+        window.observe(Kind::male, key.actor, owner, "TailBone02", .4f, initial + 2);
+        window.observe(Kind::male, player.actor, owner, "TailBone02", .4f, initial + 3);
+        require(window.seal(player.nonce, player.generation, initial + 4, sameSubject) == sameSubject);
+        const auto& result = terminal(window);
+        require(result.key == player && result.base == 7 && result.count == 1);
+        require(result.state == (sameSubject ? State::sealed : State::refused));
+    }
+    for (const auto phase : {State::pending, State::armed}) {
+        Window window(frequency, Subject::equippedPlayer);
+        window.sinkReady();
+        require(window.request(player, initial));
+        if (phase == State::armed) require(window.activate(player, 7, owner, initial + 1));
+        window.changeSubject(initial + 2);
+        require(!window.activate(player, 7, owner, initial + 3));
+        require(!window.seal(player.nonce, player.generation, initial + 4));
+        require(terminal(window).state == State::changedSubject);
+    }
+}
 }
 
 int main() {
@@ -162,5 +189,6 @@ int main() {
     reasonOnBadIdentityOrWorldChange();
     boundAndUnattributedDrops();
     cutoffAndRegressedClock();
-    std::cout << "6 categories passed: one arm, payload, immutable scope, lifecycle, dropped recovery, clock\n";
+    equippedPlayerRequiresExplicitScopeAndMatchingSeal();
+    std::cout << "7 categories passed: one arm, payload, immutable scope, lifecycle, drops, clock, player scope\n";
 }

@@ -38,3 +38,45 @@ gate uses scene transforms while the event reader uses CBPC callbacks.
 Build the standalone DLL and external PEX with the pinned cross-runtime
 CommonLib and Papyrus toolchain used by the VR pose witness. The portable
 window tests run in the standard CTest suite.
+
+## Equipped VR player contact
+
+Build the separate `CLAWVRPlayerCBPCEvents` DLL and PEX with
+`python -B build_player.py --baseline <retained NPC build-03> --out <new build>`.
+The NPC script and its original schema remain available for NPC runs.
+The new observer accepts player `0x14` in wolf form with the owned Body32
+fixture and pinned sex-specific world route. It retains the actor, cell,
+runtime handle, Body32 forms and identity of the attached world clone at arm.
+`Seal` queues a fresh main-thread read of the same binding. Only the ready
+terminal `claw-vr-cbpc-player-events/1` result with `status=sealed` and
+`body32.checkedAtSeal=true` establishes continuity at the two ends. The read
+exports form IDs and the runtime handle without underlying object addresses.
+Player equipment or race events end an open capture with `changed_subject`.
+
+`stage_player_contact.py` in `src/test/components/contact-profiles` prepares
+one left-ear and one tail arm from the pinned isolated NPC configurations and
+the dedicated equipped fit. Each has one receiver group, player/wolf-only
+selection, one `LeftWandNode` sphere and a 0.3-second event threshold. The
+receipt includes the fitted neutral weight-zero capsules at provider Float32
+precision. These are diagnostic fixtures for the callback test. The full
+adaptive collider host needs its separate multi-node profile and scope.
+
+After game admission use one disposable process per receiver. Verify the
+effective authored configs and provider identity, including the disabled
+competing sources and the actual equipped Body32 route. Establish the native
+observer's idle and armed receipts. Independently measure the exact left-wand
+center and all four capsules in target-bone space using player-owned world
+scene snapshots (`measure_frame(..., own_body=True)`). Read the same player
+handle and target bone across all samples. Keep separate planned near poses
+and observed signed distances. Hold a near baseline before appending the
+four affected-node capsules, then measure near, far and returned-near holds.
+Detach the exact indices and repeat the near hold. Seal on the same player
+before changing equipment. Store raw attach/detach calls, independently
+measured QPC hold intervals and original callback results. `score_player`
+checks a positive near/far/near event contrast and both silence controls.
+The same-task geometry reader returns individual measurements. The harness
+must establish the multi-capsule margins, source isolation and write custody
+for each hold before sending its QPC bounds to the scorer.
+The full fit and the game reach still require their own evidence. Zero
+events leave self-contact unresolved. The callback identifies a sustained
+contact group and recipient, without a capsule index or an impulse value.

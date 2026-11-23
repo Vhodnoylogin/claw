@@ -3,9 +3,9 @@ from dataclasses import replace
 import unittest
 
 if __package__:
-    from .cbpc_event_readback import Audience, score, score_se
+    from .cbpc_event_readback import Audience, score, score_player, score_se
 else:
-    from cbpc_event_readback import Audience, score, score_se
+    from cbpc_event_readback import Audience, score, score_player, score_se
 
 
 class CbpcEventControls(unittest.TestCase):
@@ -98,6 +98,31 @@ class CbpcEventControls(unittest.TestCase):
                     row["sequence"] = i
                 result = score(snap, self.audience, self.holds, .3, 10)
                 self.assertEqual(result["status"], "insufficient-emission-contrast")
+
+    def test_player_self_contact_requires_same_body32_at_seal_and_qualified_silence(self):
+        audience = replace(self.audience, actor=0x14, base=7, bone="TailBone02")
+        holds = {"unattachedNear": (100, 110), **self.holds}
+        fixture = (0x0B000801, 0x0B000800)
+        schema = "claw-vr-cbpc-player-events/1"
+        body = {"item": fixture[0], "addon": fixture[1], "runtimeHandle": 80, "female": False, "checkedAtSeal": True}
+        snapshot = {**self.snapshot, "schema": schema, "actorFormId": audience.actor, "baseFormId": audience.base,
+                    "body32": body, "events": [{**event, "strArg": audience.bone, "senderFormId": audience.actor}
+                                               for event in self.snapshot["events"]]}
+        ready = {"schema": schema, "status": "idle", "pid": audience.pid, "generation": audience.generation,
+                 "sinkRegistered": True, "loading": False}
+
+        def score_case(data=snapshot, windows=holds):
+            return score_player(data, ready, audience, windows, body32=fixture, runtime_handle=80, minimum_hold_ticks=10)
+
+        result = score_case()
+        self.assertEqual(result["status"], "qualified-emission-contrast")
+        self.assertFalse(result["solverPairCoverageQualified"])
+        self.assertEqual(score_case({**snapshot, "events": [], "lastSequence": 0})["status"], "insufficient-emission-contrast")
+        for name, value in (("checkedAtSeal", False), ("runtimeHandle", 81), ("item", fixture[0] + 1), ("female", True)):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "remain current"):
+                score_case({**snapshot, "body32": {**body, name: value}})
+        with self.assertRaisesRegex(ValueError, "requires matching"):
+            score_case(windows=self.holds)
 
     def test_zero_events_without_positive_controls_refuses(self):
         snap = {**self.snapshot, "lastSequence": 0, "events": []}

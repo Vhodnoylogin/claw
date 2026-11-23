@@ -9,7 +9,8 @@
 namespace cbpc {
 using Ticks = std::uint64_t;
 enum class Kind { male, female, other };
-enum class State { idle, pending, armed, sealed, refused, expired, changedWorld, clockInvalid };
+enum class State { idle, pending, armed, sealed, refused, expired, changedWorld, changedSubject, clockInvalid };
+enum class Subject { fixtureNpc, equippedPlayer };
 
 constexpr std::size_t capacity = 128;
 constexpr std::size_t maxBone = 64;
@@ -58,7 +59,9 @@ struct Snapshot {
 // Caller serializes access. No engine context or owning pointer is retained.
 class Window {
 public:
-    explicit Window(Ticks frequency) { snapshot_.frequency = frequency; }
+    explicit Window(Ticks frequency, Subject subject = Subject::fixtureNpc) : subject_(subject) {
+        snapshot_.frequency = frequency;
+    }
     std::uint32_t generation() const { return generation_; }
     State state() const { return snapshot_.state; }
     void sinkReady() { sinkReady_ = true; }
@@ -71,10 +74,15 @@ public:
         loading_ = !ready;
     }
 
+    void changeSubject(Ticks now) {
+        tick(now);
+        if (open()) close(State::changedSubject, now);
+    }
+
     bool request(Key key, Ticks now) {
         const auto frequency = snapshot_.frequency;
         if (!sinkReady_ || loading_ || state() != State::idle || key.generation != generation_ ||
-            !key.nonce || !dynamicActor(key.actor) || !key.cell || !now || !frequency ||
+            !key.nonce || !accepts(key.actor) || !key.cell || !now || !frequency ||
             frequency > (std::numeric_limits<Ticks>::max() - now) / seconds) return false;
         snapshot_.key = key;
         snapshot_.requestedQpc = last_ = now;
@@ -127,11 +135,11 @@ public:
         else last_ = now;
     }
 
-    bool seal(std::uint32_t nonce, std::uint32_t generation, Ticks now) {
+    bool seal(std::uint32_t nonce, std::uint32_t generation, Ticks now, bool sameSubject = true) {
         tick(now);
         if (state() != State::armed || !match(nonce, generation)) return false;
-        close(State::sealed, now);
-        return true;
+        close(sameSubject ? State::sealed : State::refused, now);
+        return sameSubject;
     }
 
     const Snapshot* read(std::uint32_t nonce, std::uint32_t generation) const {
@@ -140,6 +148,9 @@ public:
     }
 
 private:
+    bool accepts(std::uint32_t actor) const {
+        return subject_ == Subject::equippedPlayer ? actor == 0x14 : dynamicActor(actor);
+    }
     static bool validBone(std::string_view bone) {
         return !bone.empty() && bone.size() <= maxBone &&
                std::ranges::all_of(bone, [](unsigned char c) { return c >= 32 && c <= 126; });
@@ -154,6 +165,7 @@ private:
         sender_ = 0;
     }
 
+    Subject subject_;
     Snapshot snapshot_;
     Ticks last_{}, deadline_{};
     std::uint32_t generation_{1};

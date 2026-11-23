@@ -1,5 +1,7 @@
-// One owned NPC's process-local CBPC ModCallbackEvent observation.
+// One admitted actor's process-local CBPC ModCallbackEvent observation.
 #include <RE/Skyrim.h>
+#include <RE/T/TESEquipEvent.h>
+#include <RE/T/TESSwitchRaceCompleteEvent.h>
 #include <SKSE/SKSE.h>
 #include <Windows.h>
 #include <nlohmann/json.hpp>
@@ -7,6 +9,7 @@
 #include <mutex>
 #include <optional>
 #include "Window.h"
+#include "PlayerSubject.h"
 #include "claw/RuntimeSupport.h"
 #include "claw/WorldStartPolicy.h"
 
@@ -17,13 +20,27 @@
 namespace {
 using Json = nlohmann::json;
 using cbpc::State;
+#if defined(CLAW_CBPC_PLAYER_WITNESS)
+constexpr auto plugin = "CLAWVRPlayerCBPCEvents";
+constexpr auto schema = "claw-vr-cbpc-player-events/1";
+constexpr bool playerWitness = true;
+#else
 constexpr auto plugin = "CLAWVRCBPCEvents";
 constexpr auto schema = "claw-vr-cbpc-events/1";
+constexpr bool playerWitness = false;
+#endif
 constexpr auto fixture = "test_CLAW - VR CBPC Contact Fixture.esp";
 constexpr RE::FormID fixtureLocalBase = 0x800;
 
 std::optional<cbpc::Window> window;
 std::mutex gate;
+struct PlayerCapture {
+    cbpc::Key key;
+    cbpc::PlayerIdentity identity;
+    bool sealPending{};
+};
+std::optional<PlayerCapture> playerCapture;
+bool playerEventsRegistered{};
 
 cbpc::Ticks counter() {
     LARGE_INTEGER tick{};
@@ -39,6 +56,7 @@ const char* status(State state) {
     case State::refused: return "refused_identity";
     case State::expired: return "expired";
     case State::changedWorld: return "changed_world";
+    case State::changedSubject: return "changed_subject";
     case State::clockInvalid: return "clock_invalid";
     }
     return "unavailable";
@@ -63,6 +81,23 @@ std::pair<RE::FormID, std::uintptr_t> observeSubject(cbpc::Key key) {
     return {id(base), reinterpret_cast<std::uintptr_t>(static_cast<const RE::TESForm*>(actor))};
 }
 
+void activate(cbpc::Key key) {
+    try {
+        if constexpr (playerWitness) {
+            const auto identity = cbpc::equippedPlayer(key);
+            std::lock_guard lock(gate);
+            if (window->activate(key, identity.base, identity.sender, counter())) playerCapture = PlayerCapture{key, identity};
+        } else {
+            const auto [base, sender] = observeSubject(key);
+            std::lock_guard lock(gate);
+            window->activate(key, base, sender, counter());
+        }
+    } catch (...) {
+        std::lock_guard lock(gate);
+        window->activate(key, 0, 0, counter());
+    }
+}
+
 bool arm(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t generation, std::int32_t actor, std::int32_t cell) {
     if (nonce <= 0 || generation <= 0) return false;
     const cbpc::Key key{static_cast<std::uint32_t>(nonce), static_cast<std::uint32_t>(generation),
@@ -70,15 +105,10 @@ bool arm(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t generation, st
     try {
         {
             std::lock_guard lock(gate);
+            if constexpr (playerWitness) if (!playerEventsRegistered) return false;
             if (!window->request(key, counter())) return false;
         }
-        SKSE::GetTaskInterface()->AddTask([key] {
-            std::pair<RE::FormID, std::uintptr_t> subject;
-            try { subject = observeSubject(key); }
-            catch (...) { subject = {}; }
-            std::lock_guard lock(gate);
-            window->activate(key, subject.first, subject.second, counter());
-        });
+        SKSE::GetTaskInterface()->AddTask([key] { activate(key); });
         return true;
     } catch (...) {
         std::lock_guard lock(gate);
@@ -87,8 +117,34 @@ bool arm(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t generation, st
     }
 }
 
+bool sealPlayer(std::uint32_t nonce, std::uint32_t generation) {
+    cbpc::Key key;
+    {
+        std::lock_guard lock(gate);
+        window->tick(counter());
+        if (!playerCapture || playerCapture->sealPending || window->state() != State::armed ||
+            playerCapture->key.nonce != nonce || playerCapture->key.generation != generation) return false;
+        playerCapture->sealPending = true;
+        key = playerCapture->key;
+    }
+    try {
+        SKSE::GetTaskInterface()->AddTask([key] {
+            cbpc::PlayerIdentity identity;
+            try { identity = cbpc::equippedPlayer(key); } catch (...) {}
+            std::lock_guard lock(gate);
+            window->seal(key.nonce, key.generation, counter(), identity == playerCapture->identity);
+        });
+        return true;
+    } catch (...) {
+        std::lock_guard lock(gate);
+        window->seal(nonce, generation, counter(), false);
+        return false;
+    }
+}
+
 bool seal(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t generation) {
     if (nonce <= 0 || generation <= 0) return false;
+    if constexpr (playerWitness) return sealPlayer(static_cast<std::uint32_t>(nonce), static_cast<std::uint32_t>(generation));
     std::lock_guard lock(gate);
     return window->seal(static_cast<std::uint32_t>(nonce), static_cast<std::uint32_t>(generation), counter());
 }
@@ -102,7 +158,7 @@ std::string getState(RE::StaticFunctionTag*) {
         window->tick(counter());
         generation = window->generation();
         state = window->state();
-        registered = window->hasSink();
+        registered = window->hasSink() && (!playerWitness || playerEventsRegistered);
         loading = window->isLoading();
     }
     return Json({{"schema", schema}, {"pid", GetCurrentProcessId()}, {"generation", generation},
@@ -112,11 +168,17 @@ std::string getState(RE::StaticFunctionTag*) {
 std::string read(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t generation) {
     if (nonce <= 0 || generation <= 0) return {};
     std::optional<cbpc::Snapshot> captured;
+    std::optional<cbpc::PlayerIdentity> identity;
     {
         std::lock_guard lock(gate);
         window->tick(counter());
         const auto* snapshot = window->read(static_cast<std::uint32_t>(nonce), static_cast<std::uint32_t>(generation));
-        if (snapshot) captured = *snapshot;
+        if (snapshot) {
+            captured = *snapshot;
+            if constexpr (playerWitness) {
+                if (playerCapture && playerCapture->key == snapshot->key) identity = playerCapture->identity;
+            }
+        }
     }
     if (!captured) return {};
     const auto& s = *captured;
@@ -127,13 +189,19 @@ std::string read(RE::StaticFunctionTag*, std::int32_t nonce, std::int32_t genera
                           {"senderFormId", s.key.actor}, {"strArg", std::string_view(row.bone.data(), row.boneSize)},
                           {"numArg", row.number}});
     }
-    return Json({{"schema", schema}, {"pid", GetCurrentProcessId()}, {"status", status(s.state)},
+    Json result({{"schema", schema}, {"pid", GetCurrentProcessId()}, {"status", status(s.state)},
                  {"nonce", s.key.nonce}, {"generation", s.key.generation}, {"actorFormId", s.key.actor},
                  {"baseFormId", s.base}, {"cellFormId", s.key.cell}, {"qpcFrequency", s.frequency},
                  {"requestedQpc", s.requestedQpc}, {"armedQpc", s.armedQpc}, {"closedQpc", s.closedQpc},
                  {"lastSequence", s.sequence}, {"dropped", s.dropped}, {"unattributed", s.unattributed},
                  {"sealedWithoutLocalDrops", s.state == State::sealed && s.dropped == 0},
-                 {"observation", "skse_mod_callback"}, {"events", std::move(events)}}).dump();
+                 {"observation", "skse_mod_callback"}, {"events", std::move(events)}});
+    if (identity) {
+        result["body32"] = {{"item", identity->forms.item}, {"addon", identity->forms.addon},
+                            {"runtimeHandle", identity->handle}, {"female", identity->female},
+                            {"checkedAtSeal", s.state == State::sealed}};
+    }
+    return result.dump();
 }
 
 class Listener final : public RE::BSTEventSink<SKSE::ModCallbackEvent> {
@@ -151,6 +219,23 @@ class Listener final : public RE::BSTEventSink<SKSE::ModCallbackEvent> {
     }
 } listener;
 
+class PlayerChanges final : public RE::BSTEventSink<RE::TESEquipEvent>, public RE::BSTEventSink<RE::TESSwitchRaceCompleteEvent> {
+    static void handle(const RE::TESObjectREFR* ref) {
+        if (id(ref) != 0x14) return;
+        std::lock_guard lock(gate);
+        window->changeSubject(counter());
+    }
+    RE::BSEventNotifyControl ProcessEvent(const RE::TESEquipEvent* event, RE::BSTEventSource<RE::TESEquipEvent>*) override {
+        if (event) handle(event->actor.get());
+        return RE::BSEventNotifyControl::kContinue;
+    }
+    RE::BSEventNotifyControl ProcessEvent(const RE::TESSwitchRaceCompleteEvent* event,
+                                        RE::BSTEventSource<RE::TESSwitchRaceCompleteEvent>*) override {
+        if (event) handle(event->subject.get());
+        return RE::BSEventNotifyControl::kContinue;
+    }
+} playerChanges;
+
 void message(SKSE::MessagingInterface::Message* data) {
     if (!data) return;
     std::lock_guard lock(gate);
@@ -161,6 +246,15 @@ void message(SKSE::MessagingInterface::Message* data) {
             if (auto* source = SKSE::GetModCallbackEventSource()) {
                 source->AddEventSink(&listener);
                 window->sinkReady();
+            }
+        }
+        if constexpr (playerWitness) {
+            if (!playerEventsRegistered) {
+                if (auto* source = RE::ScriptEventSourceHolder::GetSingleton()) {
+                    source->AddEventSink<RE::TESEquipEvent>(&playerChanges);
+                    source->AddEventSink<RE::TESSwitchRaceCompleteEvent>(&playerChanges);
+                    playerEventsRegistered = true;
+                }
             }
         }
         break;
@@ -204,7 +298,8 @@ extern "C" __declspec(dllexport) bool SKSEPlugin_Load(const SKSE::LoadInterface*
         LARGE_INTEGER frequency{};
         if (!papyrus || !messages || !SKSE::GetTaskInterface() ||
             !QueryPerformanceFrequency(&frequency) || frequency.QuadPart <= 0) return false;
-        window.emplace(static_cast<cbpc::Ticks>(frequency.QuadPart));
+        window.emplace(static_cast<cbpc::Ticks>(frequency.QuadPart),
+                       playerWitness ? cbpc::Subject::equippedPlayer : cbpc::Subject::fixtureNpc);
         return messages->RegisterListener(message) && papyrus->Register(registerPapyrus);
     } catch (...) {
         return false;

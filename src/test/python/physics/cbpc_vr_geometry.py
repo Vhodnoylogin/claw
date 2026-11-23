@@ -69,9 +69,11 @@ def _wand(picking, key, name):
     return transform(row["world"])
 
 
-def measure_frame(raw, *, actor, base, cell, pid, target_offset, target_radius, target_node=None, target_end=None):
-    """Extract synchronized scene geometry and both reference incarnations."""
-    require(type(actor) is int and 0xFF000000 <= actor < 0xFFFFFFFF
+def measure_frame(raw, *, actor, base, cell, pid, target_offset, target_radius, target_node=None, target_end=None,
+                  own_body=False):
+    """Extract synchronized scene geometry for player-to-NPC or explicit self contact."""
+    allowed = type(actor) is int and (actor == PLAYER and base == 7 if own_body else 0xFF000000 <= actor < 0xFFFFFFFF)
+    require(allowed
             and all(positive_int(value) for value in (base, cell, pid)) and _finite_positive(target_radius),
             "Explicit disposable actor, process, cell and sphere required")
     require(raw.get("ok") is True and type(raw.get("schemaVersion")) is int and raw["schemaVersion"] == 1
@@ -80,15 +82,15 @@ def measure_frame(raw, *, actor, base, cell, pid, target_offset, target_radius, 
             and raw.get("space") == "world" and raw.get("units") == "skyrim_engine_units"
             and type(raw.get("sessionId")) is str and raw["sessionId"].startswith(f"{pid}-")
             and all(positive_int(raw.get(k)) for k in ("sampleId", "producerFrame", "producerMonotonicNs", "loadGeneration"))
-            and len(raw.get("refs", [])) == 2,
+            and len(raw.get("refs", [])) == (1 if own_body else 2),
             "Complete same-task VR Observer snapshot required")
     player = _reference(raw, PLAYER, 7, cell)
-    npc = _reference(raw, actor, base, cell)
+    target_actor = player if own_body else _reference(raw, actor, base, cell)
     node = TAIL if target_node is None else target_node
     require(isinstance(node, str) and bool(node), "An exact target node name is required")
     targets = [row for row in raw.get("nodes", []) if row.get("name") == node]
     require(len(targets) == 1 and targets[0].get("status") == "available"
-            and targets[0].get("firstPerson") is False and targets[0].get("identity") == npc[0]
+            and targets[0].get("firstPerson") is False and targets[0].get("identity") == target_actor[0]
             and _form(targets[0].get("form"), actor), f"Expected exact owned third-person {node}")
     picking = raw.get("vrPicking", {})
     require(picking.get("status") == "available" and picking.get("phase") == raw["phase"]
@@ -106,7 +108,7 @@ def measure_frame(raw, *, actor, base, cell, pid, target_offset, target_radius, 
         shape.update(segmentEnd=endpoint, distance=_point_segment_distance(source, target, endpoint))
     return {"session": raw["sessionId"], "epoch": raw["loadGeneration"], "sample": raw["sampleId"],
             "frame": raw["producerFrame"],
-            "ns": raw["producerMonotonicNs"], "player": player, "actor": npc, "left": left,
+            "ns": raw["producerMonotonicNs"], "player": player, "actor": target_actor, "left": left,
             "controls": {side: _wand(picking, *node) for side, node in CONTROLS.items()},
             "source": source, **shape}
 

@@ -66,6 +66,22 @@ class CbpcVrGeometryControls(unittest.TestCase):
         self.assertEqual(result["distance"], 2.)
         self.assertEqual(result["radiusSum"], 5.5)
 
+    def test_own_body_requires_one_player_reference_and_the_players_third_person_node(self):
+        raw = self.frames["nearBefore"][0]
+        player, _ = raw["refs"]
+        fixture = dict(FIXTURE, actor=0x14, base=7, target_node="TailBone01", own_body=True)
+        with self.assertRaisesRegex(ValueError, "Complete same-task"):
+            measure_frame(raw, **fixture)
+        raw["refs"] = [player]
+        with self.assertRaisesRegex(ValueError, "exact owned third-person"):
+            measure_frame(raw, **fixture)
+        raw["nodes"][0].update(identity=player["identity"], form=player["identity"]["form"])
+        result = measure_frame(raw, **fixture)
+        self.assertEqual(result["actor"], result["player"])
+        self.assertEqual(result["distance"], 2.)
+        with self.assertRaisesRegex(ValueError, "disposable actor"):
+            measure_frame(raw, **dict(fixture, own_body=False))
+
     def test_measures_the_nearest_point_on_a_rotated_named_capsule(self):
         raw = self.frames["nearBefore"][0]
         raw["nodes"][0]["name"] = "EarR"
