@@ -15,7 +15,9 @@ R06_COMMANDS = "ec2547ae1c73074fceecd8ecec5035e0a5aae8e127b17d1b523c7d005aaa2359
 SKEE_HEADER = "875410dd22230f76a014a6841004e7d346f5fa1c748cfff695f9f495234da277"
 BUILD_ENVIRONMENT = "28131403690b16b8256b5d85c37cf88511c7e0330b23ac77664c2555787cc1c5"
 EQUIPPED_MODULE = "CLAWVREquippedEarPose"
+TAIL_MODULE = "CLAWVREquippedTailPose"
 TOPOLOGY_MODULE = "CLAWVRModelTopology"
+TAIL_SCHEMA = "claw-vr-equipped-tail-contact/1"
 
 
 def pin(path, expected=None):
@@ -324,15 +326,75 @@ struct EquippedMarker {
     return replace(source, '{"item", bodyItem}, {"addon", bodyAddon}', '{"item", slot.item}, {"addon", slot.addon}')
 
 
+def equipped_tail_overlay(source):
+    source = equipped_ear_overlay(source)
+
+    def replace_block(text, begin, end, replacement):
+        first = text.index(begin)
+        last = text.index(end, first + len(begin))
+        return replace(text, text[first:last], replacement)
+
+    source = replace(source, f'constexpr auto name = "{EQUIPPED_MODULE}";', f'constexpr auto name = "{TAIL_MODULE}";')
+    source = replace(source, 'claw-vr-vrik-ear-stereo/2', TAIL_SCHEMA)
+    source = replace(source, '#include "EarStereoPose.h"', '#include "TailContactPose.h"')
+    source = replace(source, '"ear_skee_unavailable"', '"tail_skee_unavailable"')
+    source = replace_block(source, '    const auto cameraRoot = camera->cameraRoot;', '    std::array<Object*, boneNames.size()>', '''    const auto hmdNode = vr->HmdNode;
+    const auto leftWand = vr->LeftWandNode;
+    const auto rightWand = vr->RightWandNode;
+    const auto hmdWorld = hmdNode->world, leftWorld = leftWand->world, rightWorld = rightWand->world;
+    const auto cameraWorld = optic.world;
+    require(claw::vr_diagnostic::detail::validTorsoTransform(leftWorld) &&
+            claw::vr_diagnostic::detail::validTorsoTransform(rightWorld), "invalid tail observation wand transforms");
+''')
+    source = replace(source, 'RE::NiPointer<RE::BSGeometry> ears;', 'RE::NiPointer<RE::BSGeometry> tailBody;')
+    source = replace(source, '''        if (EquippedMarker::name(object) == claw::vr_diagnostic::earShapeName) {
+            require(!ears, "ambiguous world ear skin");
+            ears.reset(geometry);
+        }''', '''        if (EquippedMarker::name(object) == claw::vr_diagnostic::tailContactShape) {
+            require(!tailBody, "ambiguous equipped body skin");
+            tailBody.reset(geometry);
+        }''')
+    source = replace(source, 'std::string earBodyTri(const RE::BSGeometry& ears) {',
+                     'std::string tailBodyTri(const RE::BSGeometry& ears) {')
+    source = replace_block(source, '    require(ears && morphs', '    std::size_t index{};', r'''    using namespace claw::vr_diagnostic;
+    require(tailBody && morphs && ownsReciprocalRoute(*tailBody, *clone) && hasTailContactTopology(*tailBody),
+            "owned equipped tail skin or SKEE source unavailable");
+    const auto tri = tailBodyTri(*tailBody);
+    const std::string_view expected = sex == 1 ? R"(actors\werewolfbeast\claw\firstperson\female\earworldtrial.tri)" :
+                                               R"(actors\werewolfbeast\claw\firstperson\male\earworldtrial.tri)";
+    require(tri == expected, "wrong sex-specific tail BODYTRI");
+    const auto skin = tailBody->GetGeometryRuntimeData().skinInstance;
+    const auto measured = captureSkinPose(*player, *root, *clone, *tailBody, *morphs, deadline, tailContactFields);
+    Json tailBones = Json::object(), tailMorphs = Json::object();
+    for (const auto& bone : measured.bones) tailBones[bone.name] = {{"world", pose(bone.world)}};
+    for (const auto& morph : measured.effectiveMorphs) tailMorphs[morph.name] = morph.value;
+''')
+    source = replace_block(source, '    require(Clock::now() < deadline && player->GetVRNodeData()',
+        '    require(Clock::now() < deadline && biped->root == bipedRoot', '''    require(player->GetVRNodeData() == vr && vr->HmdNode == hmdNode && vr->LeftWandNode == leftWand &&
+            vr->RightWandNode == rightWand && hmdNode->world == hmdWorld && leftWand->world == leftWorld &&
+            rightWand->world == rightWorld && tailBodyTri(*tailBody) == tri && ownsReciprocalRoute(*tailBody, *clone) &&
+            !parentCull(*tailBody) && tailBody->GetGeometryRuntimeData().skinInstance == skin &&
+            hasTailContactTopology(*tailBody) && Clock::now() < deadline,
+            "tail route or tracked pose changed during capture");
+''')
+    source = replace(source, '"ear capture exceeded native clock bracket"', '"tail capture exceeded native clock bracket"')
+    source = replace_block(source, '            {"hmd", pose(hmdWorld)}', '\n}', '''            {"hmd", pose(hmdWorld)}, {"leftWand", pose(leftWorld)}, {"rightWand", pose(rightWorld)}, {"camera", pose(cameraWorld)},
+            {"tailCaptureVersion", 1}, {"tailBodyTri", tri}, {"tailShape", tailContactShape},
+            {"tailTopology", {{"vertices", tailContactVertices}, {"triangles", tailContactTriangles},
+                              {"paletteBones", tailContactFields.expectedPalette}}},
+            {"tailBones", std::move(tailBones)}, {"tailEffectiveMorphs", std::move(tailMorphs)}};''')
+    return source
+
+
 def read_json(path):
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
 
 def build(r06, skee, environment, output, *, subject="torso", papyrus=None):
-    equipped = subject == "equipped-ears"
+    equipped = subject in ("equipped-ears", "equipped-tail")
     if equipped and papyrus is None:
-        raise ValueError("The equipped ear observer requires the Papyrus compiler for its separate script class")
-    module = EQUIPPED_MODULE if equipped else TOPOLOGY_MODULE
+        raise ValueError("The equipped observer requires the Papyrus compiler for its separate script class")
+    module = {"equipped-ears": EQUIPPED_MODULE, "equipped-tail": TAIL_MODULE}.get(subject, TOPOLOGY_MODULE)
     papyrus_pin = pin(papyrus) if equipped else None
     receipt_pin = pin(r06 / "RECEIPT.json", R06_RECEIPT)
     commands_pin = pin(r06 / "commands.json", R06_COMMANDS)
@@ -342,7 +404,11 @@ def build(r06, skee, environment, output, *, subject="torso", papyrus=None):
     source_files = [verify(row) for row in base["sources"]]
     original = next(path for path in source_files if path.name == "Plugin.cpp")
     header = pin(HERE / "TorsoPose.h")
-    if subject in ("ears", "equipped-ears"):
+    if subject == "equipped-tail":
+        extra_headers = [pin(HERE / "TailContactPose.h")]
+        overlay = equipped_tail_overlay
+        capture_version = {"schema": TAIL_SCHEMA, "tailCaptureVersion": 1}
+    elif subject in ("ears", "equipped-ears"):
         extra_headers = [pin(HERE / name) for name in ("EarStereoPose.h", "StereoOptics.h")]
         overlay = equipped_ear_overlay if equipped else ear_overlay
         version = 2 if equipped else 1
@@ -441,8 +507,8 @@ if __name__ == "__main__":
     parser.add_argument("--skee", type=Path, required=True, help="Pinned external RaceMenu IPluginInterface.h")
     parser.add_argument("--environment", type=Path, required=True, help="Retained MSVC capture-environment.cmd")
     parser.add_argument("--out", type=Path, required=True, help="New external build directory")
-    parser.add_argument("--subject", choices=("torso", "ears", "equipped-ears"), default="torso")
-    parser.add_argument("--papyrus", type=Path, help="Bethesda PapyrusCompiler.exe for the equipped ear script")
+    parser.add_argument("--subject", choices=("torso", "ears", "equipped-ears", "equipped-tail"), default="torso")
+    parser.add_argument("--papyrus", type=Path, help="Bethesda PapyrusCompiler.exe for the equipped observer script")
     args = parser.parse_args()
     print(json.dumps(build(args.r06, args.skee, args.environment, args.out,
                            subject=args.subject, papyrus=args.papyrus), indent=2))

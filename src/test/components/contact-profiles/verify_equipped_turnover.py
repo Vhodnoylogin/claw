@@ -11,7 +11,8 @@ from verify_pose_contact_window import CLOCK, CONTROL, TICKS_PER_US
 from verify_tail_refit import NATIVE, QPC, f32, ordered, positive_int, require, typed
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "vr-body"))
-from verify_dispatch_markers import ADDON, BODY, ITEM, SCHEMA as TOPOLOGY_SCHEMA, verify_dispatch_markers
+from avatar_torso import matrix
+from verify_dispatch_markers import ADDON, BODY, ITEM, SCHEMA as TOPOLOGY_SCHEMA, canonical_model, verify_dispatch_markers
 
 
 SCHEMA = "claw-vr-equipped-contact-turnover/1"
@@ -19,6 +20,11 @@ TOPOLOGY = "CLAWVRModelTopology"
 EAR_POSE = "CLAWVREquippedEarPose"
 EAR_SCHEMA = "claw-vr-vrik-ear-stereo/2"
 EAR_MORPHS = {"CLAWHeadEarSize", "CLAWHeadEarTilt", "CLAWHeadMuzzleLong", "CLAWHeadMuzzleWide", "CLAWHeadSize"}
+TAIL_POSE = "CLAWVREquippedTailPose"
+TAIL_SCHEMA = "claw-vr-equipped-tail-contact/1"
+TAIL_MORPHS = {"CLAWLegThighGirth", "CLAWLegThighLean", "CLAWTailFluff", "CLAWTailLength", "CLAWTailLift",
+               "CLAWTorsoFlankWidth", "CLAWTorsoGirth", "CLAWTorsoLean"}
+TAIL_BONES = {"NPC Pelvis [Pelv]", "TailBone01", "TailBone02", "TailBone03", "TailBone04"}
 FIXTURE_PLUGIN = "test_CLAW - VR Player Body32.esp"
 ACTOR_ID = 0x14
 ACTOR = {"form": "0x00000014"}
@@ -80,18 +86,20 @@ def phase_ack(lines, generation, token, profile, sex, clock):
     return first, selected, summary["enabledSlots"]
 
 
-def linked_ear_pose(ledger, observation, topology, route_result, ack):
+def linked_pose(ledger, observation, topology, route_result, ack, *, tail=False):
+    name = "tail" if tail else "ear"
+    script, schema, fields = (TAIL_POSE, TAIL_SCHEMA, TAIL_MORPHS) if tail else (EAR_POSE, EAR_SCHEMA, EAR_MORPHS)
     nonce = observation["nonce"]
-    require(positive_int(nonce), "Invalid ear pose nonce")
-    request, raw = capture_pair(ledger, observation, EAR_POSE, "Capture", EAR_SCHEMA, topology["pid"], nonce)
+    require(positive_int(nonce), f"Invalid {name} pose nonce")
+    request, raw = capture_pair(ledger, observation, script, "Capture", schema, topology["pid"], nonce)
     pose, body = raw["sample"], topology["sample"]
     biped, active = pose["biped"], route_result["observations"][0]
     require((pose["player"], pose["base"], pose["race"], pose["cell"], pose["handle"], pose["sex"], pose["rawWeight"]) ==
             (body["actor"], body["base"], body["race"], body["cell"], body["runtimeHandle"], body["sex"], body["weight"]) and
             (biped["slot"], biped["item"], biped["addon"]) == (32, active["item"], active["addon"]) and
-            biped["modelPath"].replace('/', '\\').casefold() == active["reportedModelPath"].replace('/', '\\').casefold() and
+            canonical_model(biped["modelPath"]) == canonical_model(active["reportedModelPath"]) and
             "CLAW_VR_DISPATCH_PROBE_" + raw["body32"]["worldDispatchMarker"] == route_result["observedMarker"],
-            "Ear pose does not match the equipped actor and Body32 route")
+            f"{name.capitalize()} pose does not match the equipped actor and Body32 route")
     armed, observed = request["worldGate"], raw["worldGate"]
     phase = pose["phaseSequence"]
     require(request["status"] == "pending" and pose["phase"] == "PostVrikPostHiggs" and
@@ -99,20 +107,31 @@ def linked_ear_pose(ledger, observation, topology, route_result, ack):
             armed["generation"] == observed["generation"] == raw["epoch"] and
             positive_int(pose["higgsBuild"]) and armed["higgsBuild"] == observed["higgsBuild"] == pose["higgsBuild"] and
             type(phase) is int and 0 <= armed["postPhaseCount"] < phase <= observed["postPhaseCount"],
-            "Ear pose does not come from a new post-VRIK/HIGGS sample in the same observer world")
+            f"{name.capitalize()} pose does not come from a new post-VRIK/HIGGS sample in the same observer world")
     begin, end = pose["qpcBegin"], pose["qpcEnd"]
     require(pose["qpcFrequency"] == QPC and positive_int(begin) and positive_int(end) and
             route_result["captureClock"]["qpcEnd"] < begin < end and end - begin <= QPC * 4 // 1000,
-            "Ear sample is outside the ordered 10 MHz capture bracket")
-    morphs = pose["earEffectiveMorphs"]
+            f"{name.capitalize()} sample is outside the ordered 10 MHz capture bracket")
+    morphs = pose[name + "EffectiveMorphs"]
     weight = body["weight"]
     require(weight is not None and f32([weight / 100.]) == f32([ack["weight"]]),
             "Body32 actor weight does not match the acknowledged fitter input")
-    expected = {row["name"]: row["value"] for row in ack["morphs"] if row["name"] in EAR_MORPHS}
-    require(set(morphs) == set(expected) == EAR_MORPHS and all(unit(value) for value in morphs.values()) and morphs == expected,
-            "Ear morph values do not match the acknowledged fitter inputs")
-    return {"nonce": nonce, "phase": phase, "qpcBegin": begin, "qpcEnd": end, "token": ack["token"],
-            "earPoseLinked": True}
+    expected = {row["name"]: row["value"] for row in ack["morphs"] if row["name"] in fields}
+    require(set(morphs) == set(expected) == fields and all(unit(value) for value in morphs.values()) and morphs == expected,
+            f"{name.capitalize()} morph values do not match the acknowledged fitter inputs")
+    result = {"nonce": nonce, "phase": phase, "qpcBegin": begin, "qpcEnd": end, "token": ack["token"],
+              name + "PoseLinked": True}
+    if tail:
+        expected_tri = canonical_model(active["reportedModelPath"]).removesuffix(".nif") + ".tri"
+        require(type(pose["tailCaptureVersion"]) is int and pose["tailCaptureVersion"] == 1 and pose["tailShape"] == "body" and
+                canonical_model(pose["tailBodyTri"]) == expected_tri and
+                pose["tailTopology"] == {"vertices": 18359, "triangles": 34195, "paletteBones": 65} and
+                set(pose["tailBones"]) == TAIL_BONES, "Unexpected TailBone02 shape, BODYTRI or skin palette")
+        for transform in [pose["leftWand"], *(bone["world"] for bone in pose["tailBones"].values())]:
+            matrix(transform)
+        result.update(tailEffectiveMorphs=morphs, tailBones=pose["tailBones"], leftWand=pose["leftWand"],
+                      tailBodyTri=expected_tri)
+    return result
 
 
 def check_detachment(ledger, indices, generation, token):
@@ -142,9 +161,10 @@ def verify(manifest, ledger, ack_lines, stock, equipped):
     for phase in PHASES:
         row = manifest["phases"][phase]
         indices.extend(row[key] for key in OBSERVATION_KEYS[:4])
-        if "earPose" in row:
-            require(phase == "equipped", "Ear sidecar accepts only the equipped phase")
-            indices.extend(row["earPose"][key] for key in ("request", "capture"))
+        for name in ("earPose", "tailPose"):
+            if name in row:
+                require(phase == "equipped", "Pose sidecars accept only the equipped phase")
+                indices.extend(row[name][key] for key in ("request", "capture"))
         indices.extend(row[key] for key in OBSERVATION_KEYS[4:])
         if phase in TRANSITIONS:
             indices.append(row["equipmentAction"])
@@ -189,10 +209,12 @@ def verify(manifest, ledger, ack_lines, stock, equipped):
         end = clock["qpcEnd"]
         output[phase] = {"generation": generation, "registration": selected["registration"], "token": token,
                          "model": selected["model"], "ledgerCount": count, "topology": observed}
-        if "earPose" in row:
-            ear = linked_ear_pose(ledger, row["earPose"], raw, observed, selected)
-            output[phase]["earPose"] = ear
-            end = ear["qpcEnd"]
+        for name in ("earPose", "tailPose"):
+            if name in row:
+                linked = linked_pose(ledger, row[name], raw, observed, selected, tail=name == "tailPose")
+                require(end < linked["qpcBegin"], "Equipped pose captures overlap or are out of order")
+                output[phase][name] = linked
+                end = linked["qpcEnd"]
         preceding = selected, nonce, end
     return {"schema": SCHEMA, "actor": ACTOR_ID, "pid": subject[0], "phases": output,
             "routeTurnoverVerified": True, "hostLedgerRetirementVerified": True,

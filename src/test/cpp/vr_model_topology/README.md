@@ -223,6 +223,20 @@ the matching `P_M` or `P_F` marker. Both buffered slots must be empty. It
 checks body ownership, slots, visibility and marker attachment again before
 returning the sample. This is the world-body trial with the other view hidden.
 
+Use `--subject equipped-tail --papyrus <PapyrusCompiler.exe>` to build the
+separate `CLAWVREquippedTailPose` DLL and script. Its `Capture` and `Read`
+return `claw-vr-equipped-tail-contact/1` under the same equipped route and
+QPC checks. The observer uses the `body` shape, with 18,359 vertices,
+34,195 triangles and a 65-entry skin palette. It checks the fixture's
+sex-specific `BODYTRI` and confirms that name lookup from the actor root
+finds the same `TailBone02` used by the skin. The capture includes the five
+bones and eight effective RaceMenu channels of the four TailBone02 support
+slots, together with the pose of the left wand. It does not require the
+stereo optics sample. `verify_equipped_turnover.py` accepts its capture as
+an optional `tailPose` during the equipped phase, in addition to `earPose`.
+Compare the returned geometry inputs with the acknowledged fit and use
+separate CBPC callback evidence for the contact verdict.
+
 Use the same replay command with `claw-vr-ear-stereo-admission/2`. Supply the
 `fixtureForms` object containing the independently observed runtime `item`
 and `addon` IDs. The full IDs must share the loaded fixture ESP index and

@@ -75,6 +75,8 @@ inline bool validTorsoTransform(const RE::NiTransform& transform) {
 
 struct SkinPoseFields {
     std::span<const char* const> bones, morphs, extraBones{}, extraMorphs{};
+    std::size_t expectedPalette{};
+    const char* attachmentOwner{};
 };
 
 // Engine references stay inside the callback. The outer observer owns the
@@ -97,8 +99,9 @@ inline TorsoPose captureSkinPose(RE::Actor& actor, RE::NiAVObject& actorRoot, RE
     const auto data = skin ? skin->skinData : RE::NiPointer<RE::NiSkinData>{};
     const auto count = data ? data->GetBoneCount() : 0U;
     auto* const palette = skin ? skin->bones : nullptr;
-    constexpr std::size_t maxPaletteBones = 64;
-    requireTorso(palette && count > 0 && count <= maxPaletteBones, "Invalid retained torso skin palette");
+    constexpr std::size_t maxPaletteBones = 96;
+    requireTorso(palette && count > 0 && count <= maxPaletteBones &&
+        (fields.expectedPalette ? count == fields.expectedPalette : count <= 64), "Invalid retained skin palette");
     std::array<RE::NiPointer<RE::NiAVObject>, maxPaletteBones> bound;
     for (std::size_t i = 0; i < count; ++i) bound[i].reset(palette[i]);
 
@@ -135,6 +138,14 @@ inline TorsoPose captureSkinPose(RE::Actor& actor, RE::NiAVObject& actorRoot, RE
     };
     for (auto bone : fields.bones) captureBone(bone);
     for (auto bone : fields.extraBones) captureBone(bone);
+    if (fields.attachmentOwner) {
+        const RE::BSFixedString name{fields.attachmentOwner};
+        const auto selected = std::ranges::find_if(result.bones, [&](const auto& bone) {
+            return std::string_view(bone.name) == fields.attachmentOwner;
+        });
+        requireTorso(selected != result.bones.end() && actorRoot.GetObjectByName(name) == captured[selected - result.bones.begin()],
+            "Attachment owner does not resolve to the captured skin bone");
+    }
     for (const auto& field : result.effectiveMorphs)
         requireTorso(readMorph(field.name) == field.value, "Effective torso morphs changed during capture");
 
@@ -147,6 +158,9 @@ inline TorsoPose captureSkinPose(RE::Actor& actor, RE::NiAVObject& actorRoot, RE
         const auto& bone = result.bones[i];
         requireTorso(detail::torsoRoute(*captured[i], actorRoot) && captured[i]->name == bone.name &&
             captured[i]->world == bone.world, "Retained torso bone changed during capture");
+        if (fields.attachmentOwner && std::string_view(bone.name) == fields.attachmentOwner)
+            requireTorso(actorRoot.GetObjectByName(RE::BSFixedString{bone.name}) == captured[i],
+                "Attachment owner changed during capture");
     }
     requireTorso(TorsoClock::now() < deadline, "Torso capture budget expired");
     return result;

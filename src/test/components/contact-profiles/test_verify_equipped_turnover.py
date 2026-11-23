@@ -7,17 +7,17 @@ import unittest
 from test_pose_ack import PROFILE, lines, receipt
 from verify_equipped_turnover import (
     ACTOR, ACTOR_ID, CLOCK, CONTROL, EAR_MORPHS, EAR_POSE, EAR_SCHEMA, FIXTURE_PLUGIN, NATIVE, PHASES, SCHEMA,
-    TOPOLOGY, TOPOLOGY_SCHEMA,
+    TAIL_BONES, TAIL_MORPHS, TAIL_POSE, TAIL_SCHEMA, TOPOLOGY, TOPOLOGY_SCHEMA,
     TRANSITIONS, verify,
 )
 from test_dispatch_markers import FIXTURE, capture, mark, origin
 
 
-def case(female=False, *, ears=False):
+def case(female=False, *, ears=False, tail=False):
     ledger, acks = [], []
     stock = deepcopy(PROFILE)
     stock["slots"] = [dict(node="TailBone02", sexMask="both")]
-    stock["morphs"] = sorted(EAR_MORPHS)
+    stock["morphs"] = sorted(EAR_MORPHS | (TAIL_MORPHS if tail else set()))
     equipped = {**stock, "modelIdentity": "CLAW.Physics.Equipped.fixture"}
 
     def call(script, function, args, kind, value, *, target=None):
@@ -68,20 +68,31 @@ def case(female=False, *, ears=False):
                "request": call(TOPOLOGY, "CaptureDispatch", [nonce], "String", json.dumps({
                    "schema": TOPOLOGY_SCHEMA, "status": "pending", "pid": 492, "nonce": nonce})),
                "capture": call(TOPOLOGY, "Read", [nonce], "String", json.dumps(raw))}
-        if phase == "equipped" and ears:
-            ear_nonce = 1
+        if phase == "equipped":
+            ends = sample["qpcEnd"]
+            transform = {"position": [0, 0, 0], "rotation": [[1, 0, 0], [0, 1, 0], [0, 0, 1]], "scale": 1}
             gate = {"generation": 8, "postPhaseCount": 19, "loading": False, "higgsBuild": 42}
-            pending = {"schema": EAR_SCHEMA, "status": "pending", "pid": raw["pid"], "nonce": ear_nonce, "worldGate": gate}
-            ear = dict(pending, status="ready", epoch=8, worldGate=dict(gate, postPhaseCount=20),
-                       body32={"worldDispatchMarker": marker}, sample={
-                           "player": ACTOR_ID, "base": sample["base"], "race": sample["race"], "cell": sample["cell"],
+            for enabled, name, script, schema, fields in ((ears, "ear", EAR_POSE, EAR_SCHEMA, EAR_MORPHS),
+                                                          (tail, "tail", TAIL_POSE, TAIL_SCHEMA, TAIL_MORPHS)):
+                if not enabled:
+                    continue
+                pending = {"schema": schema, "status": "pending", "pid": raw["pid"], "nonce": 1, "worldGate": gate}
+                sidecar = {"player": ACTOR_ID, "base": sample["base"], "race": sample["race"], "cell": sample["cell"],
                            "handle": sample["runtimeHandle"], "sex": sample["sex"], "rawWeight": sample["weight"],
                            "biped": dict(world["active"][0], slot=32), "phase": "PostVrikPostHiggs", "phaseSequence": 20,
-                           "higgsBuild": 42, "qpcBegin": sample["qpcEnd"] + 20, "qpcEnd": sample["qpcEnd"] + 40,
-                           "qpcFrequency": sample["qpcFrequency"], "earEffectiveMorphs": dict.fromkeys(EAR_MORPHS, .25)})
-            row["earPose"] = {"nonce": ear_nonce,
-                              "request": call(EAR_POSE, "Capture", [ear_nonce], "String", json.dumps(pending)),
-                              "capture": call(EAR_POSE, "Read", [ear_nonce], "String", json.dumps(ear))}
+                           "higgsBuild": 42, "qpcBegin": ends + 20, "qpcEnd": ends + 40,
+                           "qpcFrequency": sample["qpcFrequency"], name + "EffectiveMorphs": dict.fromkeys(fields, .25)}
+                if name == "tail":
+                    tri = origin(marker).removeprefix("Meshes\\").casefold().replace(".nif", ".tri")
+                    sidecar.update(tailCaptureVersion=1, tailShape="body", tailBodyTri=tri, leftWand=transform,
+                                   tailTopology={"vertices": 18359, "triangles": 34195, "paletteBones": 65},
+                                   tailBones={bone: {"world": transform} for bone in TAIL_BONES})
+                sample_reply = dict(pending, status="ready", epoch=8, worldGate=dict(gate, postPhaseCount=20),
+                                    body32={"worldDispatchMarker": marker}, sample=sidecar)
+                row[name + "Pose"] = {"nonce": 1,
+                                      "request": call(script, "Capture", [1], "String", json.dumps(pending)),
+                                      "capture": call(script, "Read", [1], "String", json.dumps(sample_reply))}
+                ends = sidecar["qpcEnd"]
         row["currentAfter"] = call(NATIVE, "SnapshotCurrent", binding, "Bool", True)
         row["count"] = call(CONTROL, "GetLedgerCount", [0], "Int", 1)
         if phase in TRANSITIONS:
@@ -191,6 +202,34 @@ class TurnoverTests(unittest.TestCase):
                 linked = self.check(*case(female, ears=True))["phases"]["equipped"]["earPose"]
                 self.assertEqual(linked, {"nonce": 1, "phase": 20, "qpcBegin": 2080, "qpcEnd": 2100, "token": 20,
                                           "earPoseLinked": True})
+
+    def test_links_optional_tail_pose_with_ear_witness_and_preserves_its_inputs(self):
+        for female in (False, True):
+            with self.subTest(female=female):
+                result = self.check(*case(female, ears=True, tail=True))
+                phase = result["phases"]["equipped"]
+                tail = phase["tailPose"]
+                self.assertTrue(tail["tailPoseLinked"])
+                self.assertFalse(result["controllerContactVerified"])
+                self.assertLess(phase["earPose"]["qpcEnd"], tail["qpcBegin"])
+                self.assertEqual(set(tail["tailBones"]), TAIL_BONES)
+                self.assertEqual(tail["tailEffectiveMorphs"], dict.fromkeys(TAIL_MORPHS, .25))
+
+    def test_rejects_wrong_tail_mesh_palette_morphs_or_wand(self):
+        for field, value in (("tailShape", "fur_tailtip"), ("tailBodyTri", "wrong.tri"), ("tailBones", {}),
+                             ("tailTopology", {"vertices": 18359, "triangles": 34195, "paletteBones": 64}),
+                             ("tailEffectiveMorphs", dict.fromkeys(TAIL_MORPHS, .5)),
+                             ("leftWand", {"position": [0., 0., 0.], "scale": 0.,
+                                           "rotation": [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]]})):
+            with self.subTest(field=field):
+                args = case(tail=True)
+                capture = args[0]["phases"]["equipped"]["tailPose"]["capture"]
+                reply = args[1][capture]["result"]
+                raw = json.loads(reply["returned"])
+                raw["sample"][field] = value
+                reply["returned"] = json.dumps(raw)
+                with self.assertRaises(ValueError):
+                    self.check(*args)
 
     def test_matching_topology_and_ear_pose_cannot_use_an_ack_from_different_weight(self):
         for weight in (37., None):
