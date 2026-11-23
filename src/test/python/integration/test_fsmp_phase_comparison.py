@@ -111,3 +111,35 @@ class PhaseComparisonTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "stationary anchors"):
             compare(quiet, pulse)
         self.assertIsNone(observe_window(quiet)["rightStockControl"])
+
+    def test_numeric_phase_motion_removes_parent_rotation_and_scale(self):
+        quiet = window(right=1.)
+        identity = [1, 0, 0, 0, 1, 0, 0, 0, 1]
+        turn = [0, -1, 0, 1, 0, 0, 0, 0, 1]
+        numeric = {}
+        for phase in PHASES:
+            phases_with_turn = ("afterStockWrite", "afterOuterUpdate")
+            quiet["worldByPhase"][phase]["rightP1"] = {
+                "afterStockWrite": (0., 2., 0.), "afterOuterUpdate": (0., 2.5, 0.),
+            }.get(phase, (1., 0., 0.))
+            numeric[phase] = {}
+            for role, position in quiet["worldByPhase"][phase].items():
+                turned = role.startswith("right") and phase in phases_with_turn
+                numeric[phase][role] = {"translation": list(position), "rotation": turn if turned else identity,
+                                        "scale": 2. if turned else 1.}
+        observed = observe_window(quiet, numeric)
+        self.assertEqual(observed["phases"]["afterStockWrite"]["right"]["relativeDeltaGU"], (-1., 2., 0.))
+        motion = observed["parentFrameMotion"]
+        self.assertEqual(motion["afterStockWrite"]["right"]["worldDistanceFromParentCarryGU"], 0.)
+        self.assertEqual(motion["afterOuterUpdate"]["right"]["worldDistanceFromParentCarryGU"], .5)
+        self.assertEqual(motion["afterOuterUpdate"]["right"]["parentLocalRotationComponentDelta"], 0.)
+        self.assertEqual(motion["afterOuterUpdate"]["right"]["parentLocalScaleDelta"], 0.)
+        self.assertFalse(observed["rightStockControl"]["absoluteRightGateMet"])
+        numeric["afterOuterUpdate"]["rightP1"]["translation"] = [0., 2., 0.]
+        with self.assertRaisesRegex(ValueError, "differs from the joined scene observation"):
+            observe_window(quiet, numeric)
+
+    def test_numeric_replay_with_a_missing_lane_cannot_fall_back_to_translation(self):
+        replay = {"observedWindows": [window(), window(active=True)], "numericWorldByLane": [{}]}
+        with self.assertRaisesRegex(ValueError, "both passive and active lanes"):
+            summarize_replay(replay)

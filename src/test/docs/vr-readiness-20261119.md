@@ -2303,6 +2303,22 @@ restoration. Terminal, provider log and numeric replay SHA-256 values are
 `50988cfa6c5071a2a11cc32059133005f7cbee9827d8f2cd902a7346fa174bc2`, and
 `90023ba02b7a78904f68954b6b2ef44e35748b7fcd531fb53353efbf7d9a5502`.
 
+The [phase observer](../python/integration/fsmp_phase_observation.py) now
+also removes the full parent translation, rotation and scale when numeric
+transforms are available. The absolute stock gate and original matched-window
+requirements stay in force. The joined `123349-43b436` parents left zero right
+translation residual in both windows at stock write and outer return. After
+the active pulse, the left residual was 0.054427 GU at both boundaries.
+
+Two separate no-force sample times from `005738-69aaba`, outside the matched
+write bracket, show why subtracting parent translation alone is insufficient.
+Right WORLD motion was 2.096438 GU. Subtracting only the parent's translation
+left 0.026624 GU, while accounting for the parent's rotation reduced it to
+0.000444 GU. The stored right local transform was identical at both reads.
+This comparison does not replace the earlier within-update result. That
+result observed FSMP correcting a pre-existing target-to-scene offset and a
+later overwrite before outer return. The internal engine writer remains unknown.
+
 Morphbench's configured-envelope calculation was also evaluated directly
 at the measured scene poses, with the same XML and the identity `frameInA`
 setting. All 16 P1 placements produced the corresponding origin, axes and
