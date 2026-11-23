@@ -198,6 +198,62 @@ class MotionFomodTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'Motion-enabled model must bind its own FSMP rig'):
                     self.package.selection_audit(readback)
 
+    def test_archive_validates_both_fsmp_xml_payloads_and_their_routes(self):
+        result = self.package.build(**self.arguments())
+        entries = self.package.read_zip(Path(result['archive']).read_bytes())
+        male, female = [self.package.FSMP_PREFIX + self.package.MOTION_XML + sex + '.xml' for sex in ('Male', 'Female')]
+        for name, opposite in ((male, female), (female, male)):
+            for substitute in (b'not XML', entries[opposite]):
+                with self.subTest(name=name, malformed=substitute == b'not XML'):
+                    altered = self.package.read_zip(self.package.zip_bytes(entries | {name: substitute}))
+                    with self.assertRaisesRegex(ValueError, 'Invalid FSMP motion system'):
+                        self.package.selection_audit(altered)
+
+        config_path = 'fomod/ModuleConfig.xml'
+        config = ET.fromstring(entries[config_path])
+        for file in config.findall('conditionalFileInstalls/patterns/pattern/files/file'):
+            if file.get('source') == male:
+                file.set('source', female)
+            elif file.get('source') == female:
+                file.set('source', male)
+        altered = self.package.read_zip(self.package.zip_bytes(entries | {config_path: ET.tostring(config)}))
+        with self.assertRaisesRegex(ValueError, 'install each sex-specific XML at its own path'):
+            self.package.selection_audit(altered)
+
+    def test_archive_preserves_base_geometry_and_selected_body_routes(self):
+        self.f.write('target/bodies/malebodywerewolf_1.nif', body_fixture('male', b'distinct high-weight geometry'))
+        self.receipts = self.prepare_motion()
+        result = self.package.build(**self.arguments())
+        entries = self.package.read_zip(Path(result['archive']).read_bytes())
+        name = self.package.FSMP_PREFIX + self.package.MESH + '/malebodywerewolf_0.nif'
+        hooked, _ = fsmp_motion.bind_nif(body_fixture('male', b'changed geometry'), self.package.MOTION_XML + 'Male.xml')
+        altered = self.package.read_zip(self.package.zip_bytes(entries | {name: hooked}))
+        with self.assertRaisesRegex(ValueError, 'preserve its base mesh'):
+            self.package.selection_audit(altered)
+
+        config_path = 'fomod/ModuleConfig.xml'
+        config = ET.fromstring(entries[config_path])
+        opposite = name.replace('/malebodywerewolf_', '/femalebodywerewolf_')
+        for file in config.findall('conditionalFileInstalls/patterns/pattern/files/file'):
+            if file.get('source') == name:
+                file.set('source', opposite)
+            elif file.get('source') == opposite:
+                file.set('source', name)
+        altered = self.package.read_zip(self.package.zip_bytes(entries | {config_path: ET.tostring(config)}))
+        with self.assertRaisesRegex(ValueError, 'body source differs from its sex and weight route'):
+            self.package.selection_audit(altered)
+
+        high = name.replace('_0.nif', '_1.nif')
+        config = ET.fromstring(entries[config_path])
+        for file in config.findall('conditionalFileInstalls/patterns/pattern/files/file'):
+            if file.get('source') == high:
+                file.set('source', name)
+        altered = entries | {config_path: ET.tostring(config)}
+        del altered[high]
+        readback = self.package.read_zip(self.package.zip_bytes(altered))
+        with self.assertRaisesRegex(ValueError, 'body source differs from its sex and weight route'):
+            self.package.selection_audit(readback)
+
     def test_cbpc_receipts_and_injected_payloads_cannot_enter_working_installer(self):
         for fsmp in (None, self.receipts['fsmp']):
             with self.subTest(fsmp=fsmp), self.assertRaisesRegex(ValueError, 'CBPC motion remains research-only'):

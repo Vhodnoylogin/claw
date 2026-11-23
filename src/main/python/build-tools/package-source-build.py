@@ -43,6 +43,7 @@ MODEL_SWAP_OVERRIDE = "RandomElegantWerewolves_MS.json"
 MODEL_SWAP_SOURCE = "src/main/resources/compatibility/" + MODEL_SWAP_OVERRIDE
 MESH = "Meshes/Actors/WerewolfBeast/Character Assets"
 MOTION_PREFIX = "40 Motion/"
+FSMP_PREFIX = MOTION_PREFIX + "FSMP/"
 MOTION_XML = "SKSE/Plugins/hdtSkinnedMeshConfigs/CLAW/CLAWMotion"
 FSMP_HOOK = b'HDT Skinned Mesh Physics Object'
 FSMP_RIG_SOURCE = Path("src/main/python/physics/fsmp_rig.py")
@@ -380,6 +381,25 @@ def _check_motion_nif(materials, core, hooked, sex):
         raise ValueError('FSMP output changed core geometry/skin/material/strings or root hook scope')
 
 
+def _validate_fsmp_rigs(files, inputs, prefix=''):
+    rig_path = ROOT / FSMP_RIG_SOURCE
+    rig = ModuleType('claw_fsmp_rig')
+    exec(compile(inputs.read(rig_path), str(rig_path), 'exec'), rig.__dict__)
+    recipes = rig_path.parent
+    nodes = tuple(node for group in json.loads(inputs.read(recipes / 'recipe.json'))['groups']
+                  for node in group['nodes'])
+    breast_nodes = tuple(node for group in json.loads(inputs.read(recipes / 'breast-motion.json'))['groups']
+                         for node in group['nodes'])
+    for sex in ('Male', 'Female'):
+        name = prefix + MOTION_XML + sex + '.xml'
+        if name not in files:
+            raise ValueError('Missing FSMP motion configuration: ' + name)
+        try:
+            rig.validate_core(files[name], rig.core_chains(nodes, breast_nodes if sex == 'Female' else ()))
+        except ValueError as error:
+            raise ValueError(f'{name}: {error}') from error
+
+
 def _motion_payload(inputs, receipt_path, provider, core_inputs, core_bodies, materials):
     """Consume an existing builder receipt; never generate physics or qualify it."""
     payload = inputs.read(receipt_path)
@@ -429,16 +449,7 @@ def _motion_payload(inputs, receipt_path, provider, core_inputs, core_bodies, ma
         if not any(Path(row['path']).parts[-len(FSMP_RIG_SOURCE.parts):] == FSMP_RIG_SOURCE.parts
                    and inputs.read(row['path']) == rig_bytes for row in sources):
             raise ValueError('FSMP motion system requires identical builder and package rig source')
-        rig = ModuleType('claw_fsmp_rig')
-        exec(compile(rig_bytes, str(rig_path), 'exec'), rig.__dict__)
-        recipes = ROOT / 'src/main/python/physics'
-        nodes = tuple(node for group in json.loads(inputs.read(recipes / 'recipe.json'))['groups']
-                      for node in group['nodes'])
-        breast_nodes = tuple(node for group in json.loads(inputs.read(recipes / 'breast-motion.json'))['groups']
-                             for node in group['nodes'])
-        for sex in ('Male', 'Female'):
-            chains = rig.core_chains(nodes, breast_nodes if sex == 'Female' else ())
-            rig.validate_core(files[MOTION_XML + sex + '.xml'], chains)
+        _validate_fsmp_rigs(files, inputs)
     return files, {'provider': provider, 'receiptSha256': sha(payload), 'resources': resources,
                    'runtimeQualified': False, 'sharedTriSha256': {sex: sha(core_inputs[sex + 'Tri']) for sex in ('male', 'female')}}
 
@@ -556,7 +567,7 @@ def installer(template, entries, motion=False):
             files = ET.SubElement(pattern, 'files')
             for body in bodies:
                 source, destination = body.get('source'), body.get('destination')
-                if mode == 'fsmp': source = source.replace('00 Base/', MOTION_PREFIX + 'FSMP/', 1)
+                if mode == 'fsmp': source = source.replace('00 Base/', FSMP_PREFIX, 1)
                 ET.SubElement(files, 'file', source=source, destination=destination)
             extra = {MOTION_XML + sex + '.xml' for sex in ('Male', 'Female')} if mode == 'fsmp' else set()
             for destination in sorted(extra):
@@ -627,11 +638,16 @@ def audit_external_coats(entries):
         raise ValueError("Unsupported coat mapping schema")
 
 
-def selection_audit(entries):
+def selection_audit(entries, *, inputs=None):
     spec = importlib.util.spec_from_file_location("claw_source_fomod_reader", ROOT / "src/main/python/build-tools/build-unified-release.py")
     reader = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(reader)
     config = ET.fromstring(entries["fomod/ModuleConfig.xml"])
+    prerequisites = config.findall('moduleDependencies')
+    if (len(prerequisites) != 1 or prerequisites[0].get('operator', 'And') != 'And' or
+            len(prerequisites[0]) != 1 or prerequisites[0][0].tag != 'fileDependency' or
+            prerequisites[0][0].attrib != {'file': 'RaceMenu.esp', 'state': 'Active'} or len(prerequisites[0][0])):
+        raise ValueError('The serialized installer must require active RaceMenu.esp')
     required = config.find("requiredInstallFiles")
     extra_base = {APPEARANCE_PATH + name for name in APPEARANCE_FILES} | {MODEL_SWAP_OVERRIDE}
     player_models = {MESH + "/" + sex + "PlayerWerewolf" + ending
@@ -649,6 +665,7 @@ def selection_audit(entries):
                          for option in options if option.find('typeDescriptor/type') is not None}
         if len(options) != 2 or mode_defaults != {'none': 'Recommended', 'fsmp': 'Optional'}:
             raise ValueError('None must be the default and Faster HDT-SMP must be opt-in')
+        _validate_fsmp_rigs(entries, inputs if inputs is not None else Inputs(), FSMP_PREFIX)
     if json.loads(entries["00 Base/" + MODEL_SWAP_OVERRIDE]) != []:
         raise ValueError("Elegant model-swap compatibility override must be an empty JSON array")
     audit_external_coats(entries)
@@ -666,13 +683,18 @@ def selection_audit(entries):
             *_, records = _nif_string_records(materials, data)
             if any(key.strip().lower() == FSMP_HOOK.lower() for key, _ in records.values()):
                 raise ValueError("Motion-disabled model contains an FSMP binding: " + name)
-        elif name.startswith(MOTION_PREFIX + 'FSMP/'):
-            *_, root_extras, records = _nif_fields(materials, data)
-            sex = 'Female' if PurePosixPath(name).name.startswith('female') else 'Male'
-            xml = (MOTION_XML + sex + '.xml').encode('ascii')
-            bindings = [value for key, value in records if key.strip().lower() == FSMP_HOOK.lower()]
-            if bindings != [xml] or root_extras.get(FSMP_HOOK) != xml:
-                raise ValueError("Motion-enabled model must bind its own FSMP rig at the Scene Root: " + name)
+        elif name.startswith(FSMP_PREFIX):
+            base_name = '00 Base/' + name.removeprefix(FSMP_PREFIX)
+            base = entries.get(base_name)
+            if base is None and name.endswith('_1.nif'):
+                base = entries.get(base_name.replace('bodywerewolf_1.nif', 'bodywerewolf_0.nif'))
+            if base is None:
+                raise ValueError('Motion-enabled model has no matching base model: ' + name)
+            sex = 'female' if PurePosixPath(name).name.startswith('female') else 'male'
+            try:
+                _check_motion_nif(materials, base, data, sex)
+            except ValueError as error:
+                raise ValueError(f'Motion-enabled model must bind its own FSMP rig and preserve its base mesh: {name}: {error}') from error
     if required is None or len(required) != 7 + len(extra_base) + len(player_models) - (8 if motion else 0) or any(row.tag != "file" for row in required):
         raise ValueError("Literal serialized FOMOD must contain body/base mappings, four PlayerOnly model aliases and all coat resources")
     rows = []
@@ -707,12 +729,24 @@ def selection_audit(entries):
             if (selected != {("male", male), ("female", family)} or len(matrix.findall("Profile")) != 2 or
                     defaults is None or defaults.get("male") != ids["male"] or defaults.get("female") != ids["female"]):
                 raise ValueError("Selected body matrices/defaults differ from the independent choices")
-            if physics == 'fsmp' and any(not source.startswith(MOTION_PREFIX + 'FSMP/') for name, source in installed.items() if name.endswith('.nif')):
+            if physics == 'fsmp' and any(not source.startswith(FSMP_PREFIX) for name, source in installed.items() if name.endswith('.nif')):
                 raise ValueError('FSMP selection retained an unhooked core model')
+            if any(installed[name] != FSMP_PREFIX + name for name in extra_motion):
+                raise ValueError('FSMP selection must install each sex-specific XML at its own path')
             if physics != 'fsmp' and any(not source.startswith('00 Base/') for name, source in installed.items() if name.endswith('.nif')):
                 raise ValueError('Motion-disabled selection must use the base models')
-            if physics != 'fsmp' and any(source.startswith(MOTION_PREFIX + 'FSMP/') for source in installed.values()):
+            if physics != 'fsmp' and any(source.startswith(FSMP_PREFIX) for source in installed.values()):
                 raise ValueError('Unselected FSMP payload installed')
+            model_prefix = FSMP_PREFIX if physics == 'fsmp' else '00 Base/'
+            for name, source in installed.items():
+                if not name.endswith('.nif'):
+                    continue
+                standard = name.replace('PlayerWerewolf', 'bodywerewolf')
+                expected_model = model_prefix + standard
+                if expected_model not in entries and '00 Base/' + standard not in entries:
+                    expected_model = expected_model.replace('bodywerewolf_1.nif', 'bodywerewolf_0.nif')
+                if source != expected_model:
+                    raise ValueError('Selected body source differs from its sex and weight route: ' + name)
             rows.append({"maleFamily": male, "family": family, "obody": host, **({'physics': physics} if motion else {}), "runtimeFiles": len(installed),
                          "files": [{"path": name, "source": source, "sha256": sha(entries[source])}
                                    for name, source in sorted(installed.items())]})
@@ -858,7 +892,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     readback = read_zip(packed)
     if readback != entries:
         raise ValueError("Literal ZIP/readback installation differs from the recorded payload")
-    selections = selection_audit(readback)
+    selections = selection_audit(readback, inputs=inputs)
     receipt = {"schemaVersion": 1, "status": "packaged-explicit-build-inputs-not-game-qualified-not-published",
                "name": NAME, "version": version, "sourceCommit": reference["commit"],
                "sourceCheckoutHead": commit, "sourceReference": reference, "nativeDllSha256": native_sha,

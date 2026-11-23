@@ -47,6 +47,13 @@ physics/VR experiments, tools, backups and unrelated donor material from the
 working installer. Verify the selected files and manager accounting when
 installation is in scope. Packaging alone does not install or test the mod.
 
+The serialized installer must require active `RaceMenu.esp`. For the optional
+FSMP route, validate both XML systems inside the ZIP against their respective
+driven bones and anchors. Check every model selection against the matching sex
+and weight. The FSMP model must preserve the base geometry and add the matching
+XML link at its scene root. The None route uses the base models without FSMP
+links or installed FSMP configurations.
+
 Publish generated archives as GitHub Release assets or distribution-site files,
 not inside Git/LFS. Preserve historical release assets and tags. A new source
 layout does not retroactively alter or requalify those archives.

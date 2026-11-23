@@ -1,4 +1,5 @@
 """Direct-source packaging contracts using synthetic headers, not game fixtures."""
+import copy
 import hashlib
 import importlib.util
 import itertools
@@ -244,6 +245,30 @@ class SourcePackageTests(unittest.TestCase):
                 changed["00 Base/" + package.MODEL_SWAP_OVERRIDE] = payload
                 with self.assertRaisesRegex(ValueError, 'empty JSON array'):
                     package.selection_audit(changed)
+
+    def test_serialized_fomod_requires_active_racemenu(self):
+        result = package.build(**self.arguments())
+        entries = package.read_zip(Path(result['archive']).read_bytes())
+        path = 'fomod/ModuleConfig.xml'
+        good = ET.fromstring(entries[path])
+        with self.assertRaisesRegex(ValueError, 'Module dependency refused'):
+            reader.resolve_selection(good, entries, native=True, male_family='Vanilla', family='Vanilla', racemenu=False)
+        for failure in ('missing', 'inactive', 'bypass', 'duplicate'):
+            with self.subTest(failure=failure):
+                config = ET.fromstring(entries[path])
+                group = config.find('moduleDependencies')
+                if failure == 'missing':
+                    config.remove(group)
+                elif failure == 'inactive':
+                    group[0].set('state', 'Inactive')
+                elif failure == 'bypass':
+                    group.set('operator', 'Or')
+                    ET.SubElement(group, 'gameDependency', version='1.0.0.0')
+                else:
+                    config.append(copy.deepcopy(group))
+                altered = package.read_zip(package.zip_bytes(entries | {path: ET.tostring(config)}))
+                with self.assertRaisesRegex(ValueError, 'serialized installer must require active RaceMenu'):
+                    package.selection_audit(altered)
 
     def test_packaged_fomod_survives_vortex_string_stream_encoding(self):
         # Nexus-Mods/fomod-installer XmlScriptType.StringStream at
