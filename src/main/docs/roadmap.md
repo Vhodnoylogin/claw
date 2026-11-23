@@ -154,9 +154,10 @@ optional and isolated from the base runtime package.
 
 Start this phase after the core appearance and body-family checks, flat-game
 physics, VR body and collision checks, and the optional anatomy component have
-completed technical verification. This sequencing supersedes the earlier
-instruction below to prioritize aesthetic colour calibration. Restore ordinary
-technical function, such as a missing coat texture, during the earlier work.
+completed technical verification. The 23 November owner update permits item 2's
+colour-mechanism analysis and offline prototyping before this gate. Items 1 and
+3 and aesthetic tuning remain behind the gate. Restore ordinary technical
+function, such as a missing coat texture, during the earlier work.
 
 1. Audit self-intersections on the actual wolf meshes. Compare neutral states
    with individual morph extremes and targeted combined extremes. Prioritize

@@ -39,6 +39,39 @@ inspected SKEE recursive path, not every engine or third-party colour writer.
 The historical 0.8.5 bundled-artwork candidate described below was withdrawn;
 current runtime archives reference separately installed Elegant artwork.
 
+## Continuous recolouring of one installed texture
+
+Treat the colour as a material output of the named-vector calculation. The
+current adapter uses the output to select a coat texture set. An optional tint
+adapter can reuse the selected diffuse paths and shift the sampled diffuse
+colour towards a target. Keep the manual coat override and the original-colour
+fallback available.
+
+The proposed target takes hue and chroma from hair. Known skin can bias
+lightness within a configurable limit. With only skin, retain the base texture
+hue and try a lightness bias. With neither colour, use the base material.
+A numerical experiment used a 15% skin lightness coefficient with both colours
+known, centred on Oklab L = 0.65 with a maximum L shift of 0.06. These are
+experimental values.
+
+A bounded RGB multiplier reduces channels and has little reach on dark fur.
+The offline alternative adds the difference between the target and the base
+Oklab anchor to each sampled colour, then reduces chroma as needed to fit the
+output gamut. It preserves local lightness variation except where lightness
+reaches a gamut boundary. Tests on eight local 2K/4K diffuse DDS files retained
+alpha and left the source hashes unchanged. On the 2K Grey back fur, the
+sampled mean moved from RGB (85, 85, 85) to (173, 89, 48) for a target of
+(174, 88, 46). The comparable bounded linear RGB multiply gave (85, 80, 41).
+These are texture samples and do not measure lighting or in-game appearance.
+
+Start with fur surfaces. Body and head diffuse textures contain mixed
+materials, so finer control there needs a fur mask or isolated geometry.
+Keep diffuse alpha, normal and specular maps, transparency state and
+material ownership. Stock FaceGen tint has the observed overwrite above.
+A dedicated shader tint would need independent verification on two actors
+sharing the same source textures, including refresh, save/load and fade.
+No continuous adapter is enabled by this experiment.
+
 ## Earlier linked-tint implementation and evidence
 
 Development feature, 1 November 2026; not yet published. The exact engine-factory
