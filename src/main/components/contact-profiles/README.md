@@ -69,6 +69,10 @@ only against its own fully accepted previous token and uses the existing
 ledger to replace those slots. An incomplete or mismatched ledger uses the
 scoped full synchronization path. The native lane holds at most one
 unacknowledged update per actor, so a busy host can receive the same event again.
+Load or race-change events retire an outstanding offer before the queued graph
+recheck. Only the host ledger's current actor, generation and token can
+acknowledge its full or delta application. Cleanup of the owned slots keeps its
+separate authority.
 Live coordinates, update timing and contacts need a qualified VR run.
 
 For an isolated VR test, configure a fresh CMake tree with

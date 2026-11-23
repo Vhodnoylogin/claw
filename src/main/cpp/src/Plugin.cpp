@@ -311,11 +311,6 @@ std::deque<PhysicsFitWork> physicsWork;
 std::jthread physicsWorker;
 #endif
 void observePhysics(RE::Actor* actor, bool retryPose = false);
-void invalidatePhysics(RE::FormID id) {
-    if (const auto it = physicsBindings.find(id); it != physicsBindings.end()) {
-        it->second.observation.invalidate(); it->second.ready = false;
-    }
-}
 void deferPhysicsTargetModel(RE::FormID id) {
     if (const auto it = physicsBindings.find(id); it != physicsBindings.end()) {
         auto& binding = it->second;
@@ -789,6 +784,17 @@ void discardPhysicsPoseOffer(PhysicsBinding& binding, bool keepPredecessor) {
 #endif
 }
 #endif
+
+void invalidatePhysics(RE::FormID id) {
+    const auto it = physicsBindings.find(id);
+    if (it == physicsBindings.end()) return;
+    auto& binding = it->second;
+    binding.observation.invalidate();
+    binding.ready = false;
+#if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+    if (binding.poseOffer.captured) discardPhysicsPoseOffer(binding, false);
+#endif
+}
 
 RE::NiAVObject* physicsActorRoot(RE::Actor* actor) {
 #if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
@@ -1660,14 +1666,20 @@ void queuePhysicsPoseScan() {
 
 void queueActor(RE::FormID id, bool force = false) {
     if (!id || !tasks) return;
-    { std::lock_guard lock(mutex); claw::appearance::runtime.invalidateSurfaceAudit(id); }
-    const auto token = epoch.load();
-    tasks->AddTask([id, force, token] {
-        if (!enabled || token != epoch) return;
+    std::uint64_t token;
+    {
         std::lock_guard lock(mutex);
+        token = epoch.load();
+        claw::appearance::runtime.invalidateSurfaceAudit(id);
+        // Revoke the cached offer before Papyrus can write or acknowledge it
+        // while a force refresh is still waiting for its main-task graph read.
+        if (force) invalidatePhysics(id);
+    }
+    tasks->AddTask([id, force, token] {
+        std::lock_guard lock(mutex);
+        if (!enabled || token != epoch) return;
         // Events carrying only an ID are rescan hints, never actor-specific intent.
         refreshActor(RE::TESForm::LookupByID<RE::Actor>(id), force);
-        if (force) invalidatePhysics(id);
         observePhysics(RE::TESForm::LookupByID<RE::Actor>(id));
         offerSourceBootstrap(RE::TESForm::LookupByID<RE::Actor>(id));
     });

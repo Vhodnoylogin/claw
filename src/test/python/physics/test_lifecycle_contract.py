@@ -337,14 +337,20 @@ class LifecycleSourceContracts(unittest.TestCase):
                         remember.index("_retirementRuntime[index] = expectedRuntime"))
 
     def test_pose_ack_reports_only_the_application_path_of_the_accepted_token(self):
-        mode = body(self.actor, "UsedPoseDelta")
-        self.assertIn("snapshotToken > 0 && _acceptedNativeToken == snapshotToken && _acceptedWithPoseDelta", mode)
+        mode = body(self.actor, "AcceptedSnapshotMode")
+        self.assertIn("_acceptedNativeToken != snapshotToken || _generationUnknown || _modelGeneration != generation", mode)
+        self.assertIn("_tracked != target || GetActorReference() != target\n    Return 0", mode)
+        self.assertIn("If _acceptedWithPoseDelta\n    Return 2\n  EndIf\n  Return 1", mode)
+        change = body(self.actor, "MarkModelGenerationChanged")
+        self.assertIn("_acceptedNativeToken = 0", change)
         delta = body(self.actor, "SynchronizePoseDelta")
         self.assertLess(delta.index("_accepted[slot] = accepted"), delta.index("_acceptedWithPoseDelta = True"))
         full = body(self.actor, "SynchronizeInternal")
         self.assertLess(full.index("_acceptedWithPoseDelta = False"), full.index("_acceptedNativeToken = synchronizationToken"))
         host = body(self.host, "ProcessAutomatic")
-        self.assertLess(host.index("If outcome == 4"), host.index("AcknowledgePoseSnapshot(target, generation, token, helper.UsedPoseDelta(token))"))
+        self.assertLess(host.index("If outcome == 4"), host.index("helper.AcceptedSnapshotMode(target, generation, token)"))
+        self.assertIn('If kind == "pose" && acceptedMode != 0\n        CLAWPhysicsNative.AcknowledgePoseSnapshot(target, generation, token, acceptedMode == 2)', host)
+        self.assertLess(host.index("AcknowledgePoseSnapshot("), host.index("CancelSnapshot("))
 
     def test_completed_empty_withdrawal_clears_superseded_helper_owner_before_pending_context(self):
         completion = body(self.host, "CompleteNativeRetirement")

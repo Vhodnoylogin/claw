@@ -380,9 +380,10 @@ Function ProcessAutomatic(Int index, Actor target, String kind, Int token, Strin
       outcome = helper.SynchronizeMorphs(target, values, _automaticEvidence[index], True, token)
     EndIf
     If outcome == 4
-      If kind == "pose"
-        CLAWPhysicsNative.AcknowledgePoseSnapshot(target, generation, token, helper.UsedPoseDelta(token))
-      Else
+      Int acceptedMode = helper.AcceptedSnapshotMode(target, generation, token)
+      If kind == "pose" && acceptedMode != 0
+        CLAWPhysicsNative.AcknowledgePoseSnapshot(target, generation, token, acceptedMode == 2)
+      ElseIf kind == "snapshot" && acceptedMode == 1
         CLAWPhysicsNative.AcknowledgeSnapshot(target, generation, token)
       EndIf
     ElseIf outcome == 6 && kind != "pose" && CLAWPhysicsNative.SnapshotCurrent(target, generation, token)

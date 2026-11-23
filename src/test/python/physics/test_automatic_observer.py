@@ -63,9 +63,8 @@ class AutomaticObserverTests(unittest.TestCase):
         self.assertIn('binding.pointer != actor',observe)
         host = (ROOT/'papyrus/CLAWPhysicsHost.psc').read_text()
         self.assertIn('ElseIf outcome == 6',host)
-        self.assertIn('If outcome == 4\n      If kind == "pose"',host)
-        self.assertIn('AcknowledgePoseSnapshot(target, generation, token, helper.UsedPoseDelta(token))',host)
-        self.assertIn('Else\n        CLAWPhysicsNative.AcknowledgeSnapshot(target, generation, token)',host)
+        self.assertIn('AcknowledgePoseSnapshot(target, generation, token, acceptedMode == 2)',host)
+        self.assertIn('ElseIf kind == "snapshot" && acceptedMode == 1\n        CLAWPhysicsNative.AcknowledgeSnapshot(target, generation, token)',host)
         self.assertIn('Function OnPhysicsCandidate(',host)
         self.assertIn('helper.GetTrackedActor() == None && helper.GetAcceptedLedgerCount() == 0',host)
         self.assertIn('physicsPopulationBlocked',plugin)
@@ -104,6 +103,24 @@ class AutomaticObserverTests(unittest.TestCase):
         ack = plugin.split('void acknowledgePhysicsSnapshot(', 1)[1].split('void physicsAcknowledge(', 1)[0]
         self.assertLess(ack.index('poseDelta.has_value() != (binding.poseBaseSnapshot != 0)'),
                         ack.index('binding.capsules = std::move(binding.offeredCapsules)'))
+
+    def test_force_event_retires_claimed_offer_before_main_task_observation(self):
+        plugin = (ROOT.parents[3]/'src/main/cpp/src/Plugin.cpp').read_text()
+        event = plugin.split('void queueActor(', 1)[1].split('class Events', 1)[0]
+        self.assertLess(event.index('std::lock_guard lock(mutex)'), event.index('if (force) invalidatePhysics(id)'))
+        self.assertLess(event.index('if (force) invalidatePhysics(id)'), event.index('tasks->AddTask'))
+        self.assertLess(event.index('tasks->AddTask'), event.index('observePhysics('))
+        task = event.split('tasks->AddTask', 1)[1]
+        self.assertLess(task.index('std::lock_guard lock(mutex)'), task.index('token != epoch'))
+        invalidation = plugin.split('void invalidatePhysics(', 1)[1].split('RE::NiAVObject* physicsActorRoot', 1)[0]
+        self.assertIn('binding.ready = false', invalidation)  # The token read, claim and ACK all require ready.
+        self.assertIn('if (binding.poseOffer.captured) discardPhysicsPoseOffer(binding, false)', invalidation)
+        self.assertNotIn('physicsAuthority', invalidation)  # Preserve existing cleanup authority.
+        events = plugin.split('class Events', 1)[1].split('} events;', 1)[0]
+        for event, force in (('TESObjectLoaded', True), ('TESSwitchRaceComplete', True), ('NiNodeUpdate', False)):
+            callback = events.split(f'::{event}Event* event', 1)[1].split('kContinue', 1)[0]
+            self.assertIn('queueActor(', callback)
+            self.assertEqual(', true);' in callback, force)
 
     def test_pose_trace_is_staged_before_dispatched_and_consumed_at_first_current_ack(self):
         plugin = (ROOT.parents[3]/'src/main/cpp/src/Plugin.cpp').read_text()

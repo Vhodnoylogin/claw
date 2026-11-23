@@ -176,8 +176,14 @@ Int Function SynchronizePose(Actor expectedActor, Float[] values, String evidenc
   Return SynchronizeObservedMorphs(expectedActor, values, evidence, True, snapshotToken, True)
 EndFunction
 
-Bool Function UsedPoseDelta(Int snapshotToken)
-  Return snapshotToken > 0 && _acceptedNativeToken == snapshotToken && _acceptedWithPoseDelta
+Int Function AcceptedSnapshotMode(Actor target, Int generation, Int snapshotToken)
+  If snapshotToken <= 0 || _acceptedNativeToken != snapshotToken || _generationUnknown || _modelGeneration != generation || target == None || _tracked != target || GetActorReference() != target
+    Return 0
+  EndIf
+  If _acceptedWithPoseDelta
+    Return 2
+  EndIf
+  Return 1
 EndFunction
 
 Int Function SynchronizeObservedMorphs(Actor expectedActor, Float[] values, String evidence, Bool nativeSnapshot, Int snapshotToken, Bool poseSnapshot)
