@@ -71,12 +71,13 @@ def same_args(actual, expected):
     return type(actual) is type(expected) and actual == expected
 
 
-def typed(ledger, index, script, method, result_type, expected=None):
+def typed(ledger, index, script, method, result_type, expected=None, *, self_form=None):
     require(type(index) is int and 0 <= index < len(ledger), "Ledger index is missing or out of bounds")
     row = ledger[index]
     args, result = row.get("args", {}), row.get("result", {})
-    require(row.get("tool") == "papyrus" and args.get("action") == "call" and
-            (args.get("script"), args.get("function")) == (script, method) and "self" not in args and
+    target_matches = "self" not in args if self_form is None else same_args(args.get("self"), self_form)
+    require(row.get("tool") == "papyrus" and args.get("action") == "call" and target_matches and
+            (args.get("script"), args.get("function")) == (script, method) and
             (expected is None or same_args(args.get("args"), expected)) and
             result.get("called") is True and str(result.get("returnedType", "")).casefold() == result_type and
             "returned" in result and not (result.get("error") or result.get("isError")),

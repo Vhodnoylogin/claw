@@ -254,3 +254,43 @@ New trace receipts include `claimedUs`. Historical traces without that field
 can still verify placement and lifecycle but carry no claim timing evidence.
 For a live retry check, delay an offer past the claim deadline, confirm its
 token did not cause any provider writes, and observe the next accepted fit.
+### Equipped wolf player handoff
+
+`verify_equipped_turnover.py` joins one Skyrim VR run's original typed Papyrus
+receipts, Distribution pose ACK log and two fitted profile files. It checks three
+registrations of player `0x14` in one process, cell and load epoch. The expected
+order is stock, equipped Body32, and restored stock. Only the equipped phase
+uses the alternate fitted profile (`W_M` or `W_F`), with no competing buffered
+third-person Body32. The host ABI identity remains the stock identity throughout.
+
+After admission, stage the exact dual-profile Distribution build, the schema 8
+VR topology observer and the private `test_CLAW - VR Player Body32.esp` fixture
+in the disposable profile. Record the loaded DLL hash and the native build's
+toolset. Resolve the fixture's local ARMO `0x801` and ARMA
+`0x800` with `Game.GetFormFromFile` and retain the raw results. Check item
+custody and slot state before movement. Use only the admitted actor, fixture,
+provider namespace and session. For each phase register and explicitly enable
+the actor, wait for a full ACK, then bracket `CLAWVRModelTopology.Read(nonce)`
+with successful `SnapshotCurrent` reads for the last ACK token. Queue each
+observation with `CaptureDispatch(nonce)` and keep the original request and
+reply. Collect the host ledger count while that binding is current.
+
+After the stock and equipped phases, issue the admitted `Actor.EquipItem` or
+`Actor.UnequipItem` on that same player, using `[fixture, false, true]`. Wait for
+the model change to leave zero host slots and a stale old ACK token before
+explicitly calling `ReleaseActor(0)`. Check both again after release and confirm
+`ActorCurrent` is false. An unknown write outcome or incomplete retirement ends the
+disposable case. Register the next phase only after retirement. After the final
+release, record fixture inventory and slot restoration, suspend the host and
+record process exit and test profile restoration independently.
+
+Use `test_verify_equipped_turnover.py` as the manifest layout. The manifest names
+zero-based original `steps.jsonl` rows in read order. Run
+`python verify_equipped_turnover.py manifest.json steps.jsonl Distribution.log stock-fit.json equipped-fit.json`.
+Preserve the executor's linkage of the native log and loaded DLL to the same
+process. The ACK log has no PID. The clock join requires the pinned MSVC
+14.51.36231 build with a 10 MHz QPC reading in every topology capture.
+The verifier checks native model topology, collider arguments acknowledged by
+the host and retirement of its ledger. Solver geometry and controller contact
+still require independent provider evidence scoped to the player. The NPC-only
+CBPC callback recorder cannot certify those parts of this case.
