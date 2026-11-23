@@ -43,6 +43,13 @@ Do not commit credentials, external model weights, live sessions or local caches
   code, revision, worktree state, test counts and evidence when available. Missing
   runtime evidence and zero discovered tests are not passes. Preserve failed
   experiments and change the hypothesis after two equivalent failures.
+- For each FSMP or collider task, use Morphbench to inspect, position and tune
+  the same assets that go into the game test. Record the tool revision, assets,
+  settings, expected positions and measurements. Save native game logs and the
+  corresponding bone, collider, contact or motion measurements for each SE/VR
+  run. Report the scope, matches, discrepancies and repro steps to the original
+  Morphbench chat with the evidence paths. Morphbench owns tool fixes. Keep
+  offline checks and game results distinct, including when no game run is available.
 - Update the compact checkpoint after verified milestones. Keep it within 6 KiB
   with at most eight recent checks, eight open risks and five next actions.
   Use the CLAW chat-project report and goal for detailed history and decisions.
