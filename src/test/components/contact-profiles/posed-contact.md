@@ -88,6 +88,16 @@ live controller calibration and measured absolute attachment transform.
 Remeasure the sphere radius, actor, node pose, reach and clearance in the
 actual hold. Require the margin over the complete observed hold.
 
+For a morph change, pass `--morph-tokens BASELINE MORPHED RETURNED` in place
+of `--token`. Supply three new full acknowledgments for the same actor
+binding. Normalized weight stays fixed and the effective morph vector must
+change and return. The calculation looks for one sphere center clear of both
+outer banks and overlapping the middle bank. It projects all three through
+the middle attachment transform and retains the three signed gaps. Follow up
+with the effective TRI and current-token reads around each game hold, actual
+controller and attachment poses, and matching actor/node callback counts.
+A fit at a computed waypoint alone provides no contact or reach evidence.
+
 Use a dedicated affected group containing only the named node (`TailBone02`
 or the chosen ear node), while the full host still has destinations for all
 enabled nodes and only the test hand sphere supplies the contact. Bracket

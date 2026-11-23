@@ -60,7 +60,7 @@ def paired_bank_bound(clear, overlap):
     return bound / 2.
 
 
-def contrast(clear, overlap, minimum_margin, admissible=None):
+def contrast(clear, overlap, minimum_margin, admissible=None, *, returned=None):
     # A point penetrating the destination union lies inside this box.
     lower = np.min([np.minimum(cap["p1"], cap["p2"]) - cap["radius"] for cap in overlap], axis=0)
     upper = np.max([np.maximum(cap["p1"], cap["p2"]) + cap["radius"] for cap in overlap], axis=0)
@@ -71,12 +71,16 @@ def contrast(clear, overlap, minimum_margin, admissible=None):
     axes = [np.linspace(lo, hi, count + 1) for lo, hi, count in zip(lower, upper, divisions, strict=True)]
     points = np.stack(np.meshgrid(*axes, indexing="ij"), axis=-1).reshape(-1, 3)
     separation = signed_capsules(points, clear)
+    bank_bound = paired_bank_bound(clear, overlap)
+    if returned is not None:
+        separation = np.minimum(separation, signed_capsules(points, returned))
+        bank_bound = min(bank_bound, paired_bank_bound(returned, overlap))
     penetration = -signed_capsules(points, overlap)
     margin = np.minimum(separation, penetration)
     # The worst of the two signed gaps is 1-Lipschitz. Outside the box
     # the destination penetration is nonpositive.
     cover = math.hypot(*(span / divisions)) / 2.
-    upper_bound = min(paired_bank_bound(clear, overlap), max(0., float(np.max(margin)) + cover))
+    upper_bound = min(bank_bound, max(0., float(np.max(margin)) + cover))
     if admissible is not None:
         allowed = np.asarray(admissible(points))
         require(allowed.shape == (len(points),) and allowed.dtype == np.dtype(bool),
@@ -113,12 +117,54 @@ def prepare(lines, profile, *, actor, generation, token, node, hand_radius, mini
             "controllerReachChecked": False, "contactVerified": False}
 
 
+def prepare_morph_refit(lines, profile, *, actor, generation, tokens, node, hand_radius, minimum_margin=MIN_MARGIN):
+    require(math.isfinite(hand_radius) and hand_radius > 0., "The projected hand radius must be positive and finite")
+    require(math.isfinite(minimum_margin) and minimum_margin > 0., "The minimum margin must be positive and finite")
+    require(len(tokens) == 3 and list(tokens) == sorted(set(tokens)),
+            "Expected three increasing baseline, morphed and returned tokens")
+    verify(lines, actor=actor, generation=generation, profile=profile, expected_tokens=tokens)
+    selected = selected_receipts(lines, actor, generation)
+    rows = [entry for entry in selected if entry[0] in tokens]
+    require(all(receipt["application"] == "full" and receipt["previousToken"] == 0 for _, _, receipt, _ in rows),
+            "A morph refit needs three new full banks, each without a pose predecessor")
+    # Pose deltas can occur between the phases, but an extra complete refit
+    # would make this three-phase comparison ambiguous.
+    require([token for token, _, receipt, _ in selected if tokens[0] <= token <= tokens[-1] and
+             receipt["previousToken"] == 0] == list(tokens), "An intervening full bank changed the morph sequence")
+    baseline, morphed, returned = [entry[2] for entry in rows]
+    require(baseline["weight"] == morphed["weight"] == returned["weight"] and
+            baseline["morphs"] == returned["morphs"] and baseline["morphs"] != morphed["morphs"],
+            "Effective morphs must change and return at a fixed actor weight")
+    require(baseline["acknowledgedUs"] < morphed["capturedUs"] and morphed["acknowledgedUs"] < returned["capturedUs"],
+            "A refit sample predates the previous accepted bank")
+    slots = [slot for slot, (name, _) in rows[0][3].items() if name == node]
+    require(slots, "The selected attachment node has no slots")
+    transform = next((bone["world"] for bone in morphed["bones"] if bone["name"] == node), None)
+    require(transform is not None, "The selected node has no transform in the fit input")
+    matrix = np.asarray(transform, dtype=float).reshape(3, 4)
+    banks = [project([entry[3][slot][1] for slot in slots], matrix, hand_radius) for entry in rows]
+    search = contrast(banks[0], banks[1], minimum_margin, returned=banks[2])
+    gaps = [float(signed_capsules([search["sphereCenterRootRelativeGu"]], bank)[0]) for bank in banks]
+    return {"schema": "claw-vr-morph-refit-contact-contrast/1", "actor": actor, "generation": generation,
+            "world": morphed["world"], "registration": morphed["registration"], "model": morphed["model"],
+            "node": node, "slots": slots, "tokens": list(tokens), "normalizedWeight": morphed["weight"],
+            "effectiveMorphs": [entry[2]["morphs"] for entry in rows],
+            "acknowledgedUs": [entry[2]["acknowledgedUs"] for entry in rows],
+            "handSphereRadiusGu": hand_radius, "requiredMarginGu": minimum_margin, "gridStepGu": GRID_STEP,
+            "clearOverlapClear": search, "signedGapsGu": dict(zip(("baseline", "morphed", "returned"), gaps, strict=True)),
+            "scope": "Three accepted banks projected at the same middle-phase owner transform in actor-relative world axes.",
+            "controllerReachChecked": False, "contactVerified": False}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("log", "profile", "out"):
         parser.add_argument("--" + name, required=True, type=Path)
-    for name in ("actor", "generation", "token"):
+    for name in ("actor", "generation"):
         parser.add_argument("--" + name, required=True, type=parse_id)
+    tokens = parser.add_mutually_exclusive_group(required=True)
+    tokens.add_argument("--token", type=parse_id)
+    tokens.add_argument("--morph-tokens", nargs=3, type=parse_id, metavar=("BASELINE", "MORPHED", "RETURNED"))
     parser.add_argument("--node", required=True, help="sole attachment bone in the CBPC test group")
     parser.add_argument("--hand-radius-gu", required=True, type=float, help="projected world-space sphere radius")
     parser.add_argument("--margin-gu", default=MIN_MARGIN, type=float)
@@ -129,9 +175,13 @@ def main():
                 all(part.casefold() not in ("mods", "data", "overwrite", "downloads") for part in output.parts),
                 "Use a new external report path")
         log, profile = args.log.read_bytes(), args.profile.read_bytes()
-        report = prepare(log.decode("utf-8-sig").splitlines(), json.loads(profile), actor=args.actor,
-                         generation=args.generation, token=args.token, node=args.node,
-                         hand_radius=args.hand_radius_gu, minimum_margin=args.margin_gu)
+        inputs = (log.decode("utf-8-sig").splitlines(), json.loads(profile))
+        options = dict(actor=args.actor, generation=args.generation, node=args.node,
+                       hand_radius=args.hand_radius_gu, minimum_margin=args.margin_gu)
+        if args.morph_tokens is None:
+            report = prepare(*inputs, token=args.token, **options)
+        else:
+            report = prepare_morph_refit(*inputs, tokens=args.morph_tokens, **options)
         report["logSha256"] = sha256(log).hexdigest()
         report["profileSha256"] = sha256(profile).hexdigest()
         with output.open("x", encoding="utf-8") as file:

@@ -50,7 +50,7 @@ def case(female=False, *, ears=False):
 
         raw = dict(capture(TOPOLOGY_SCHEMA), nonce=nonce)
         sample = raw["sample"]
-        sample.update(sex=int(female), qpcBegin=n * 1000 + 50, qpcEnd=n * 1000 + 60,
+        sample.update(sex=int(female), weight=40., qpcBegin=n * 1000 + 50, qpcEnd=n * 1000 + 60,
                       playerBody32Fixture=dict(zip(("item", "addon"), FIXTURE, strict=True)))
         world = sample["views"]["thirdPerson"]
         family = "female" if female else "male"
@@ -191,6 +191,19 @@ class TurnoverTests(unittest.TestCase):
                 linked = self.check(*case(female, ears=True))["phases"]["equipped"]["earPose"]
                 self.assertEqual(linked, {"nonce": 1, "phase": 20, "qpcBegin": 2080, "qpcEnd": 2100, "token": 20,
                                           "earPoseLinked": True})
+
+    def test_matching_topology_and_ear_pose_cannot_use_an_ack_from_different_weight(self):
+        for weight in (37., None):
+            with self.subTest(weight=weight):
+                args = case(ears=True)
+                equipped = args[0]["phases"]["equipped"]
+                for index, field in ((equipped["capture"], "weight"), (equipped["earPose"]["capture"], "rawWeight")):
+                    reply = args[1][index]["result"]
+                    raw = json.loads(reply["returned"])
+                    raw["sample"][field] = weight
+                    reply["returned"] = json.dumps(raw)
+                with self.assertRaisesRegex(ValueError, "actor weight"):
+                    self.check(*args)
 
     def test_rejects_cross_actor_world_route_and_out_of_order_ear_pose(self):
         for field, value in (("handle", 81), ("qpcBegin", 2060), ("phaseSequence", 19), ("qpcFrequency", 1000000),

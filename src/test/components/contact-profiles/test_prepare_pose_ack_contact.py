@@ -3,7 +3,7 @@ from copy import deepcopy
 import json
 import unittest
 
-from prepare_pose_ack_contact import contrast, prepare
+from prepare_pose_ack_contact import contrast, prepare, prepare_morph_refit
 from test_pose_ack import ACTOR, GENERATION, PROFILE, lines, receipt
 
 
@@ -102,6 +102,50 @@ class PoseAckContactTests(unittest.TestCase):
         empty = contrast(clear, overlap, .25, lambda points: points[:, 0] < 0.)
         self.assertFalse(empty["meetsRequestedMargin"])
         self.assertIsNone(empty["sphereCenterRootRelativeGu"])
+
+
+class MorphRefitContactTests(unittest.TestCase):
+    def setUp(self):
+        self.baseline, self.morphed, self.returned = (
+            receipt(token, tick) for token, tick in ((40, 100), (44, 200), (47, 300)))
+        self.morphed["morphs"][0]["value"] = .5
+        for packet, x in zip((self.baseline, self.morphed, self.returned), (0., 6., 0.), strict=True):
+            capsule(packet, 2)["geometry"] = sphere(x)
+
+    def plan(self, *packets, tokens=(40, 44, 47)):
+        return prepare_morph_refit(lines(*packets), PROFILE, actor=ACTOR, generation=GENERATION,
+                                   tokens=tokens, node=NODE, hand_radius=1.)
+
+    def test_holds_one_transform_and_requires_clear_in_both_restored_banks(self):
+        result = self.plan(self.baseline, self.morphed, self.returned)
+        self.assertEqual(result["clearOverlapClear"]["sphereCenterRootRelativeGu"], [4., 14., 3.])
+        self.assertEqual(result["signedGapsGu"], {"baseline": 10., "morphed": -2., "returned": 10.})
+        self.assertTrue(result["clearOverlapClear"]["meetsRequestedMargin"])
+        self.assertFalse(result["contactVerified"])
+
+        capsule(self.returned, 2)["geometry"] = sphere(6.)
+        result = self.plan(self.baseline, self.morphed, self.returned)
+        self.assertFalse(result["clearOverlapClear"]["meetsRequestedMargin"])
+        self.assertEqual(result["clearOverlapClear"]["marginUpperBoundGu"], 0.)
+
+    def test_refuses_a_pose_fallback_or_an_intervening_full_refit(self):
+        fallback = receipt(44, 200, previous=40, application="full")
+        with self.assertRaisesRegex(ValueError, "without a pose predecessor"):
+            self.plan(self.baseline, fallback, self.returned)
+        unexpected = receipt(45, 250)
+        with self.assertRaisesRegex(ValueError, "intervening full bank"):
+            self.plan(self.baseline, self.morphed, unexpected, self.returned)
+
+    def test_refuses_replayed_phase_and_changing_weight_or_nonreturned_morph(self):
+        with self.assertRaisesRegex(ValueError, "three increasing"):
+            self.plan(self.baseline, self.morphed, self.returned, tokens=(40, 44, 44))
+        self.returned["weight"] = .5
+        with self.assertRaisesRegex(ValueError, "fixed actor weight"):
+            self.plan(self.baseline, self.morphed, self.returned)
+        self.returned["weight"] = self.baseline["weight"]
+        self.returned["morphs"][0]["value"] = .25
+        with self.assertRaisesRegex(ValueError, "change and return"):
+            self.plan(self.baseline, self.morphed, self.returned)
 
 
 if __name__ == "__main__":

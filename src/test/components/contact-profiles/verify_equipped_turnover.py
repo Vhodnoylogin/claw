@@ -8,7 +8,7 @@ import sys
 
 from verify_pose_ack import selected_receipts, unique_object, unit, verify as verify_ack
 from verify_pose_contact_window import CLOCK, CONTROL, TICKS_PER_US
-from verify_tail_refit import NATIVE, QPC, ordered, positive_int, require, typed
+from verify_tail_refit import NATIVE, QPC, f32, ordered, positive_int, require, typed
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "vr-body"))
 from verify_dispatch_markers import ADDON, BODY, ITEM, SCHEMA as TOPOLOGY_SCHEMA, verify_dispatch_markers
@@ -105,6 +105,9 @@ def linked_ear_pose(ledger, observation, topology, route_result, ack):
             route_result["captureClock"]["qpcEnd"] < begin < end and end - begin <= QPC * 4 // 1000,
             "Ear sample is outside the ordered 10 MHz capture bracket")
     morphs = pose["earEffectiveMorphs"]
+    weight = body["weight"]
+    require(weight is not None and f32([weight / 100.]) == f32([ack["weight"]]),
+            "Body32 actor weight does not match the acknowledged fitter input")
     expected = {row["name"]: row["value"] for row in ack["morphs"] if row["name"] in EAR_MORPHS}
     require(set(morphs) == set(expected) == EAR_MORPHS and all(unit(value) for value in morphs.values()) and morphs == expected,
             "Ear morph values do not match the acknowledged fitter inputs")
