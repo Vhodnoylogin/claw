@@ -115,8 +115,11 @@ and posed contact gates still require their own in-game fixtures.
 ### Optional world-body motion trial
 
 `world_motion.py` builds one detached FSMP overlay for each fixed-profile sex.
-Use the pinned 0.10.0 core archive and the existing fixed-profile diagnostic
-archive as inputs. Each output contains the selected legacy NIF and its exact
+For a current core candidate, use its ZIP as `--core-release` and its
+`build-receipt.json` as `--core-receipt`. The builder rechecks the serialized
+choices, confirms the static body routes and uses the exact matching FSMP rigs.
+The historical command below uses the pinned 0.10.0 core archive. Both paths
+use the existing fixed-profile diagnostic archive. Each output contains the selected legacy NIF and its exact
 released FSMP XML. The matching namespaced TRI stays supplied by the
 fixed-profile diagnostic. A staged trial uses the same sex in both layers and
 the core installer setting **None**. To disable CLAW motion in this setup,

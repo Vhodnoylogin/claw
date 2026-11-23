@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[4]
 HERE = Path(__file__).resolve().parent
 sys.path[:0] = [str(HERE), str(ROOT/'src/main/python/vr'), str(ROOT/'src/main/python/build-tools')]
 import body_resource as resource
+import core_archive
 import head_split
 import head_isolation as isolation
 import neck_bounds
@@ -247,7 +248,8 @@ def verify_first_person(nif, Trip, tri, sex, profile, head_descendants):
             'visibleBreastMorphPairs': breast, 'publicMorphCount': profile['publicMorphCount'][sex]}
 
 
-def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, runtime_receipt, profile_path=HERE/'current-010.json'):
+def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, runtime_receipt,
+          profile_path=HERE/'current-010.json', *, core_archive_path=None):
     global TRIP
     body_root, skeleton_path = Path(body_root).resolve(strict=True), Path(skeleton_path).resolve(strict=True)
     profile = resource.read_json(profile_path)
@@ -255,14 +257,19 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
     inputs = {str(body_root/name): h for name, h in profile['inputSha256'].items()}
     inputs[str(skeleton_path)] = profile['skeletonSha256']
     runtime_receipt = Path(runtime_receipt).resolve(strict=True)
-    if resource.sha256(runtime_receipt) != profile['runtimeReceiptSha256']:
-        raise ValueError('Final archive runtime composition receipt differs')
-    archive = resource.read_json(runtime_receipt)
-    if Path(archive['bodies']).resolve() != body_root or archive['sourceCommit'] != profile['sourceCommit'] or archive['archiveSha256'] != profile['archiveSha256']:
-        raise ValueError('Final runtime inputs do not match the declared archive/source')
-    if resource.sha256(archive['archive']) != profile['archiveSha256']:
-        raise ValueError('Actual source archive changed')
-    inputs.update({str(runtime_receipt): profile['runtimeReceiptSha256'], archive['archive']: profile['archiveSha256']})
+    if core_archive_path is None:
+        if resource.sha256(runtime_receipt) != profile['runtimeReceiptSha256']:
+            raise ValueError('Final archive runtime composition receipt differs')
+        archive = resource.read_json(runtime_receipt)
+        if (Path(archive['bodies']).resolve() != body_root or archive['sourceCommit'] != profile['sourceCommit'] or
+                archive['archiveSha256'] != profile['archiveSha256']):
+            raise ValueError('Final runtime inputs do not match the declared archive/source')
+        inputs.update({str(runtime_receipt): profile['runtimeReceiptSha256'], archive['archive']: profile['archiveSha256']})
+    else:
+        pack = core_archive.open_tools(core_archive.PACKAGER)
+        files, plans, provenance = core_archive.read_core_archive(pack, core_archive_path, receipt_path=runtime_receipt)
+        core_archive.require_reviewed_body(pack, files, plans, profile)
+        inputs.update(provenance)
     if any(resource.sha256(p) != h for p, h in inputs.items()): raise ValueError('Current source body/TRI/skeleton pin differs')
     proof = reference_proof(reference_mod, profile['reference'])
     inputs.update({proof['mesh']: proof['sha256'], proof['metadata']: proof['metadataSha256'], str(profile_path): resource.sha256(profile_path)})
@@ -270,7 +277,9 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
     api, Patch, Trip, dependencies = resource.dependencies(pynifly, morphbench); TRIP = Trip
     if any(resource.sha256(p) != h for p, h in inputs.items()): raise ValueError('Input changed during dependency loading')
     sources = [Path(__file__), *(Path(module.__file__) for module in
-               (resource, head_split, isolation, neck_bounds, rig, morph_quality, player_only_materials, vr_dispatch))]
+               (resource, core_archive, head_split, isolation, neck_bounds, rig, morph_quality, player_only_materials, vr_dispatch))]
+    if core_archive_path is not None:
+        sources.extend((core_archive.PACKAGER, core_archive.PACKAGER.with_name('build-unified-release.py')))
     pins = {**inputs, **dependencies, **{str(p): resource.sha256(p) for p in sources}}
     out.mkdir(parents=True)
     report = {'schemaVersion': 1, 'status': 'building', 'sourceVersion': '0.10.0', 'inputSha256': inputs,
@@ -352,8 +361,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('body-root', 'skeleton', 'out', 'pynifly', 'morphbench', 'reference-mod', 'runtime-receipt'):
         parser.add_argument('--'+name, type=Path, required=True)
+    parser.add_argument('--core-archive', type=Path, help='Verify the core ZIP and its build-receipt.json from --runtime-receipt')
     a = parser.parse_args()
-    build(a.body_root, a.skeleton, a.out, a.pynifly, a.morphbench, a.reference_mod, a.runtime_receipt)
+    build(a.body_root, a.skeleton, a.out, a.pynifly, a.morphbench, a.reference_mod, a.runtime_receipt,
+          core_archive_path=a.core_archive)
 
 
 if __name__ == '__main__': main()

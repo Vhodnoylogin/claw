@@ -6,6 +6,7 @@ from hashlib import sha256
 from io import BytesIO
 import json
 from pathlib import Path
+import struct
 from tempfile import TemporaryDirectory
 from zipfile import BadZipFile, ZipFile
 
@@ -196,6 +197,36 @@ def motion_xml(sex):
     return motion.fsmp_motion.XML_ROOT + f'CLAWMotion{sex.title()}.xml'
 
 
+def require_motion_xml(files, sex):
+    require(files[motion_xml(sex)] == motion.fsmp_motion.render_xml(sex == 'female'),
+            'World FSMP XML must match the authored rig for that sex')
+
+
+def require_legacy_motion_binding(data, expected_xml):
+    nif = motion.fsmp_motion.Nif(data)
+    require(nif.kind(0) == 'NiNode', 'Expected a legacy ear scene root')
+    hook = motion.fsmp_motion.HOOK.lower().encode('ascii')
+    bindings = []
+    for index, block in enumerate(nif.blocks):
+        if nif.kind(index) == 'NiStringExtraData':
+            require(len(block) == 8, 'Invalid legacy ear string extra')
+            name, value = struct.unpack('<II', block)
+            require(max(name, value) < len(nif.strings), 'Invalid legacy ear string index')
+            if nif.strings[name].strip().lower() == hook:
+                bindings.append((index, nif.strings[value]))
+    if expected_xml is None:
+        require(not bindings, 'Static legacy ear NIF must have no FSMP binding')
+        return
+    root = nif.blocks[0]
+    require(len(root) >= 8, 'Truncated legacy ear root')
+    count = struct.unpack_from('<I', root, 4)[0]
+    require(8 + 4 * count <= len(root), 'Truncated legacy ear root extras')
+    refs = struct.unpack_from(f'<{count}I', root, 8)
+    require(len(bindings) == 1 and bindings[0][1] == expected_xml.encode('ascii')
+            and refs.count(bindings[0][0]) == 1,
+            'Legacy ear NIF must have exactly one root FSMP binding to its authored XML')
+
+
 def equipped_payload(data, admission, sex, mode):
     fixture_forms(admission)
     require(('motionArchive' in admission) == (mode == 'fsmp'), 'Equipped FSMP arm requires exactly one motion archive')
@@ -211,6 +242,7 @@ def equipped_payload(data, admission, sex, mode):
         active = {path for s in SEXES for path in (world_ear_path(s, '.nif'), motion_xml(s))}
         xml = motion_xml(sex)
         selected = archive_payload(overlay, active, {world, xml})
+        require_motion_xml(selected, sex)
         require(selected[world] == motion.fsmp_motion.bind_nif(files[world], xml)[0],
                 'Equipped world FSMP NIF must add only the corresponding XML binding')
         files.update(selected)
@@ -235,6 +267,9 @@ def admitted_assets(admission):
         if mode == 'fsmp':
             expected.add(motion_xml(sex))
         files = archive_payload(data, expected, expected)
+        if mode == 'fsmp':
+            require_motion_xml(files, sex)
+        require_legacy_motion_binding(files[nif], motion_xml(sex) if mode == 'fsmp' else None)
     observed = admission['effectiveVfs']
     require(set(files) == set(observed), 'Admitted VFS inventory differs from the trial archive')
     require(all(pin_bytes(payload, observed[name]) for name, payload in files.items()), 'A loaded VFS asset differs from the exact trial arm')

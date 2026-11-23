@@ -13,9 +13,11 @@ import numpy as np
 
 from avatar_ear_stereo import (ADDON, BASE, CAPTURE_SCHEMA, CELL, EAR_DRIVERS, EAR_SHAPE, EQUIPPED_CAPTURE_SCHEMA,
                               EQUIPPED_RUN_SCHEMA, HEAD_BONE, ITEM, LEGACY_ALIAS, PLAYER, RACE, RUN_SCHEMA,
-                              admitted_assets, admitted_baseline, admitted_sample, ear_motion, motion_xml, read_reply)
+                              admitted_assets, admitted_baseline, admitted_sample, ear_motion, motion, motion_xml,
+                              read_reply, require_legacy_motion_binding)
 from stage_player_armor import PLUGIN, armor_path, resource_paths, world_armor_path, world_ear_path
 from stereo_calibration import calibrate_head, calibrated_eye, transform_points
+from test_vr_dispatch import nif_fixture
 
 TRI = r'actors\werewolfbeast\claw\firstperson\female\earworldtrial.tri'
 
@@ -126,17 +128,50 @@ class StereoAdmissionTests(unittest.TestCase):
             witness.write_bytes(b'witness')
             archive = root / 'ears.zip'
             tri = 'Meshes/Actors/WerewolfBeast/CLAW/FirstPerson/female/EarWorldTrial.tri'
-            members = {LEGACY_ALIAS: b'ear mesh', tri: b'trial TRI'}
+            nif = nif_fixture(TRI.encode('ascii'))
+            members = {LEGACY_ALIAS: nif, tri: b'trial TRI'}
             with ZipFile(archive, 'w') as dest:
                 for name, data in members.items():
                     dest.writestr(name, data)
             vfs = {name: pin_payload(data) for name, data in members.items()}
             admission = {'schema': RUN_SCHEMA, 'pid': 492, 'sex': 'female', 'mode': 'static', 'archive': pin_file(archive),
                          'effectiveVfs': vfs, 'witnessDll': pin_file(witness), 'mappedWitness': pin_file(witness) | {'pid': 492}}
-            self.assertEqual(admitted_assets(admission), (b'ear mesh', b'trial TRI', tri))
+            self.assertEqual(admitted_assets(admission), (nif, b'trial TRI', tri))
             vfs[tri]['sha256'] = '0' * 64
             with self.assertRaisesRegex(ValueError, 'loaded VFS'):
                 admitted_assets(admission)
+
+    def test_legacy_motion_archive_rejects_hash_matched_malformed_xml(self):
+        with TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            witness = root / 'CLAWVRModelTopology.dll'
+            witness.write_bytes(b'witness')
+            archive = root / 'ears.zip'
+            tri = world_ear_path('female', '.tri')
+            members = {LEGACY_ALIAS: b'ear mesh', tri: b'trial TRI', motion_xml('female'): b'not XML'}
+            with ZipFile(archive, 'w') as dest:
+                for name, data in members.items():
+                    dest.writestr(name, data)
+            admission = {'schema': RUN_SCHEMA, 'pid': 492, 'sex': 'female', 'mode': 'fsmp', 'archive': pin_file(archive),
+                         'effectiveVfs': {name: pin_payload(data) for name, data in members.items()},
+                         'witnessDll': pin_file(witness), 'mappedWitness': pin_file(witness) | {'pid': 492}}
+            with self.assertRaisesRegex(ValueError, 'authored rig for that sex'):
+                admitted_assets(admission)
+
+    def test_legacy_motion_binding_requires_the_selected_root_hook(self):
+        static = nif_fixture(TRI.encode('ascii'))
+        xml = motion_xml('female')
+        bound, _ = motion.fsmp_motion.bind_nif(static, xml)
+        wrong, _ = motion.fsmp_motion.bind_nif(static, motion_xml('male'))
+        detached = motion.fsmp_motion.Nif(bound)
+        detached.blocks[0] = motion.fsmp_motion.Nif(static).blocks[0]
+        require_legacy_motion_binding(static, None)
+        require_legacy_motion_binding(bound, xml)
+        with self.assertRaisesRegex(ValueError, 'no FSMP binding'):
+            require_legacy_motion_binding(bound, None)
+        for payload in (static, wrong, detached.bytes()):
+            with self.subTest(payload=sha256(payload).hexdigest()), self.assertRaisesRegex(ValueError, 'root FSMP binding'):
+                require_legacy_motion_binding(payload, xml)
 
     def test_ear_motion_baseline_is_same_session_and_precedes_current_request(self):
         reply, expected = payload()
@@ -247,6 +282,16 @@ class EquippedArchiveTests(unittest.TestCase):
                             with self.assertRaisesRegex(ValueError, 'motion archive'):
                                 admitted_assets(admission | {'motionArchive': overlay_pin})
                         else:
+                            xml = motion_xml(sex)
+                            other_xml = motion_xml('female' if sex == 'male' else 'male')
+                            for bad_xml in (b'not XML', active.read(other_xml)):
+                                repack = Path(scratch) / 'wrong-xml.zip'
+                                with ZipFile(repack, 'w') as bad:
+                                    for name in active.namelist():
+                                        bad.writestr(name, bad_xml if name == xml else active.read(name))
+                                with self.assertRaisesRegex(ValueError, 'authored rig for that sex'):
+                                    admitted_assets(admission | {'motionArchive': pin_file(repack),
+                                                                'effectiveVfs': vfs | {xml: pin_payload(bad_xml)}})
                             if sex == 'male':
                                 repack = Path(scratch) / 'mislabeled.zip'
                                 with ZipFile(repack, 'w') as bad:

@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
 import xml.etree.ElementTree as ET
 
 from vr_dispatch import LEGACY_ALIAS, ROOT, SEXES, require_static_nif, resource_paths
-from body_resource import bodytri, safe_output, visible_by_hidden_flags
+from body_resource import bodytri, read_json, safe_output, visible_by_hidden_flags
+from core_archive import PACKAGER, open_tools, read_core_archive, require_reviewed_body, static_routes
 
 PHYSICS = ROOT / "src/main/python/physics"
 sys.path.insert(0, str(PHYSICS))
@@ -44,45 +44,39 @@ def alias_member(config, files, sex):
     return expected
 
 
-def open_tools(path):
-    spec = importlib.util.spec_from_file_location("claw_vr_world_motion_archive", path)
-    tool = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(tool)
-    return tool
-
-
-def build(fixed_profile, core_release, skeleton, pynifly, out):
+def build(fixed_profile, core_release, skeleton, pynifly, out, *, core_receipt=None):
     common = fsmp_motion.common
-    source_file = ROOT / "src/main/python/build-tools/package-source-build.py"
-    pack = open_tools(source_file)
+    pack = open_tools(PACKAGER)
     fixed_profile, core_release, skeleton = (Path(path).resolve(strict=True)
                                             for path in (fixed_profile, core_release, skeleton))
     out = Path(out).absolute()
     if any(path.is_junction() or path.is_symlink() for path in (out, *out.parents)):
         raise ValueError("Output ancestry must use real directories")
-    out = safe_output(out, (fixed_profile, core_release, skeleton))
-    core_payload, fixed_payload = core_release.read_bytes(), fixed_profile.read_bytes()
-    if (pack.sha(core_payload), pack.sha(fixed_payload), common.pin(skeleton)["sha256"]) != (
-            CORE_SHA256, FIXED_SHA256, SKELETON_SHA256):
-        raise ValueError("Expected the exact released core, verified fixed-profile archive and XP32 skeleton")
-    sources = (Path(__file__), source_file, source_file.with_name("build-unified-release.py"),
+    inputs = (fixed_profile, core_release, skeleton)
+    out = safe_output(out, inputs if core_receipt is None else (*inputs, core_receipt))
+    fixed_payload = fixed_profile.read_bytes()
+    if pack.sha(fixed_payload) != FIXED_SHA256 or common.pin(skeleton)["sha256"] != SKELETON_SHA256:
+        raise ValueError("Expected the exact verified fixed-profile archive and XP32 skeleton")
+    core, core_plans, core_pins = read_core_archive(pack, core_release, receipt_path=core_receipt, known_digest=CORE_SHA256)
+    profile = Path(__file__).with_name('current-010.json')
+    require_reviewed_body(pack, core, core_plans, read_json(profile))
+    sources = (Path(__file__), profile, PACKAGER, PACKAGER.with_name("build-unified-release.py"),
+               Path(sys.modules["core_archive"].__file__),
                Path(fsmp_motion.__file__), Path(common.__file__), fsmp_motion.RIG_SOURCE,
                Path(fsmp_motion.head_split.__file__), Path(fsmp_motion.materials.__file__),
                Path(sys.modules["vr_dispatch"].__file__), Path(sys.modules["body_resource"].__file__))
-    pins = [common.pin(path) for path in (fixed_profile, core_release, skeleton, *sources)]
-    core, fixed = pack.read_zip(core_payload), pack.read_zip(fixed_payload)
+    pins = [common.pin(path) for path in (fixed_profile, skeleton, *sources)]
+    for path, digest in core_pins.items():
+        pin = common.pin(Path(path))
+        if pin['sha256'] != digest:
+            raise ValueError('Core archive or receipt changed after readback')
+        pins.append(pin)
+    fixed = pack.read_zip(fixed_payload)
     config = ET.fromstring(fixed["fomod/ModuleConfig.xml"])
-    core_plans = pack.selection_audit(core)
-    static_plans = [plan for plan in core_plans if plan["physics"] == "none"]
-    if len(static_plans) != 20:
-        raise ValueError("Missing original physics-off install choices")
-    core_routes = [{row["path"]: row["source"] for row in plan["files"]
-                    if row["path"].endswith(".nif") or row["path"].startswith(pack.MOTION_XML)}
-                   for plan in static_plans]
-    core_off = core_routes[0]
-    if (len(core_off) != 8 or any(not name.endswith(".nif") for name in core_off)
-            or any(routes != core_off for routes in core_routes)):
-        raise ValueError("Core physics-off choices must share the eight static model routes")
+    static_plans = [plan for plan in core_plans if plan.get("physics") in {None, "none"}]
+    destinations = {f"{pack.MESH}/{sex}{role}_{weight}.nif" for sex in SEXES
+                    for role in ("bodywerewolf", "PlayerWerewolf") for weight in (0, 1)}
+    core_off = static_routes(static_plans, destinations)
     for source in set(core_off.values()):
         require_static_nif(core[source])
     api, dependencies = common.load_pynifly(Path(pynifly))
@@ -151,6 +145,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("fixed-profile", "core-release", "skeleton", "pynifly", "out"):
         parser.add_argument("--" + name, type=Path, required=True)
+    parser.add_argument('--core-receipt', type=Path, help='Read the exact current core ZIP through its build receipt')
     try:
         report = build(**vars(parser.parse_args(argv)))
     except (OSError, ValueError, KeyError, RuntimeError) as error:

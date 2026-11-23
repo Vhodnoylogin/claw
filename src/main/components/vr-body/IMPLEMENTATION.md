@@ -6,6 +6,11 @@ ESP, change the world body or call the engine. The pinned inputs in
 `current-010.json` are the FINAL archive/FOMOD runtime files, including their
 material and BODYTRI aliases. The earlier raw authoring NIFs are not substitutes.
 Both current runtime endpoints intentionally come from the same sex `_0` file.
+The builder can also use the equivalent body family from a newer clean-source
+core archive. It checks the archive against its actual `build-receipt.json`,
+resolves the physics-off FOMOD choices again and verifies each delivered model
+and TRI against the reviewed profile. A change in the DLL or documentation can
+qualify through the same body bytes.
 
 The build losslessly splits current head/torso triangles and remaps ALL current
 serialized TRI records:30 male and31 female morphs, not the retained24/25-morph
@@ -43,6 +48,11 @@ python src/main/components/vr-body/build.py --body-root <final-runtime-bodies>
   --pynifly <explicit-addon-root> --morphbench <explicit-frozen-tool-root>
   --reference-mod <installed-Werewolf-Body-for-VR-source> --out <new-external-dir>
 ```
+
+For a current core candidate, add `--core-archive <core-ZIP>` and point
+`--runtime-receipt` to that archive's `build-receipt.json`. Supply the six
+resolved physics-off files in `--body-root`. The historical recipe above keeps
+its original archive and receipt pins.
 
 The actual installed reference's NIF and saved author metadata are hash-pinned
 as source proof for `1stperson_werewolf_hands.nif`. None of that mesh is reused.
