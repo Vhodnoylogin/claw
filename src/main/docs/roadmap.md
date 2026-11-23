@@ -152,6 +152,12 @@ optional and isolated from the base runtime package.
 
 ## Aesthetic work split
 
+Start this phase after the core appearance and body-family checks, flat-game
+physics, VR body and collision checks, and the optional anatomy component have
+completed technical verification. This sequencing supersedes the earlier
+instruction below to prioritize aesthetic colour calibration. Restore ordinary
+technical function, such as a missing coat texture, during the earlier work.
+
 1. Audit self-intersections on the actual wolf meshes. Compare neutral states
    with individual morph extremes and targeted combined extremes. Prioritize
    reproducible new penetrations and preserve existing shapes while fixing them.
@@ -159,7 +165,7 @@ optional and isolated from the base runtime package.
    which selection is controlled by hair and skin, and document the difference
    between selecting authored textures and applying a continuous shader tint.
 3. Review human-to-wolf shape mapping, proportions, limits and new morphs jointly
-   with the owner. This full visual review remains deferred.
+   with the owner. Start this review together after the two independent checks.
 
 The independent Morphbench comparison-plugin UI/public update remains deferred.
 Fix functional defects such as missing textures or broken animation as they are found.

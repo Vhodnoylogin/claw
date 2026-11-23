@@ -23,7 +23,7 @@ public:
         const bool colour = schema == "2";
         if (std::string_view(root.name()) != "CoatMapping" || root.next_sibling() ||
             !(colour ? coatXmlAttributes(root, {"schemaVersion", "output", "red", "green", "blue", "seed"},
-                {"lightnessWeight", "chromaWeight", "variantTolerance"}) : schema == "1" && coatXmlAttributes(root, {"schemaVersion", "output"})))
+                {"lightnessWeight", "chromaWeight"}) : schema == "1" && coatXmlAttributes(root, {"schemaVersion", "output"})))
             throw std::invalid_argument("Unsupported coat mapping schema");
         CoatMapping result;
         result.output_ = root.attribute("output").value();
@@ -36,7 +36,6 @@ public:
             }
             if (root.attribute("lightnessWeight")) result.lightnessWeight_ = weight(root.attribute("lightnessWeight").value());
             if (root.attribute("chromaWeight")) result.chromaWeight_ = weight(root.attribute("chromaWeight").value());
-            if (root.attribute("variantTolerance")) result.variantTolerance_ = bound(root.attribute("variantTolerance").value());
             if (result.lightnessWeight_ == 0 && result.chromaWeight_ == 0)
                 throw std::invalid_argument("Colour mapping requires a positive distance weight");
         }
@@ -72,9 +71,9 @@ public:
                 for (const auto row : node.children()) {
                     const std::string_view tag = row.name();
                     if (row.first_child()) throw std::invalid_argument("Nested colour group entry");
-                    if (tag == "Anchor" && coatXmlAttributes(row, {"red", "green", "blue"}, {"variant"})) {
-                        group.anchors.push_back({oklab({bound(row.attribute("red").value()), bound(row.attribute("green").value()),
-                            bound(row.attribute("blue").value())}), row.attribute("variant").value()});
+                    if (tag == "Anchor" && coatXmlAttributes(row, {"red", "green", "blue"})) {
+                        group.anchors.push_back(oklab({bound(row.attribute("red").value()), bound(row.attribute("green").value()),
+                            bound(row.attribute("blue").value())}));
                         if (group.anchors.size() > 16) throw std::invalid_argument("Excessive colour group anchors");
                     } else if (tag == "Variant" && coatXmlAttributes(row, {"id"})) {
                         const std::string member = row.attribute("id").value();
@@ -84,14 +83,6 @@ public:
                     } else throw std::invalid_argument("Invalid colour group entry");
                 }
                 if (group.anchors.empty() || group.variants.empty()) throw std::invalid_argument("Empty colour group");
-                if (result.variantTolerance_) {
-                    std::set<std::string> measured;
-                    for (const auto& anchor : group.anchors) if (!anchor.variant.empty()) measured.insert(anchor.variant);
-                    if (measured != std::set(group.variants.begin(), group.variants.end()))
-                        throw std::invalid_argument("Coat variant tolerance requires measurements for exactly this group's variants");
-                } else if (std::any_of(group.anchors.begin(), group.anchors.end(), [](const auto& anchor) { return !anchor.variant.empty(); })) {
-                    throw std::invalid_argument("Variant measurements require a coat variant tolerance");
-                }
                 result.groups_.push_back(std::move(group));
             }
             if (result.groups_.empty()) throw std::invalid_argument("Missing colour groups");
@@ -156,40 +147,17 @@ public:
         double best = std::numeric_limits<double>::infinity();
         // Declared group/anchor order supplies deterministic ties. Seed cannot affect this choice.
         for (const auto& group : groups_) for (const auto& anchor : group.anchors) {
-            const auto l = colour[0] - anchor.lab[0], a = colour[1] - anchor.lab[1], b = colour[2] - anchor.lab[2];
+            const auto l = colour[0] - anchor[0], a = colour[1] - anchor[1], b = colour[2] - anchor[2];
             const auto distance = lightnessWeight_ * l * l + chromaWeight_ * (a * a + b * b);
             if (distance < best) { best = distance; selected = &group; }
         }
         if (!selected) return {{}, {}, CoatOrigin::none, "coat colour group unavailable"};
-        const auto index = pickVariant(*selected, colour, input[3]);
+        const auto index = std::min(static_cast<std::size_t>(double(input[3]) * selected->variants.size()), selected->variants.size() - 1);
         return {selected->variants[index], selected->id, CoatOrigin::hairPool, {}, input[3]};
     }
 private:
     struct Range { float maximum; std::string id; };
-    struct Anchor { std::array<double, 3> lab; std::string variant; };
-    struct Group { std::string id; std::vector<Anchor> anchors; std::vector<std::string> variants; };
-    static std::size_t choiceIndex(float seed, std::size_t count) {
-        return std::min(static_cast<std::size_t>(double(seed) * count), count - 1);
-    }
-    std::size_t pickVariant(const Group& group, const std::array<double, 3>& colour, float seed) const {
-        if (!variantTolerance_) return choiceIndex(seed, group.variants.size());
-        // Match hue using the configured group weights, then compare actual coat
-        // swatches in unweighted Oklab within that group.
-        std::array<double, 16> distances;
-        distances.fill(std::numeric_limits<double>::infinity());
-        for (const auto& anchor : group.anchors) {
-            if (anchor.variant.empty()) continue;
-            const auto index = std::find(group.variants.begin(), group.variants.end(), anchor.variant) - group.variants.begin();
-            const auto distance = std::hypot(colour[0] - anchor.lab[0], colour[1] - anchor.lab[1], colour[2] - anchor.lab[2]);
-            distances[index] = std::min(distances[index], distance);
-        }
-        const auto limit = *std::min_element(distances.begin(), distances.end()) + *variantTolerance_;
-        const auto eligible = [limit](double distance) { return distance <= limit; };
-        auto index = choiceIndex(seed, std::count_if(distances.begin(), distances.end(), eligible));
-        for (std::size_t i = 0; i < group.variants.size(); ++i)
-            if (eligible(distances[i]) && index-- == 0) return i;
-        throw std::logic_error("Coat variant selection has no admitted colour");
-    }
+    struct Group { std::string id; std::vector<std::array<double, 3>> anchors; std::vector<std::string> variants; };
     // Standard Oklab conversion of normalized encoded sRGB. This material adapter,
     // not the shared numerical matrix, owns colour-space interpretation.
     static std::array<double, 3> oklab(const RGB& rgb) {
@@ -219,7 +187,6 @@ private:
     std::vector<std::string> channels_;
     std::vector<Group> groups_;
     float lightnessWeight_{1}, chromaWeight_{1};
-    std::optional<float> variantTolerance_;
     std::vector<Range> ranges_;
     std::set<std::string, std::less<>> aliases_;
     std::map<std::string, std::string, std::less<>> resources_;

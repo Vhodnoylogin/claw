@@ -17,14 +17,6 @@ target FaceGen shaders and do not apply to this path; ordinary property fades
 and general material-alpha traversal remain distinct. A fresh game regression
 must verify actual load and fade behaviour before acceptance.
 
-The supplied mapping picks an Elegant colour group from the captured hair RGB.
-Inside the group it compares each measured variant in unweighted Oklab. The
-declared `variantTolerance` of `0.015` keeps variants within that distance of
-the closest one. The seed selects among those similarly close variants. The
-authored swatches are means of the installed source textures and do not model
-lighting or the final rendered coat. The ten Elegant variants include warm
-browns and greys. A dedicated red coat would need another external texture.
-
 The supplied coat matrix uses known skin RGB to bias the variant within the
 hair-selected group. The normalized variant value combines 80% of the actor's
 stable seed with 20% of encoded skin luminance. When hair is unavailable and
@@ -36,12 +28,10 @@ colour. The external textures retain their authored colours and a manual choice
 takes precedence.
 
 Existing custom matrices keep the original input names and their behavior.
-Mappings without `variantTolerance` keep the original equal-share variant
-selection. When the tolerance is set, each group's variant must have an
-associated measured `Anchor` in that group. The new shipped matrix and mapping
-must be installed with their matching CLAW DLL. Existing automatic choices may
-change once when switching configuration. Unchanged captured colours, seed,
-matrix and mapping repeat the same choice across transformations and loads.
+The new shipped matrix uses additional inputs and must be installed with its
+matching CLAW DLL. Previously generated skin-only choices may change once when
+switching to this matrix. Unchanged captured colours, seed and matrix repeat
+the same choice across transformations and loads.
 
 The legacy opt-in linked-tint path below remains separate, including its neutral
 fallback when a source colour is unavailable. Its NO_TINT marker protects the
