@@ -34,7 +34,7 @@ constexpr std::string_view equippedContactModelPath(bool female) {
 }
 
 constexpr std::string_view equippedWorldMarker(bool female) {
-    return female ? "W_F" : "W_M";
+    return female ? "CLAW_VR_DISPATCH_PROBE_W_F" : "CLAW_VR_DISPATCH_PROBE_W_M";
 }
 
 // The engine adapter resolves and verifies the optional fixture pair from its own ESP.

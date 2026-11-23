@@ -4,6 +4,7 @@
 #include "claw/CoatMapping.h"
 #include "claw/MaterialLease.h"
 #include "claw/CoatSurfaceAudit.h"
+#include "claw/VRPlayerBodyRoute.h"
 #include <RE/Skyrim.h>
 #include <SKSE/SKSE.h>
 #include <IPluginInterface.h>
@@ -181,10 +182,12 @@ inline Runtime::CoatGeometryRoles::CoatGeometryRoles(RE::Actor* actor, const RE:
     const auto biped = actor->GetBiped(false);
     if (!biped || biped->actorRef.get().get() != actor) return;
     const auto& body = biped->objects[RE::BIPED_OBJECTS::kBody];
-    if (!body.item || body.item->GetFormID() != 0xCDD86 || !body.addon || body.addon->GetFormID() != 0xCDD87 ||
-        !attached(body.partClone.get(), root)) return;
-    worldBody = body.partClone;
+    if (!body.item || !body.addon || !attached(body.partClone.get(), root)) return;
     female = sex == RE::SEX::kFemale;
+    const ContactArmorForms forms{body.item->GetFormID(), body.addon->GetFormID()};
+    if (forms != stockContactForms && (!isEquippedPlayerWolfBody(actor, *biped, female) ||
+        !observeEquippedWolfGeometry(*body.partClone, female))) return;
+    worldBody = body.partClone;
 }
 inline std::optional<std::size_t> Runtime::CoatGeometryRoles::match(
     const RE::NiAVObject* object, const RE::BSGeometry* geometry) const {

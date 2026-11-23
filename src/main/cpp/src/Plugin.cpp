@@ -21,7 +21,7 @@
 #include "claw/Appearance.h"
 #include "claw/TargetModelAvailability.h"
 #include "claw/CoatMatrix.h"
-#include "claw/PhysicsContactRoute.h"
+#include "claw/VRPlayerBodyRoute.h"
 #if defined(CLAW_PHYSICS_EQUIPPED_VR_SUPPORT)
 #include <RE/T/TESEquipEvent.h>
 #endif
@@ -840,42 +840,6 @@ bool reciprocalPoseRoute(const RE::NiAVObject* node, const RE::NiAVObject* root)
     return false;
 }
 
-#if defined(CLAW_PHYSICS_EQUIPPED_VR_SUPPORT)
-std::optional<claw::ContactArmorForms> equippedContactForms() {
-    constexpr auto name = claw::equippedContactPlugin.data();
-    auto* data = RE::TESDataHandler::GetSingleton();
-    if (!data) return std::nullopt;
-    const auto* file = data->LookupModByName(name);
-    const auto* item = data->LookupForm<RE::TESObjectARMO>(claw::equippedContactItem, name);
-    const auto* addon = data->LookupForm<RE::TESObjectARMA>(claw::equippedContactAddon, name);
-    if (!file || !item || !addon || item->GetFile(0) != file || addon->GetFile(0) != file ||
-        item->armorAddons.size() != 1 || item->armorAddons[0] != addon) return std::nullopt;
-    return claw::ContactArmorForms{item->GetFormID(), addon->GetFormID()};
-}
-
-bool sampleEquippedEar(RE::NiAVObject& clone, bool female, PhysicsPoseGraph& result,
-                        RE::NiPointer<RE::BSGeometry>& ear) {
-    const auto probe = claw::collectTargetModel(&clone, [&](RE::NiAVObject* object) {
-        auto* geometry = object->AsGeometry();
-        const auto* raw = object->name.c_str();
-        const std::string_view name = raw ? std::string_view(raw) : std::string_view{};
-        std::optional<std::size_t> role;
-        if (name == claw::equippedEarShape) { role = 0; ear.reset(geometry); }
-        else if (name.starts_with(claw::dispatchMarkerPrefix)) { role = 1; result.marker.reset(object); }
-        return claw::TargetModelObject{geometry != nullptr, role};
-    }, [](RE::NiAVObject* object, auto&& push) {
-        if (const auto* node = object->AsNode()) for (const auto& child : node->GetChildren())
-            if (!push(child.get())) return false;
-        return true;
-    });
-    const auto* marker = result.marker ? result.marker->AsNode() : nullptr;
-    return probe.collection == claw::TargetModelCollection::complete && probe.roleObjects[0] == 1 &&
-        probe.roleGeometries[0] == 1 && ear && probe.roleObjects[1] == 1 && marker &&
-        marker != &clone && marker->GetChildren().empty() && reciprocalPoseRoute(marker, &clone) &&
-        std::string_view(marker->name.c_str()).substr(claw::dispatchMarkerPrefix.size()) == claw::equippedWorldMarker(female);
-}
-#endif
-
 std::optional<PhysicsPoseGraph> samplePhysicsPoseGraph(RE::Actor* actor, bool female) {
     const auto target = sampleTargetModel(actor);
     if (claw::targetModelAvailability(target.observation) != claw::TargetModelAvailability::ready ||
@@ -890,14 +854,12 @@ std::optional<PhysicsPoseGraph> samplePhysicsPoseGraph(RE::Actor* actor, bool fe
     RE::NiPointer<RE::BSGeometry> ear;
     if (active != claw::stockContactForms) {
 #if defined(CLAW_PHYSICS_EQUIPPED_VR_SUPPORT)
-        const auto& buffered = biped->bufferedObjects[RE::BIPED_OBJECTS::kBody];
-        const auto* path = part.part ? part.part->GetModel() : nullptr;
-        const auto* bufferedPath = buffered.part ? buffered.part->GetModel() : nullptr;
-        const auto route = claw::contactRoute(active, equippedContactForms(), actor == RE::PlayerCharacter::GetSingleton(),
-            !buffered.item && !buffered.addon && !buffered.partClone && (!bufferedPath || !*bufferedPath) && !buffered.partHandle,
-            path ? std::string_view(path) : std::string_view{}, female);
-        if (!route || !sampleEquippedEar(*result.clone, female, result, ear)) return std::nullopt;
-        result.route = *route;
+        if (!claw::isEquippedPlayerWolfBody(actor, *biped, female)) return std::nullopt;
+        const auto geometry = claw::observeEquippedWolfGeometry(*result.clone, female);
+        if (!geometry) return std::nullopt;
+        ear.reset(geometry->ear);
+        result.marker.reset(geometry->marker);
+        result.route = claw::PhysicsContactRoute::equipped;
 #else
         return std::nullopt;
 #endif

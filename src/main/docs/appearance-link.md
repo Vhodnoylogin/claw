@@ -33,6 +33,13 @@ matching CLAW DLL. Previously generated skin-only choices may change once when
 switching to this matrix. Unchanged captured colours, seed and matrix repeat
 the same choice across transformations and loads.
 
+The detached equipped VR body trial shares the selected world model between
+coat application and contact placement. The optional ear surface uses the
+selected coat's `head.dds` when the active Body32 outfit, model path, unique world
+marker and sex-specific `EarWorldTrial.tri` agree. Its eligibility is independent
+of the optional physics build. Verify the applied material on the equipped
+world clone in the game. The first-person clone requires a separate readback.
+
 The legacy opt-in linked-tint path below remains separate, including its neutral
 fallback when a source colour is unavailable. Its NO_TINT marker protects the
 inspected SKEE recursive path, not every engine or third-party colour writer.

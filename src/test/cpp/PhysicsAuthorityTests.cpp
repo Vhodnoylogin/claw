@@ -24,6 +24,8 @@ static_assert(!contactRoute(equipped, equipped, false, true, equippedContactMode
 static_assert(!contactRoute(equipped, equipped, true, false, equippedContactModelPath(false), false));
 static_assert(!contactRoute(equipped, equipped, true, true, equippedContactModelPath(false), true));
 static_assert(!contactRoute(equipped, equipped, true, true, R"(Actors\WerewolfBeast\CLAW\FirstPerson\male\Body_1.nif)", false));
+static_assert(equippedWorldMarker(false) == "CLAW_VR_DISPATCH_PROBE_W_M");
+static_assert(equippedWorldMarker(true) == "CLAW_VR_DISPATCH_PROBE_W_F");
 
 constexpr PhysicsOwner owner{10, 20};
 constexpr PhysicsBodyStamp beastA = [] {
