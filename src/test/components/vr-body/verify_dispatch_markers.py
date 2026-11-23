@@ -68,6 +68,10 @@ def origin(token):
     return f'Meshes\\Actors\\WerewolfBeast\\CLAW\\FirstPerson\\{sex}\\{filename}'
 
 
+def canonical_model(path):
+    return path.replace('/', '\\').casefold().removeprefix('meshes\\')
+
+
 def player_fixture(sample, schema, expected):
     if schema not in (SCHEMA_V7, SCHEMA):
         require(expected is None, 'Expected schema 7 or later for fixture forms')
@@ -176,8 +180,7 @@ def verify_dispatch_markers(observation, *, view, pid, nonce, epoch, expect=None
         elif marker in WORLD_TOKENS and view != 'thirdPerson':
             status = 'wrong_view'
         elif marker in WORLD_TOKENS and (
-                chosen['reportedModelPath'].replace('/', '\\').casefold().removeprefix('meshes\\') !=
-                origin(marker).casefold().removeprefix('meshes\\')):
+                canonical_model(chosen['reportedModelPath']) != canonical_model(origin(marker))):
             status = 'wrong_model_path'
         elif (chosen['actorRoot'] in (other['actorRoot'], other['clone'])
               or chosen['clone'] in (other['clone'], other['actorRoot'], chosen['actorRoot'])):
@@ -194,6 +197,49 @@ def verify_dispatch_markers(observation, *, view, pid, nonce, epoch, expect=None
             'installedAssetWinnerVerified': False, 'weightInterpolationVerified': False, 'renderedPixelsVerified': False}
 
 
+def paired_routes(observation, *, pid, nonce, epoch, fixture_forms):
+    """Classify the split world/first-person outfit from one native observation."""
+    observation = object_value(observation, 'capture')
+    require(observation.get('schema') == SCHEMA and fixture_forms is not None,
+            'The paired trial needs schema 8 and independently observed fixture forms')
+    trial = dict(pid=pid, nonce=nonce, epoch=epoch, fixture_forms=fixture_forms)
+    world = verify_dispatch_markers(observation, view='thirdPerson', **trial)
+    sex = world['sex']
+    world_marker, first_marker = WORLD_TOKENS[sex], PLAYER_TOKENS[sex]
+    first = verify_dispatch_markers(observation, view='firstPerson', expect=first_marker, **trial)
+    outside, _, inside, waiting = world['observations']
+    world_ok = world['modelOriginVerified'] and outside['markers'] == {world_marker: 1}
+    first_status = first['status']
+    if first['modelOriginVerified'] and canonical_model(inside['reportedModelPath']) != canonical_model(origin(first_marker)):
+        first_status = 'wrong_model_path'
+
+    sample = observation['sample']
+    raw_camera = sample['cameraStateId']
+    if raw_camera is not None:
+        integer(raw_camera, 'camera state ID', high=255)
+    culls = {graph['id']: object_value(graph.get('appCull'), 'graph app-cull')['effective']
+             for graph in sample['distinctRoots']}
+    require(all(value is None or type(value) is bool for value in culls.values()), 'Invalid effective application cull')
+
+    if not world_ok:
+        status = 'world_route_unresolved'
+    elif first_status == 'origin_observed':
+        status = 'separate_active_routes'
+    elif first_status == 'unloaded' and not waiting['clone']:
+        status = 'world_only'
+    else:
+        status = 'first_person_route_unresolved'
+    return {'schema': 'claw-vr-paired-dispatch/1', 'status': status,
+            'pid': pid, 'nonce': nonce, 'epoch': epoch, 'captureClock': world['captureClock'],
+            'actorRuntimeHandle': world['actorRuntimeHandle'], 'sex': sex, 'observedActorWeight': world['observedActorWeight'],
+            'cameraStateId': raw_camera, 'world': outside | {'expectedMarkerObserved': world_ok},
+            'firstPerson': inside | {'status': first_status, 'expectedMarkerObserved': first_status == 'origin_observed',
+                                     'buffered': waiting},
+            'applicationCull': {row['view']: {'actorRoot': culls.get(row['actorRoot']), 'clone': culls.get(row['clone'])}
+                                for row in (outside, inside)},
+            'installedAssetWinnerVerified': False, 'weightInterpolationVerified': False, 'renderedPixelsVerified': False}
+
+
 def unique_json_object(pairs):
     result = dict(pairs)
     require(len(result) == len(pairs), 'Duplicate JSON key')
@@ -203,7 +249,9 @@ def unique_json_object(pairs):
 def main():
     parser = ArgumentParser(description=__doc__)
     parser.add_argument('capture', type=Path, help='One admitted CaptureDispatch /5 through /8 JSON reply')
-    parser.add_argument('--view', required=True, choices=VIEWS)
+    routes = parser.add_mutually_exclusive_group(required=True)
+    routes.add_argument('--view', choices=VIEWS)
+    routes.add_argument('--paired', action='store_true', help='Classify both active routes for the split-view Body32 fixture')
     parser.add_argument('--pid', type=int, required=True)
     parser.add_argument('--nonce', type=int, required=True)
     parser.add_argument('--epoch', type=int, required=True)
@@ -214,13 +262,20 @@ def main():
     try:
         payload = args.capture.read_bytes()
         capture = json.loads(payload, object_pairs_hook=unique_json_object)
-        result = verify_dispatch_markers(capture, view=args.view, pid=args.pid, nonce=args.nonce, epoch=args.epoch,
-                                         expect=args.expect, fixture_forms=tuple(args.fixture_forms) if args.fixture_forms else None)
-    except (OSError, ValueError) as error:
+        request = dict(pid=args.pid, nonce=args.nonce, epoch=args.epoch,
+                       fixture_forms=tuple(args.fixture_forms) if args.fixture_forms else None)
+        if args.paired:
+            require(args.expect is None, '--paired infers both expected markers from the actor sex')
+            result = paired_routes(capture, **request)
+            accepted = result['status'] == 'separate_active_routes'
+        else:
+            result = verify_dispatch_markers(capture, view=args.view, expect=args.expect, **request)
+            accepted = result['modelOriginVerified']
+    except (OSError, ValueError, KeyError) as error:
         parser.error(str(error))
     result['captureSha256'] = sha256(payload).hexdigest()
     print(json.dumps(result, indent=2, allow_nan=False))
-    return 0 if result['modelOriginVerified'] else 1
+    return 0 if accepted else 1
 
 
 if __name__ == '__main__':

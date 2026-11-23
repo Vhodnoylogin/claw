@@ -39,7 +39,7 @@ not establish rendered geometry, continuous attachment or applied physics.
 
 ## Loaded Body32 origin
 
-Use `CaptureDispatch(nonce)` to add the schema 7 marker observation. The
+Use `CaptureDispatch(nonce)` to add the schema 8 marker observation. The
 original `Capture(nonce)` returns schema 4. `Read(nonce)` preserves the
 requested mode. The marker capture adds the runtime handle, actor-base sex
 and readable weight, and a native QPC interval for the same task.
@@ -80,6 +80,23 @@ models retain the `P_M` and `P_F` markers. Both motion variants use the same
 world marker because the marker establishes the model route. Verify the
 exact installed NIF and its FSMP registration separately. The verifier still
 accepts schema 7 with its original marker counts.
+
+For the separate world/first-person outfit, classify both views from the same
+schema 8 capture:
+
+```text
+python src/test/components/vr-body/verify_dispatch_markers.py CAPTURE.json --paired --pid PID --nonce NONCE --epoch EPOCH --fixture-forms ITEM ADDON
+```
+
+This checks the sex-specific world and first-person paths and markers together.
+It distinguishes two independent active clones, a world clone with both
+first-person banks empty, and an unresolved first-person route. The report
+includes the raw camera state and effective application cull for each actor
+root and active clone. A loaded clone can be culled. A marker in the buffered
+bank cannot establish an active model. Only two separately observed active
+routes give exit code 0 in this mode. This command does not test the older
+outfit that deliberately used a shared model in both views.
+
 Confirm the actual installed winner bytes and the effective
 armor record alongside each process-owned capture. Review the
 requested active slot with the verifier in `src/test/components/vr-body`:

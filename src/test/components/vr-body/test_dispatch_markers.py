@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from verify_dispatch_markers import (ADDON, BODY, ITEM, ROUTES, SCHEMA, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_TOKENS,
-                                     TOKENS, origin, verify_dispatch_markers)
+                                     PLAYER_TOKENS, TOKENS, WORLD_TOKENS, origin, paired_routes, verify_dispatch_markers)
 
 FIXTURE = (0x0B000801, 0x0B000800)
 
@@ -38,6 +38,23 @@ def mark(sample, index, *markers, classification=None):
 
 def verify(data, **overrides):
     return verify_dispatch_markers(data, **(dict(view='firstPerson', pid=492, nonce=3, epoch=7) | overrides))
+
+
+def split_capture(sex):
+    data = capture(SCHEMA)
+    sample = data['sample']
+    pair = dict(zip(('item', 'addon'), FIXTURE, strict=True))
+    sample.update(sex=sex, playerBody32Fixture=pair, cameraStateId=9)
+    for graph in sample['distinctRoots']:
+        graph['appCull'] = {'effective': graph['id'] in (2, 5)}
+    for view, index, marker in (('thirdPerson', 0, WORLD_TOKENS[sex]), ('firstPerson', 2, PLAYER_TOKENS[sex])):
+        sample['views'][view]['active'][0].update(pair, modelPath=origin(marker).lower().replace('\\', '/'))
+        mark(sample, index, marker)
+    return data
+
+
+def paired(data, *, fixture_forms=FIXTURE):
+    return paired_routes(data, pid=492, nonce=3, epoch=7, fixture_forms=fixture_forms)
 
 
 class DispatchMarkersTests(unittest.TestCase):
@@ -225,6 +242,54 @@ class DispatchMarkersTests(unittest.TestCase):
                 self.assertEqual(bad_path['status'], 'wrong_model_path')
                 mark(sample, 2, world)
                 self.assertEqual(verify(data, expect=world, fixture_forms=FIXTURE)['status'], 'wrong_view')
+
+    def test_v8_paired_routes_record_native_cull_separately_from_loaded_models(self):
+        for sex in (0, 1):
+            with self.subTest(sex=sex):
+                result = paired(split_capture(sex))
+                self.assertEqual(result['status'], 'separate_active_routes')
+                self.assertEqual(result['cameraStateId'], 9)
+                self.assertEqual(result['world']['markers'], {WORLD_TOKENS[sex]: 1})
+                self.assertEqual(result['firstPerson']['markers'], {PLAYER_TOKENS[sex]: 1})
+                self.assertEqual(result['applicationCull'], {'thirdPerson': {'actorRoot': False, 'clone': False},
+                                                             'firstPerson': {'actorRoot': True, 'clone': True}})
+                for key in ('renderedPixelsVerified', 'installedAssetWinnerVerified', 'weightInterpolationVerified'):
+                    self.assertFalse(result[key])
+
+    def test_v8_paired_routes_refuse_wrong_path_wrong_world_and_unadmitted_fixture(self):
+        data = split_capture(1)
+        first = data['sample']['views']['firstPerson']['active'][0]
+        first['modelPath'] = origin('P_M')
+        result = paired(data)
+        self.assertEqual(result['status'], 'first_person_route_unresolved')
+        self.assertEqual(result['firstPerson']['status'], 'wrong_model_path')
+        self.assertFalse(result['firstPerson']['expectedMarkerObserved'])
+        with self.assertRaisesRegex(ValueError, 'fixture forms'):
+            paired(data, fixture_forms=None)
+        mark(data['sample'], 0, 'P_F')  # Legacy shared-model outfit cannot supply independent world evidence.
+        result = paired(data)
+        self.assertEqual(result['status'], 'world_route_unresolved')
+        self.assertFalse(result['world']['expectedMarkerObserved'])
+
+    def test_v8_paired_routes_distinguish_world_only_from_a_buffered_body(self):
+        data = split_capture(0)
+        sample = data['sample']
+        active, buffered = sample['body32Markers'][2:]
+        first = sample['views']['firstPerson']
+        active['clone'] = 0
+        first['active'].clear()
+        mark(sample, 2, classification='unloaded')
+        first['buffered'][0].update(sample['playerBody32Fixture'], modelPath=origin('P_M'))
+        mark(sample, 3, 'P_M')
+        result = paired(data)
+        self.assertEqual(result['status'], 'first_person_route_unresolved')
+        self.assertEqual(result['firstPerson']['buffered']['markers'], {'P_M': 1})
+        buffered['clone'] = 0
+        first['buffered'].clear()
+        mark(sample, 3, classification='unloaded')
+        result = paired(data)
+        self.assertEqual(result['status'], 'world_only')
+        self.assertEqual(result['applicationCull']['firstPerson'], {'actorRoot': True, 'clone': None})
 
     def test_aliased_roots_and_clones_do_not_prove_distinct_views(self):
         data = capture()
