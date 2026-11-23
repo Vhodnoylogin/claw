@@ -21,6 +21,10 @@
 #include "claw/Appearance.h"
 #include "claw/TargetModelAvailability.h"
 #include "claw/CoatMatrix.h"
+#include "claw/PhysicsContactRoute.h"
+#if defined(CLAW_PHYSICS_EQUIPPED_VR_SUPPORT)
+#include <RE/T/TESEquipEvent.h>
+#endif
 #if defined(CLAW_OBODY_API_HEADER)
 #include CLAW_OBODY_API_HEADER // Official public protocol, optional external SDK.
 #endif
@@ -163,7 +167,12 @@ std::optional<claw::appearance::CoatMatrix> coatMatrix;
 RE::TESRace* beastRace{};
 std::jthread timer;
 #if defined(CLAW_PHYSICS_MODEL_HEADER)
-const claw::physics::Model& compiledPhysicsModel(bool female) {
+const claw::physics::Model& compiledPhysicsModel(bool female, claw::PhysicsContactRoute route = claw::PhysicsContactRoute::stock) {
+#if defined(CLAW_PHYSICS_EQUIPPED_VR_SUPPORT)
+    if (route == claw::PhysicsContactRoute::equipped) return claw::physics::CompiledEquippedVRContactModel(female);
+#else
+    (void)route;
+#endif
 #if defined(CLAW_PHYSICS_RUNTIME_PROFILES)
     return claw::physics::CompiledModel(female, REL::Module::IsVR()
         ? claw::physics::ContactRuntimeEdition::vr : claw::physics::ContactRuntimeEdition::flat);
@@ -173,6 +182,15 @@ const claw::physics::Model& compiledPhysicsModel(bool female) {
 }
 #endif
 #if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+const claw::physics::CompiledPosedVRSupport& compiledPhysicsPose(bool female, claw::PhysicsContactRoute route) {
+#if defined(CLAW_PHYSICS_EQUIPPED_VR_SUPPORT)
+    if (route == claw::PhysicsContactRoute::equipped) return claw::physics::CompiledEquippedVRPoseSupport(female);
+#else
+    (void)route;
+#endif
+    return claw::physics::CompiledVRPoseSupport(female);
+}
+
 struct PhysicsPoseSample {
     std::vector<claw::physics::PoseAffine> world, worldToBone;
     std::chrono::steady_clock::time_point captured;
@@ -202,6 +220,7 @@ struct PhysicsBinding {
     bool needsFit{}, fitPending{};
 #endif
 #if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+    std::optional<claw::PhysicsContactRoute> poseRoute;
     claw::physics::VRPoseOffer poseOffer;
     std::vector<claw::physics::Capsule> offeredCapsules;
 #endif
@@ -266,9 +285,13 @@ std::uint64_t nextPhysicsRegistration{1};
 std::uint32_t nextPhysicsSnapshot{1};
 #if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
 struct PhysicsPoseGraph {
+    claw::PhysicsContactRoute route{};
+    RE::NiPointer<RE::NiAVObject> clone;
+    RE::NiPointer<RE::NiAVObject> marker;
     std::vector<RE::NiPointer<RE::BSGeometry>> shapes;
     std::vector<RE::NiPointer<RE::NiSkinInstance>> skins;
     std::vector<RE::NiPointer<RE::NiSkinData>> binds;
+    std::vector<RE::NiPointer<RE::NiSkinPartition>> partitions;
     std::vector<RE::NiPointer<RE::NiAVObject>> bones;
     bool operator==(const PhysicsPoseGraph&) const = default;
 };
@@ -297,6 +320,7 @@ struct PhysicsFitWork {
     float weight{};
     std::uint32_t observationSequence{};
     std::uint32_t poseBaseSnapshot{};
+    claw::PhysicsContactRoute route{};
 #if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
     std::optional<PhysicsPoseSample> pose;
     std::vector<claw::physics::Capsule> acceptedPoseCapsules;
@@ -816,55 +840,128 @@ bool reciprocalPoseRoute(const RE::NiAVObject* node, const RE::NiAVObject* root)
     return false;
 }
 
-bool samePhysicsBodyTri(std::string_view observed, std::string_view expected) {
-    const auto normalize = [](char c) {
-        if (c == '/') return '\\';
-        return c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c;
-    };
-    return std::ranges::equal(observed, expected, {}, normalize, normalize);
+#if defined(CLAW_PHYSICS_EQUIPPED_VR_SUPPORT)
+std::optional<claw::ContactArmorForms> equippedContactForms() {
+    constexpr auto name = claw::equippedContactPlugin.data();
+    auto* data = RE::TESDataHandler::GetSingleton();
+    if (!data) return std::nullopt;
+    const auto* file = data->LookupModByName(name);
+    const auto* item = data->LookupForm<RE::TESObjectARMO>(claw::equippedContactItem, name);
+    const auto* addon = data->LookupForm<RE::TESObjectARMA>(claw::equippedContactAddon, name);
+    if (!file || !item || !addon || item->GetFile(0) != file || addon->GetFile(0) != file ||
+        item->armorAddons.size() != 1 || item->armorAddons[0] != addon) return std::nullopt;
+    return claw::ContactArmorForms{item->GetFormID(), addon->GetFormID()};
 }
 
-std::optional<PhysicsPoseGraph> samplePhysicsPoseGraph(RE::Actor* actor,
-        const claw::physics::CompiledPosedVRSupport& support) {
+bool sampleEquippedEar(RE::NiAVObject& clone, bool female, PhysicsPoseGraph& result,
+                        RE::NiPointer<RE::BSGeometry>& ear) {
+    const auto probe = claw::collectTargetModel(&clone, [&](RE::NiAVObject* object) {
+        auto* geometry = object->AsGeometry();
+        const auto* raw = object->name.c_str();
+        const std::string_view name = raw ? std::string_view(raw) : std::string_view{};
+        std::optional<std::size_t> role;
+        if (name == claw::equippedEarShape) { role = 0; ear.reset(geometry); }
+        else if (name.starts_with(claw::dispatchMarkerPrefix)) { role = 1; result.marker.reset(object); }
+        return claw::TargetModelObject{geometry != nullptr, role};
+    }, [](RE::NiAVObject* object, auto&& push) {
+        if (const auto* node = object->AsNode()) for (const auto& child : node->GetChildren())
+            if (!push(child.get())) return false;
+        return true;
+    });
+    const auto* marker = result.marker ? result.marker->AsNode() : nullptr;
+    return probe.collection == claw::TargetModelCollection::complete && probe.roleObjects[0] == 1 &&
+        probe.roleGeometries[0] == 1 && ear && probe.roleObjects[1] == 1 && marker &&
+        marker != &clone && marker->GetChildren().empty() && reciprocalPoseRoute(marker, &clone) &&
+        std::string_view(marker->name.c_str()).substr(claw::dispatchMarkerPrefix.size()) == claw::equippedWorldMarker(female);
+}
+#endif
+
+std::optional<PhysicsPoseGraph> samplePhysicsPoseGraph(RE::Actor* actor, bool female) {
     const auto target = sampleTargetModel(actor);
     if (claw::targetModelAvailability(target.observation) != claw::TargetModelAvailability::ready ||
         !actor->loadedData || actor->loadedData->data3D != target.root) return std::nullopt;
     const auto biped = actor->GetBiped(false);
     if (!biped || biped->actorRef.get().get() != actor) return std::nullopt;
     const auto& part = biped->objects[RE::BIPED_OBJECTS::kBody];
-    if (!part.item || part.item->GetFormID() != 0xCDD86 || !part.addon || part.addon->GetFormID() != 0xCDD87 ||
-        !reciprocalPoseRoute(part.partClone.get(), target.root.get())) return std::nullopt;
-
+    if (!part.item || !part.addon || !reciprocalPoseRoute(part.partClone.get(), target.root.get())) return std::nullopt;
+    const claw::ContactArmorForms active{part.item->GetFormID(), part.addon->GetFormID()};
     PhysicsPoseGraph result;
+    result.clone = part.partClone;
+    RE::NiPointer<RE::BSGeometry> ear;
+    if (active != claw::stockContactForms) {
+#if defined(CLAW_PHYSICS_EQUIPPED_VR_SUPPORT)
+        const auto& buffered = biped->bufferedObjects[RE::BIPED_OBJECTS::kBody];
+        const auto* path = part.part ? part.part->GetModel() : nullptr;
+        const auto* bufferedPath = buffered.part ? buffered.part->GetModel() : nullptr;
+        const auto route = claw::contactRoute(active, equippedContactForms(), actor == RE::PlayerCharacter::GetSingleton(),
+            !buffered.item && !buffered.addon && !buffered.partClone && (!bufferedPath || !*bufferedPath) && !buffered.partHandle,
+            path ? std::string_view(path) : std::string_view{}, female);
+        if (!route || !sampleEquippedEar(*result.clone, female, result, ear)) return std::nullopt;
+        result.route = *route;
+#else
+        return std::nullopt;
+#endif
+    }
+    const auto& support = compiledPhysicsPose(female, result.route);
     result.bones.resize(support.bones.size());
-    for (const auto& route : support.shapes) {
-        const auto role = std::ranges::find(claw::targetModelRoles, route.name);
-        if (role == claw::targetModelRoles.end()) return std::nullopt;
-        const auto& geometry = target.roles[role - claw::targetModelRoles.begin()];
-        if (!geometry || !reciprocalPoseRoute(geometry.get(), part.partClone.get())) return std::nullopt;
+    const auto readShape = [&](const claw::physics::PoseShapeRoute& route, bool pose) {
+        RE::NiPointer<RE::BSGeometry> geometry;
+        if (route.name == claw::equippedEarShape) geometry = ear;
+        else if (const auto role = std::ranges::find(claw::targetModelRoles, route.name); role != claw::targetModelRoles.end())
+            geometry = target.roles[role - claw::targetModelRoles.begin()];
+        if (!geometry || !reciprocalPoseRoute(geometry.get(), result.clone.get())) return false;
         const auto* shape = geometry->AsTriShape();
-        if (!shape) return std::nullopt;
-        const auto& extent = shape->GetTrishapeRuntimeData();
         const auto* tri = netimmerse_cast<RE::NiStringExtraData*>(geometry->GetExtraData("BODYTRI"));
-        if (extent.vertexCount != route.vertices || extent.triangleCount != route.triangles || !tri || !tri->value ||
-            !samePhysicsBodyTri(tri->value, route.bodyTri)) return std::nullopt;
-
+        if (!shape || !tri || !tri->value || !claw::samePhysicsAssetPath(tri->value, route.bodyTri)) return false;
         const auto skin = geometry->GetGeometryRuntimeData().skinInstance;
         const auto data = skin ? skin->skinData : RE::NiPointer<RE::NiSkinData>{};
-        if (!data || !skin->bones || route.bones > 128 || data->GetBoneCount() != route.bones) return std::nullopt;
+        if (!data || !skin->bones || route.bones > 128 || data->GetBoneCount() != route.bones) return false;
+
+        const auto& extent = shape->GetTrishapeRuntimeData();
+        if (extent.vertexCount != route.vertices || extent.triangleCount != route.triangles) {
+#if defined(CLAW_PHYSICS_EQUIPPED_VR_SUPPORT)
+            // VR skinned meshes can put the counts in the partition instead.
+            // A conflicting positive inline count is still rejected.
+            if (result.route != claw::PhysicsContactRoute::equipped ||
+                (extent.vertexCount && extent.vertexCount != route.vertices) ||
+                (extent.triangleCount && extent.triangleCount != route.triangles)) return false;
+            const auto partition = skin->skinPartition;
+            if (!partition || partition->vertexCount != route.vertices || partition->numPartitions == 0 ||
+                partition->numPartitions > 256 || partition->numPartitions != partition->partitions.size()) return false;
+            std::size_t triangles{};
+            for (std::size_t i = 0; i < partition->numPartitions; ++i) {
+                const auto& row = partition->partitions[i];
+                if (row.strips || !row.triangles || !row.triList) return false;
+                triangles += row.triangles;
+            }
+            if (triangles != route.triangles) return false;
+#else
+            return false;
+#endif
+        }
         result.shapes.push_back(geometry);
         result.skins.push_back(skin);
         result.binds.push_back(data);
+        if (result.route == claw::PhysicsContactRoute::equipped) result.partitions.push_back(skin->skinPartition);
+        if (!pose) return true;
         for (std::size_t index = 0; index < route.bones; ++index) {
             auto* bone = skin->bones[index];
-            if (!bone) continue;
+            if (!bone || !bone->name.c_str()) continue;
             const auto field = std::ranges::find(support.bones, std::string_view{bone->name.c_str()});
             if (field == support.bones.end()) continue;
             auto& current = result.bones[field - support.bones.begin()];
-            if ((current && current.get() != bone) || !reciprocalPoseRoute(bone, target.root.get())) return std::nullopt;
+            if ((current && current.get() != bone) || !reciprocalPoseRoute(bone, target.root.get())) return false;
             current.reset(bone);
         }
-    }
+        return true;
+    };
+    for (const auto& route : support.shapes)
+        if (!readShape(route, true)) return std::nullopt;
+#if defined(CLAW_PHYSICS_EQUIPPED_VR_SUPPORT)
+    if (result.route == claw::PhysicsContactRoute::equipped)
+        for (const auto& route : claw::physics::CompiledEquippedVRContactShapes(female))
+            if (!readShape(route, false)) return std::nullopt;
+#endif
     if (std::ranges::any_of(result.bones, [](const auto& bone) { return !bone; })) return std::nullopt;
     std::vector<bool> ownerChecked(result.bones.size());
     for (const auto& region : support.model.regions) {
@@ -898,12 +995,25 @@ PhysicsPoseSample samplePhysicsPose(const PhysicsPoseGraph& graph, const RE::NiP
     return result;
 }
 
+const claw::physics::PosedContactSupport& physicsPoseFitter(bool female, claw::PhysicsContactRoute route) {
+#if defined(CLAW_PHYSICS_EQUIPPED_VR_SUPPORT)
+    if (route == claw::PhysicsContactRoute::equipped) {
+        static const claw::physics::PosedContactSupport maleModel{compiledPhysicsPose(false, claw::PhysicsContactRoute::equipped).model},
+            femaleModel{compiledPhysicsPose(true, claw::PhysicsContactRoute::equipped).model};
+        return female ? femaleModel : maleModel;
+    }
+#else
+    (void)route;
+#endif
+    static const claw::physics::PosedContactSupport maleModel{compiledPhysicsPose(false, claw::PhysicsContactRoute::stock).model},
+        femaleModel{compiledPhysicsPose(true, claw::PhysicsContactRoute::stock).model};
+    return female ? femaleModel : maleModel;
+}
+
 std::vector<claw::physics::Capsule> fitPhysicsPose(const PhysicsFitWork& job, const claw::physics::Model& compiled,
         std::span<const double> values) {
-    const auto& support = claw::physics::CompiledVRPoseSupport(job.female);
-    static const claw::physics::PosedContactSupport male{claw::physics::CompiledVRPoseSupport(false).model},
-        female{claw::physics::CompiledVRPoseSupport(true).model};
-    const auto& model = job.female ? female : male;
+    const auto& support = compiledPhysicsPose(job.female, job.route);
+    const auto& model = physicsPoseFitter(job.female, job.route);
     if (support.modelIdentity != compiled.identity || !std::ranges::equal(support.morphs, compiled.morphs) ||
         !claw::physics::VRPoseSlotsMatch(support.slotIndexes) || support.slotIndexes.size() != support.model.regions.size())
         throw std::invalid_argument("VR pose table does not match the selected collider model");
@@ -935,13 +1045,13 @@ void startPhysicsWorker() {
             std::vector<claw::physics::Capsule> capsules;
             std::string error;
             try {
-                const auto& compiled = compiledPhysicsModel(job.female);
+                const auto& compiled = compiledPhysicsModel(job.female, job.route);
                 const std::vector<double> values(job.values.begin(), job.values.end());
                 if (!job.poseBaseSnapshot) capsules = claw::physics::Evaluate(compiled, values, job.weight);
 #if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
                 if (job.pose) {
                     auto posed = fitPhysicsPose(job, compiled, values);
-                    const auto slots = claw::physics::CompiledVRPoseSupport(job.female).slotIndexes;
+                    const auto slots = compiledPhysicsPose(job.female, job.route).slotIndexes;
                     if (job.poseBaseSnapshot) capsules = std::move(posed);
                     else for (std::size_t i = 0; i < slots.size(); ++i) capsules[slots[i]] = posed[i];
                 }
@@ -975,8 +1085,9 @@ void startPhysicsWorker() {
                 if (!requirePhysicsTargetModel(actor, binding)) return;
 #if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
                 if (job.pose) {
-                    const auto geometry = samplePhysicsPoseGraph(actor, claw::physics::CompiledVRPoseSupport(job.female));
-                    if (!geometry || *geometry != physicsRoots.at(job.id).poseGraph) {
+                    const auto geometry = samplePhysicsPoseGraph(actor, job.female);
+                    if (binding.poseRoute != job.route || !geometry || geometry->route != job.route ||
+                        *geometry != physicsRoots.at(job.id).poseGraph) {
                         rejectPhysics(actor, binding, claw::PhysicsRejection::model); return;
                     }
                 }
@@ -1016,8 +1127,8 @@ void startPhysicsWorker() {
                 if (job.poseBaseSnapshot) {
                     // The worker kept unchanged capsules only when they still
                     // enclosed the new support. The accepted token is pinned above.
-                    const auto slots = claw::physics::CompiledVRPoseSupport(job.female).slotIndexes;
-                    if (capsules.size() != slots.size() || binding.capsules.size() != compiledPhysicsModel(job.female).slots.size()) {
+                    const auto slots = compiledPhysicsPose(job.female, job.route).slotIndexes;
+                    if (capsules.size() != slots.size() || binding.capsules.size() != compiledPhysicsModel(job.female, job.route).slots.size()) {
                         rejectPhysics(actor, binding, claw::PhysicsRejection::model); return;
                     }
                     std::vector<claw::physics::Capsule> offered;
@@ -1057,16 +1168,17 @@ void queuePhysicsFit(RE::Actor* actor, PhysicsBinding& binding, std::uint32_t po
     if (vrRuntime) {
         const auto lease = physicsRoots.find(id);
         if (lease == physicsRoots.end() || !lease->second.root || lease->second.root.get() != physicsActorRoot(actor)) return;
-        graph = samplePhysicsPoseGraph(actor, claw::physics::CompiledVRPoseSupport(binding.female));
-        if (!graph) {
+        graph = samplePhysicsPoseGraph(actor, binding.female);
+        if (!graph || (binding.poseRoute && *binding.poseRoute != graph->route)) {
             SKSE::log::warn("CLAW posed VR model does not match the admitted skin and provider attachment route for {:08X}", id);
             rejectPhysics(actor, binding, claw::PhysicsRejection::model);
             return;
         }
+        binding.poseRoute = job.route = graph->route;
         try { job.pose = samplePhysicsPose(*graph, lease->second.root->world.translate); }
         catch (const std::invalid_argument&) { return; } // A later observation may have a complete pose.
         if (poseBaseSnapshot) {
-            const auto slots = claw::physics::CompiledVRPoseSupport(binding.female).slotIndexes;
+            const auto slots = compiledPhysicsPose(job.female, job.route).slotIndexes;
             if (std::ranges::any_of(slots, [&](std::size_t slot) { return slot >= binding.capsules.size(); })) {
                 rejectPhysics(actor, binding, claw::PhysicsRejection::model); return;
             }
@@ -1689,6 +1801,9 @@ class Events final : public RE::BSTEventSink<RE::TESObjectLoadedEvent>,
                      public RE::BSTEventSink<RE::TESSwitchRaceCompleteEvent>,
                      public RE::BSTEventSink<SKSE::NiNodeUpdateEvent>,
                      public RE::BSTEventSink<SKSE::ModCallbackEvent>,
+#if defined(CLAW_PHYSICS_EQUIPPED_VR_SUPPORT)
+                     public RE::BSTEventSink<RE::TESEquipEvent>,
+#endif
                      public RE::BSTEventSink<RE::MenuOpenCloseEvent> {
 public:
     RE::BSEventNotifyControl ProcessEvent(const RE::MenuOpenCloseEvent* event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*) override {
@@ -1718,6 +1833,22 @@ public:
         if (event && event->subject) queueActor(event->subject->formID, true);
         return RE::BSEventNotifyControl::kContinue;
     }
+#if defined(CLAW_PHYSICS_EQUIPPED_VR_SUPPORT)
+    RE::BSEventNotifyControl ProcessEvent(const RE::TESEquipEvent* event, RE::BSTEventSource<RE::TESEquipEvent>*) override {
+        if (vrRuntime && event && event->actor && event->actor->formID == 0x14 &&
+            (event->baseObject == claw::stockContactForms.item || (event->baseObject & 0xFFFFFF) == claw::equippedContactItem)) {
+            bool observed{};
+            {
+                std::lock_guard lock(mutex);
+                const auto found = physicsBindings.find(event->actor->formID);
+                observed = found != physicsBindings.end() && found->second.pointer == event->actor.get() && found->second.active;
+                if (observed) invalidatePhysics(event->actor->formID);
+            }
+            if (observed) queueActor(event->actor->formID);
+        }
+        return RE::BSEventNotifyControl::kContinue;
+    }
+#endif
     RE::BSEventNotifyControl ProcessEvent(const SKSE::NiNodeUpdateEvent* event, RE::BSTEventSource<SKSE::NiNodeUpdateEvent>*) override {
         // A node notification caused by our own update must not create an
         // update->notification->update loop. Root changes/readback still refresh.
@@ -2613,15 +2744,16 @@ void writePoseArray(std::ostream& out, const NumberRange& values) {
 std::string physicsPoseAckJson(RE::FormID actor, const PhysicsBinding& binding, const PhysicsPoseReceipt& receipt,
         bool delta, std::chrono::steady_clock::time_point acknowledged) {
     const auto micros = [](auto stamp) { return std::chrono::duration_cast<std::chrono::microseconds>(stamp.time_since_epoch()).count(); };
-    const auto& compiled = compiledPhysicsModel(binding.female);
-    const auto& support = claw::physics::CompiledVRPoseSupport(binding.female);
+    const auto route = binding.poseRoute.value_or(claw::PhysicsContactRoute::stock);
+    const auto& compiled = compiledPhysicsModel(binding.female, route);
+    const auto& support = compiledPhysicsPose(binding.female, route);
     std::ostringstream out;
     out.imbue(std::locale::classic());
     out << std::setprecision(std::numeric_limits<double>::max_digits10) << std::boolalpha
         << "{\"schema\":\"claw-posed-vr-ack/1\",\"actor\":" << actor << ",\"generation\":" << binding.generation
         << ",\"world\":" << binding.world << ",\"registration\":" << binding.registration
         << ",\"token\":" << binding.snapshot << ",\"previousToken\":" << binding.poseBaseSnapshot
-        << ",\"model\":" << claw::jsonString(binding.model) << ",\"female\":" << binding.female
+        << ",\"model\":" << claw::jsonString(compiled.identity) << ",\"female\":" << binding.female
         << ",\"application\":\"" << (delta ? "delta" : "full") << '"'
         << ",\"capturedUs\":" << micros(receipt.pose.captured) << ",\"computedUs\":" << micros(receipt.computed)
         << ",\"publishedUs\":" << micros(receipt.published) << ",\"claimedUs\":" << micros(receipt.claimed)
@@ -2739,8 +2871,15 @@ std::vector<float> physicsCapsule(RE::StaticFunctionTag*, RE::Actor* actor, std:
 #else
     const auto& capsules = binding->capsules;
 #endif
-    if (static_cast<std::size_t>(slot) >= capsules.size() || !compiledPhysicsModel(binding->female).slots[slot].active) return {};
-    const auto geometry = capsuleGeometry(capsules[slot]);
+#if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
+    const auto route = binding->poseRoute.value_or(claw::PhysicsContactRoute::stock);
+#else
+    const auto route = claw::PhysicsContactRoute::stock;
+#endif
+    const auto& compiled = compiledPhysicsModel(binding->female, route);
+    const auto index = static_cast<std::size_t>(slot);
+    if (index >= capsules.size() || index >= compiled.slots.size() || !compiled.slots[index].active) return {};
+    const auto geometry = capsuleGeometry(capsules[index]);
     return {geometry.begin(), geometry.end()};
 #else
     (void)binding; (void)slot;
@@ -2941,6 +3080,9 @@ void message(SKSE::MessagingInterface::Message* event) {
         if (auto* source = RE::ScriptEventSourceHolder::GetSingleton()) {
             source->AddEventSink<RE::TESObjectLoadedEvent>(&events);
             source->AddEventSink<RE::TESSwitchRaceCompleteEvent>(&events);
+#if defined(CLAW_PHYSICS_EQUIPPED_VR_SUPPORT)
+            if (vrRuntime) source->AddEventSink<RE::TESEquipEvent>(&events);
+#endif
         }
         if (auto* source = SKSE::GetNiNodeUpdateEventSource()) source->AddEventSink(&events);
         if (auto* source = SKSE::GetModCallbackEventSource()) source->AddEventSink(&events);

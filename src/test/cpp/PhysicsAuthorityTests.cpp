@@ -1,4 +1,5 @@
 #include "claw/PhysicsAuthority.h"
+#include "claw/PhysicsContactRoute.h"
 #include "claw/PhysicsObserver.h"
 #undef NDEBUG
 #include <cassert>
@@ -9,6 +10,21 @@
 
 using namespace claw;
 namespace {
+constexpr ContactArmorForms equipped{0x12000801, 0x12000800};
+constexpr ContactArmorForms foreign{0x13000801, 0x13000800};
+constexpr ContactArmorForms light{0xFE002801, 0xFE002800};
+static_assert(contactRoute(stockContactForms, std::nullopt, false, false, "", false) == PhysicsContactRoute::stock);
+static_assert(contactRoute(equipped, equipped, true, true, equippedContactModelPath(false), false) == PhysicsContactRoute::equipped);
+static_assert(contactRoute(equipped, equipped, true, true, "actors/werewolfbeast/claw/firstperson/female/earworldtrial.nif", true)
+              == PhysicsContactRoute::equipped);
+static_assert(!contactRoute(equipped, foreign, true, true, equippedContactModelPath(false), false));
+static_assert(!contactRoute(equipped, std::nullopt, true, true, equippedContactModelPath(false), false));
+static_assert(!contactRoute(light, light, true, true, equippedContactModelPath(false), false));
+static_assert(!contactRoute(equipped, equipped, false, true, equippedContactModelPath(false), false));
+static_assert(!contactRoute(equipped, equipped, true, false, equippedContactModelPath(false), false));
+static_assert(!contactRoute(equipped, equipped, true, true, equippedContactModelPath(false), true));
+static_assert(!contactRoute(equipped, equipped, true, true, R"(Actors\WerewolfBeast\CLAW\FirstPerson\male\Body_1.nif)", false));
+
 constexpr PhysicsOwner owner{10, 20};
 constexpr PhysicsBodyStamp beastA = [] {
     PhysicsBodyStamp stamp{30, 100, 0, true, true};

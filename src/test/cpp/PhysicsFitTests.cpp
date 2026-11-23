@@ -98,6 +98,31 @@ int main() {
     for(std::size_t i=0;i<tiedSurface.size();++i)for(std::size_t j=0;j<3;++j)assert(std::abs(tiedSurface[i][j]-nearTiedSurface[i][j])<1e-12);
     auto unsupported=simple;unsupported.contactPasses=1;unsupported.slots[0].prescribedAxis=true;unsupported.slots[0].axis={1,0,0};
     rejected=false;try{(void)Evaluate(unsupported,{0,0});}catch(const std::runtime_error&){rejected=true;}assert(rejected);
+#if defined(CLAW_PHYSICS_EQUIPPED_VR_SUPPORT)
+    for (const bool female : {false, true}) {
+        const auto& stock = CompiledModel(female, ContactRuntimeEdition::vr);
+        const auto& equipped = CompiledEquippedVRContactModel(female);
+        const auto& stockPose = CompiledVRPoseSupport(female);
+        const auto& equippedPose = CompiledEquippedVRPoseSupport(female);
+        assert(stock.identity != equipped.identity && equipped.identity == equippedPose.modelIdentity);
+        assert(stock.morphs == equipped.morphs && stock.slots.size() == equipped.slots.size());
+        assert(std::ranges::equal(stockPose.slotIndexes, equippedPose.slotIndexes));
+        assert(equippedPose.shapes.size() == 2 && CompiledEquippedVRContactShapes(female).size() == 2);
+        for (std::size_t slot = 0; slot < stock.slots.size(); ++slot)
+            assert(stock.slots[slot].node == equipped.slots[slot].node && stock.slots[slot].active == equipped.slots[slot].active);
+        const std::vector<double> vector(stock.morphs.size(), .35);
+        const auto stockCapsules = Evaluate(stock, vector, .5);
+        const auto equippedCapsules = Evaluate(equipped, vector, .5);
+        double stockHeadRadius = 0., equippedHeadRadius = 0.;
+        for (const auto slot : equippedPose.slotIndexes) {
+            if (equipped.slots[slot].node != "NPC Head [Head]") continue;
+            stockHeadRadius = std::max(stockHeadRadius, stockCapsules[slot].radius);
+            equippedHeadRadius = std::max(equippedHeadRadius, equippedCapsules[slot].radius);
+        }
+        assert(equippedHeadRadius > 0. && stockHeadRadius > 2. * equippedHeadRadius);
+    }
+    std::cout << "stock and equipped banks share the host layout and fit distinct head geometry\n";
+#endif
 #if defined(CLAW_PHYSICS_MODEL_HEADER) && defined(CLAW_PHYSICS_FIXTURE_HEADER)
     const auto modelForFixture = [](bool female, std::string_view identity) -> const Model& {
 #if defined(CLAW_PHYSICS_RUNTIME_PROFILES)

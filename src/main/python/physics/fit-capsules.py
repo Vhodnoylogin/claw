@@ -140,7 +140,8 @@ def triangle_regions(shape, skeleton, records, nodes=NODES, *, whole_body=False)
 
 def write_cpp_model(report,path, *, function_name="CompiledModel"):
     """Emit the exact schema3 evidence as a compiled immutable native model."""
-    if function_name not in ("CompiledModel", "CompiledFlatContactModel", "CompiledVRContactModel"):
+    if function_name not in ("CompiledModel", "CompiledFlatContactModel", "CompiledVRContactModel",
+                             "CompiledEquippedVRContactModel"):
         raise ValueError("Unsupported compiled model binding")
     contact_passes, padding = _settings_module.evaluator_settings(report)
     static_storage = function_name != "CompiledModel" or report.get('supportProfile') in (

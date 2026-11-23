@@ -194,5 +194,31 @@ tail slots. It verifies the fitted sources against the actual NIF triangles,
 skin weights, binds and TRI. Both static and optional FSMP world layers use
 the same skin geometry. Compare the fitted contact geometry with native
 equipment and model-route evidence before using it in a controller test.
-The current game DLL still selects the stock support bank. The equipped bank
-requires independent runtime selection and provider registration checks.
+The default DLL build selects the stock support bank. A dual-profile test
+build uses the separate equipped bank once the owned model qualifies.
+
+### Opt-in dual-profile runtime
+
+Generate the usual stock posed header with the existing `--paired-build`
+inputs and pass `--equipped-build <equipped-fit-directory>` in the same
+command. The emitted `physics-fit-model.h` contains both VR profiles. Give it
+to the native build through `CLAW_PHYSICS_MODEL_HEADER` and use the existing
+stock detailed VR host data. The generator requires identical ordered morph
+names, slot indices, attachment bones and sex availability across the two
+profiles. Each profile retains its own fitted identity and geometry.
+
+The equipped trial route admits the player's active third-person Body32
+clone from the exact fixture armor pair in the fixture ESP. It checks the
+reported model path, a single matching world marker, the skin shapes and
+their TRI links. The first-person body is outside this route. The native
+observer keeps the selected profile through fitting, offer and acknowledgment.
+An equipment notice withdraws any pending offer before the main task
+rechecks the clone. Use a new explicit grant after the previous model's
+collider ledger has been retired through the host. Trace records identify
+the fitted profile used to compute the actual capsule requests.
+
+For an admitted trial use the separate world and first-person fixture
+archive, the matching 128-slot host and the equipped/stock DLL. Compare its
+stock and equipped acknowledgments separately against the corresponding
+`fitted-capsules.json`. Active provider attachment, verified teardown and
+hand contacts still require game samples.
