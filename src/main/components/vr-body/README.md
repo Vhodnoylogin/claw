@@ -29,6 +29,11 @@ paths, race, slot, range bytes and declared CLAW master.
 python src/main/components/vr-body/vr_dispatch.py --disable-range male --out <new-external-dir>
 ```
 
+Add `--keep-stock-first-person` to generate just the weight-range override
+for a stock world-body check. This loose ESP keeps both original first-person
+paths and needs no component meshes. Load it after CLAW and any other
+override of the werewolf armor addon. It applies only to the Skyrim VR test.
+
 Pass `--resources <body-candidate-dir>` to make a separate MO2 test archive.
 The command reopens the archive and checks the companion ESP and six
 namespaced NIF/TRI assets against their exact source hashes. Before assembling

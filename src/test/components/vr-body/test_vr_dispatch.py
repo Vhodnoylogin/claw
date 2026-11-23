@@ -54,6 +54,14 @@ class DispatchControls(unittest.TestCase):
         self.assertIn("WeightSliderEnabled:\n  Male: False\n  Female: False\n",
                       dispatch.armor_source(self.source,{"male","female"}))
 
+    def test_stock_first_person_changes_only_the_selected_range_flags(self):
+        result = dispatch.armor_source(self.source, set(dispatch.SEXES), keep_stock_first_person=True)
+        self.assertEqual(result, self.source.replace("WeightSliderEnabled:\n  Male: True\n  Female: True\n",
+                                                     "WeightSliderEnabled:\n  Male: False\n  Female: False\n"))
+        with self.assertRaisesRegex(ValueError, "requires a loose override"):
+            dispatch.build(Path("unused"), set(dispatch.SEXES), resource_candidate=Path("unused"),
+                           keep_stock_first_person=True)
+
     def test_incomplete_or_ambiguous_base_fails(self):
         for source in (self.source.replace("FirstPersonModel:\n",""),
                        self.source.replace("0CDD87","000007"),

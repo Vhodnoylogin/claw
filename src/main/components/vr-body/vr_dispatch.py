@@ -21,6 +21,10 @@ ADDON = "CLAW - VR Body.esp"
 ARMATURE = "NakedTorsoWerewolfBeast - 0CDD87_Skyrim.esm.yaml"
 NAMESPACE = "Meshes/Actors/WerewolfBeast/CLAW/FirstPerson"
 SEXES = ("male", "female")
+STOCK_FIRST_PERSON = {
+    "male": r"Actors\Character\Character Assets\1stPersonMaleBody_1.NIF",
+    "female": r"Actors\Character\Character Assets\1stPersonFemaleBody_1.nif",
+}
 LEGACY_ALIAS = "Meshes/Actors/character/character assets/1stperson_werewolf_hands.nif"
 FIXED_PROFILE_NAME = "CLAW VR Body - Fixed Profile Diagnostic"
 COLLISION_BLOCKS = {"NiCollisionData", "NiCollisionObject", "NiCollisionSwitch", "RootCollisionNode"}
@@ -191,7 +195,7 @@ def replace_once(text, pattern, replacement, description):
     return text[:match.start()] + replacement(match) + text[match.end():]
 
 
-def armor_source(text, disabled):
+def armor_source(text, disabled, *, keep_stock_first_person=False):
     disabled = frozenset(disabled)
     if not disabled or not disabled.issubset(SEXES):
         raise ValueError("Explicit male and/or female model-range policy required")
@@ -201,6 +205,8 @@ def armor_source(text, disabled):
         label = sex.capitalize()
         pattern = rf"(^WeightSliderEnabled:\n(?:(?:  Male|  Female): (?:True|False)\n)*?  {label}: )True$"
         text = replace_once(text, pattern, lambda match: match[1] + "False", f"{sex} weight slider")
+    if keep_stock_first_person:
+        return text
     pattern = r"^FirstPersonModel:\n(?: +[^\n]+\n)+"
     fields = "".join(f"  {sex.capitalize()}:\n    File: {armor_path(sex)}\n" for sex in SEXES)
     return replace_once(text, pattern, lambda _match: "FirstPersonModel:\n" + fields, "first-person models")
@@ -215,7 +221,7 @@ def addon_header(base_header):
     )
 
 
-def verify_record(esp, disabled):
+def verify_record(esp, disabled, *, keep_stock_first_person=False):
     """Read back the file emitted by Spriggit before handing it to packaging."""
     from engine_audit import arma_summary
     from record_reader import FormKey, PluginFile
@@ -239,14 +245,19 @@ def verify_record(esp, disabled):
         if details["worldModels"] != expected_world:
             raise ValueError("VR add-on must retain the same world models")
         paths = details["firstPersonRecordModels"]
-        if paths != {sex: armor_path(sex) for sex in SEXES}:
-            raise ValueError("Compiled armor add-on must reference the first-person namespace")
+        expected_first_person = (STOCK_FIRST_PERSON if keep_stock_first_person else
+                                 {sex: armor_path(sex) for sex in SEXES})
+        if paths != expected_first_person:
+            raise ValueError("Compiled armor add-on first-person model paths differ from the selected mode")
         return {"formKey": target.text(), "modelRangeBytes": flags, "worldModels": expected_world,
                 "firstPersonRecordModels": paths}
 
 
-def build(output, disabled, *, compiler=None, resource_candidate=None, fixed_profile_fomod=False):
+def build(output, disabled, *, compiler=None, resource_candidate=None, fixed_profile_fomod=False,
+          keep_stock_first_person=False):
     disabled = frozenset(disabled)
+    if keep_stock_first_person and resource_candidate is not None:
+        raise ValueError("--keep-stock-first-person requires a loose override without --resources")
     if fixed_profile_fomod and (disabled != frozenset(SEXES) or resource_candidate is None):
         raise ValueError("--fixed-profile-fomod requires both sexes range-disabled and --resources")
     from body_resource import safe_output, sha256
@@ -256,7 +267,7 @@ def build(output, disabled, *, compiler=None, resource_candidate=None, fixed_pro
     resource_inputs = [Path(resource_candidate) / "install-manifest.json"] if resource_candidate is not None else []
     output = safe_output(output, [*inputs, *resource_inputs])
     originals = [p.read_text(encoding="utf-8-sig") for p in inputs]
-    source = armor_source(originals[0], disabled)
+    source = armor_source(originals[0], disabled, keep_stock_first_person=keep_stock_first_person)
     header = addon_header(originals[1])
     meta = json.loads(originals[2])
     meta["ModKey"] = ADDON
@@ -273,7 +284,7 @@ def build(output, disabled, *, compiler=None, resource_candidate=None, fixed_pro
     package.mkdir()
     esp = package/ADDON
     Spriggit(Path(compiler) if compiler else WRAPPER).build(generated, esp)
-    result = verify_record(esp, disabled)
+    result = verify_record(esp, disabled, keep_stock_first_person=keep_stock_first_person)
     if pins != {str(path):sha256(path) for path in inputs}:
         raise ValueError("Authored base record changed during the build")
     receipt = {"status":"VR_DISPATCH_CANDIDATE", "platform":"SkyrimVR",
@@ -296,10 +307,13 @@ def main():
     parser.add_argument("--resources", type=Path, help="Body candidate directory with install-manifest.json")
     parser.add_argument("--fixed-profile-fomod", action="store_true",
                         help="Private MO2 diagnostic with a fixed male or female legacy mesh selection")
+    parser.add_argument("--keep-stock-first-person", action="store_true",
+                        help="Change only the world body weight-range flags and retain the base first-person paths")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     print(json.dumps(build(args.out, args.disable_range, compiler=args.spriggit, resource_candidate=args.resources,
-                           fixed_profile_fomod=args.fixed_profile_fomod)))
+                           fixed_profile_fomod=args.fixed_profile_fomod,
+                           keep_stock_first_person=args.keep_stock_first_person)))
 
 
 if __name__ == "__main__":
