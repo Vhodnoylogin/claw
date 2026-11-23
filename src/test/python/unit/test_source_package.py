@@ -270,6 +270,25 @@ class SourcePackageTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'serialized installer must require active RaceMenu'):
                     package.selection_audit(altered)
 
+    def test_serialized_fomod_rejects_swapped_sources_with_complete_destinations(self):
+        result = package.build(**self.arguments())
+        entries = package.read_zip(Path(result['archive']).read_bytes())
+        config_path = 'fomod/ModuleConfig.xml'
+        coat = package.APPEARANCE_PATH
+        mesh = package.MESH + '/'
+        for first, second in ((coat + 'CoatMatrix.xml', coat + 'CoatMapping.xml'),
+                              (coat + 'CoatLibrary.xml', package.MODEL_SWAP_OVERRIDE),
+                              (mesh + 'malebodywerewolf.tri', mesh + 'femalebodywerewolf.tri'),
+                              ('CLAW.esp', mesh + 'malebodywerewolf.tri')):
+            config = ET.fromstring(entries[config_path])
+            files = {row.get('destination'): row for row in config.findall('requiredInstallFiles/file')}
+            first_source, second_source = files[first].get('source'), files[second].get('source')
+            files[first].set('source', second_source)
+            files[second].set('source', first_source)
+            altered = package.read_zip(package.zip_bytes(entries | {config_path: ET.tostring(config)}))
+            with self.subTest(first=first, second=second), self.assertRaisesRegex(ValueError, 'fixed runtime destination'):
+                package.selection_audit(altered)
+
     def test_packaged_fomod_survives_vortex_string_stream_encoding(self):
         # Nexus-Mods/fomod-installer XmlScriptType.StringStream at
         # af3c8355b2e22f1c7c4272c8eb3cb928ccb5f8c1 removes only a

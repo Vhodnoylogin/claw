@@ -650,6 +650,7 @@ def selection_audit(entries, *, inputs=None):
         raise ValueError('The serialized installer must require active RaceMenu.esp')
     required = config.find("requiredInstallFiles")
     extra_base = {APPEARANCE_PATH + name for name in APPEARANCE_FILES} | {MODEL_SWAP_OVERRIDE}
+    fixed_base = extra_base | {path for path in reader.BASE_RUNTIME if not path.endswith('.nif')}
     player_models = {MESH + "/" + sex + "PlayerWerewolf" + ending
         for sex in ("male", "female") for ending in ("_0.nif", "_1.nif")}
     motion = bool(config.findall(".//conditionFlags/flag[@name='physicsMode']"))
@@ -718,6 +719,9 @@ def selection_audit(entries, *, inputs=None):
             expected |= extra_motion
             if set(installed) != expected or len(installed) != (12 if host else 10) + len(extra_base) + len(player_models) + len(extra_motion):
                 raise ValueError("Nonminimal/incomplete selected runtime")
+            for path in sorted(fixed_base):
+                if installed[path] != '00 Base/' + path:
+                    raise ValueError('Selected installer source differs from its fixed runtime destination: ' + path)
             for alias in player_models:
                 standard = alias.replace("PlayerWerewolf", "bodywerewolf")
                 if installed[alias] != installed[standard]:
