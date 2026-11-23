@@ -5,8 +5,9 @@ import json
 import unittest
 
 from verify_player_contact import (ACTOR, ARM_NODES, CBPC, CLOCK, EVENTS, EVENT_SCHEMA, PHASES, QPC,
-                                   SCHEMA, TOPOLOGY, TOPOLOGY_SCHEMA, decode, verify)
-from player_contact_custody import HOST_ESP, MODULES, PLUGINS, verify_backing, verify_vfs
+                                   SCHEMA, TOPOLOGY, TOPOLOGY_SCHEMA, Subject, decode, verify)
+from player_contact_custody import ISOLATED_ABSENCES, MODULES, PLUGINS, verify_backing, verify_vfs
+from retarget_player_contact import plan, retarget
 from test_cbpc_vr_geometry import CELL, PID, pose, sample
 from test_dispatch_markers import FIXTURE, capture, mark, origin
 
@@ -97,6 +98,36 @@ def case(*, female=False, arm="tail"):
 
 
 class PlayerContactTests(unittest.TestCase):
+    def test_retarget_preserves_measured_wand_basis_and_converts_sphere_center_to_wand_origin(self):
+        frame = {"left": pose([8, 7, 20], 2.), "source": [20., 7., 16.], "targetPose": pose([10, 5, 30], 1.5)}
+        anchors = {"near": {"handFromTargetBoneGu": [0., 0., 0.]}, "far": {"handFromTargetBoneGu": [7., 0., 0.]}}
+        result = retarget(frame, anchors, [[0., 0., 0., 0., 0., 1., 1.5]])
+        self.assertEqual(result["near"]["sphereCenterGu"], [10., 5., 30.])
+        self.assertEqual(result["near"]["leftWand"], pose([-2., 5., 34.], 2.))
+        self.assertEqual(result["near"]["sphereRadiusGu"], 6.)
+        self.assertEqual(result["far"]["signedGapGu"], 2.25)
+        anchors["far"]["handFromTargetBoneGu"] = [5., 0., 0.]
+        with self.assertRaisesRegex(ValueError, "far cue has insufficient"):
+            retarget(frame, anchors, [[0., 0., 0., 0., 0., 1., 1.5]])
+
+    def test_retarget_requires_the_adjacent_equipped_weight_zero_player(self):
+        run, rows, _ = case(female=True, arm="tail")
+        node = ARM_NODES["tail"]
+        config = {"arms": {"tail": {"node": node, "slots": [108], "capsules": {"female": [{"geometry": [0., 0., 0., 0., 0., 1., 1.5]}]}}}}
+        anchors = {"targetNode": node, "sourceSlotIndices": [108], "near": {"handFromTargetBoneGu": [0., 0., 0.]},
+                   "far": {"handFromTargetBoneGu": [7., 0., 0.]}}
+        cues = {"results": {"female": {"arms": {"tail": anchors}}}}
+        frame = rows[run["holds"]["unattachedNear"][0]]
+        native = decode(rows[run["topology"]["before"]["capture"]]["result"]["returned"])
+        subject = Subject(PID, 0x14, 7, CELL, 0)
+        actual = plan(frame, native, FIXTURE, subject, config, cues, "tail", "female")
+        self.assertEqual(actual["targets"]["near"]["sphereCenterGu"], [14., 0., 9.])
+        for key, value in (("weight", 1.), ("runtimeHandle", 21)):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                wrong = deepcopy(native)
+                wrong["sample"][key] = value
+                plan(frame, wrong, FIXTURE, subject, config, cues, "tail", "female")
+
     def test_scoped_clearance_and_contact_for_both_arms(self):
         for female, arm in ((True, "tail"), (False, "left-ear")):
             with self.subTest(arm=arm):
@@ -162,7 +193,7 @@ def custody_case():
             pin = {"sha256": digest, "bytes": 4096}
             selections.append({"name": name, "module": module, "mappedBefore": mapped, "mappedAfterRead": mapped, "mappedFinal": mapped,
                                "openedBacking": location, "finalBacking": location, "pinBefore": pin, "pinFinal": pin})
-    rows.append({"path": HOST_ESP, "status": "not-found", "origins": [], "real": None})
+    rows.extend({"path": path, "status": "not-found", "origins": [], "real": None} for path in ISOLATED_ABSENCES)
     state = {"gameEdition": "vr", "game": game, "testProfileName": "test-arm", "privateVrPoststageVfs": {
         "context": context, "observedBeforeStartup08FinalGate": True,
         "batch": {"profile": "test-arm", "complete": True, "count": len(rows), "files": rows,

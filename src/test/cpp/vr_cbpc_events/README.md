@@ -87,7 +87,8 @@ by SHA-256. Supply the original run state, its mapped provider evidence,
 the pinned fitted profile, the staged config receipt and the static Body32 ZIP.
 The Bridge batch must report the full effective CBP config inventory and the
 absence of `CLAW - Physics.esp`, plus byte winners for the static trial and its
-observers. Stage the diagnostic ear and tail configuration arms separately.
+observers. FSMP must be absent from the effective files and mapped modules.
+Stage the diagnostic ear and tail configuration arms separately.
 
 The replay measures the signed union distance to the four capsules in each
 world frame and credits callbacks only inside inward-rounded QPC holds. It
@@ -96,3 +97,31 @@ The test uses the pinned neutral capsule bank at weight zero. It leaves live
 TRI neutrality, adaptive fitting, exact solver occupancy, capsule-level event
 attribution and impulses outside its measured scope. Zero qualified contact
 events leave self-contact unresolved.
+
+### Detached subject and planned motion
+
+`compose_player_contact_subject.py` merges the pinned static outfit, the Body32
+topology observer, one private CBPC arm and the inherited isolated configs.
+Supply the Morphbench stationary contact cue report as `--cues`. The composer
+checks every written file against the replay requirements and reports the
+separate CBPC DLL, its Papyrus declarations and the XP32 skeleton dependency.
+Keep its two `subject/Data` directories separate. The cue file sits outside
+both directories. The platform supplies the independently qualified World
+Observer. The staged subject manifest does not establish an installed profile.
+
+After admission, obtain a same-task World Observer row for the exact equipped
+player, target bone, actor root, HMD and both wands. Pass that original row to
+`retarget_player_contact.py` with the preceding `/8` reply from the same process,
+the independently resolved fixture item/addon IDs, the pinned config and `REFERENCE-MOVEMENT.json`.
+It projects the Morphbench test points through the measured target bone and
+uses the measured left-wand orientation and scale to calculate tracker origins.
+It leaves the head and right wand as fixed reference values and refuses points
+whose calculated sphere-to-capsule clearance misses the test margin. Use the
+admitted controller mapping to convert the output game units. Confirm the
+result with fresh world samples before the timed hold.
+
+The launch needs a verified starting fixture with the Body32 armor equipped,
+or a qualified bounded action that equips it. The narrow replay also needs the
+actual capsule append/removal and native witness receipts. A generic scene or
+Havok contact observation provides separate evidence. Use the ordinary
+Polygon admission, installation and restoration process for a real run.

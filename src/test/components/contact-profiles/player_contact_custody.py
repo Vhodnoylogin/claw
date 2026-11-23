@@ -12,6 +12,12 @@ CONFIG_SHA = "878f2a30362ab51dcc8f8cd963713801f03644569865ed1938b21b137b6181db"
 BODY_SHA = "4122c056e07054d456ffbc45bb380411581928568be8f8592c96b6573a3dbb2a"
 HOST_ESP = "CLAW - Physics.esp"
 PLUGINS = "SKSE/Plugins/"
+ISOLATED_ABSENCES = (HOST_ESP, PLUGINS + "hdtSMP64.dll")
+SKELETON_PATH = "Meshes/Actors/WerewolfBeast/Character Assets/skeleton.nif"
+SKELETON_SHA = "b64b614d06eb854512ef4a9d6b08777fe0f9580f47d495d20db16dabb9fc2dd0"
+BODY_DIR = "Meshes/Actors/WerewolfBeast/CLAW/FirstPerson"
+BODY_PLUGIN = "test_CLAW - VR Player Body32.esp"
+BODY_MEMBERS = ("Body.tri", "Body_0.nif", "Body_1.nif", "EarWorldTrial.nif", "EarWorldTrial.tri")
 MODULES = {
     "cbp.dll": "9585f78b2e4f1e09a3a33e1c7789e353caecd368738939b70ecd832b7792d729",
     "clawvrplayercbpcevents.dll": "0c5e00ae3af337928e04e24739438f374b9f910dbac2395414f1bb1b22ffbdbf",
@@ -41,9 +47,9 @@ def physical_path(path):
 def resources(config, body, arm, sex):
     configs = {**INHERITED_CONFIGS, **config["arms"][arm]["files"]}
     files = {PLUGINS + name: digest for name, digest in (configs | MODULES).items()} | SCRIPTS
-    world = f"Meshes/Actors/WerewolfBeast/CLAW/FirstPerson/{sex.lower()}/EarWorldTrial"
+    files[SKELETON_PATH] = SKELETON_SHA
     with ZipFile(BytesIO(body)) as archive:
-        for name in ("test_CLAW - VR Player Body32.esp", world + ".nif", world + ".tri"):
+        for name in (BODY_PLUGIN, *(f"{BODY_DIR}/{sex.lower()}/{name}" for name in BODY_MEMBERS)):
             files[name] = sha256(archive.read(name)).hexdigest()
     return {path.casefold(): digest for path, digest in files.items()}, {name.casefold() for name in configs if name.endswith(".txt")}
 
@@ -69,9 +75,10 @@ def verify_vfs(state, association, files, inventory, pid):
     mapped = {row["path"].casefold(): row for row in batch_files}
     observed = {row["virtual"].casefold(): row for row in proof["resources"]}
     require(len(mapped) == len(batch_files) and len(observed) == len(proof["resources"]), "Duplicate VFS paths")
-    absent = mapped[HOST_ESP.casefold()]
-    require(absent["status"] == "not-found" and not absent["origins"] and not absent.get("real"),
-            "The full automatic collider host is active or its absence is unproven")
+    for path in ISOLATED_ABSENCES:
+        absent = mapped[path.casefold()]
+        require(absent["status"] == "not-found" and not absent["origins"] and not absent.get("real"),
+                f"Required absence is unproven: {path}")
     for path, digest in files.items():
         winner, pin = mapped[path], observed[path]["pin"]
         require(winner == observed[path]["actual"] and winner["status"] == "verified" and bool(winner["origins"]) and
