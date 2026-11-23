@@ -81,6 +81,15 @@ world marker because the marker establishes the model route. Verify the
 exact installed NIF and its FSMP registration separately. The verifier still
 accepts schema 7 with its original marker counts.
 
+In dispatch captures, the attached active Body32 clones allow up to 32 detail
+entries. When present, `head_CLAWHead` and `head_CLAWHead_CLAWEars` include
+the live shape's `BODYTRI` link and its skin partition vertex and triangle
+counts under `meshSource`. These fields are sampled once in the same task as
+the route recheck. Unavailable fields are null.
+These measurements can distinguish the split ear skin from the unsplit head
+when an empty fixture marker is missing. They describe the attached geometry.
+Identical files at different paths still require a controlled asset comparison.
+
 For the separate world/first-person outfit, classify both views from the same
 schema 8 capture:
 

@@ -14,6 +14,7 @@
 #include <mutex>
 #include <optional>
 #include <stdexcept>
+#include <string_view>
 #include <vector>
 
 #if !defined(SKYRIM_CROSS_VR)
@@ -35,6 +36,7 @@ constexpr std::size_t diagnosticMaxObjects = 4096, diagnosticMaxGeometries = 128
 constexpr std::size_t diagnosticMaxChildLinks = 2 * diagnosticMaxObjects;
 constexpr std::size_t modelPathLimit = 260;
 constexpr std::size_t maxShapeDetailsPerRoot = 16;
+constexpr std::size_t maxShapeDetailsPerBodyClone = 32;
 constexpr std::size_t shapeNameLimit = 64;
 constexpr std::size_t ancestorDepthLimit = 16;
 constexpr std::array<const char*, 12> vrRouteNames = {
@@ -119,15 +121,40 @@ Routes routes(RE::PlayerCharacter& actor) {
     return result;
 }
 
-Json describeGeometry(RE::BSGeometry& shape) {
-    const auto* name = shape.name.c_str();
-    Json result = {{"name", name ? std::string(name, strnlen_s(name, shapeNameLimit)) : ""},
+Json describeEarMeshSource(RE::BSGeometry& shape) {
+    Json source = {{"bodyTri", nullptr}, {"partitionVertices", nullptr}, {"partitionTriangles", nullptr}};
+    const auto* extra = netimmerse_cast<RE::NiStringExtraData*>(shape.GetExtraData("BODYTRI"));
+    const auto* path = extra ? extra->value : nullptr;
+    if (path) {
+        const auto length = strnlen_s(path, modelPathLimit);
+        if (length && length < modelPathLimit) source["bodyTri"] = std::string(path, length);
+    }
+    const auto& skin = shape.GetGeometryRuntimeData().skinInstance;
+    const auto partition = skin ? skin->skinPartition : RE::NiPointer<RE::NiSkinPartition>{};
+    if (!partition || !partition->vertexCount || !partition->numPartitions || partition->numPartitions > 256 ||
+        partition->numPartitions != partition->partitions.size()) return source;
+    std::size_t triangles{};
+    for (const auto& row : partition->partitions) {
+        if (row.strips || !row.triangles || !row.triList) return source;
+        triangles += row.triangles;
+    }
+    source["partitionVertices"] = partition->vertexCount;
+    source["partitionTriangles"] = triangles;
+    return source;
+}
+
+Json describeGeometry(RE::BSGeometry& shape, bool bodyClone) {
+    const auto* shapeName = shape.name.c_str();
+    const std::string_view label{shapeName ? shapeName : "", shapeName ? strnlen_s(shapeName, shapeNameLimit) : 0};
+    Json result = {{"name", label},
                    {"type", shape.GetType().underlying()}, {"appCulled", shape.GetAppCulled()}};
     if (const auto* tri = shape.AsTriShape()) {
         const auto& data = tri->GetTrishapeRuntimeData();
         result["vertices"] = data.vertexCount;
         result["triangles"] = data.triangleCount;
     }
+    if (bodyClone && (label == "head_CLAWHead" || label == "head_CLAWHead_CLAWEars"))
+        result["meshSource"] = describeEarMeshSource(shape);
     return result;
 }
 
@@ -197,7 +224,7 @@ public:
                 {"active", summarizeSlots(actual.active)}, {"buffered", summarizeSlots(actual.buffered)}};
     }
 
-    Json summarizeRoots(Clock::time_point deadline) const {
+    Json summarizeRoots(Clock::time_point deadline, const std::array<Object*, 2>& activeBodyClones) const {
         Json result = Json::array();
         std::vector<Cull> culling;
         culling.reserve(leases.size());
@@ -208,14 +235,16 @@ public:
             require(Clock::now() < deadline, "capture expired");
             culling.push_back(collectCull(*leases[index]));
             Json geometryDetails = Json::array();
+            const auto bodyClone = std::ranges::find(activeBodyClones, leases[index].get()) != activeBodyClones.end();
+            const auto detailLimit = bodyClone ? maxShapeDetailsPerBodyClone : maxShapeDetailsPerRoot;
             const auto actual = claw::collectTargetModel<
                 diagnosticMaxObjects, diagnosticMaxGeometries, diagnosticMaxChildLinks>(
                 leases[index].get(), [&](Object* object) {
                 require(Clock::now() < deadline, "capture expired during graph walk");
                 auto* geometry = object->AsGeometry();
                 claw::TargetModelObject item{geometry != nullptr};
-                if (geometry && geometryDetails.size() < maxShapeDetailsPerRoot)
-                    geometryDetails.push_back(describeGeometry(*geometry));
+                if (geometry && geometryDetails.size() < detailLimit)
+                    geometryDetails.push_back(describeGeometry(*geometry, bodyClone));
                 const auto match = std::find(roles.begin(), roles.end(), object->name);
                 if (match != roles.end()) item.role = static_cast<std::size_t>(match - roles.begin());
                 return item;
@@ -232,7 +261,7 @@ public:
                               {"roleObjects", actual.roleObjects}, {"roleGeometries", actual.roleGeometries},
                               {"geometryDetails", std::move(geometryDetails)},
                               {"geometryDetailsComplete", actual.collection == claw::TargetModelCollection::complete &&
-                                  actual.geometries <= maxShapeDetailsPerRoot},
+                                  actual.geometries <= detailLimit},
                               {"availability", static_cast<unsigned>(claw::targetModelAvailability(actual))}});
         }
         for (std::size_t index = 0; index < leases.size(); ++index) {
@@ -364,12 +393,18 @@ Json collect(Clock::time_point deadline, bool dispatch) {
     Json vrRoots = Json::object();
     for (std::size_t i = 0; i < before.vrRoots.size(); ++i)
         vrRoots[vrRouteNames[i]] = inventory.identify(before.vrRoots[i]);
-    auto rootDetails = inventory.summarizeRoots(deadline);
+    std::array<Object*, 2> activeBodyClones{};
+    Json rootDetails;
     Json markers;
     std::optional<Body32Forms> fixture;
     if (dispatch) {
         fixture = resolvePlayerBody32Fixture();
         const auto observation = observeBodyMarkers(before, handle.native_handle(), fixture, deadline);
+        for (std::size_t i = 0; i < activeBodyClones.size(); ++i) {
+            const auto& active = observation[2 * i];
+            if (active.traversed) activeBodyClones[i] = active.clone;
+        }
+        rootDetails = inventory.summarizeRoots(deadline, activeBodyClones);
         markers = Json::array();
         for (std::size_t i = 0; i < observation.size(); ++i) {
             const auto& row = observation[i];
@@ -381,6 +416,8 @@ Json collect(Clock::time_point deadline, bool dispatch) {
         require(fixture == recheckedFixture, "player Body32 fixture pair changed during capture");
         require(observation == observeBodyMarkers(before, handle.native_handle(), recheckedFixture, deadline),
                 "Body32 marker attachment changed during capture");
+    } else {
+        rootDetails = inventory.summarizeRoots(deadline, activeBodyClones);
     }
     require(RE::PlayerCharacter::GetSingleton() == actor && actor->GetHandle() == handle &&
                 id(actor->GetRace()) == race && id(actor->GetActorBase()) == base &&
