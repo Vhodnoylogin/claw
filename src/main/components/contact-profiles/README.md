@@ -57,8 +57,9 @@ The two-second scan still handles morph updates and retries ordinary events.
 Pose captures older than 500 ms are discarded for both full refits and pose
 updates. The worker compares each updated capsule with the last accepted capsule
 in the attachment bone's local coordinates. The initial movement threshold
-is 0.05 game units. Exchanging the ends of a capsule leaves its identity
-unchanged for the comparison.
+is 0.05 game units. A smaller change can keep the accepted capsule only if it
+still encloses all current support vertices at the Float32 coordinates used by
+the provider. Exchanging the ends leaves the coverage calculation unchanged.
 
 A pose event carries the new snapshot token. The host gets changed slots
 only against its own fully accepted previous token and uses the existing
@@ -73,7 +74,7 @@ PEX. The default build leaves the trace disabled. At the first valid host
 acknowledgment, Distribution writes one `CLAW posed VR ACK` JSON record. It
 includes the exact matrices consumed by the fitter (row-major 3×4, relative
 to the actor root), weight and effective morphs, the published snapshot and
-predecessor, and capture, compute, publish and acknowledgment times. These
+predecessor, and capture, compute, publish, claim and acknowledgment times. These
 times use one monotonic microsecond clock within the process.
 
 ```text

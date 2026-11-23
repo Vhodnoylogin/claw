@@ -12,7 +12,11 @@
 
 namespace claw::physics {
 using Vec3 = std::array<double, 3>;
-struct Capsule { Vec3 p1{}, p2{}; double radius{}; };
+struct Capsule {
+    Vec3 p1{}, p2{};
+    double radius{};
+    bool operator==(const Capsule&) const = default;
+};
 struct Field { std::size_t morph{}; std::vector<Vec3> deltas; };
 struct Slot {
     std::string node;

@@ -92,6 +92,19 @@ inline bool PoseCapsuleChanged(const Capsule& previous, const Capsule& next, dou
            (differs(previous.p1, next.p2) || differs(previous.p2, next.p1));
 }
 
+inline bool CanKeepPoseCapsule(const Capsule& accepted, const Capsule& fitted, std::span<const Vec3> support) {
+    if (PoseCapsuleChanged(accepted, fitted, poseCapsuleTolerance)) return false;
+    // CBPC received Float32 coordinates. Test the capsule it actually holds.
+    const auto narrow = [](Vec3 point) {
+        for (auto& component : point) component = static_cast<float>(component);
+        return point;
+    };
+    const Capsule installed{narrow(accepted.p1), narrow(accepted.p2), static_cast<float>(accepted.radius)};
+    return std::all_of(support.begin(), support.end(), [&](const Vec3& point) {
+        return CapsuleDistance(point, installed) <= 0.;
+    });
+}
+
 struct PoseInfluence {
     std::size_t bone;
     double weight;
@@ -197,9 +210,11 @@ public:
 
     // Use inverse transforms from the same pose and a scratch vector distinct from worldPoints.
     void fit(std::span<const PoseAffine> worldToOwner, std::span<const Vec3> worldPoints,
-             std::vector<Vec3>& ownerPoints, std::span<Capsule> output) const {
+             std::vector<Vec3>& ownerPoints, std::span<Capsule> output,
+             std::span<const Capsule> accepted = {}) const {
         validateTransforms(worldToOwner);
-        if (worldPoints.size() != model_.vertices.size() || output.size() != model_.regions.size())
+        if (worldPoints.size() != model_.vertices.size() || output.size() != model_.regions.size() ||
+            (!accepted.empty() && accepted.size() != output.size()))
             throw std::invalid_argument("Invalid posed contact fit dimensions");
         for (std::size_t index = 0; index < model_.regions.size(); ++index) {
             const auto& region = model_.regions[index];
@@ -209,7 +224,8 @@ public:
             const auto capsule = Fit(ownerPoints, region.padding);
             if (!finite(capsule.p1) || !finite(capsule.p2) || !std::isfinite(capsule.radius))
                 throw std::invalid_argument("Nonfinite posed contact capsule");
-            output[index] = capsule;
+            output[index] = !accepted.empty() && CanKeepPoseCapsule(accepted[index], capsule, ownerPoints)
+                ? accepted[index] : capsule;
         }
     }
 

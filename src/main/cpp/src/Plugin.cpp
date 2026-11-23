@@ -299,6 +299,7 @@ struct PhysicsFitWork {
     std::uint32_t poseBaseSnapshot{};
 #if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
     std::optional<PhysicsPoseSample> pose;
+    std::vector<claw::physics::Capsule> acceptedPoseCapsules;
 #endif
 #if defined(CLAW_TRACE_VR_POSE_ACK)
     std::chrono::steady_clock::time_point computed{};
@@ -903,7 +904,7 @@ std::vector<claw::physics::Capsule> fitPhysicsPose(const PhysicsFitWork& job, co
     std::vector<claw::physics::Vec3> points(support.model.vertices.size()), scratch;
     std::vector<claw::physics::Capsule> posed(support.slotIndexes.size());
     model.skin(job.pose->world, job.weight, values, points);
-    model.fit(job.pose->worldToBone, points, scratch, posed);
+    model.fit(job.pose->worldToBone, points, scratch, posed, job.acceptedPoseCapsules);
     for (std::size_t i = 0; i < posed.size(); ++i) {
         const auto slot = support.slotIndexes[i];
         if (slot >= compiled.slots.size() || !compiled.slots[slot].active ||
@@ -1006,8 +1007,8 @@ void startPhysicsWorker() {
                 std::vector<std::int32_t> changed;
 #if defined(CLAW_PHYSICS_POSED_VR_SUPPORT)
                 if (job.poseBaseSnapshot) {
-                    // Compare against the last fully accepted geometry, not the
-                    // last pose poll. Subthreshold drift accumulates naturally.
+                    // The worker kept unchanged capsules only when they still
+                    // enclosed the new support. The accepted token is pinned above.
                     const auto slots = claw::physics::CompiledVRPoseSupport(job.female).slotIndexes;
                     if (capsules.size() != slots.size() || binding.capsules.size() != compiledPhysicsModel(job.female).slots.size()) {
                         rejectPhysics(actor, binding, claw::PhysicsRejection::model); return;
@@ -1015,7 +1016,7 @@ void startPhysicsWorker() {
                     std::vector<claw::physics::Capsule> offered;
                     for (std::size_t i = 0; i < slots.size(); ++i) {
                         const auto slot = slots[i];
-                        if (claw::physics::PoseCapsuleChanged(binding.capsules[slot], capsules[i], claw::physics::poseCapsuleTolerance)) {
+                        if (binding.capsules[slot] != capsules[i]) {
                             if (changed.empty()) offered = binding.capsules;
                             changed.push_back(static_cast<std::int32_t>(slot));
                             offered[slot] = capsules[i];
@@ -1057,6 +1058,14 @@ void queuePhysicsFit(RE::Actor* actor, PhysicsBinding& binding, std::uint32_t po
         }
         try { job.pose = samplePhysicsPose(*graph, lease->second.root->world.translate); }
         catch (const std::invalid_argument&) { return; } // A later observation may have a complete pose.
+        if (poseBaseSnapshot) {
+            const auto slots = claw::physics::CompiledVRPoseSupport(binding.female).slotIndexes;
+            if (std::ranges::any_of(slots, [&](std::size_t slot) { return slot >= binding.capsules.size(); })) {
+                rejectPhysics(actor, binding, claw::PhysicsRejection::model); return;
+            }
+            job.acceptedPoseCapsules.reserve(slots.size());
+            for (const auto slot : slots) job.acceptedPoseCapsules.push_back(binding.capsules[slot]);
+        }
     }
 #endif
     std::lock_guard lock(physicsWorkMutex);

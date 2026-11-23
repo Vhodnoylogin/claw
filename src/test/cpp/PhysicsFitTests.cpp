@@ -35,6 +35,19 @@ int main() {
     assert(inFlight.readable() && !inFlight.expired(late));
     inFlight.claimed = false; // Busy helper returned before mutation.
     assert(!inFlight.readable() && inFlight.expired(late));
+
+    const Capsule accepted{{0., 0., 0.}, {0., 0., 2.}, 1.};
+    const Capsule shifted{{.02, 0., 0.}, {.02, 0., 2.}, 1.};
+    const std::array<Vec3, 1> inward{Vec3{.99, 0., 1.}};
+    const std::array<Vec3, 1> protruding{Vec3{1.01, 0., 1.}};
+    assert(!PoseCapsuleChanged(accepted, shifted, poseCapsuleTolerance));
+    assert(CapsuleDistance(protruding[0], shifted) < 0.);
+    assert(CanKeepPoseCapsule(accepted, shifted, inward));
+    assert(!CanKeepPoseCapsule(accepted, shifted, protruding));
+    const Capsule precisionEdge{accepted.p1, accepted.p2, 1.00000004};
+    const std::array<Vec3, 1> floatRounding{Vec3{1.00000002, 0., 1.}};
+    assert(CapsuleDistance(floatRounding[0], precisionEdge) < 0.);
+    assert(!CanKeepPoseCapsule(precisionEdge, accepted, floatRounding));
     Model simple{"fixture",{"grow","shrink"},{{"TailBone01",
         {{-1,-1,-4},{1,1,-4},{-1,1,4},{1,-1,4}},
         {{0,{{-.5,-.5,-2},{.5,.5,-2},{-.5,.5,2},{.5,-.5,2}}},
