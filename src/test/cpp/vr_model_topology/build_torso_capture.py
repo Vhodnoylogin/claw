@@ -177,6 +177,134 @@ Json collect(Clock::time_point deadline,''')
     return morph_source_overlay(source, "ear_skee_unavailable")
 
 
+def equipped_ear_overlay(source):
+    source = ear_overlay(source)
+    source = replace(source, 'claw-vr-vrik-ear-stereo/1', 'claw-vr-vrik-ear-stereo/2')
+    source = replace(source, '{"earStereoCaptureVersion", 1}', '{"earStereoCaptureVersion", 2}')
+    start = source.index('bool femaleBodyPath(')
+    end = source.index('Json slotDiagnostic(', start)
+    source = source[:start] + r"""struct ExpectedBodySlot {
+    RE::FormID item{}, addon{};
+    std::string_view model, marker;
+};
+
+std::array<ExpectedBodySlot, 2> equippedEarRoutes(bool female) {
+    constexpr auto fileName = "test_CLAW - VR Player Body32.esp";
+    auto* data = RE::TESDataHandler::GetSingleton();
+    require(data, "fixture data unavailable");
+    const auto* file = data->LookupModByName(fileName);
+    const auto* item = data->LookupForm<RE::TESObjectARMO>(0x801, fileName);
+    const auto* addon = data->LookupForm<RE::TESObjectARMA>(0x800, fileName);
+    require(file && item && addon && item->GetFile(0) == file && addon->GetFile(0) == file &&
+            item->armorAddons.size() == 1 && item->armorAddons[0] == addon, "owned Body32 fixture forms unavailable");
+    const auto index = form(item) >> 24;
+    require(index > 0 && index < 0xFE && (form(addon) >> 24) == index &&
+            (form(item) & 0xFFFFFF) == 0x801 && (form(addon) & 0xFFFFFF) == 0x800,
+            "Body32 fixture form IDs or plugin index differ");
+    return {{
+        {form(item), form(addon),
+         female ? R"(Actors\WerewolfBeast\CLAW\FirstPerson\female\EarWorldTrial.nif)" :
+                  R"(Actors\WerewolfBeast\CLAW\FirstPerson\male\EarWorldTrial.nif)", female ? "W_F" : "W_M"},
+        {form(item), form(addon),
+         female ? R"(Actors\WerewolfBeast\CLAW\FirstPerson\female\Body_1.nif)" :
+                  R"(Actors\WerewolfBeast\CLAW\FirstPerson\male\Body_1.nif)", female ? "P_F" : "P_M"}
+    }};
+}
+
+claw::vr_diagnostic::Body32Predicates predicates(const BodySlot& slot, const Object* actorRoot, const Object* bipedRoot,
+                                                 const ExpectedBodySlot& expected) {
+    using claw::vr_diagnostic::modelPathChar;
+    return {bool(slot.clone), slot.clone && actorRoot && ownsReciprocalRoute(*slot.clone, *actorRoot),
+            slot.clone && bipedRoot && ownedUnder(*slot.clone, *bipedRoot),
+            std::ranges::equal(slot.model, expected.model, {}, modelPathChar, modelPathChar),
+            slot.item == expected.item, slot.addon == expected.addon};
+}
+
+struct EquippedMarker {
+    static constexpr std::string_view prefix = "CLAW_VR_DISPATCH_PROBE_";
+    RE::NiPointer<Object> object;
+    const Object* parent{};
+
+    static std::string_view name(const Object& candidate) {
+        const auto* text = candidate.name.c_str();
+        return text ? std::string_view(text) : std::string_view{};
+    }
+
+    void observe(Object& candidate, std::string_view wanted) {
+        const auto label = name(candidate);
+        if (!label.starts_with(prefix)) return;
+        require(!object && label.substr(prefix.size()) == wanted, "ambiguous or wrong Body32 dispatch marker");
+        object.reset(&candidate);
+        parent = candidate.parent;
+    }
+
+    bool attachedTo(const Object& clone, std::string_view wanted) const {
+        if (!object || !parent || object->parent != parent) return false;
+        const auto label = name(*object);
+        const auto* node = object->AsNode();
+        return node && node->GetChildren().empty() && label.starts_with(prefix) &&
+               label.substr(prefix.size()) == wanted && ownsReciprocalRoute(*object, clone);
+    }
+};
+
+""" + source[end:]
+    source = replace(source, '''Json slotDiagnostic(const BodySlot& slot, const Object* actorRoot, const Object* bipedRoot) {
+    const auto p = predicates(slot, actorRoot, bipedRoot);''',
+        '''Json slotDiagnostic(const BodySlot& slot, const Object* actorRoot, const Object* bipedRoot,
+                    const ExpectedBodySlot& expected) {
+    const auto p = predicates(slot, actorRoot, bipedRoot, expected);''')
+    source = replace(source, '''Json routeDiagnostic(const RE::BipedAnim* biped, const Object* actorRoot, const BodySlot& active, const BodySlot& buffered) {''',
+        '''Json routeDiagnostic(const RE::BipedAnim* biped, const Object* actorRoot, const BodySlot& active,
+                     const BodySlot& buffered, const ExpectedBodySlot& expected) {''')
+    source = replace(source, '''{"active", slotDiagnostic(active, actorRoot, root)}, {"buffered", slotDiagnostic(buffered, actorRoot, root)}''',
+        '''{"active", slotDiagnostic(active, actorRoot, root, expected)}, {"buffered", slotDiagnostic(buffered, actorRoot, root, expected)}''')
+    source = replace(source, '''    auto topology = Json{{"slot", 32}, {"viewThirdPerson", routeDiagnostic(biped.get(), root.get(), slot, buffered)},
+                         {"viewFirstPerson", routeDiagnostic(first.get(), firstRoot.get(), firstActive, firstBuffered)},''',
+        '''    const auto [worldExpected, firstExpected] = equippedEarRoutes(sex == 1);
+    auto topology = Json{{"slot", 32}, {"viewThirdPerson", routeDiagnostic(biped.get(), root.get(), slot, buffered, worldExpected)},
+                         {"viewFirstPerson", routeDiagnostic(first.get(), firstRoot.get(), firstActive, firstBuffered, firstExpected)},''')
+    source = replace(source, '''    require(predicates(slot, root.get(), bipedRoot).qualified() &&
+            (sex == 1 ? femaleBodyPath(slot.model) : claw::vr_diagnostic::isStockMaleBodyPath(slot.model)),
+            "exact sex-specific engine-managed world Body32 required");''',
+        '''    require(predicates(slot, root.get(), bipedRoot, worldExpected).qualified(),
+            "exact equipped world Body32 required");''')
+    source = replace(source, '''    const auto alternate = firstRoot && first && first.get() != biped.get() && firstRoot.get() != root.get() &&
+                           alternateCull.effective() == true && firstActive.empty() && firstBuffered.empty();''',
+        '''    const auto firstHidden = firstActive.empty() || (first && first->actorRef.get().get() == player &&
+        firstActive.clone.get() != clone.get() && predicates(firstActive, firstRoot.get(), firstBipedRoot, firstExpected).qualified() &&
+        parentCull(*firstActive.clone));
+    const auto alternate = firstRoot && first && first.get() != biped.get() && firstRoot.get() != root.get() &&
+                           alternateCull.effective() == true && firstHidden && firstBuffered.empty();''')
+    source = replace(source, '    const auto* currentCameraState = camera->currentState.get();', '''    EquippedMarker worldMarker, firstMarker;
+    if (firstActive.clone) {
+        traverse(*firstActive.clone, maxShapeNodes, deadline,
+                 [&](Object& object) { firstMarker.observe(object, firstExpected.marker); }, true);
+        require(firstMarker.attachedTo(*firstActive.clone, firstExpected.marker), "first-person Body32 marker unavailable");
+    }
+    const auto* currentCameraState = camera->currentState.get();''')
+    source = replace(source, 'std::string_view(object.name.c_str()) == claw::vr_diagnostic::earShapeName',
+                     'EquippedMarker::name(object) == claw::vr_diagnostic::earShapeName')
+    source = replace(source, '        childIdentities.push_back(&object);', '''        childIdentities.push_back(&object);
+        worldMarker.observe(object, worldExpected.marker);''')
+    source = replace(source, '    auto* morphs = torsoMorphSource.load();', '''    require(worldMarker.attachedTo(*clone, worldExpected.marker), "world Body32 marker unavailable");
+    auto* morphs = torsoMorphSource.load();''')
+    source = replace(source, '''    routeEvidence["stableChildCount"] = childIdentities.size();''',
+        '''    require(Clock::now() < deadline && biped->root == bipedRoot && biped->actorRef.get().get() == player &&
+            bodySlotRecord(biped->bufferedObjects[bodySlot]) == buffered &&
+            player->Get3D(true) == firstRoot.get() && player->GetBiped(true).get() == first.get() &&
+            first->root == firstBipedRoot && bodySlotRecord(first->objects[bodySlot]) == firstActive &&
+            bodySlotRecord(first->bufferedObjects[bodySlot]) == firstBuffered &&
+            worldMarker.attachedTo(*clone, worldExpected.marker) &&
+            (!firstActive.clone || (first->actorRef.get().get() == player && ownsReciprocalRoute(*firstActive.clone, *firstRoot) &&
+                                    parentCull(*firstActive.clone) &&
+                                    firstMarker.attachedTo(*firstActive.clone, firstExpected.marker))) && Clock::now() < deadline,
+            "equipped Body32 routes or markers changed during capture");
+    routeEvidence["worldDispatchMarker"] = worldExpected.marker;
+    routeEvidence["firstPersonDispatchMarker"] = firstActive.clone ? Json(firstExpected.marker) : Json(nullptr);
+    routeEvidence["stableChildCount"] = childIdentities.size();''')
+    return replace(source, '{"item", bodyItem}, {"addon", bodyAddon}', '{"item", slot.item}, {"addon", slot.addon}')
+
+
 def read_json(path):
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
@@ -190,10 +318,12 @@ def build(r06, skee, environment, output, *, subject="torso"):
     source_files = [verify(row) for row in base["sources"]]
     original = next(path for path in source_files if path.name == "Plugin.cpp")
     header = pin(HERE / "TorsoPose.h")
-    if subject == "ears":
+    if subject in ("ears", "equipped-ears"):
         extra_headers = [pin(HERE / name) for name in ("EarStereoPose.h", "StereoOptics.h")]
-        overlay = ear_overlay
-        capture_version = {"schema": "claw-vr-vrik-ear-stereo/1", "earStereoCaptureVersion": 1}
+        equipped = subject == "equipped-ears"
+        overlay = equipped_ear_overlay if equipped else ear_overlay
+        version = 2 if equipped else 1
+        capture_version = {"schema": f"claw-vr-vrik-ear-stereo/{version}", "earStereoCaptureVersion": version}
     elif subject == "torso":
         extra_headers = []
         overlay = torso_overlay
@@ -282,6 +412,6 @@ if __name__ == "__main__":
     parser.add_argument("--skee", type=Path, required=True, help="Pinned external RaceMenu IPluginInterface.h")
     parser.add_argument("--environment", type=Path, required=True, help="Retained MSVC capture-environment.cmd")
     parser.add_argument("--out", type=Path, required=True, help="New external build directory")
-    parser.add_argument("--subject", choices=("torso", "ears"), default="torso")
+    parser.add_argument("--subject", choices=("torso", "ears", "equipped-ears"), default="torso")
     args = parser.parse_args()
     print(json.dumps(build(args.r06, args.skee, args.environment, args.out, subject=args.subject), indent=2))

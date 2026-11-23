@@ -12,12 +12,16 @@ from zipfile import BadZipFile, ZipFile
 import numpy as np
 
 from avatar_torso import Skin, matrix, observation_plan, offsets, read_pinned_asset, require
+from stage_player_armor import (PLAYER_ARMOR_MARKERS, PLAYER_WORLD_MARKERS, PLUGIN, SEXES, armor_path,
+                                require_static_nif, verify_record, world_ear_path)
 from stage_visible_ears import EAR_DRIVERS, EAR_SHAPE, LEGACY_ALIAS, bodytri, motion, resource_paths
 from stereo_calibration import calibrate_head, calibrated_eye, finite_array, transform_points
 from stereo_frustum import clip_frustum
 
 CAPTURE_SCHEMA = 'claw-vr-vrik-ear-stereo/1'
 RUN_SCHEMA = 'claw-vr-ear-stereo-admission/1'
+EQUIPPED_CAPTURE_SCHEMA = 'claw-vr-vrik-ear-stereo/2'
+EQUIPPED_RUN_SCHEMA = 'claw-vr-ear-stereo-admission/2'
 CALIBRATION_SCHEMA = 'claw-vr-ear-stereo-calibration/1'
 PLAYER, BASE, RACE, CELL, ITEM, ADDON = 0x14, 7, 0xCDD84, 0x0A01A5C6, 0xCDD86, 0xCDD87
 HEAD_BONE = 'NPC Head [Head]'
@@ -43,13 +47,20 @@ def positive_int(value):
     return type(value) is int and value > 0
 
 
+def equipped_case(expected):
+    schema = expected.get('schema', RUN_SCHEMA)
+    require(schema in (RUN_SCHEMA, EQUIPPED_RUN_SCHEMA), 'Expected a separately admitted ear case')
+    return schema == EQUIPPED_RUN_SCHEMA
+
+
 def read_reply(raw, expected):
     require(type(raw) is dict and raw.get('called') is True and raw.get('returnedType') == 'string'
             and type(raw.get('returned')) is str, 'Expected bounded Papyrus readback from the ear witness')
     payload = raw['returned'].encode('utf-8')
     require(0 < len(payload) <= 32768, 'Papyrus ear witness reply is outside its byte limit')
     reply = read_json(payload)
-    require(type(reply) is dict and reply.get('schema') == CAPTURE_SCHEMA and reply.get('status') == 'ready',
+    schema = EQUIPPED_CAPTURE_SCHEMA if equipped_case(expected) else CAPTURE_SCHEMA
+    require(type(reply) is dict and reply.get('schema') == schema and reply.get('status') == 'ready',
             'Ear witness is not ready')
     for key in ('pid', 'nonce', 'epoch'):
         require(positive_int(expected[key]) and positive_int(reply.get(key)) and reply[key] == expected[key],
@@ -76,14 +87,66 @@ def read_eye(record, name):
     return eye
 
 
+def fixture_forms(expected):
+    forms = expected.get('fixtureForms')
+    require(type(forms) is dict and set(forms) == {'item', 'addon'}, 'Expected independently admitted Body32 forms')
+    item, addon = forms['item'], forms['addon']
+    require(positive_int(item) and positive_int(addon) and 0 < item >> 24 < 0xfe and item & 0xFFFFFF == 0x801
+            and addon == item - 1, 'Invalid equipped Body32 plugin index or local forms')
+    return item, addon
+
+
+def qualified_body(slot, forms, path, *, culled):
+    return ((slot['item'], slot['addon']) == forms and normalized(slot['modelPath']) == path
+            and slot['cloneCull']['effective'] is culled
+            and all(slot['predicates'][key] is True for key in
+                    ('clonePresent', 'underActorRoot', 'expectedItem', 'expectedAddon', 'expectedModelPath')))
+
+
+def empty_body(slot):
+    return (slot['predicates']['clonePresent'] is False
+            and (slot['item'], slot['addon'], slot['modelPath']) == (0, 0, ''))
+
+
+def empty_equipped_body(slot):
+    return empty_body(slot) and slot['partHandle'] is False and slot['cloneName'] == '' and slot['cloneCull'] is None
+
+
+def admitted_body_route(graph, biped, expected, equipped):
+    sex = expected['sex']
+    third, first = graph['viewThirdPerson'], graph['viewFirstPerson']
+    if equipped:
+        forms = fixture_forms(expected)
+        model = normalized(world_ear_path(sex, '.nif')).removeprefix('meshes\\')
+        first_marker = graph['firstPersonDispatchMarker']
+        first_active = first['active']
+        if first_marker is None:
+            first_route_ok = empty_equipped_body(first_active)
+        else:
+            first_route_ok = (first_marker == PLAYER_ARMOR_MARKERS[sex]
+                              and qualified_body(first_active, forms, normalized(armor_path(sex)), culled=True))
+        alternate = (graph['worldDispatchMarker'] == PLAYER_WORLD_MARKERS[sex]
+                     and empty_equipped_body(third['buffered'])
+                     and empty_equipped_body(first['buffered']) and first_route_ok)
+    else:
+        forms = ITEM, ADDON
+        model = normalized(f'actors/werewolfbeast/character assets/{sex}bodywerewolf_1.nif')
+        alternate = all(empty_body(first[bank]) for bank in ('active', 'buffered'))
+    require((biped['slot'], biped['item'], biped['addon']) == (32, *forms)
+            and normalized(biped['modelPath']) == model and qualified_body(third['active'], forms, model, culled=False)
+            and first['actorRootCull']['effective'] is True and alternate,
+            'Wrong effective world or first-person model route')
+
+
 def admitted_sample(reply, expected, ear_tri):
     sex = expected['sex']
-    weight = expected['weight']
+    weight, equipped = expected['weight'], equipped_case(expected)
     require(sex in ('male', 'female') and type(weight) in (int, float) and 0 <= weight <= 100,
             'Expected a fixed admitted sex and weight')
     sample = reply['sample']
     require(sample['phase'] == 'PostVrikPostHiggs' and type(sample['earStereoCaptureVersion']) is int
-            and sample['earStereoCaptureVersion'] == 1 and (sample['player'], sample['base'], sample['race'], sample['cell'])
+            and sample['earStereoCaptureVersion'] == (2 if equipped else 1)
+            and (sample['player'], sample['base'], sample['race'], sample['cell'])
             == (PLAYER, BASE, RACE, CELL) and positive_int(expected['handle']) and positive_int(sample['handle'])
             and sample['handle'] == expected['handle'] and type(sample['sex']) is int and sample['sex'] == (sex == 'female')
             and type(sample['rawWeight']) in (int, float) and sample['rawWeight'] == weight,
@@ -104,19 +167,7 @@ def admitted_sample(reply, expected, ear_tri):
             and type(graph['actorRootCloneVisits']) is int and graph['actorRootCloneVisits'] == 1
             and type(graph['stableChildCount']) is int and 1 < graph['stableChildCount'] <= 60,
             'Active world Body32 or inactive view controls failed')
-    model = normalized(f'actors/werewolfbeast/character assets/{sex}bodywerewolf_1.nif')
-    third, first = graph['viewThirdPerson']['active'], graph['viewFirstPerson']
-    biped = sample['biped']
-    require((biped['slot'], biped['item'], biped['addon']) == (32, ITEM, ADDON)
-            and (third['item'], third['addon']) == (ITEM, ADDON)
-            and normalized(biped['modelPath']) == normalized(third['modelPath']) == model
-            and third['cloneCull']['effective'] is False
-            and all(third['predicates'][key] is True for key in
-                    ('clonePresent', 'underActorRoot', 'expectedItem', 'expectedAddon', 'expectedModelPath'))
-            and first['actorRootCull']['effective'] is True
-            and all(first[bank]['predicates']['clonePresent'] is False and
-                    (first[bank]['item'], first[bank]['addon'], first[bank]['modelPath']) == (0, 0, '')
-                    for bank in ('active', 'buffered')), 'Wrong effective world or first-person model route')
+    admitted_body_route(graph, sample['biped'], expected, equipped)
     require(sample['earBodyTri'] == normalized(ear_tri).removeprefix('meshes\\')
             and type(sample['earVerticesObserved']) is int and sample['earVerticesObserved'] in (0, 1354)
             and type(sample['earTrianglesObserved']) is int and sample['earTrianglesObserved'] in (0, 2394),
@@ -134,8 +185,41 @@ def pin_bytes(data, info):
     return type(info.get('bytes')) is int and len(data) == info['bytes'] and sha256(data).hexdigest() == info['sha256']
 
 
+def archive_payload(data, inventory, selected):
+    with ZipFile(BytesIO(data)) as archive:
+        names = archive.namelist()
+        require(set(names) == inventory and len(names) == len(inventory), 'Unexpected ear trial archive inventory')
+        return {name: archive.read(name) for name in selected}
+
+
+def motion_xml(sex):
+    return motion.fsmp_motion.XML_ROOT + f'CLAWMotion{sex.title()}.xml'
+
+
+def equipped_payload(data, admission, sex, mode):
+    fixture_forms(admission)
+    require(('motionArchive' in admission) == (mode == 'fsmp'), 'Equipped FSMP arm requires exactly one motion archive')
+    world, tri = (world_ear_path(sex, extension) for extension in ('.nif', '.tri'))
+    first = resource_paths(sex, 1)
+    base = {PLUGIN, *(resource_paths(s, endpoint) for s in SEXES for endpoint in (None, 0, 1)),
+            *(world_ear_path(s, extension) for s in SEXES for extension in ('.nif', '.tri'))}
+    files = archive_payload(data, base, {PLUGIN, world, tri, first, resource_paths(sex)})
+    require_static_nif(files[first], expected_sex=sex)
+    require_static_nif(files[world], expected_tri=normalized(tri).removeprefix('meshes\\'))
+    if mode == 'fsmp':
+        _, overlay = read_pinned_asset(admission['motionArchive'])
+        active = {path for s in SEXES for path in (world_ear_path(s, '.nif'), motion_xml(s))}
+        xml = motion_xml(sex)
+        selected = archive_payload(overlay, active, {world, xml})
+        require(selected[world] == motion.fsmp_motion.bind_nif(files[world], xml)[0],
+                'Equipped world FSMP NIF must add only the corresponding XML binding')
+        files.update(selected)
+    return world, tri, files
+
+
 def admitted_assets(admission):
-    require(admission['schema'] == RUN_SCHEMA, 'Expected a separately admitted ear case')
+    equipped = equipped_case(admission)
+    require('schema' in admission, 'Expected a separately admitted ear case')
     witness, dll = read_pinned_asset(admission['witnessDll'])
     mapped = admission['mappedWitness']
     require(witness.name.casefold() == 'clawvrmodeltopology.dll' and mapped['pid'] == admission['pid']
@@ -143,17 +227,23 @@ def admitted_assets(admission):
     _, data = read_pinned_asset(admission['archive'])
     sex, mode = admission['sex'], admission['mode']
     require(sex in ('male', 'female') and mode in ('static', 'fsmp'), 'Unexpected trial package arm')
-    tri = Path(resource_paths(sex)).with_name('EarWorldTrial.tri').as_posix()
-    expected = {LEGACY_ALIAS, tri}
-    if mode == 'fsmp':
-        expected.add(motion.fsmp_motion.XML_ROOT + f'CLAWMotion{sex.title()}.xml')
+    if equipped:
+        nif, tri, files = equipped_payload(data, admission, sex, mode)
+    else:
+        nif, tri = LEGACY_ALIAS, world_ear_path(sex, '.tri')
+        expected = {nif, tri}
+        if mode == 'fsmp':
+            expected.add(motion_xml(sex))
+        files = archive_payload(data, expected, expected)
     observed = admission['effectiveVfs']
-    with ZipFile(BytesIO(data)) as archive:
-        names = archive.namelist()
-        require(set(names) == expected == set(observed) and len(names) == len(expected), 'Admitted VFS inventory differs from the trial archive')
-        files = {name: archive.read(name) for name in names}
+    require(set(files) == set(observed), 'Admitted VFS inventory differs from the trial archive')
     require(all(pin_bytes(payload, observed[name]) for name, payload in files.items()), 'A loaded VFS asset differs from the exact trial arm')
-    return files[LEGACY_ALIAS], files[tri], tri
+    if equipped:
+        with TemporaryDirectory(prefix='claw-ear-stereo-fixture-') as scratch:
+            plugin = Path(scratch) / PLUGIN
+            plugin.write_bytes(files[PLUGIN])
+            verify_record(plugin, visible_ears=True)
+    return files[nif], files[tri], tri
 
 
 def ear_frames(plan, sample):
@@ -237,7 +327,8 @@ def replay(packet, admission, pynifly, calibration=None, *, baseline_packet=None
         if baseline_packet is not None:
             paired = {'baselineCaptureSha256': baseline_digest, 'baselinePhaseSequence': baseline['phaseSequence'],
                       'earMotion': ear_motion(shape, records, baseline, sample)}
-    report = {'schema': 'claw-vr-ear-stereo-replay/1', 'captureSha256': digest, 'phaseSequence': sample['phaseSequence'],
+    report = {'schema': f'claw-vr-ear-stereo-replay/{sample["earStereoCaptureVersion"]}',
+              'captureSha256': digest, 'phaseSequence': sample['phaseSequence'],
               'triangles': len(points), 'worldBoundsGu': [points.min(axis=(0, 1)).tolist(), points.max(axis=(0, 1)).tolist()],
               'projectionControlsConsistent': False, 'engineProjectionQualified': False, 'renderedPixelsVerified': False,
               **paired}

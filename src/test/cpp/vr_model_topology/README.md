@@ -189,3 +189,31 @@ also reconstructs the later pose carrying the earlier ear drivers relative to
 the head, with the later non-ear support intact. The difference isolates the
 ear driver contribution. Head-relative distances use the head's local scale.
 Use matched static and provider-on controls to attribute motion to FSMP.
+
+### Equipped player ear sample
+
+Use `--subject equipped-ears` with a separate build directory. Select this
+diagnostic DLL and its matching PEX in the test profile. The different
+topology observers share the same DLL and PEX destinations. This observer
+reports `claw-vr-vrik-ear-stereo/2`. It resolves the fixture ESP's own armor
+and single addon at runtime, then checks the active sex-specific
+`EarWorldTrial.nif` world route and its `W_M` or `W_F` marker. It accepts an
+empty first-person slot or a separately owned, culled `Body_1.nif` slot with
+the matching `P_M` or `P_F` marker. Both buffered slots must be empty. It
+checks body ownership, slots, visibility and marker attachment again before
+returning the sample. This is the world-body trial with the other view hidden.
+
+Use the same replay command with `claw-vr-ear-stereo-admission/2`. Supply the
+`fixtureForms` object containing the independently observed runtime `item`
+and `addon` IDs. The full IDs must share the loaded fixture ESP index and
+have local IDs 0x801 and 0x800. Pin the base player Body32 ZIP in `archive`.
+Include a pin for the world FSMP ZIP in `motionArchive` only for the FSMP arm.
+
+For `effectiveVfs`, pin the fixture ESP and the selected sex's
+`EarWorldTrial.nif`, `EarWorldTrial.tri`, `Body_1.nif` and `Body.tri`. Add
+the chosen XML for the active arm. That arm takes its world NIF and XML
+from the overlay, with the remaining files still supplied by the base.
+The replay checks both ZIP inventories and reparses the admitted ESP.
+Use separate provider records to establish FSMP registration, teardown,
+or contact. The ear samples establish motion and route once captured in
+an admitted game, with no inference about rendered pixels.

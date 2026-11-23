@@ -2,6 +2,7 @@
 from copy import deepcopy
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
@@ -10,9 +11,10 @@ from zipfile import ZipFile
 
 import numpy as np
 
-from avatar_ear_stereo import (ADDON, BASE, CAPTURE_SCHEMA, CELL, EAR_DRIVERS, EAR_SHAPE, HEAD_BONE, ITEM,
-                               LEGACY_ALIAS, PLAYER, RACE, RUN_SCHEMA, admitted_assets, admitted_baseline,
-                               admitted_sample, ear_motion, read_reply)
+from avatar_ear_stereo import (ADDON, BASE, CAPTURE_SCHEMA, CELL, EAR_DRIVERS, EAR_SHAPE, EQUIPPED_CAPTURE_SCHEMA,
+                              EQUIPPED_RUN_SCHEMA, HEAD_BONE, ITEM, LEGACY_ALIAS, PLAYER, RACE, RUN_SCHEMA,
+                              admitted_assets, admitted_baseline, admitted_sample, ear_motion, motion_xml, read_reply)
+from stage_player_armor import PLUGIN, armor_path, resource_paths, world_armor_path, world_ear_path
 from stereo_calibration import calibrate_head, calibrated_eye, transform_points
 
 TRI = r'actors\werewolfbeast\claw\firstperson\female\earworldtrial.tri'
@@ -50,6 +52,40 @@ def packet(reply):
     return {'called': True, 'returnedType': 'string', 'returned': json.dumps(reply)}
 
 
+def equipped_trial(sex, *, occupied):
+    reply, expected = payload()
+    forms = {'item': 0x12000801, 'addon': 0x12000800}
+    expected.update(schema=EQUIPPED_RUN_SCHEMA, fixtureForms=forms, sex=sex)
+    reply['schema'] = EQUIPPED_CAPTURE_SCHEMA
+    reply['sample'].update(earStereoCaptureVersion=2, sex=int(sex == 'female'),
+                           earBodyTri=world_armor_path(sex, True).lower().replace('.nif', '.tri'))
+    reply['sample']['biped'].update(forms, modelPath=world_armor_path(sex, True))
+    graph = reply['body32']
+    first = graph['viewFirstPerson']
+    third = graph['viewThirdPerson']
+    for row in (first['active'], first['buffered']):
+        row.update(partHandle=False, cloneName='', cloneCull=None)
+    third['buffered'] = deepcopy(first['buffered'])
+    third['active'].update(forms, modelPath=world_armor_path(sex, True))
+    third['active']['predicates']['underBipedRoot'] = False
+    sex_marker = sex[0].upper()
+    graph.update(worldDispatchMarker='W_' + sex_marker,
+                 firstPersonDispatchMarker='P_' + sex_marker if occupied else None)
+    if occupied:
+        first['active'] = deepcopy(third['active'])
+        first['active']['cloneCull']['effective'] = True
+        first['active']['modelPath'] = armor_path(sex)
+    return reply, expected
+
+
+def pin_payload(payload):
+    return {'bytes': len(payload), 'sha256': sha256(payload).hexdigest()}
+
+
+def pin_file(path):
+    return {'path': str(path), **pin_payload(path.read_bytes())}
+
+
 def transform(position=(0, 0, 0), rotation=None, scale=1):
     return {'position': list(position), 'rotation': np.eye(3).tolist() if rotation is None else rotation,
             'scale': scale}
@@ -84,10 +120,6 @@ class StereoAdmissionTests(unittest.TestCase):
             admitted_sample(reply, expected, TRI)
 
     def test_separate_vfs_hashes_must_match(self):
-        def pin(path):
-            data = path.read_bytes()
-            return {'path': str(path), 'sha256': sha256(data).hexdigest(), 'bytes': len(data)}
-
         with TemporaryDirectory() as scratch:
             root = Path(scratch)
             witness = root / 'CLAWVRModelTopology.dll'
@@ -98,9 +130,9 @@ class StereoAdmissionTests(unittest.TestCase):
             with ZipFile(archive, 'w') as dest:
                 for name, data in members.items():
                     dest.writestr(name, data)
-            vfs = {name: {'bytes': len(data), 'sha256': sha256(data).hexdigest()} for name, data in members.items()}
-            admission = {'schema': RUN_SCHEMA, 'pid': 492, 'sex': 'female', 'mode': 'static', 'archive': pin(archive),
-                         'effectiveVfs': vfs, 'witnessDll': pin(witness), 'mappedWitness': pin(witness) | {'pid': 492}}
+            vfs = {name: pin_payload(data) for name, data in members.items()}
+            admission = {'schema': RUN_SCHEMA, 'pid': 492, 'sex': 'female', 'mode': 'static', 'archive': pin_file(archive),
+                         'effectiveVfs': vfs, 'witnessDll': pin_file(witness), 'mappedWitness': pin_file(witness) | {'pid': 492}}
             self.assertEqual(admitted_assets(admission), (b'ear mesh', b'trial TRI', tri))
             vfs[tri]['sha256'] = '0' * 64
             with self.assertRaisesRegex(ValueError, 'loaded VFS'):
@@ -120,6 +152,112 @@ class StereoAdmissionTests(unittest.TestCase):
             admitted_baseline(packet(reply), request, current | {'epoch': 8}, TRI)
         with self.assertRaisesRegex(ValueError, 'distinct'):
             admitted_baseline(packet(reply), request, current | {'nonce': request['nonce']}, TRI)
+
+
+class EquippedAdmissionTests(unittest.TestCase):
+    def test_both_sexes_and_clean_alternate_view_states(self):
+        for sex in ('male', 'female'):
+            for occupied in (True, False):
+                with self.subTest(sex=sex, occupied=occupied):
+                    reply, expected = equipped_trial(sex, occupied=occupied)
+                    decoded, _ = read_reply(packet(reply), expected)
+                    sample, eyes = admitted_sample(decoded, expected, world_ear_path(sex, '.tri'))
+                    self.assertEqual(sample['sex'], int(sex == 'female'))
+                    self.assertEqual(len(eyes), 2)
+
+    def test_schema_and_runtime_forms_cannot_mix_stock_and_equipped_trials(self):
+        reply, expected = equipped_trial('female', occupied=True)
+        with self.assertRaisesRegex(ValueError, 'is not ready'):
+            read_reply(packet(reply), expected | {'schema': RUN_SCHEMA})
+        stock, _ = payload()
+        with self.assertRaisesRegex(ValueError, 'is not ready'):
+            read_reply(packet(stock), expected)
+        for forms in (None, {'item': ITEM, 'addon': ADDON}, {'item': 0xFE000801, 'addon': 0xFE000800},
+                      {'item': 0x13000801, 'addon': 0x12000800}, {'item': 0x13000801, 'addon': 0x13000800}):
+            with self.subTest(forms=forms), self.assertRaisesRegex(ValueError, 'forms|route'):
+                admitted_sample(reply, expected | {'fixtureForms': forms}, TRI)
+        reply['sample']['earStereoCaptureVersion'] = 1
+        with self.assertRaisesRegex(ValueError, 'out-of-phase'):
+            admitted_sample(reply, expected, TRI)
+
+    def test_wrong_view_marker_forms_visibility_or_residue_is_rejected(self):
+        reply, expected = equipped_trial('female', occupied=True)
+        changes = (
+            (('worldDispatchMarker',), 'P_F'),
+            (('worldDispatchMarker',), 'W_M'),
+            (('firstPersonDispatchMarker',), None),
+            (('firstPersonDispatchMarker',), 'W_F'),
+            (('viewFirstPerson', 'active', 'modelPath'), world_armor_path('female', True)),
+            (('viewFirstPerson', 'active', 'cloneCull', 'effective'), False),
+            (('viewFirstPerson', 'active', 'predicates', 'underActorRoot'), False),
+            (('viewFirstPerson', 'buffered', 'partHandle'), True),
+            (('viewThirdPerson', 'buffered', 'cloneName'), 'unrelated mesh'),
+            (('viewThirdPerson', 'active', 'addon'), ADDON),
+        )
+        for keys, value in changes:
+            changed = deepcopy(reply)
+            row = changed['body32']
+            for key in keys[:-1]:
+                row = row[key]
+            row[keys[-1]] = value
+            with self.subTest(keys=keys, value=value), self.assertRaisesRegex(ValueError, 'route'):
+                admitted_sample(changed, expected, TRI)
+
+    def test_baseline_requires_equipped_route_and_correct_identity(self):
+        reply, prior = equipped_trial('female', occupied=True)
+        reply['sample'].update(hmd=transform(), camera=transform())
+        current = prior | {'nonce': 4, 'armedAfterPhase': 8}
+        request = {key: prior[key] for key in ('nonce', 'armedAfterPhase')}
+        self.assertEqual(admitted_baseline(packet(reply), request, current, TRI)[0]['phaseSequence'], 8)
+        reply['body32']['worldDispatchMarker'] = 'W_M'
+        with self.assertRaisesRegex(ValueError, 'route'):
+            admitted_baseline(packet(reply), request, current, TRI)
+
+
+@unittest.skipUnless(os.getenv('CLAW_VR_PLAYER_WORLD_EAR_ROOT'), 'Explicit built world-ear outfit required')
+class EquippedArchiveTests(unittest.TestCase):
+    def test_admits_exact_selected_winners_for_both_sexes_and_arms(self):
+        root = Path(os.environ['CLAW_VR_PLAYER_WORLD_EAR_ROOT'])
+        base = root / Path(PLUGIN).with_suffix('.zip')
+        overlay = root / (Path(PLUGIN).stem + ' - World FSMP.zip')
+        base_pin, overlay_pin = pin_file(base), pin_file(overlay)
+        with TemporaryDirectory() as scratch, ZipFile(base) as static, ZipFile(overlay) as active:
+            witness = Path(scratch) / 'CLAWVRModelTopology.dll'
+            witness.write_bytes(b'witness')
+            witness_pin = pin_file(witness)
+            for sex in ('male', 'female'):
+                for mode in ('static', 'fsmp'):
+                    with self.subTest(sex=sex, mode=mode):
+                        world, tri = (world_ear_path(sex, extension) for extension in ('.nif', '.tri'))
+                        files = {name: static.read(name) for name in (PLUGIN, world, tri, resource_paths(sex, 1),
+                                                                     resource_paths(sex))}
+                        _, admission = equipped_trial(sex, occupied=True)
+                        admission.update(mode=mode, archive=base_pin, witnessDll=witness_pin,
+                                         mappedWitness=witness_pin | {'pid': admission['pid']})
+                        if mode == 'fsmp':
+                            files.update({name: active.read(name) for name in (world, motion_xml(sex))})
+                            admission['motionArchive'] = overlay_pin
+                        vfs = {name: pin_payload(data) for name, data in files.items()}
+                        admission['effectiveVfs'] = vfs
+                        self.assertEqual(admitted_assets(admission), (files[world], files[tri], tri))
+                        wrong = vfs | {world: pin_payload((static if mode == 'fsmp' else active).read(world))}
+                        with self.assertRaisesRegex(ValueError, 'loaded VFS'):
+                            admitted_assets(admission | {'effectiveVfs': wrong})
+                        if mode == 'static':
+                            with self.assertRaisesRegex(ValueError, 'motion archive'):
+                                admitted_assets(admission | {'motionArchive': overlay_pin})
+                        else:
+                            if sex == 'male':
+                                repack = Path(scratch) / 'mislabeled.zip'
+                                with ZipFile(repack, 'w') as bad:
+                                    for name in active.namelist():
+                                        member = static.read(world) if name == world else active.read(name)
+                                        bad.writestr(name, member)
+                                with self.assertRaisesRegex(ValueError, 'XML binding'):
+                                    admitted_assets(admission | {'motionArchive': pin_file(repack), 'effectiveVfs': wrong})
+                            del admission['motionArchive']
+                            with self.assertRaisesRegex(ValueError, 'motion archive'):
+                                admitted_assets(admission)
 
 
 class EarMotionTests(unittest.TestCase):
