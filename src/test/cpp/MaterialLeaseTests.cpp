@@ -1,4 +1,5 @@
 #include "claw/MaterialLease.h"
+#include "claw/CoatTextureRetry.h"
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -67,6 +68,24 @@ int main() {
         auto faded = q10; faded.propertyAlpha = 1.F;
         require(!(q10 == faded), "Q10 regression no longer exercises the old failure");
         require(mayRestoreMaterial(q10, faded), "Finite Q10 property fade still loses coat ownership");
+        require(!coatTextureRetryDue(5000, 4999) && !coatTextureRetryDue(5000, 6999) &&
+            coatTextureRetryDue(5000, 7000), "The texture retry deadline was skipped or underflowed");
+        const CoatDonorContent<std::array<std::string, 1>> observedDonor{
+            q10, {"textures/base/body.dds"}, 0, std::nullopt};
+        auto retry = observedDonor;
+        retry.state = faded;
+        require(observedDonor.matches(retry), "An ordinary fade cancelled the delayed texture bind");
+        retry.paths[0] = "textures/later/body.dds";
+        require(!observedDonor.matches(retry), "The retry could overwrite an in-place donor texture path change");
+        retry = observedDonor;
+        retry.state.textures[0] = 10;
+        require(!observedDonor.matches(retry), "The retry could overwrite an in-place donor resource change");
+        retry = observedDonor;
+        retry.feature = 1;
+        require(!observedDonor.matches(retry), "The retry could overwrite a later shader feature");
+        retry = observedDonor;
+        retry.tint = std::array{0.5F, 0.6F, 0.7F};
+        require(!observedDonor.matches(retry), "The retry could overwrite a later tint");
         for (const float alpha : {0.F, 0.1F, 0.6F, 1.F, 1.1F, -0.1F}) {
             auto current = initialized; current.propertyAlpha = alpha;
             require(mayRestoreMaterial(initialized, current), "A finite property fade was mistaken for coat content");

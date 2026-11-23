@@ -4,6 +4,7 @@
 #include "claw/CoatMapping.h"
 #include "claw/MaterialLease.h"
 #include "claw/CoatSurfaceAudit.h"
+#include "claw/CoatTextureRetry.h"
 #include "claw/VRPlayerBodyRoute.h"
 #include <RE/Skyrim.h>
 #include <SKSE/SKSE.h>
@@ -90,12 +91,25 @@ private:
         std::vector<Surface> surfaces;
         std::vector<RE::NiPointer<RE::BSGeometry>> yielded;
     };
+    using CoatScene = CoatGeometry<RE::BSGeometry, coatRuntimeRoleCount>;
+    struct DonorSurface {
+        RE::NiPointer<RE::BSGeometry> geometry;
+        RE::NiPointer<RE::BSShaderProperty> property;
+        RE::BSTSmartPointer<RE::BSShaderMaterial> material;
+        CoatDonorContent<TexturePaths> content;
+        std::size_t role{};
+    };
+    struct TextureRetry {
+        std::uint64_t failedAt{};
+        std::vector<DonorSurface> donors;
+    };
     struct Entry {
         RE::FormID base{};
         std::uint32_t sex{};
         Colours colours;
         RE::NiPointer<RE::NiAVObject> root; // Retain generation identity; prevents recycled-root pointer aliases.
         RE::NiPointer<RE::BSGeometry> attemptedEar; // Optional same-root route may appear or change after an attempt.
+        std::unique_ptr<TextureRetry> textureRetry;
         RE::ActorHandle handle;
         bool loaded{};
         std::vector<Surface> surfaces;
@@ -140,7 +154,11 @@ private:
     static std::string texturePath(RE::BSTextureSet* set, RE::BSTextureSet::Texture slot);
     static TexturePaths readTexturePaths(const RE::BSShaderProperty& property);
     CoatDecision decision(const Entry& entry) const;
-    bool preparePattern(RE::BSShaderProperty* property, const CoatTexture& texture, const CoatDDSInfo& expected, std::string& reason) const;
+    static CoatTexturePreparation preparePattern(RE::BSShaderProperty* property, const CoatTexture& texture,
+        const CoatDDSInfo& expected, std::string& reason);
+    static std::unique_ptr<TextureRetry> captureTextureRetry(const CoatScene& scene, bool hasEar);
+    static bool sameRetryDonors(const TextureRetry& retry, const CoatScene& scene, const RE::NiAVObject* root);
+    static CoatDonorContent<TexturePaths> donorContent(const RE::BSShaderProperty& property);
     struct PatternAssets { bool valid{}; std::map<std::string, CoatDDSInfo, std::less<>> dimensions; };
     const PatternAssets& validatePattern(const std::string& key, const CoatPattern& pattern);
     Entry* entryFor(RE::Actor* actor);
@@ -254,6 +272,7 @@ inline bool Runtime::unbind(Entry& entry, bool defer) {
     const bool complete = pending.surfaces.empty() && pending.yielded.empty();
     if (!complete) pendingRollbacks_.emplace(actor->formID, std::move(pending));
     entry.surfaces.clear(); entry.root.reset(); entry.attemptedEar.reset(); entry.appliedPattern.clear();
+    entry.textureRetry.reset();
     entry.appliedVariation.reset();
     return complete;
 }
@@ -556,22 +575,29 @@ inline const Runtime::PatternAssets& Runtime::validatePattern(const std::string&
     result.valid = true;
     return result;
 }
-inline bool Runtime::preparePattern(RE::BSShaderProperty* property, const CoatTexture& texture, const CoatDDSInfo& expected, std::string& reason) const {
-    if (!property || !property->material) { reason = "private shader or material unavailable"; return false; }
+inline CoatTexturePreparation Runtime::preparePattern(RE::BSShaderProperty* property, const CoatTexture& texture,
+    const CoatDDSInfo& expected, std::string& reason) {
+    if (!property || !property->material) {
+        reason = "private shader or material unavailable";
+        return CoatTexturePreparation::unavailable;
+    }
     auto* material = static_cast<RE::BSLightingShaderMaterialBase*>(property->material);
     const auto donorPath = texturePath(material->textureSet.get(), RE::BSTextureSet::Texture::kDiffuse);
-    const auto fail = [&](std::string detail) { reason = std::move(detail) + "; donor diffuse=" + donorPath; return false; };
+    const auto fail = [&](std::string detail, CoatTexturePreparation result = CoatTexturePreparation::unavailable) {
+        reason = std::move(detail) + "; donor diffuse=" + donorPath;
+        return result;
+    };
     const auto enginePath = coatEngineTexturePath(texture.path);
     RE::NiPointer<RE::NiTexture> loaded;
     RE::BSShaderManager::GetTexture(enginePath.c_str(), true, loaded, false);
-    if (!loaded) return fail("GetTexture returned null");
-    auto* source = loaded ? netimmerse_cast<RE::NiSourceTexture*>(loaded.get()) : nullptr;
+    if (!loaded) return fail("GetTexture returned null", CoatTexturePreparation::pending);
+    auto* source = netimmerse_cast<RE::NiSourceTexture*>(loaded.get());
     if (!source) {
         const auto* type = loaded->GetRTTI();
         return fail("loaded texture RTTI=" + std::string(type ? type->GetName() : "<none>") + "; NiSourceTexture cast failed");
     }
     if (!source->rendererTexture || !source->rendererTexture->resourceView)
-        return fail("engine texture has no renderer resource view");
+        return fail("engine texture has no renderer resource view", CoatTexturePreparation::pending);
     std::uint32_t width{}, height{}, levels{}, arraySize{};
     source->GetTextureDimensionsAndMipInfo(&width, &height, &levels, &arraySize);
     if (width != expected.width || height != expected.height || levels == 0 || arraySize != 1) {
@@ -597,7 +623,7 @@ inline bool Runtime::preparePattern(RE::BSShaderProperty* property, const CoatTe
     if (material->diffuseTexture.get() != source) return fail("diffuse texture assignment readback mismatch");
     const auto actualPath = texturePath(set.get(), RE::BSTextureSet::Texture::kDiffuse);
     if (actualPath != enginePath) return fail("private diffuse path readback=" + actualPath + "; expected=" + enginePath);
-    return true;
+    return CoatTexturePreparation::ready;
 }
 template<class Keep> void Runtime::retainIf(Keep&& keep) {
     for (auto it = entries_.begin(); it != entries_.end();) {
@@ -796,6 +822,35 @@ inline std::optional<RGB> Runtime::observedTint(const RE::BSShaderMaterial* mate
     }
     return {};
 }
+inline CoatDonorContent<Runtime::TexturePaths> Runtime::donorContent(const RE::BSShaderProperty& property) {
+    return {materialLeaseState(property), readTexturePaths(property),
+        static_cast<std::int32_t>(property.material->GetFeature()), observedTint(property.material)};
+}
+inline std::unique_ptr<Runtime::TextureRetry> Runtime::captureTextureRetry(const CoatScene& scene, bool hasEar) {
+    auto retry = std::make_unique<TextureRetry>();
+    retry->failedAt = auditClock();
+    const auto count = hasEar ? coatRuntimeRoleCount : vrEarCoatRole;
+    retry->donors.reserve(count);
+    for (std::size_t role = 0; role < count; ++role) {
+        auto* geometry = scene.unique(role);
+        auto* property = geometry ? geometry->lightingShaderProp_cast() : nullptr;
+        if (!property || !property->material || property->material->GetType() != RE::BSShaderMaterial::Type::kLighting)
+            return {};
+        retry->donors.push_back({RE::NiPointer<RE::BSGeometry>{geometry}, RE::NiPointer<RE::BSShaderProperty>{property},
+            RE::BSTSmartPointer<RE::BSShaderMaterial>{property->material}, donorContent(*property), role});
+    }
+    return retry;
+}
+inline bool Runtime::sameRetryDonors(const TextureRetry& retry, const CoatScene& scene, const RE::NiAVObject* root) {
+    return std::ranges::all_of(retry.donors, [&](const DonorSurface& donor) {
+        auto* geometry = scene.unique(donor.role);
+        return geometry == donor.geometry.get() && attached(geometry, root) &&
+            geometry->GetGeometryRuntimeData().shaderProperty.get() == donor.property.get() &&
+            donor.property->material == donor.material.get() &&
+            donor.material->GetType() == RE::BSShaderMaterial::Type::kLighting &&
+            donor.content.matches(donorContent(*donor.property));
+    });
+}
 inline void Runtime::reportYieldDifferences(RE::FormID actor, const Entry& entry, const std::vector<SurfaceLeaseFailure>& failures) {
     // These plain differences were captured by the actual failed predicate,
     // before cleanup and without a second later read of the changed fields.
@@ -845,6 +900,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     if (mapping_ && (resource.empty() || resource == installedCoatMaterial)) {
         if (!entry.surfaces.empty() && !unbind(entry)) return false;
         entry.attemptedEar.reset();
+        entry.textureRetry.reset();
         if (resource == installedCoatMaterial && entry.root.get() == root && entry.attemptedPattern == selectedChoice.pattern)
             return true;
         entry.root.reset(root);
@@ -855,17 +911,20 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         return !resource.empty();
     }
     const auto mode = mapping_ ? TintMode::original : policy_.tintMode();
-    const CoatGeometryRoles roles{actor, root};
     // Use the engine's case-insensitive names. Check every reachable geometry
     // for retained identities, including a conflicted geometry renamed in place.
-    const auto scene = collectCoatGeometry<RE::BSGeometry, coatRuntimeRoleCount>(root, [&](RE::NiAVObject* object) {
-        auto* geometry = object->AsGeometry();
-        return std::pair{geometry, roles.match(object, geometry)};
-    }, [](RE::NiAVObject* object, auto&& push) {
-        if (auto* node = object->AsNode()) for (const auto& child : node->GetChildren())
-            if (!push(child.get())) return false;
-        return true;
-    });
+    const auto readScene = [&] {
+        const CoatGeometryRoles roles{actor, root};
+        return collectCoatGeometry<RE::BSGeometry, coatRuntimeRoleCount>(root, [&](RE::NiAVObject* object) {
+            auto* geometry = object->AsGeometry();
+            return std::pair{geometry, roles.match(object, geometry)};
+        }, [](RE::NiAVObject* object, auto&& push) {
+            if (auto* node = object->AsNode()) for (const auto& child : node->GetChildren())
+                if (!push(child.get())) return false;
+            return true;
+        });
+    };
+    const auto scene = readScene();
     if (!scene.complete()) { entry.status = "coat geometry observation incomplete"; return false; }
     if (!scene.clearOf(entry.yield.surfaces)) { entry.status = "yielded to later coat writer"; return false; }
     if (scene.matches[vrEarCoatRole] > 1) {
@@ -876,6 +935,13 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     auto* ear = scene.unique(vrEarCoatRole);
     const bool sameAttempt = root == entry.root.get() && entry.attemptedPattern == requestedPattern &&
         entry.attemptedMode == mode && entry.attemptedEar.get() == ear;
+    std::unique_ptr<TextureRetry> retry;
+    const auto retryStillCurrent = [&](const CoatScene& observed) {
+        if (actor->Get3D(false) == root && observed.complete() && observed.matches[vrEarCoatRole] <= 1 &&
+            observed.unique(vrEarCoatRole) == ear && sameRetryDonors(*retry, observed, root)) return true;
+        entry.status = "coat retry cancelled because the original surfaces changed";
+        return false;
+    };
 
     if (root == entry.root.get() && !entry.surfaces.empty()) {
         const bool firstReport = entry.yieldReportedRoot.get() != root;
@@ -924,8 +990,11 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
             return true;
         }
     }
-    if (sameAttempt && entry.surfaces.empty()) return false;
-    if (!unbind(entry)) return false;
+    if (sameAttempt && entry.surfaces.empty()) {
+        if (!entry.textureRetry || !coatTextureRetryDue(entry.textureRetry->failedAt, auditClock())) return false;
+        retry = std::move(entry.textureRetry);
+        if (!retryStillCurrent(scene)) return false;
+    } else if (!unbind(entry)) return false;
     std::vector<Surface> prepared;
     const auto* selected = library_.find(resource);
     std::string patternFailure = !requestedPattern.empty() && !selected ? "library or pattern unavailable" : "";
@@ -936,6 +1005,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     }
     // Resource failure is resolved before any live binding. A human retains the
     // already-working tint, and a source-less born wolf retains its donor.
+    bool texturePending{};
     for (unsigned attempt = 0; attempt < 2; ++attempt) {
     prepared.clear(); bool retryWithoutPattern{};
     for (std::size_t role = 0; role < coatRuntimeRoleCount; ++role) {
@@ -977,10 +1047,13 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
             std::optional{hasColour ? pack(coatTint(skin ? entry.colours.skin : entry.colours.hair, !skin)) : 0xFFFFFFU};
         if (const auto failure = prepareMaterial(copy.get(), original, tint); !failure.empty()) return isolationFailure(failure);
         std::string textureFailure;
-        if (selected && !preparePattern(copy.get(), selected->textures.at(std::string(surfaceSpec.texture)), assets->dimensions.at(std::string(surfaceSpec.texture)), textureFailure)) {
+        const auto textureResult = selected ? preparePattern(copy.get(), selected->textures.at(std::string(surfaceSpec.texture)),
+            assets->dimensions.at(std::string(surfaceSpec.texture)), textureFailure) : CoatTexturePreparation::ready;
+        if (textureResult != CoatTexturePreparation::ready) {
             const auto& path = selected->textures.at(std::string(surfaceSpec.texture)).path;
             patternFailure = path + ": " + textureFailure;
             SKSE::log::warn("CLAW appearance {:08X}: coat {} asset {}: {}", actor->formID, requestedPattern, path, textureFailure);
+            texturePending = textureResult == CoatTexturePreparation::pending;
             selected = nullptr; retryWithoutPattern = true; break;
         }
         if (!protectPrivateTint(copy.get(), original)) { entry.status = "private tint protection failed"; return false; }
@@ -1002,7 +1075,16 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     entry.attemptedEar.reset(ear);
     if (prepared.empty()) {
         entry.root.reset(root); entry.status = patternFailure.empty() ?
-            "original material retained; " + selectedChoice.reason : "coat unavailable: " + patternFailure; return false;
+            "original material retained; " + selectedChoice.reason : "coat unavailable: " + patternFailure;
+        if (mode == TintMode::original && texturePending && !retry) {
+            entry.textureRetry = captureTextureRetry(scene, ear != nullptr);
+            if (entry.textureRetry) entry.status += "; one renderer retry pending";
+        }
+        return false;
+    }
+    if (retry) {
+        if (!retryStillCurrent(readScene())) return false;
+        entry.audit.invalidate();
     }
     // All surfaces were validated and cloned before any live binding changes.
     entry.surfaces = std::move(prepared); entry.root.reset(root);
@@ -1014,7 +1096,12 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         auto& current = surface.geometry->GetGeometryRuntimeData().shaderProperty;
         if (!initializePrivateMaterial(current, surface.own, surface.original, surface.original->alpha,
                 [&](const auto& copy) { return copy->FinishSetupGeometry(surface.geometry.get()); }) || !healthyPrivateTint(surface)) {
-            unbind(entry); entry.status = "private tint initialization failed"; return false;
+            unbind(entry);
+            if (retry && actor->Get3D(false) == root) {
+                entry.root.reset(root);
+                entry.attemptedEar.reset(ear);
+            }
+            entry.status = "private tint initialization failed"; return false;
         }
         surface.material.reset(surface.own->material);
         surface.guard.reset(netimmerse_cast<RE::NiBooleanExtraData*>(surface.own->GetExtraData("NO_TINT")));

@@ -17,6 +17,13 @@ target FaceGen shaders and do not apply to this path; ordinary property fades
 and general material-alpha traversal remain distinct. A fresh game regression
 must verify actual load and fade behaviour before acceptance.
 
+If a structurally valid coat texture has no usable renderer resource, CLAW
+keeps the original material and retries once on a regular refresh after two
+seconds. The retry requires the same coat and model and checks that all original
+surfaces still have the same materials, texture paths and tint. A normal fade
+can continue during the wait. Changes from a later material writer cancel the
+retry. Missing or structurally invalid DDS files keep the base coat.
+
 The supplied coat matrix uses known skin RGB to bias the variant within the
 hair-selected group. The normalized variant value combines 80% of the actor's
 stable seed with 20% of encoded skin luminance. When hair is unavailable and
