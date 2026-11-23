@@ -90,6 +90,16 @@ These measurements can distinguish the split ear skin from the unsplit head
 when an empty fixture marker is missing. They describe the attached geometry.
 Identical files at different paths still require a controlled asset comparison.
 
+For the stock male contact trial, build `--subject stock-ear-contact` with
+`build_torso_capture.py`. Its separate `CLAWVRStockEarContactPose` script can
+run beside the topology witness. A ready `claw-vr-stock-ear-contact-pose/1`
+reply binds the attached stock Body32 ear skin, its `BODYTRI`, verified
+topology, effective morphs and bone transforms to a QPC interval after the
+HIGGS phase. This capture uses the active world geometry and tracking nodes.
+`stock_ear_fit.py` fits the current left-ear partition from that reply and
+the independently pinned split-ear mesh and TRI. A callback trial also needs
+fresh measured holds and the separate stock player CBPC witness.
+
 For the separate world/first-person outfit, classify both views from the same
 schema 8 capture:
 
