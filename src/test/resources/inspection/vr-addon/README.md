@@ -50,7 +50,7 @@ changes to isolate collider refit.
 | Body in headset | At the same standing anchor, look down at hands, chest, torso and legs, then turn the head left and right. Check camera clearance, consistent hand tracking and visible material. Capture native route, model, geometry ownership and cull separately from the operator's headset result. |
 | Wolf morphs and coat | Read the loaded NIF/TRI route and actual named wolf values. Compare with the frozen expectation from the human baseline. Recheck after a model refresh or reroute. Record body/head material binding and outcome after dwell alongside the headset observation. |
 | Contacts and motion | Verify the selected arm below. Repeat supported contact checks with each tracked hand. Record exact missing axes, bones, views, or reach separately. |
-| Human return | Let the ordinary transformation end. Verify the human race/gear and body route, loss of wolf collider and FSMP registration, and motion reset. Release the fixture or control lease. Record game exit, collection and exact profile restoration. |
+| Human return | Let the ordinary transformation end without `SetRace`. The stock `PlayerWerewolfQuest` starts with a 150-second duration. Keep the world unpaused and budget separately for transformation, expiry and human post-effects. Verify the original human race, gear and body route, cleared wolf morphs, and loss of any enabled contact and FSMP registrations. Record game exit, collection and exact profile restoration. |
 
 Use the same neutral placement and field of view for both body settings. Run the
 separate save/load case only after the no-save lifecycle passes in a disposable
@@ -70,10 +70,14 @@ contact. Historical XML with ear or breast motion is its own control.
 
 | VRIK | HIGGS | Retained evidence and next check |
 | --- | --- | --- |
-| Off | Off | VR66 measured stock wolf world-hand tracking. Hands33 `20261124-121054-310858` confirmed the human hands and an equipped world slot, with empty first-person wolf slots. Use this arm for the stock fallback and the human-return control. |
-| On | Off | VR62 measured world-hand tracking in both forms. Check the intended world-avatar headset presentation and near-player geometry with this profile. |
-| On | On | `20261124-005927-321659` observed the split world-ear geometry with both providers mapped. Explicit first-person slots remained empty. Inspect the headset and qualify HIGGS-dependent observations independently. |
-| Off | On | No archived CLAW VR case. Verify the upstream-supported setup and add an exact result or record the unsupported configuration. |
+| Off | Off | `20261124-175324-4213ef` completed ordinary Beast Form and the world diagnostic on core 0.11.0. Use this arm as the fallback control. |
+| On | Off | `20261124-180301-0e5e1e` completed the core diagnostic. `20261124-181745-0ebb2c` loaded the actual male fixed-profile 0.5.0 body in the world and verified the same nonzero `CLAWTorsoGirth` value from both CLAW and RaceMenu. |
+| On | On | `20261124-180753-e45674` completed the core diagnostic with both providers loaded. Check HIGGS hand contacts and headset visibility separately. |
+| Off | On | `20261124-180514-37822d` completed the core diagnostic with HIGGS alone. Qualify add-on body and hands separately. |
+
+All four core runs covered the player world graph. The exact body run reported
+an unloaded first-person armor graph. Headset presentation, applied vertex
+displacement and natural return still require separate captures.
 
 An absent HIGGS callback leaves the post-HIGGS collector unavailable. Use the
 admitted topology and ordinary World Observer for the fallback path. Keep the

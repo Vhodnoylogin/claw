@@ -16,6 +16,8 @@
     "initializerQuest": "0x0004B2D9",
     "initializerRunningStage": 1,
     "startupEffectForms": ["0x00092C45", "0x000F8209"],
+    "returnQuest": "0x0002BA16",
+    "stockTransformationDurationSeconds": 150,
     "floorAnchor": "first stable standing player root in the admitted Realm cell",
     "hands": ["LeftWandNode", "RightWandNode"],
     "unknownWriteOutcome": "retire the disposable session and inspect the retained ledger"
@@ -42,10 +44,10 @@
     {"id": "body-contact-and-tail-motion", "body": true, "contact": true, "tailMotion": true}
   ],
   "providerProfiles": [
-    {"id": "stock", "vrik": false, "higgs": false, "referenceRuns": ["20261120-035616-9914ee", "20261124-121054-310858"]},
-    {"id": "vrik", "vrik": true, "higgs": false, "referenceRuns": ["20261120-032311-3fcac0"]},
-    {"id": "vrik-higgs", "vrik": true, "higgs": true, "referenceRuns": ["20261124-005927-321659"]},
-    {"id": "higgs", "vrik": false, "higgs": true, "referenceRuns": []}
+    {"id": "stock", "vrik": false, "higgs": false, "referenceRuns": ["20261124-175324-4213ef"]},
+    {"id": "vrik", "vrik": true, "higgs": false, "referenceRuns": ["20261124-180301-0e5e1e", "20261124-181745-0ebb2c"]},
+    {"id": "vrik-higgs", "vrik": true, "higgs": true, "referenceRuns": ["20261124-180753-e45674"]},
+    {"id": "higgs", "vrik": false, "higgs": true, "referenceRuns": ["20261124-180514-37822d"]}
   ],
   "contact": {
     "referenceBank": "vr-detailed-whole-body-v1",
