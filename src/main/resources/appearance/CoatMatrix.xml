@@ -14,17 +14,11 @@
   <Rule source="colour.available" target="coat.colour-available" gain="1" cap="1"/>
   <Rule source="seed" target="coat.variation" gain="1" cap="1"/>
   <Rule source="seed" target="coat.selector" gain="1" cap="1"/>
+  <!-- The regional palette reads these RGB channels. With no saturation or opacity rules they only select textures. -->
   <Rule source="skin.red" target="dye.body.red" gain="1" cap="1"/>
   <Rule source="skin.green" target="dye.body.green" gain="1" cap="1"/>
   <Rule source="skin.blue" target="dye.body.blue" gain="1" cap="1"/>
-  <Rule source="" target="dye.body.saturation" gain="0.55" cap="1" function="constant" value="1"/>
   <Rule source="hair.red" target="dye.hair.red" gain="1" cap="1"/>
   <Rule source="hair.green" target="dye.hair.green" gain="1" cap="1"/>
   <Rule source="hair.blue" target="dye.hair.blue" gain="1" cap="1"/>
-  <Rule source="" target="dye.hair.saturation" gain="0.5" cap="1" function="constant" value="1"/>
-  <Rule source="hair.chroma" target="dye.hair.saturation" gain="0.5" cap="1"/>
-  <Rule source="" target="dye.hair.opacity" gain="0.86" cap="1" function="constant" value="1"/>
-  <Rule source="hair.red" target="dye.hair.opacity" gain="0.029764" cap="1"/>
-  <Rule source="hair.green" target="dye.hair.opacity" gain="0.100128" cap="1"/>
-  <Rule source="hair.blue" target="dye.hair.opacity" gain="0.010108" cap="1"/>
 </CoatMatrix>

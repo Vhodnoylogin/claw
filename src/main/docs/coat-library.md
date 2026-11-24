@@ -134,9 +134,14 @@ Earlier catalog and palette tools document the withdrawn release. See its
 for its original tool usage and observations. Install artwork through the
 original author's normal mod-manager distribution.
 
-### Regional tint
+### Original-colour review and earlier tint experiment
 
-The owner-review matrix supplies `dye.body.*` from skin RGB and
+The default `CoatMatrix.xml` emits only texture-selection inputs. The discrete
+review uses Elegant's original RGB and fur opacity. Skin selects the body
+texture and hair selects the head and fur textures. Changes in texture colour
+come from the selected Elegant artwork and the game's ordinary lighting.
+
+The earlier experimental matrix supplied `dye.body.*` from skin RGB and
 `dye.hair.*` from hair RGB. Its hair saturation uses the distance between the
 strongest and weakest RGB channels. Hair luminance maps to a 0.86–1.0 opacity
 multiplier for fur layers already using alpha blending. The head and fur
@@ -145,7 +150,7 @@ colours leave their regions unchanged. A manual coat assignment still chooses
 the base texture set. The installed artwork and all non-diffuse maps remain
 external.
 
-This candidate uses private per-surface FaceGen RGB overlay materials. It
+That tint experiment uses private per-surface FaceGen RGB overlay materials. It
 passes colour, saturation and fur opacity separately from texture selection.
 The engine can replace a tint or material during appearance updates. CLAW
 retains the existing ownership checks and yields when another writer claims it.

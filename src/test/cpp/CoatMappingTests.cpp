@@ -222,28 +222,28 @@ int main(int argc, char** argv) {
         const auto ionaOutputs = matrix.evaluate(iona, middleSeed);
         const auto onlySkinOutputs = matrix.evaluate(skinOnly, middleSeed);
         const auto onlyHairOutputs = matrix.evaluate(hairOnly, middleSeed);
-        const auto ionaDye = coatDyes(ionaOutputs, iona);
-        const auto eddaDye = coatDyes(matrix.evaluate(edda, middleSeed), edda);
-        require(ionaDye.body.tint && ionaDye.hair.tint && eddaDye.body.tint && eddaDye.hair.tint &&
-            ionaDye.body.tint != eddaDye.body.tint && ionaDye.hair.tint != eddaDye.hair.tint,
-            "regional dye absent or insensitive to human colours");
-        const auto skinContrast = coatDyes(matrix.evaluate(darkSkin, middleSeed), darkSkin);
-        require(ionaDye.body.tint != skinContrast.body.tint && ionaDye.hair.tint == skinContrast.hair.tint &&
-            ionaDye.hair.opacity == skinContrast.hair.opacity, "skin colour contaminated the hair dye");
-        auto hairContrast = iona;
-        hairContrast.hair = {1, .3F, .1F};
-        const auto hairContrastDye = coatDyes(matrix.evaluate(hairContrast, middleSeed), hairContrast);
-        require(ionaDye.body.tint == hairContrastDye.body.tint && ionaDye.body.opacity == 1.F &&
-            ionaDye.hair.tint != hairContrastDye.hair.tint && hairContrastDye.hair.opacity > ionaDye.hair.opacity,
-            "hair colour did not independently modulate tint and opacity");
-        require(coatSurfaceDye(ionaDye, "body").tint == ionaDye.body.tint &&
-            coatSurfaceDye(ionaDye, "head").tint == ionaDye.hair.tint &&
-            coatSurfaceDye(ionaDye, "ScalpFurBlend").tint == ionaDye.hair.tint,
+        for (const auto& colours : {iona, edda, darkSkin, lightSkin, skinOnly, hairOnly, Colours{}}) {
+            const auto outputs = matrix.evaluate(colours, middleSeed);
+            require(!outputs.contains("dye.body.saturation") && !outputs.contains("dye.hair.saturation") &&
+                !outputs.contains("dye.hair.opacity"), "default coat matrix contains an active dye control");
+            const auto dye = coatDyes(outputs, colours);
+            require(!dye.active() && dye.body.opacity == 1.F && dye.hair.opacity == 1.F,
+                "default coat matrix changes original coat tint or opacity");
+        }
+        const CoatValues customDye{{"dye.body.red", .8F}, {"dye.body.green", .6F}, {"dye.body.blue", .5F},
+            {"dye.body.saturation", .55F}, {"dye.hair.red", .4F}, {"dye.hair.green", .3F},
+            {"dye.hair.blue", .2F}, {"dye.hair.saturation", .5F}, {"dye.hair.opacity", .86F}};
+        const auto dye = coatDyes(customDye, iona);
+        require(dye.body.tint && dye.hair.tint && dye.body.tint != dye.hair.tint &&
+            dye.body.opacity == 1.F && dye.hair.opacity == .86F, "custom dye channels collapsed");
+        require(coatSurfaceDye(dye, "body").tint == dye.body.tint &&
+            coatSurfaceDye(dye, "head").tint == dye.hair.tint &&
+            coatSurfaceDye(dye, "ScalpFurBlend").tint == dye.hair.tint,
             "regional routing diverged from the painted mesh parts");
-        require(coatDyes(onlySkinOutputs, skinOnly).body.tint && !coatDyes(onlySkinOutputs, skinOnly).hair.tint &&
-            coatDyes(onlyHairOutputs, hairOnly).hair.tint && !coatDyes(onlyHairOutputs, hairOnly).body.tint &&
-            !coatDyes(ionaOutputs, {}).active() && !coatDyes({}, iona).active(), "missing dye input was fabricated");
-        auto invalidDye = ionaOutputs;
+        require(coatDyes(customDye, skinOnly).body.tint && !coatDyes(customDye, skinOnly).hair.tint &&
+            coatDyes(customDye, hairOnly).hair.tint && !coatDyes(customDye, hairOnly).body.tint &&
+            !coatDyes(customDye, {}).active() && !coatDyes({}, iona).active(), "missing dye input was fabricated");
+        auto invalidDye = customDye;
         invalidDye["dye.hair.saturation"] = std::numeric_limits<float>::infinity();
         require(!coatDyes(invalidDye, iona).hair.tint && coatDyes(invalidDye, iona).hair.opacity == 1.F,
             "invalid dye affected the coat");
