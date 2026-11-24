@@ -63,3 +63,27 @@ wolves and one white wolf. A later run reproduced this with audits on both
 sides of the frame. Matching material fields alone cannot pass the scene.
 Compare fixed and automatic coats separately, using the earlier distinct Brown
 and White fixtures as visible controls if they are present in the bootstrap.
+
+## Softer local texture comparison
+
+Use the same row, camera and light when comparing the harmonized and discrete
+variants. The generator combines the verified skin and hair RGB from each pair
+in OKLab. Skin sets the main lightness. A soft limit pulls extreme head and fur
+tones toward it, with varying hair influence by material. The source material's
+alpha is retained at the preview resolution. The weights operate per material.
+An authored UV mask would be needed to control the transition within a material.
+
+```powershell
+python -B src/test/python/integration/prepare_coat_harmonized_scene.py `
+  --installed '<local Elegant Randomized texture directory>' `
+  --appearance '<discrete candidate appearance directory>' `
+  --output '<new local preview directory outside Git>'
+```
+
+Stage the two generated appearance XMLs and the DDS destinations in
+`texture-pins.json` only in a disposable TEST SE run. Use `--coat-mode harmonized`
+with `--appearance` pointing to the output and `--generated-coats` pointing to
+its `generated-coats.json`. The scene checks the exact source human colours and
+bound per-actor DDS. The colour calculation runs offline. The scene binds those
+local materials to the verified fixtures and captures the game rendering.
+Keep generated textures local and out of the installer, repository and release.

@@ -18,12 +18,13 @@ SAME_HAIR = ((0, 1), (2, 3))
 
 
 def expected_paths(appearance_dir, fixed_coat):
-    """Resolve a canonical coat's managed surface paths from CLAW's catalog."""
+    """Resolve a range or manual coat's managed surface paths from the catalog."""
     directory = Path(appearance_dir)
     mapping = ET.parse(directory / 'CoatMapping.xml').getroot()
     library = ET.parse(directory / 'CoatLibrary.xml').getroot()
-    materials = [row.get('material', '') for row in mapping.findall('Range') if row.get('id') == fixed_coat]
-    require(len(materials) == 1, f'Expected one canonical coat range for {fixed_coat!r}')
+    materials = [row.get('material', '') for row in mapping
+                 if row.tag in ('Range', 'Manual') and row.get('id') == fixed_coat]
+    require(len(materials) == 1, f'Expected one canonical coat range or manual entry for {fixed_coat!r}')
     library_id, _, pattern_id = materials[0].partition('/')
     require(pattern_id and library_id == library.get('id'), f'No coat library for {fixed_coat!r}')
     patterns = [node for node in library.findall('Patterns/Pattern') if node.get('id') == pattern_id]
@@ -114,6 +115,8 @@ def inspect_discrete_regions(audit, pair, skin_paths, hair_paths):
     for name, surface in surfaces.items():
         require(surface.get('feature') == 0 and surface.get('tint') is None
                 and surface.get('healthyLease') is True and surface.get('ownDiffuse') is True
+                and isinstance(surface.get('diffusePath'), str)
+                and stock_path(surface['diffusePath']) == stock_path(paths[name])
                 and isinstance(surface.get('diffuseResource'), str)
                 and stock_path(surface['diffuseResource']) == stock_path(paths[name]),
                 f'{pair["name"]} {name}: expected the assigned skin or hair DDS on the original-colour shader')

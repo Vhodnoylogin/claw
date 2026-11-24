@@ -62,6 +62,11 @@ class RegionalScene:
         self.fixed = palette['fixedCoat'] if coat_mode == 'fixed' else None
         self.skin_coats = palette.get('skinCoats', {})
         self.hair_coats = palette.get('hairCoats', {})
+        self.generated_coats = palette.get('generatedCoats', {})
+        self.preselected = coat_mode in ('skin-pairs', 'harmonized')
+        if coat_mode == 'harmonized':
+            require(set(self.generated_coats) == {pair['base'] for pair in self.pairs},
+                    'Expected one locally generated coat per fixture base')
         self.appearance = appearance
         self.dwell = dwell
         self.capture = capture
@@ -169,6 +174,8 @@ class RegionalScene:
     def common_coat(self, pair):
         if self.coat_mode == 'skin-pairs':
             return self.skin_coats[rgb_key(pair['skinRecordRGB8'])]
+        if self.coat_mode == 'harmonized':
+            return self.generated_coats[pair['base']]
         return self.fixed
 
     def inspect_coat(self, audit, pair, pattern):
@@ -177,6 +184,8 @@ class RegionalScene:
             require(pattern == self.skin_coats[rgb_key(pair['skinRecordRGB8'])], 'Automatic skin coat differs from the fixture')
             hair_paths = expected_paths(self.appearance, self.hair_coats[rgb_key(pair['hair'])])
             return inspect_discrete_regions(audit, pair, skin_paths, hair_paths)
+        if self.coat_mode == 'harmonized':
+            return inspect_discrete_regions(audit, pair, skin_paths, skin_paths)
         return inspect_regions(audit, pair, skin_paths)
 
     def create(self, pair, role, actor, lane, y):
@@ -206,15 +215,15 @@ class RegionalScene:
         human, wolf = (tag(index, role) for role in ROLES)
         self.session.state['activeSemanticCommandId'] = 'preview-transform-' + wolf
         common = self.common_coat(pair)
-        if self.coat_mode == 'skin-pairs':
+        if self.preselected:
             require(self.claw(wolf, 'SetCoatPattern', 'bool', common, write=True) is True,
-                    'Skin-based scene coat was refused before transformation')
+                    'Scene coat was refused before transformation')
         self.mutate('transform ' + wolf, lambda: self.bindings.guarded_call(self.session,
             {'bindingId': 'morph_race', 'self': self.spec(wolf), 'args': [WOLF_RACE]}, self.deadline(), self.policy))
         self.unequip(wolf, pair['inventory'], remove=False)
         self.poll(lambda: self.claw(wolf, 'GetStatus', 'int'), lambda value: value == 2, 10, 'No live CLAW body')
         row = self.data['pairs'][pair['name']] = {'tags': [human, wolf], 'human': self.spec(human), 'wolf': self.spec(wolf)}
-        if self.coat_mode != 'skin-pairs':
+        if not self.preselected:
             automatic = self.poll(lambda: self.claw(wolf, 'GetAppliedCoatPattern'), bool, 12, 'No automatic coat bound')
             require(self.claw(wolf, 'GetCoatPattern') == '', 'Unexpected manual coat on ' + wolf)
             audit = self.audit(wolf)
@@ -223,7 +232,7 @@ class RegionalScene:
             self.inspect_coat(audit, pair, automatic)
         self.save()
         if common is not None:
-            if self.coat_mode != 'skin-pairs':
+            if not self.preselected:
                 require(self.claw(wolf, 'SetCoatPattern', 'bool', common, write=True) is True, 'Fixed coat refused')
             self.poll(lambda: self.claw(wolf, 'GetAppliedCoatPattern'), lambda value: value == common,
                       12, 'Fixed coat did not bind')
@@ -348,7 +357,8 @@ def main():
     parser.add_argument('--profile', required=True, help='Prepared source profile for the disposable clone')
     parser.add_argument('--scenario', required=True, type=Path, help='Read-only QASmoke bootstrap with the qualified save pins')
     parser.add_argument('--appearance', required=True, type=Path, help='Effective candidate CoatMapping.xml / CoatLibrary.xml directory')
-    parser.add_argument('--coat-mode', choices=('fixed', 'skin-pairs', 'automatic', 'discrete'), default='fixed')
+    parser.add_argument('--coat-mode', choices=('fixed', 'skin-pairs', 'automatic', 'discrete', 'harmonized'), default='fixed')
+    parser.add_argument('--generated-coats', type=Path, help='Local manifest of coat IDs keyed by fixture base')
     parser.add_argument('--capture', action='store_true', help='Capture an owned FHD game frame between material audits')
     parser.add_argument('--dwell', type=int, choices=range(3, 121), metavar='SECONDS', default=3,
                         help='Passive wait (3–120 seconds) between the two material audits')
@@ -357,6 +367,15 @@ def main():
     from skyrim_autotest import cli, scenarios
 
     palette = json.loads(PALETTE.read_bytes())
+    if args.coat_mode == 'harmonized':
+        require(args.generated_coats is not None, 'The harmonized scene needs a generated coat manifest')
+        coats = json.loads(args.generated_coats.read_bytes())
+        require(isinstance(coats, dict) and set(coats) == {pair['base'] for pair in palette['pairs']}
+                and all(isinstance(coat, str) and coat for coat in coats.values()),
+                'Generated coat manifest does not match the scene')
+        palette['generatedCoats'] = coats
+        for coat in coats.values():
+            expected_paths(args.appearance, coat)
     session_policy(json.loads(args.config.read_bytes()), palette)
     expected_paths(args.appearance, palette['fixedCoat'])
     groups = {'skinCoats': 'skinRecordRGB8', 'hairCoats': 'hair'}
