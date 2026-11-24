@@ -1,4 +1,4 @@
-# Four-pair coat comparison in Skyrim SE
+# Regional coat comparisons in Skyrim SE
 
 The [palette and placement](pairs.json) use four stock Skyrim NPC bases. The
 [scene runner](../../../python/integration/coat_regional_scene.py) creates
@@ -17,12 +17,43 @@ The two left pairs isolate hair at the same medium skin tone. The two right
 pairs do the same for light skin. Compare Olda with Idgrod or Argi with Angi
 to isolate skin with the same hair input.
 
+## Five skin tones with one hair colour
+
+The [five-tone palette](skin-pairs.json) uses five female stock Skyrim.esm
+characters with the same BlueBlack hair colour, RGB `[20, 20, 24]`. Humans can
+have different hairstyles. The wolf coats all use the same Grey body source and
+ValleyBlack head and fur source, so the visible patterns are held constant for
+the five-way comparison. The diffuse changes come from the human skin input.
+
+| Left to right | Character | Skin RGB from Skyrim.esm |
+| --- | --- | --- |
+| Very pale | Idgrod the Younger | 221, 221, 221 |
+| Warm beige | Olda | 185, 179, 170 |
+| Medium rosy brown | Aia Arria | 143, 114, 101 |
+| Tan | Seren | 113, 87, 68 |
+| Very dark | Anwen | 67, 44, 33 |
+
+Prepare the local appearance maps with `prepare_coat_harmonized_scene.py` and
+pass `--palette src/test/resources/inspection/regional-coats/skin-pairs.json`
+to both that command and the scene runner. Use `--coat-mode harmonized` and
+`--generated-coats '<local appearance directory>/generated-coats.json'` with
+the scene runner. Update the disposable profile admission to exactly those
+five NPC bases and the Nord, Imperial, Redguard and werewolf races. Keep the
+derived textures local and stage the prepared `texture-pins.json` paths into
+the disposable MO2 profile before launching.
+
+`skinComparison` records the five measured input colours and the shared hair
+colour from both human instances of each base before any transformations.
+The normal material readback verifies the actual path and bound diffuse resource
+on all twelve wolf surfaces. With `--capture`, bracketed `lightTones.png` and
+`darkTones.png` supplement the panorama, which is restored for inspection.
+
 ## Run the scene
 
 Use a prepared Skyrim SE test profile with the matching CLAW candidate and its
 matching assets, Elegant Randomized, the inspection lighting, DevBench and
 World Observer. Bind `PYTHONPATH` to the qualified Autotest source. The local
-Autotest configuration needs a disposable profile, the four bases in
+Autotest configuration needs a disposable profile, the selected palette bases in
 `fixtureActorBases`, their human and wolf races in `allowedRaceForms` and the
 guarded `morph_race` binding for `Actor.SetRace`. Run the usual VFS and native
 payload checks when preparing that configuration. The scene script checks live
@@ -51,7 +82,7 @@ control for the earlier tint candidate with one explicit base per skin tone.
 run to check for changes after the initial sample. The run directory contains
 `claw-regional-scene.json` with the owned references and material observations.
 On Windows, `--capture` requires Pillow with window capture support and an
-owned 1920×1080 Skyrim SE window. It saves two PNGs locally with each frame
+owned 1920×1080 Skyrim SE window. It saves game frames locally with each frame
 bracketed by material audits. It does not need to activate the game window.
 
 ## What counts as a pass

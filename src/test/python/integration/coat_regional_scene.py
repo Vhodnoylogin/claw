@@ -1,4 +1,4 @@
-"""Place and inspect the four regional coat pairs in an owned Skyrim SE run."""
+"""Place and inspect the regional coat pairs in an owned Skyrim SE run."""
 
 import argparse
 import json
@@ -7,12 +7,15 @@ from pathlib import Path
 import time
 from unittest.mock import patch
 
-from coat_regional_readback import compare_pairs, expected_paths, inspect_discrete_regions, inspect_regions, verify_human
+from coat_regional_readback import (
+    compare_pairs, expected_paths, inspect_discrete_regions, inspect_regions, verify_human, verify_skin_only,
+)
 from coat_persistence_readback import require
 from coat_scene_capture import capture_game_frame
 
 
 PALETTE = Path(__file__).resolve().parents[2] / 'resources/inspection/regional-coats/pairs.json'
+SKIN_PALETTE = PALETTE.with_name('skin-pairs.json')
 PLAYER = '0x00000014'
 WOLF_RACE = '0x000CDD84'
 CELL = '0x00032AE7'  # QASmoke in Skyrim.esm
@@ -40,7 +43,7 @@ def session_policy(config, palette):
     require(set(policy.get('fixtureActorBases', [])) == {pair['base'] for pair in pairs}
             and set(policy.get('allowedRaceForms', [])) == {WOLF_RACE, *(pair['race'] for pair in pairs)}
             and any(row.get('id') == 'morph_race' for row in policy.get('bindings', [])),
-            'The SE configuration must admit the four fixture bases and the guarded morph_race binding')
+            'The SE configuration must admit the fixture bases and the guarded morph_race binding')
     return policy
 
 
@@ -58,6 +61,9 @@ class RegionalScene:
         require(any(row['role'] == 'game' and row['identity'] == self.game for row in session.state['owned'])
                 and native.identity(self.game['pid']) == self.game, 'Expected exact owned Skyrim process')
         self.pairs = palette['pairs']
+        self.camera = palette.get('camera', CAMERA)
+        self.review_views = palette.get('reviewViews', {}) if capture else {}
+        self.skin_only = palette.get('comparison') == 'skin-only'
         self.coat_mode = coat_mode
         self.fixed = palette['fixedCoat'] if coat_mode == 'fixed' else None
         self.skin_coats = palette.get('skinCoats', {})
@@ -65,17 +71,22 @@ class RegionalScene:
         self.generated_coats = palette.get('generatedCoats', {})
         self.preselected = coat_mode in ('skin-pairs', 'harmonized')
         if coat_mode == 'harmonized':
-            require(set(self.generated_coats) == {pair['base'] for pair in self.pairs},
+            require(set(self.generated_coats) == {pair['base'] for pair in self.pairs}
+                    and len(set(self.generated_coats.values())) == len(self.pairs),
                     'Expected one locally generated coat per fixture base')
+        require(not self.skin_only or (coat_mode == 'harmonized' and len(self.pairs) == 5),
+                'The five skin controls use locally generated harmonized coats')
         self.appearance = appearance
         self.dwell = dwell
         self.capture = capture
-        self.end = time.monotonic() + 307 + dwell
+        self.prep_seconds = 307 + dwell + 25 * len(self.review_views)
+        self.end = time.monotonic() + self.prep_seconds
         self.path = session.dir / 'claw-regional-scene.json'
         require(not self.path.exists() and not session.state.get('interactiveActorFixtures'),
                 'Scene may only create actors once in a fresh run')
         self.data = {'run': session.state['id'], 'game': self.game, 'palette': palette,
                      'coatMode': coat_mode, 'dwellSeconds': dwell, 'actors': {}, 'pairs': {}, 'rawAudits': {},
+                     'humanInputs': {},
                      'frames': {}, 'status': 'PREPARING', 'intent': None, 'unknownMutation': False}
 
     def save(self):
@@ -207,7 +218,7 @@ class RegionalScene:
         audit = self.audit(actor)
         self.data['rawAudits'][actor] = {'human': audit}
         self.save()
-        verify_human(audit, pair)
+        self.data['humanInputs'][actor] = verify_human(audit, pair)
         if role == 'Wolf':
             self.unequip(actor, pair['inventory'], remove=True)
 
@@ -245,10 +256,12 @@ class RegionalScene:
     def view(self, references):
         return self.tool('inspect', {'kind': 'world_observer', 'refs': list(references), 'actors': True})
 
-    def layout(self):
-        self.pose(PLAYER, CAMERA, 270.)
+    def layout(self, camera=None):
+        camera = self.camera if camera is None else camera
+        self.pose(PLAYER, camera, 270.)
         wall_row = sorted(actors(self.pairs), key=lambda entry: entry[-1])
         row = [self.spec(actor)['reference'] for _, _, actor, _, _ in wall_row]
+        y_min, y_max = wall_row[0][-1] - 7., wall_row[-1][-1] + 15.
         refs = [PLAYER, *row]
         previous = {}
 
@@ -261,7 +274,7 @@ class RegionalScene:
             if not sample.get('ok') or set(observed) != set(refs) or observed.keys() != prior.keys():
                 return False
             y = [observed[ref][1] for ref in row]
-            return (math.dist(observed[PLAYER], CAMERA) <= 4. and 1488. <= y[0] < y[-1] <= 2000.
+            return (math.dist(observed[PLAYER], camera) <= 4. and y_min <= y[0] < y[-1] <= y_max
                     and all(b - a >= 55. for a, b in zip(y, y[1:]))
                     and all(-2775. <= observed[ref][0] <= -2600. and abs(observed[ref][2] - FLOOR_Z) <= 4. for ref in row)
                     and all(math.dist(prior[ref], observed[ref]) <= 2. for ref in refs))
@@ -315,12 +328,18 @@ class RegionalScene:
         self.poll(target, released, 5, 'Crosshair retained its target before shutdown')
 
     def run(self, *, preview):
-        self.session.phase('Prepare four regional coat pairs', 317 + self.dwell)
+        self.session.phase(f'Prepare {len(self.pairs)} regional coat pairs', self.prep_seconds + 10)
         player = self.view([PLAYER])
         require(player.get('ok') is True and any(row.get('identity', {}).get('form') == PLAYER
                 and row.get('cellForm') == CELL for row in player.get('refs', [])), 'QASmoke bootstrap required')
         for entry in actors(self.pairs):
             self.create(*entry)
+        if self.skin_only:
+            inputs = self.data['humanInputs']
+            self.data['skinComparison'] = verify_skin_only([
+                (inputs[tag(index, 'Human')], inputs[tag(index, 'Wolf')]) for index, _ in enumerate(self.pairs)
+            ])
+            self.save()
         for index, pair in enumerate(self.pairs):
             self.transform(index, pair)
         for _, _, actor, _, y in actors(self.pairs):
@@ -336,6 +355,13 @@ class RegionalScene:
         else:
             time.sleep(self.dwell)
         self.sample('afterDwell')
+        if self.review_views:
+            self.data['reviewLayouts'] = {}
+            for label, camera in self.review_views.items():
+                self.session.phase('Capture regional coat detail: ' + label, 40)
+                self.data['reviewLayouts'][label] = self.layout(camera)
+                self.sample(label)
+            self.data['panoramaRestored'] = self.layout()
         if not preview:
             self.release_crosshair()
         self.data['status'] = 'READY_FOR_MANUAL_INSPECTION' if preview else 'MATERIAL_CHECK_COMPLETE'
@@ -357,6 +383,7 @@ def main():
     parser.add_argument('--profile', required=True, help='Prepared source profile for the disposable clone')
     parser.add_argument('--scenario', required=True, type=Path, help='Read-only QASmoke bootstrap with the qualified save pins')
     parser.add_argument('--appearance', required=True, type=Path, help='Effective candidate CoatMapping.xml / CoatLibrary.xml directory')
+    parser.add_argument('--palette', type=Path, default=PALETTE, help='Reusable scene palette and actor pairs')
     parser.add_argument('--coat-mode', choices=('fixed', 'skin-pairs', 'automatic', 'discrete', 'harmonized'), default='fixed')
     parser.add_argument('--generated-coats', type=Path, help='Local manifest of coat IDs keyed by fixture base')
     parser.add_argument('--capture', action='store_true', help='Capture an owned FHD game frame between material audits')
@@ -366,7 +393,9 @@ def main():
 
     from skyrim_autotest import cli, scenarios
 
-    palette = json.loads(PALETTE.read_bytes())
+    palette = json.loads(args.palette.read_bytes())
+    require(palette.get('comparison') != 'skin-only' or args.coat_mode == 'harmonized',
+            'The skin-only palette requires harmonized coats')
     if args.coat_mode == 'harmonized':
         require(args.generated_coats is not None, 'The harmonized scene needs a generated coat manifest')
         coats = json.loads(args.generated_coats.read_bytes())

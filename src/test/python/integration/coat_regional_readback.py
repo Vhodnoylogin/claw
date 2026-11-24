@@ -1,4 +1,4 @@
-"""Check the four-pair scene's material readbacks without contacting Skyrim."""
+"""Check regional scene material readbacks without contacting Skyrim."""
 
 import math
 from pathlib import Path
@@ -80,6 +80,19 @@ def verify_human(audit, pair):
         require(palettes == {tuple(pair[field])}, f'{pair["name"]}: actual human {name} tint differs')
         observed[f'{name}RGB8'] = list(next(iter(palettes)))
     return observed
+
+
+def verify_skin_only(inputs_by_pair):
+    """Prove matched twin inputs, one held hair colour and five ordered skin colours."""
+    require(len(inputs_by_pair) == 5 and all(human == wolf for human, wolf in inputs_by_pair),
+            'Expected five skin controls with identical input on both copies of each actor')
+    rows = [human for human, _ in inputs_by_pair]
+    hair = {tuple(row['hairRGB8']) for row in rows}
+    brightness = [luma(row['skinRGB8']) for row in rows]
+    require(len(hair) == 1 and all(b > a for b, a in zip(brightness, brightness[1:])),
+            'The skin controls must keep hair fixed and descend in skin lightness')
+    return {'hairRGB8': list(next(iter(hair))), 'skinRGB8': [row['skinRGB8'] for row in rows],
+            'skinInputLuma8': brightness}
 
 
 def inspect_regions(audit, pair, paths):

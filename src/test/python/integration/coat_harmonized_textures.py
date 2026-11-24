@@ -1,4 +1,4 @@
-"""Build local-only diffuse maps for the four-pair coat comparison."""
+"""Build local-only diffuse maps for the regional coat comparisons."""
 from __future__ import annotations
 
 import struct
@@ -139,12 +139,16 @@ def _save_dds(path, top):
             raise ValueError(f"DDS alpha readback mismatch: {path}")
 
 
-def generate(installed: Path, output: Path, pairs: list[dict]) -> dict:
+def generate(installed: Path, output: Path, pairs: list[dict], *, skin_donor=None, hair_donor=None) -> dict:
     """Generate the exact disposable comparison for locally installed assets."""
     installed, output = Path(installed).resolve(), Path(output).resolve()
     repository = Path(__file__).resolve().parents[4]
     if output.is_relative_to(repository) or output.is_relative_to(installed):
         raise ValueError("Use a separate external directory for the generated textures")
+    if skin_donor is not None and skin_donor not in {"Grey", *SKIN_DONORS.values()}:
+        raise ValueError(f"Unknown fixture skin donor: {skin_donor}")
+    if hair_donor is not None and hair_donor not in set(HAIR_DONORS.values()):
+        raise ValueError(f"Unknown fixture hair donor: {hair_donor}")
     if not (installed / "Timber").is_dir():
         installed /= "textures/DiverseElegantWerewolves"
     entries = {}
@@ -156,7 +160,7 @@ def generate(installed: Path, output: Path, pairs: list[dict]) -> dict:
             raise ValueError(f"Duplicate fixture actor base: {base}")
         entries[base] = {
             "pattern": pattern, "textures": list(HAIR_WEIGHT),
-            "skinDonor": SKIN_DONORS[skin], "hairDonor": HAIR_DONORS[hair],
+            "skinDonor": skin_donor or SKIN_DONORS[skin], "hairDonor": hair_donor or HAIR_DONORS[hair],
             "skinRGB8": list(skin), "hairRGB8": list(hair), "materials": {},
         }
     if not entries or any(not (installed / donor / name).is_file()

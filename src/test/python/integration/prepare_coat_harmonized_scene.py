@@ -1,4 +1,4 @@
-"""Prepare local recoloured DDS and catalog entries for the four-pair SE scene."""
+"""Prepare local recoloured DDS and catalog entries for the regional SE scene."""
 
 import argparse
 from hashlib import file_digest
@@ -11,13 +11,18 @@ from coat_regional_readback import expected_paths
 from coat_regional_scene import PALETTE
 
 
-def prepare(installed, appearance, output):
+def prepare(installed, appearance, output, palette=PALETTE):
     output = output.resolve()
     if any((parent / '.git').exists() for parent in [output, *output.parents]):
         raise ValueError('The local preview must be generated outside Git')
     if output.is_relative_to(installed.resolve()):
         raise ValueError('The local preview needs a directory outside the installed textures')
-    pairs = json.loads(PALETTE.read_bytes())['pairs']
+    scene = json.loads(palette.read_bytes())
+    pairs = scene['pairs']
+    skin_donor, hair_donor = scene.get('skinDonor'), scene.get('hairDonor')
+    if scene.get('comparison') == 'skin-only' and (not skin_donor or not hair_donor or len(pairs) != 5
+            or len({tuple(pair['hair']) for pair in pairs}) != 1):
+        raise ValueError('The five skin controls require common donors and one fixed hair colour')
     mapping = ET.parse(appearance / 'CoatMapping.xml')
     library = ET.parse(appearance / 'CoatLibrary.xml')
     entries = library.find('Patterns')
@@ -25,7 +30,7 @@ def prepare(installed, appearance, output):
     names = {surface.attrib['texture'] for surface in library.findall('Surfaces/Surface')}
     prefix = Path('textures/actors/character/werewolf/claw-review')
     output.mkdir(parents=True, exist_ok=False)
-    generated = generate(installed, output / prefix, pairs)
+    generated = generate(installed, output / prefix, pairs, skin_donor=skin_donor, hair_donor=hair_donor)
     coats, staged = {}, []
     for pair in pairs:
         base = pair['base']
@@ -59,8 +64,9 @@ def main():
     parser.add_argument('--installed', required=True, type=Path, help='Local Elegant Randomized texture root')
     parser.add_argument('--appearance', required=True, type=Path, help='Current regional CoatMapping.xml / CoatLibrary.xml')
     parser.add_argument('--output', required=True, type=Path, help='New local folder outside Git')
+    parser.add_argument('--palette', default=PALETTE, type=Path, help='Reusable scene palette and actor pairs')
     args = parser.parse_args()
-    prepare(args.installed, args.appearance, args.output)
+    prepare(args.installed, args.appearance, args.output, args.palette)
 
 
 if __name__ == '__main__':

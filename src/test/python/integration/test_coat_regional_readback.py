@@ -1,11 +1,13 @@
-"""Synthetic discrimination controls for the fixed-donor four-pair scene."""
+"""Synthetic discrimination controls for the regional coat scenes."""
 
 import json
 from pathlib import Path
 import unittest
 
-from coat_regional_readback import compare_pairs, expected_paths, inspect_discrete_regions, inspect_regions, verify_human
-from coat_regional_scene import rgb_key
+from coat_regional_readback import (
+    compare_pairs, expected_paths, inspect_discrete_regions, inspect_regions, verify_human, verify_skin_only,
+)
+from coat_regional_scene import SKIN_PALETTE, rgb_key
 
 
 TEST_SOURCE = Path(__file__).resolve().parents[2]
@@ -83,6 +85,20 @@ class RegionalCoatReadbackTests(unittest.TestCase):
         report = compare_pairs(self.measurements(), self.pairs)
         self.assertEqual(report['alphaRowsThatChanged'], sorted(BLENDS))
         self.assertEqual(report['alphaBySurface']['body'], [1.] * 4)
+
+    def test_skin_sweep_requires_constant_hair_and_matching_twins(self):
+        pairs = json.loads(SKIN_PALETTE.read_bytes())['pairs']
+        rows = [(verify_human(human(pair), pair), verify_human(human(pair), pair)) for pair in pairs]
+        report = verify_skin_only(rows)
+        self.assertEqual(report['hairRGB8'], [20, 20, 24])
+        self.assertEqual(report['skinRGB8'], [pair['skinRecordRGB8'] for pair in pairs])
+        with self.assertRaises(ValueError):
+            verify_skin_only(rows[::-1])
+        with self.assertRaises(ValueError):
+            verify_skin_only([*rows[:4], (rows[4][0], rows[3][1])])
+        changed_hair = dict(rows[4][0], hairRGB8=[81, 77, 57])
+        with self.assertRaises(ValueError):
+            verify_skin_only([*rows[:4], (changed_hair, changed_hair)])
 
     def test_human_palette_requires_actual_hair_and_skin(self):
         for index, color in enumerate(('hair', 'skin')):
