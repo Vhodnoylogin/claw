@@ -119,6 +119,8 @@ class ActualCandidatePackage(unittest.TestCase):
         cls.entries = cls.package.read_zip(Path(cls.report['archive']['path']).read_bytes())
         cls.base = cls.package.read_zip(Path(cls.report['baseArchive']['path']).read_bytes())
         cls.core = cls.package.read_zip(Path(paths[0]).read_bytes())
+        visuals_path = p.HERE/'visual_variants.py'
+        cls.visuals = p.load(visuals_path, visuals_path.read_bytes())
 
     def test_actual_pair_has_ten_overlay_members_and_160_verified_selections(self):
         self.assertEqual(self.report['archive']['members'], 10)
@@ -148,9 +150,10 @@ class ActualCandidatePackage(unittest.TestCase):
             additional_active=('HIMBO.esp', 'CBBE.esp'))
         original = {name: self.core[source] for name, source in paths.items()}
         baseline = {name: self.base[source] for name, source in paths.items()}
-        self.assertEqual({name for name in baseline if baseline[name] != original[name]}, set(p.DESTINATIONS))
         overlay = {**baseline, **{name: self.entries[source] for name, source in selected.items()}}
-        self.assertTrue(all(overlay[name] == data for name, data in original.items()))
+        self.assertEqual({name for name in baseline if baseline[name] != overlay[name]}, set(p.DESTINATIONS))
+        for name in p.DESTINATIONS:
+            self.assertEqual(overlay[name], self.visuals.reviewed_visible_anatomy(original[name], p.CORE_FSMP_SHA))
         self.assertTrue(all(p.sha(overlay[name]) == p.CORE_FSMP_SHA for name in p.DESTINATIONS))
         self.assertEqual(p.sha(overlay[p.XML_ROOT+'CLAWMotionMale.xml']),
                          'b42bfa436a4e53baa48ff2249d4659718603798dabdb1e6b9427dc37efa0ea34')
@@ -205,7 +208,7 @@ class ActualCandidatePackage(unittest.TestCase):
                       if row['path'] == p.XML_ROOT+'CLAWMotionMale.xml')
         changed = self.core | {source: self.core[source] + b'\n'}
         with self.assertRaisesRegex(ValueError, 'combined rig input'):
-            p.require_compatible_core(changed, original)
+            p.require_compatible_core(changed, original, self.visuals)
 
 
 if __name__ == '__main__':
