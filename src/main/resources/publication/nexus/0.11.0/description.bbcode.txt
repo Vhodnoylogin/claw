@@ -29,7 +29,8 @@
 <br />[*][url=https://www.nexusmods.com/skyrimspecialedition/mods/31126]BHUNP[/url] — weight and BodySlide morphs[/*]
 <br />[*][url=https://www.nexusmods.com/skyrimspecialedition/mods/1699]UNP[/url] — weight[/*]
 <br />[/list][/*]
-<br />[/list][center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]
+<br />[/list]The installer selects one default body family per sex. A standalone NPC body can be supported by a separate compatibility patch for that NPC mod and body variant.
+<br />[center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]
 <br />[size=4][color=#D0B17A][b]Requirements[/b][/color][/size]
 <br />[list]
 <br />[*]SKSE[/*]
