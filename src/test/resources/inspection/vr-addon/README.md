@@ -4,6 +4,11 @@
 profile changes for this nonshipping inspection. They are consumed as a run
 sheet. The existing runners cover the listed individual diagnostic arms.
 
+- [Stationary collider showcase](collider-showcase/README.md) displays the fixed
+  male specimen's fitted collider bank while both hands remain tracked.
+- [Player mirrors](player-mirror/README.md) provides separate HIMBO and 3BA
+  variants with the same pronounced body morphs on the player and both fixtures.
+
 ## Prepare one disposable TEST VR session
 
 1. Use the dedicated TEST VR instance and the current `CLAW VR` source. Assign a

@@ -112,6 +112,9 @@ def fixed_profile_xml(shared, alternatives):
         "xsi:noNamespaceSchemaLocation": "http://qconsulting.ca/fo3/ModConfig5.0.xsd",
     })
     ET.SubElement(config, "moduleName").text = FIXED_PROFILE_NAME
+    dependencies = ET.SubElement(config, "moduleDependencies", operator="And")
+    ET.SubElement(dependencies, "fileDependency", file="CLAW.esp", state="Active")
+    ET.SubElement(dependencies, "fileDependency", file="vrik.esp", state="Active")
     required = ET.SubElement(config, "requiredInstallFiles")
     for destination, source in shared.items():
         ET.SubElement(required, "file", source=source, destination=destination, priority="0")

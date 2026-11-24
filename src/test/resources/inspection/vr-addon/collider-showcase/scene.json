@@ -1,0 +1,38 @@
+{
+  "schema": "claw-vr-collider-showcase/1",
+  "scope": "Disposable TEST VR profile, isolated stationary male werewolf, fixed neutral capsule bank",
+  "location": {
+    "cell": "Realm of Lorkhan starting platform",
+    "measure": "Use the admitted standing player root and floor. Face the target across a clear reachable area.",
+    "preferSavedAnchor": false
+  },
+  "subject": {
+    "plugin": "test_CLAW - VR CBPC Contact Fixture.esp",
+    "baseLocalFormId": "000800",
+    "raceFormId": "000CDD84",
+    "sex": "male",
+    "weight": 50,
+    "morphs": {},
+    "create": "One owned disposable reference, never a pre-existing NPC.",
+    "stationary": ["SetRestrained(true)", "SetHeadTracking(false)", "EnableAI(false)"],
+    "readback": "Require the owned NPC's same live loaded 3D and fixed actor root, no combat, original stock wolf skin and zero effective CLAW morphs. Record representative node orientations; do not freeze the providers or player tracking."
+  },
+  "overlay": {
+    "plugin": "test_CLAW - VR Collider Showcase.esp",
+    "armorLocalFormId": "000801",
+    "addonLocalFormId": "000800",
+    "bodySlot": 60,
+    "displayByDefault": true,
+    "toggle": "Equip or unequip only the showcase armor on the owned wolf. Keep the stock skin, CBPC provider and scene live.",
+    "mesh": "claw/test/vr-collider-showcase/wires.nif"
+  },
+  "contact": {
+    "sourceNodes": ["LeftWandNode", "RightWandNode"],
+    "sourceCenterAndRadiusGU": [0, -6, -2, 3],
+    "receiverCapsules": 120,
+    "receiverBones": 25,
+    "manualTargets": ["left ear", "right ear", "muzzle", "chest", "tail", "torso", "limbs"],
+    "sequence": ["hold away", "enter target with left controller", "withdraw", "enter target with right controller", "withdraw"],
+    "proof": "Keep scoped CBPC event receipt and independently observed hand/bone positions separate from the debug wire geometry."
+  }
+}

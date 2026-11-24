@@ -1,0 +1,39 @@
+{
+  "schema": "claw-vr-player-mirror/1",
+  "master": "Skyrim.esm",
+  "fixture": "test_CLAW - VR Player Mirrors.esp",
+  "player": "0x00000014",
+  "playerBase": "0x00000007",
+  "nordRace": "0x00013746",
+  "beastRace": "0x000CDD84",
+  "beastPower": "0x00092C48",
+  "initializerQuest": "0x0004B2D9",
+  "startupEffects": ["0x00092C45", "0x000F8209"],
+  "morphKey": "CLAWTest.VRPlayerMirror",
+  "positions": {
+    "human": {"forwardGameUnits": 155, "rightGameUnits": -61},
+    "wolf": {"forwardGameUnits": 155, "rightGameUnits": 61}
+  },
+  "variants": {
+    "himbo": {
+      "family": "HIMBO",
+      "matrixProfile": "CLAW.HIMBO.5.8.Geometry1",
+      "sex": "male",
+      "preset": {"form": "0x0001750C", "editorId": "NordMalePreset01", "menuPreset": 1},
+      "weight": 75,
+      "bases": {"human": "0x00000800", "wolf": "0x00000801"},
+      "morphs": {"TorsoBelly": 0.8, "TorsoShoulderInc": 0.8},
+      "expectedWolf": {"CLAWTorsoBellyRound": 0.448, "CLAWTorsoShoulderGirth": 0.303768024}
+    },
+    "3ba": {
+      "family": "3BA",
+      "matrixProfile": "CLAW.3BA.2.48.Geometry1",
+      "sex": "female",
+      "preset": {"form": "0x00079F68", "editorId": "NordFemalePreset01", "menuPreset": 1},
+      "weight": 50,
+      "bases": {"human": "0x00000802", "wolf": "0x00000803"},
+      "morphs": {"Belly": 0.8, "Breasts": 0.45},
+      "expectedWolf": {"CLAWTorsoBellyRound": 0.18135064, "CLAWTorsoBreastSize": 1.0}
+    }
+  }
+}

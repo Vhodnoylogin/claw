@@ -1,5 +1,13 @@
 # CLAW VR body component
 
+This component requires the published CLAW 0.11.0 core and VRIK. The VR plugin
+declares `CLAW.esp` as a master. The fixed-profile installer checks that both
+`CLAW.esp` and `vrik.esp` are active. The archive supplies the VR armor override
+and its VR meshes and morph data. CLAW's morph engine, conversion matrices,
+ordinary werewolf models and coat dependencies come from the original install.
+HIGGS is optional for the tracked body. Use it with CBPC if you want to touch
+the werewolf body with the VR controllers.
+
 Develop the optional VR body in this directory of the CLAW repository. Keep its
 component-specific C++, authoring tools and resources here; put corresponding
 tests and fixtures under `src/test/components/vr-body/`. Build outputs stay in
