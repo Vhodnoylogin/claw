@@ -90,6 +90,18 @@ These measurements can distinguish the split ear skin from the unsplit head
 when an empty fixture marker is missing. They describe the attached geometry.
 Identical files at different paths still require a controlled asset comparison.
 
+The stock male `EarWorldTrial.tri` capture also reads `meshSource.runtimePalette`
+for these two shapes. It reports the skin root and the reviewed Head and left-ear
+slots 3, 8, and 10. Each row records membership in the actor and biped roots and
+equality with the live bone and world transform addresses. The capture emits only
+names, counts, and comparisons.
+
+`python src/test/components/vr-body/verify_runtime_ear_palette.py SUMMARY.json`
+checks the stock `claw-body32/summary.json` against the expected topology, slot
+layout, and live world Head control. It reports the world binding of each left-ear
+bone. An adjacent head shape can have zero live matrices. Measure actual contact
+and headset rendering in their respective runtime trials.
+
 For the stock male contact trial, build `--subject stock-ear-contact` with
 `build_torso_capture.py`. Its separate `CLAWVRStockEarContactPose` script can
 run beside the topology witness. A ready `claw-vr-stock-ear-contact-pose/1`

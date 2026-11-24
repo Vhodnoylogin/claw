@@ -121,7 +121,54 @@ Routes routes(RE::PlayerCharacter& actor) {
     return result;
 }
 
-Json describeEarMeshSource(RE::BSGeometry& shape) {
+std::string boundedShapeName(const Object* object) {
+    const auto* name = object ? object->name.c_str() : nullptr;
+    return name ? std::string(name, strnlen_s(name, shapeNameLimit)) : std::string{};
+}
+
+bool attachedIn(const Object* object, const Object* root) {
+    return claw::vr_diagnostic::belongsToGraph(object, root, ancestorDepthLimit,
+        [](const RE::NiNode& parent, const Object* child) {
+            return std::ranges::any_of(parent.GetChildren(), [child](const auto& node) { return node.get() == child; });
+        });
+}
+
+Json describeEarPalette(const RE::NiSkinInstance& skin, const Routes& scene) {
+    const auto count = skin.skinData ? skin.skinData->GetBoneCount() : 0;
+    auto* const skinRoot = skin.rootParent;
+    const auto membership = [&](const Object* object) {
+        return Json{{"worldActor", attachedIn(object, scene.roots[1])},
+                    {"worldBiped", attachedIn(object, scene.views[0].bipedRoot)},
+                    {"firstActor", attachedIn(object, scene.roots[2])},
+                    {"firstBiped", attachedIn(object, scene.views[1].bipedRoot)}};
+    };
+    Json rows = Json::array();
+    // The reviewed male trial ear and adjacent head serialize these exact slots.
+    constexpr std::array<unsigned, 3> slots{3, 8, 10};
+    constexpr std::array<const char*, 3> names{"NPC Head [Head]", "NPC EarL [EarL]Bone01", "NPC EarL [EarL]Bone02"};
+    for (std::size_t i = 0; i < slots.size(); ++i) {
+        const auto slot = slots[i];
+        const auto inRange = count <= 64 && slot < count;
+        const auto* bone = inRange && skin.bones ? skin.bones[slot] : nullptr;
+        const auto* transform = inRange && slot < skin.numMatrices && skin.boneWorldTransforms
+            ? skin.boneWorldTransforms[slot] : nullptr;
+        const RE::BSFixedString expected{names[i]};
+        const auto lookup = [&](Object* root) {
+            const auto* object = root ? root->GetObjectByName(expected) : nullptr;
+            const auto found = object && attachedIn(object, root);
+            return Json{{"found", found}, {"sameBone", found && object == bone},
+                        {"sameTransform", found && transform == &object->world}};
+        };
+        rows.push_back({{"slot", slot}, {"expected", names[i]}, {"bone", boundedShapeName(bone)},
+                        {"boneMembership", membership(bone)}, {"worldTransformPresent", transform != nullptr},
+                        {"worldActor", lookup(scene.roots[1])}, {"firstActor", lookup(scene.roots[2])},
+                        {"skinRoot", lookup(skinRoot)}});
+    }
+    return {{"boneCount", count}, {"matrixCount", skin.numMatrices}, {"root", boundedShapeName(skinRoot)},
+            {"rootMembership", membership(skinRoot)}, {"reviewedSlots", std::move(rows)}};
+}
+
+Json describeEarMeshSource(RE::BSGeometry& shape, const Routes& scene) {
     Json source = {{"bodyTri", nullptr}, {"partitionVertices", nullptr}, {"partitionTriangles", nullptr}};
     const auto* extra = netimmerse_cast<RE::NiStringExtraData*>(shape.GetExtraData("BODYTRI"));
     const auto* path = extra ? extra->value : nullptr;
@@ -130,6 +177,8 @@ Json describeEarMeshSource(RE::BSGeometry& shape) {
         if (length && length < modelPathLimit) source["bodyTri"] = std::string(path, length);
     }
     const auto& skin = shape.GetGeometryRuntimeData().skinInstance;
+    if (skin && source["bodyTri"] == R"(actors\werewolfbeast\claw\firstperson\male\earworldtrial.tri)")
+        source["runtimePalette"] = describeEarPalette(*skin, scene);
     const auto partition = skin ? skin->skinPartition : RE::NiPointer<RE::NiSkinPartition>{};
     if (!partition || !partition->vertexCount || !partition->numPartitions || partition->numPartitions > 256 ||
         partition->numPartitions != partition->partitions.size()) return source;
@@ -143,7 +192,7 @@ Json describeEarMeshSource(RE::BSGeometry& shape) {
     return source;
 }
 
-Json describeGeometry(RE::BSGeometry& shape, bool bodyClone) {
+Json describeGeometry(RE::BSGeometry& shape, const Routes* bodyRoutes) {
     const auto* shapeName = shape.name.c_str();
     const std::string_view label{shapeName ? shapeName : "", shapeName ? strnlen_s(shapeName, shapeNameLimit) : 0};
     Json result = {{"name", label},
@@ -153,8 +202,8 @@ Json describeGeometry(RE::BSGeometry& shape, bool bodyClone) {
         result["vertices"] = data.vertexCount;
         result["triangles"] = data.triangleCount;
     }
-    if (bodyClone && (label == "head_CLAWHead" || label == "head_CLAWHead_CLAWEars"))
-        result["meshSource"] = describeEarMeshSource(shape);
+    if (bodyRoutes && (label == "head_CLAWHead" || label == "head_CLAWHead_CLAWEars"))
+        result["meshSource"] = describeEarMeshSource(shape, *bodyRoutes);
     return result;
 }
 
@@ -224,7 +273,7 @@ public:
                 {"active", summarizeSlots(actual.active)}, {"buffered", summarizeSlots(actual.buffered)}};
     }
 
-    Json summarizeRoots(Clock::time_point deadline, const std::array<Object*, 2>& activeBodyClones) const {
+    Json summarizeRoots(Clock::time_point deadline, const Routes& scene, const std::array<Object*, 2>& activeBodyClones) const {
         Json result = Json::array();
         std::vector<Cull> culling;
         culling.reserve(leases.size());
@@ -244,7 +293,7 @@ public:
                 auto* geometry = object->AsGeometry();
                 claw::TargetModelObject item{geometry != nullptr};
                 if (geometry && geometryDetails.size() < detailLimit)
-                    geometryDetails.push_back(describeGeometry(*geometry, bodyClone));
+                    geometryDetails.push_back(describeGeometry(*geometry, bodyClone ? &scene : nullptr));
                 const auto match = std::find(roles.begin(), roles.end(), object->name);
                 if (match != roles.end()) item.role = static_cast<std::size_t>(match - roles.begin());
                 return item;
@@ -404,7 +453,7 @@ Json collect(Clock::time_point deadline, bool dispatch) {
             const auto& active = observation[2 * i];
             if (active.traversed) activeBodyClones[i] = active.clone;
         }
-        rootDetails = inventory.summarizeRoots(deadline, activeBodyClones);
+        rootDetails = inventory.summarizeRoots(deadline, before, activeBodyClones);
         markers = Json::array();
         for (std::size_t i = 0; i < observation.size(); ++i) {
             const auto& row = observation[i];
@@ -417,7 +466,7 @@ Json collect(Clock::time_point deadline, bool dispatch) {
         require(observation == observeBodyMarkers(before, handle.native_handle(), recheckedFixture, deadline),
                 "Body32 marker attachment changed during capture");
     } else {
-        rootDetails = inventory.summarizeRoots(deadline, activeBodyClones);
+        rootDetails = inventory.summarizeRoots(deadline, before, activeBodyClones);
     }
     require(RE::PlayerCharacter::GetSingleton() == actor && actor->GetHandle() == handle &&
                 id(actor->GetRace()) == race && id(actor->GetActorBase()) == base &&
