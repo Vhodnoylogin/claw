@@ -49,6 +49,14 @@ in the active stock Hands33 clone and in a complete direct first-person
 inventory. Capture the wolf afterwards with `CaptureDispatch` while keeping
 the same simulated headset conditions.
 
+The private Hands33 equipment probe uses one werewolf armor item and distinct
+world and first-person test meshes. Pass the raw human, stock wolf, equipped
+wolf and restored wolf captures to `hands33_readback.py` alongside the exact
+loaded fixture forms and the typed equipment result. It checks that the
+actor, camera and stock Body32 geometry stay consistent. A matching active
+Hands33 clone and direct first-person graph establish the route. A declared
+model path or a buffered clone alone cannot establish it.
+
 ## Loaded Body32 origin
 
 Use `CaptureDispatch(nonce)` to add the schema 8 marker observation. The
