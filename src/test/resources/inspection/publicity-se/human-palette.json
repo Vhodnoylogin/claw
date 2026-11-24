@@ -1,0 +1,46 @@
+{
+  "fixture": "Nine unmodified Skyrim.esm NPC colours in one QASmoke portrait bay",
+  "groups": {
+    "skin": ["idgrod", "olda", "aia", "seren", "anwen"],
+    "hairMediumSkin": ["olda", "ysolda", "argi"],
+    "hairLightSkin": ["sorli", "gisli"]
+  },
+  "pairs": [
+    {
+      "id": "idgrod", "name": "Idgrod the Younger", "base": "0x000135EC", "race": "0x00013746",
+      "hair": [20, 20, 24], "skinRecordRGB8": [221, 221, 221], "skinLabel": "Very pale", "hairLabel": "Blue-black"
+    },
+    {
+      "id": "olda", "name": "Olda", "base": "0x00019A20", "race": "0x00013746",
+      "hair": [20, 20, 24], "skinRecordRGB8": [185, 179, 170], "skinLabel": "Warm beige", "hairLabel": "Blue-black"
+    },
+    {
+      "id": "aia", "name": "Aia Arria", "base": "0x0001325C", "race": "0x00013744",
+      "hair": [20, 20, 24], "skinRecordRGB8": [143, 114, 101], "skinLabel": "Medium rosy brown", "hairLabel": "Blue-black"
+    },
+    {
+      "id": "seren", "name": "Seren", "base": "0x0001361F", "race": "0x00013748",
+      "hair": [20, 20, 24], "skinRecordRGB8": [113, 87, 68], "skinLabel": "Tan", "hairLabel": "Blue-black"
+    },
+    {
+      "id": "anwen", "name": "Anwen", "base": "0x00013386", "race": "0x00013748",
+      "hair": [20, 20, 24], "skinRecordRGB8": [67, 44, 33], "skinLabel": "Deep brown", "hairLabel": "Blue-black"
+    },
+    {
+      "id": "argi", "name": "Argi Farseer", "base": "0x00013602", "race": "0x00013746",
+      "hair": [81, 77, 57], "skinRecordRGB8": [185, 179, 170], "skinLabel": "Warm beige", "hairLabel": "Golden blond"
+    },
+    {
+      "id": "ysolda", "name": "Ysolda", "base": "0x00013BAB", "race": "0x00013746",
+      "hair": [48, 35, 33], "skinRecordRGB8": [185, 179, 170], "skinLabel": "Warm beige", "hairLabel": "Auburn"
+    },
+    {
+      "id": "sorli", "name": "Sorli the Builder", "base": "0x00013606", "race": "0x00013746",
+      "hair": [90, 95, 105], "skinRecordRGB8": [206, 205, 204], "skinLabel": "Pale neutral", "hairLabel": "Grey"
+    },
+    {
+      "id": "gisli", "name": "Gisli", "base": "0x00013282", "race": "0x00013746",
+      "hair": [92, 88, 80], "skinRecordRGB8": [206, 205, 204], "skinLabel": "Pale neutral", "hairLabel": "Platinum"
+    }
+  ]
+}

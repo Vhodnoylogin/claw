@@ -1,0 +1,19 @@
+{
+  "coatPalette": "human-palette.json",
+  "stage": {
+    "humanY": 1740.0,
+    "wolfY": 1740.0,
+    "cameraX": -2585.94482421875,
+    "cameraZ": 7098.4501953125,
+    "lighting": {
+      "plugin": "test_CLAWInspectionLighting.esp",
+      "references": [2049, 2050, 2051],
+      "modes": {
+        "room": [],
+        "single-fill": [2051],
+        "full-fill": [2049, 2050, 2051]
+      }
+    }
+  },
+  "morphComparison": {"families": {}}
+}
