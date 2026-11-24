@@ -53,6 +53,14 @@ All wolves explicitly use Valley White. The front and profile shots share the
 camera and standing marks, with a different subject heading. The runner checks
 the selected CLAW matrix and reads each declared output through CLAW and RaceMenu.
 
+Use `PublicityMorphSeries(session, appearance, coat).run_series(family)`
+for the continuous comparison. It preserves the same two references
+and takes front and profile views at zero, half and full stimulus. One
+twin returns to human form before its next RaceMenu edit. The runner
+requires actual human status and verifies that CLAW's own wolf key was cleared
+before editing. `family` is `himbo` or `cbbe`. Choose a canonical coat ID from
+the full gallery and hold it for the entire session.
+
 ## Execution
 
 Use a disposable TEST SE Autotest session with the exact CLAW 0.11.0 release

@@ -70,13 +70,18 @@ class PublicityScene(RegionalScene):
     def prepare_human(self, pair, actor, audit):
         if 'morphs' not in pair:
             return super().prepare_human(pair, actor, audit)
+        return self.write_morph_sources(pair, actor, initial=True)
+
+    def write_morph_sources(self, pair, actor, *, initial=False):
+        require(self.guard(actor)['actor']['race'] == pair['race'], 'The input actor is not human')
         reference = {'form': self.spec(actor)['reference']}
         key = self.morph['ownerKey']
         values = {}
         for name, value in pair['morphs']['human'].items():
             args = [reference, name, key]
-            require(self.papyrus('NiOverride', 'HasBodyMorph', args, 'bool') is False,
-                    'The scene-owned source morph is already present')
+            if initial:
+                require(self.papyrus('NiOverride', 'HasBodyMorph', args, 'bool') is False,
+                        'The scene-owned source morph is already present')
             self.papyrus('NiOverride', 'SetBodyMorph', [*args, value], 'none', write=True)
             measured = self.papyrus('NiOverride', 'GetBodyMorph', args, 'float')
             require(abs(measured - value) < 1e-6, 'RaceMenu human morph readback differs: ' + name)
@@ -139,12 +144,16 @@ class PublicityScene(RegionalScene):
         names = [tag(index, role) for role in ROLES]
         references = [self.spec(name)['reference'] for name in names]
         positions = [(WALL_X, pair[role.lower() + 'Y'], FLOOR_Z) for role in ROLES]
-        for reference, position in zip(references, positions, strict=True):
-            self.pose(reference, position, heading)
+        for reference in references:
+            self.papyrus('ObjectReference', 'SetAngle', [0., 0., heading], 'none', reference, write=True)
         require(self.guard(names[0])['actor']['race'] == pair['race'], 'Human reference is no longer human')
         before = self.audit(names[1])
         selected = self.claw(names[1], 'GetAppliedCoatPattern')
         materials = self.inspect_coat(before, pair, selected)
+        # Let the engine settle the turn before restoring the capture marks.
+        # An actor's movement controller can displace it during a profile turn.
+        for reference, position in zip(references, positions, strict=True):
+            self.papyrus('ObjectReference', 'SetPosition', list(position), 'none', reference, write=True)
 
         def settled(sample):
             rows = {row['identity']['form']: row for row in sample.get('refs', [])}
@@ -156,7 +165,10 @@ class PublicityScene(RegionalScene):
         require(self.read_hud() is False, 'HUD is visible before capture')
         camera = self.read_camera()
         self.data['frames'][label] = capture_game_frame(self.native, self.game, self.session.dir / (label + '.png'))
-        self.data['positions'][label] = {'heading': heading, 'camera': camera, 'observed': observations}
+        after_pose = self.view([PLAYER, *references])
+        require(settled(after_pose), 'Subjects moved during frame capture')
+        self.data['positions'][label] = {'heading': heading, 'camera': camera,
+                                         'observed': observations, 'afterCapture': after_pose}
         after = self.audit(names[1])
         require(after['modelGeneration'] == before['modelGeneration'] and int(after['sample']) > int(before['sample'])
                 and self.inspect_coat(after, pair, selected) == materials and self.read_hud() is False

@@ -34,7 +34,9 @@
         "profile": "CLAW.HIMBO.5.8.Geometry1",
         "human": {"TorsoBelly": 1.0, "TorsoShoulderInc": 1.0, "ArmsBiceps": 1.0, "ArmsBicepsBack": 1.0},
         "wolf": {"CLAWTorsoBellyRound": 0.56, "CLAWTorsoShoulderGirth": 0.37971003,
-                 "CLAWArmBiceps": 0.517305242, "CLAWArmTriceps": 0.478203688}
+                 "CLAWArmBiceps": 0.517305242, "CLAWArmTriceps": 0.478203688},
+        "halfWolf": {"CLAWTorsoBellyRound": 0.28, "CLAWTorsoShoulderGirth": 0.189855015,
+                     "CLAWArmBiceps": 0.258652621, "CLAWArmTriceps": 0.239101844}
       },
       "cbbe": {
         "base": "0x000CAB2F",
@@ -45,7 +47,9 @@
         "profile": "CLAW.CBBE.2.0.3.Geometry1",
         "human": {"Breasts": 0.8, "Hips": 1.0, "Thighs": 1.0, "ChubbyLegs": 0.5, "Butt": 0.8},
         "wolf": {"CLAWTorsoBreastSize": 1.0, "CLAWTorsoFlankWidth": 0.2583189,
-                 "CLAWLegThighGirth": 0.58686755, "CLAWLegCalfGirth": 0.4270922}
+                 "CLAWLegThighGirth": 0.58686755, "CLAWLegCalfGirth": 0.4270922},
+        "halfWolf": {"CLAWTorsoBreastSize": 0.638826928, "CLAWTorsoFlankWidth": 0.12915945,
+                     "CLAWLegThighGirth": 0.293433775, "CLAWLegCalfGirth": 0.2135461}
       }
     }
   }
