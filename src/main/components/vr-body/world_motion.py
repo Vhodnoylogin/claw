@@ -9,7 +9,8 @@ import xml.etree.ElementTree as ET
 
 from vr_dispatch import LEGACY_ALIAS, ROOT, SEXES, require_static_nif, resource_paths
 from body_resource import bodytri, read_json, safe_output, visible_by_hidden_flags
-from core_archive import CORE_INPUT_SOURCE, PACKAGER, open_tools, read_core_archive, require_reviewed_body, static_routes
+from core_archive import (CORE_INPUT_SOURCE, PACKAGER, core_version, open_tools, read_core_archive,
+                          require_reviewed_body, static_routes)
 
 PHYSICS = ROOT / "src/main/python/physics"
 sys.path.insert(0, str(PHYSICS))
@@ -101,7 +102,7 @@ def build(fixed_profile, core_release, skeleton, pynifly, out, *, core_receipt=N
 
     out.mkdir(parents=True)
     report = {"schema": "claw-fixed-profile-vr-world-motion/1", "inputs": pins, "dependencies": dependencies,
-              "baseSelection": "None", "overlayDestination": LEGACY_ALIAS,
+              "coreVersion": core_version(core), "baseSelection": "None", "overlayDestination": LEGACY_ALIAS,
               "coreOffModelHashes": {dest: pack.sha(core[source]) for dest, source in core_off.items()},
               "requiredCoreStaticPlans": len(static_plans), "outputs": {},
               "installed": False, "gameValidated": False, "releaseReady": False}

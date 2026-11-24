@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+from xml.etree import ElementTree as ET
 
 from body_resource import parse_json
 import core_package_input
@@ -35,6 +36,14 @@ def read_core_archive(pack, archive, *, receipt_path=None, known_digest=None):
         provenance[str(receipt_path)] = pack.sha(receipt_raw)
     files, plans = core_package_input.read_core_package(pack, raw, receipt=receipt, known_digest=known_digest)
     return files, plans, provenance
+
+
+def core_version(files):
+    versions = ET.fromstring(files['fomod/info.xml']).findall('Version')
+    version = (versions[0].text or '').strip() if len(versions) == 1 else ''
+    if not version:
+        raise ValueError('Expected one version in the core installer info')
+    return version
 
 
 def static_routes(plans, destinations):

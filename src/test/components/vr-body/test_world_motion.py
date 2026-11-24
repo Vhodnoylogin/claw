@@ -12,11 +12,20 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "src/main/components/vr-body"))
 from vr_dispatch import ADDON, LEGACY_ALIAS, SEXES, fixed_profile_xml, resource_paths
-from core_archive import read_core_archive, require_reviewed_body, static_routes
+from core_archive import core_version, read_core_archive, require_reviewed_body, static_routes
 from world_motion import alias_member
 
 
 class CoreArchiveAdmissionTests(unittest.TestCase):
+    def test_core_version_comes_from_the_serialized_installer(self):
+        editions = ('0.10.0', '0.11.0')
+        for version in editions:
+            with self.subTest(version=version):
+                info = f'<fomod><Version>{version}</Version></fomod>'.encode()
+                self.assertEqual(core_version({'fomod/info.xml': info}), version)
+        with self.assertRaisesRegex(ValueError, 'one version'):
+            core_version({'fomod/info.xml': b'<fomod><Version>0.10</Version><Version>0.11</Version></fomod>'})
+
     def test_build_receipt_must_bind_archive_bytes_inventory_and_choices(self):
         raw = b'current core archive'
         members = {'model.nif': b'geometry'}

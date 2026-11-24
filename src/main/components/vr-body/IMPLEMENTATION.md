@@ -11,6 +11,8 @@ core archive. It checks the archive against its actual `build-receipt.json`,
 resolves the physics-off FOMOD choices again and verifies each delivered model
 and TRI against the reviewed profile. A change in the DLL or documentation can
 qualify through the same body bytes.
+The build report and install manifest record the version from the supplied core
+installer. The world-motion overlay report also records that core version.
 
 The build losslessly splits current head/torso triangles and remaps ALL current
 serialized TRI records:30 male and31 female morphs, not the retained24/25-morph

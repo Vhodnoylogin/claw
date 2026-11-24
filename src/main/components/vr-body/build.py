@@ -257,6 +257,7 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
     inputs = {str(body_root/name): h for name, h in profile['inputSha256'].items()}
     inputs[str(skeleton_path)] = profile['skeletonSha256']
     runtime_receipt = Path(runtime_receipt).resolve(strict=True)
+    source_version = profile['sourceVersion']
     if core_archive_path is None:
         if resource.sha256(runtime_receipt) != profile['runtimeReceiptSha256']:
             raise ValueError('Final archive runtime composition receipt differs')
@@ -269,6 +270,7 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
         pack = core_archive.open_tools(core_archive.PACKAGER)
         files, plans, provenance = core_archive.read_core_archive(pack, core_archive_path, receipt_path=runtime_receipt)
         core_archive.require_reviewed_body(pack, files, plans, profile)
+        source_version = core_archive.core_version(files)
         inputs.update(provenance)
     if any(resource.sha256(p) != h for p, h in inputs.items()): raise ValueError('Current source body/TRI/skeleton pin differs')
     proof = reference_proof(reference_mod, profile['reference'])
@@ -283,7 +285,7 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
                         core_archive.CORE_INPUT_SOURCE))
     pins = {**inputs, **dependencies, **{str(p): resource.sha256(p) for p in sources}}
     out.mkdir(parents=True)
-    report = {'schemaVersion': 1, 'status': 'building', 'sourceVersion': '0.10.0', 'inputSha256': inputs,
+    report = {'schemaVersion': 1, 'status': 'building', 'sourceVersion': source_version, 'inputSha256': inputs,
               'executedSourceAndDependencies': pins, 'worldBodiesWritten': False, 'texturesSupplied': False,
               'nativeDispatchQualified': False, 'installedReferenceProof': proof, 'sexes': {}}
     try:
@@ -339,7 +341,7 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
         files = {str(p.relative_to(out/'resources')).replace('\\', '/'): resource.sha256(p) for p in (out/'resources').rglob('*') if p.is_file()}
         if set(files) != {resource_paths(s, e) for s in ('female', 'male') for e in (None, 0, 1)}: raise ValueError('Unexpected component payload')
         manifest = {'schemaVersion': 1, 'component': 'CLAW/vr-body', 'status': 'offline-resource-candidate-dispatch-unqualified',
-            'sourceVersion': '0.10.0', 'files': files, 'worldOverrides': [], 'skeletonFiles': [], 'textureFiles': [],
+            'sourceVersion': source_version, 'files': files, 'worldOverrides': [], 'skeletonFiles': [], 'textureFiles': [],
             'nativeDispatchQualified': False, 'defaultInstallEnabled': False,
             'selection': 'Namespaced first-person assets only; no native load route is asserted or installed',
             'prospectiveProbeEntry': REFERENCE_ENTRY, 'prospectiveProbeChoices': [
