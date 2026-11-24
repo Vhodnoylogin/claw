@@ -60,7 +60,7 @@ def muzzle_support(vertices, rule):
 
 
 def breast_field(vertices, rule):
-    """Broad supported mass whose lower lobe grows chiefly down the torso.
+    """Supported chest mass with independently tunable width and projection.
 
     This field does not reuse the sharp legacy source mask. The axillary and
     sternum transitions share a continuous chest support; fur is bound to the
@@ -81,8 +81,7 @@ def breast_field(vertices, rule):
     support *= 1-smooth((y-rule['frontFull'])/rule['frontFade'])
     support *= np.exp(-.5*((ax-rule['lobeCentreX'])/rule['lobeWidth'])**2)
     lower = smooth((rule['lowerTop']-z)/rule['lowerWidth'])
-    # The existing projecting apex receives less forward growth; extra mass
-    # spreads laterally and settles down, instead of sharpening its projection.
+    # Attenuate forward growth at the existing apex to keep its contour smooth.
     forward = 1-(1-rule['apexForwardFraction'])*smooth((y-rule['apexStart'])/rule['apexFade'])
     return np.c_[np.sign(x)*smooth(ax/4)*rule['lateral']*support,
                  rule['forward']*forward*support,
@@ -451,12 +450,22 @@ def make_collar(geometry, faces):
                           Projector(geometry['body'], faces['body']))
 
 
-def build(base, recipe_path, out, pynifly=None, vectors=None):
+def build(base, recipe_path, out, pynifly=None, vectors=None, breast_profile=None):
     base, out = Path(base).resolve(), Path(out).resolve()
     authored_output(out, [base/'malebodywerewolf_0.nif'])
     recipe = json.loads(Path(recipe_path).read_text(encoding='utf-8'))
     if recipe['schema'] != 'claw-expressive-body/1':
         raise ValueError('Unsupported recipe')
+    profile_sha = None
+    if breast_profile is not None:
+        profile_bytes = Path(breast_profile).read_bytes()
+        profile = json.loads(profile_bytes)
+        expected = {'lateral', 'forward', 'apexForwardFraction'}
+        if ('femaleBreast' not in recipe['parameters'] or not isinstance(profile, dict)
+                or set(profile) != expected):
+            raise ValueError('Breast profile requires exactly the width and projection parameters')
+        recipe['parameters']['femaleBreast'].update(profile)
+        profile_sha = sha(profile_bytes)
     names = [sex+'bodywerewolf'+suffix for sex in ('male', 'female') for suffix in ('_0.nif', '_1.nif', '.tri')]
     original = {name: (base/name).read_bytes() for name in names}
     if {n: sha(v) for n, v in original.items()} != recipe['baselineSha256']:
@@ -474,6 +483,8 @@ def build(base, recipe_path, out, pynifly=None, vectors=None):
               'environment': {'python': platform.python_version(), 'numpy': np.__version__, 'scipy': scipy.__version__},
               'fixtureVectors': vector_rows, 'fixtureVectorsSha256': sha(Path(vectors).read_bytes()) if vectors else None,
               'status': 'building', 'sexes': {}, 'outputSha256': {}}
+    if profile_sha is not None:
+        report['breastProfileSha256'] = profile_sha
     payload = {}
     for sex in ('male', 'female'):
         nif = api.NifFile(str(base/(sex+'bodywerewolf_0.nif')))
@@ -565,8 +576,9 @@ def main():
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--pynifly', type=Path)
     parser.add_argument('--vectors', type=Path, help='Optional pinned six-fixture matrix output JSON')
+    parser.add_argument('--breast-profile', type=Path, help='Optional female breast width and projection tuning')
     args = parser.parse_args()
-    result = build(args.base, args.recipe, args.out, args.pynifly, args.vectors)
+    result = build(args.base, args.recipe, args.out, args.pynifly, args.vectors, args.breast_profile)
     print(json.dumps({'status': result['status'], 'outputSha256': result['outputSha256'],
                       'issues': {s: r['normalOrCollapseIssues'] for s, r in result['sexes'].items()}}, indent=2))
 

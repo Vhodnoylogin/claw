@@ -33,6 +33,17 @@ class NaturalBreastTests(unittest.TestCase):
                                    body.breast_field(left, self.rule), atol=1e-12)
         self.assertLess(abs(body.breast_field(right, self.rule)[-1, 0]), 1e-12)
 
+    def test_profile_tuning_reduces_width_and_increases_projection(self):
+        recipes = body.ROOT/'src/main/resources/recipes'
+        current = json.loads((recipes/'expressive-body-v4.json').read_text())['parameters']['femaleBreast']
+        profile = json.loads((recipes/'expressive-breast-profile-v1.json').read_text())
+        points = np.array([[9., 27., 100.], [9., 39., 100.], [16., 25., 99.]])
+        previous = body.breast_field(points, current)
+        tuned = body.breast_field(points, {**current, **profile})
+        self.assertTrue(np.all((0 < tuned[:, 0]) & (tuned[:, 0] < previous[:, 0])))
+        self.assertTrue(np.all(tuned[:, 1] > previous[:, 1]))
+        np.testing.assert_array_equal(tuned[:, 2], previous[:, 2])
+
     def test_face_back_feet_and_support_boundaries_are_fixed(self):
         points = np.array([[0., 65., 120.], [9., -5., 99.], [9., 26., 0.],
                            [9., 26., 82.], [30., 26., 99.], [9., 48., 99.]])

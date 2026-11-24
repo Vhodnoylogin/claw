@@ -122,6 +122,19 @@ requires actual human status and verifies that CLAW's own wolf key was cleared
 before editing. `family` is `himbo` or `cbbe`. Choose a canonical coat ID from
 the full gallery and hold it for the entire session.
 
+### Female silhouette comparison
+
+Use the `cbbe` series with Timber for both trials. Run once with the release
+assets. For the second run, generate a TRI from the pinned v4 repaired inputs
+using the same expressive recipe and fixture vectors, and supply
+`--breast-profile src/main/resources/recipes/expressive-breast-profile-v1.json`
+to `expressive_body.py`. Stage only the resulting `femalebodywerewolf.tri`
+over the same release in the disposable profile. The trial reduces lateral
+growth and increases forward projection at the same breast-morph value.
+Compare matching front and profile frames at 0%, 50%, and 100%. Keep the
+same NIFs, coat, light, human body and matrix. The profile is an explicit
+build option. The standard v4 pipeline still reproduces the pinned carrier.
+
 ## Execution
 
 Use a disposable TEST SE Autotest session with the exact CLAW 0.11.0 release
