@@ -7,17 +7,18 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 from coat_harmonized_textures import generate
+from coat_regional_palette import load_palette
 from coat_regional_readback import expected_paths
 from coat_regional_scene import PALETTE
 
 
-def prepare(installed, appearance, output, palette=PALETTE):
+def prepare(installed, appearance, output, palette=PALETTE, *, seed=None):
     output = output.resolve()
     if any((parent / '.git').exists() for parent in [output, *output.parents]):
         raise ValueError('The local preview must be generated outside Git')
     if output.is_relative_to(installed.resolve()):
         raise ValueError('The local preview needs a directory outside the installed textures')
-    scene = json.loads(palette.read_bytes())
+    scene = load_palette(palette, seed)
     pairs = scene['pairs']
     skin_donor, hair_donor = scene.get('skinDonor'), scene.get('hairDonor')
     if scene.get('comparison') == 'skin-only' and (not skin_donor or not hair_donor or len(pairs) != 5
@@ -57,6 +58,8 @@ def prepare(installed, appearance, output, palette=PALETTE):
         expected_paths(output, coat)
     for name, value in [('generated-coats.json', coats), ('texture-pins.json', staged), ('colour-metrics.json', generated)]:
         (output / name).write_text(json.dumps(value, indent=2) + '\n', encoding='utf-8')
+    if scene.get('comparison') == 'random-combos':
+        (output / 'resolved-palette.json').write_text(json.dumps(scene, indent=2) + '\n', encoding='utf-8')
 
 
 def main():
@@ -65,8 +68,9 @@ def main():
     parser.add_argument('--appearance', required=True, type=Path, help='Current regional CoatMapping.xml / CoatLibrary.xml')
     parser.add_argument('--output', required=True, type=Path, help='New local folder outside Git')
     parser.add_argument('--palette', default=PALETTE, type=Path, help='Reusable scene palette and actor pairs')
+    parser.add_argument('--seed', type=int, help='Override the seed in the random combination source palette')
     args = parser.parse_args()
-    prepare(args.installed, args.appearance, args.output, args.palette)
+    prepare(args.installed, args.appearance, args.output, args.palette, seed=args.seed)
 
 
 if __name__ == '__main__':

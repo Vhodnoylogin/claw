@@ -23,7 +23,13 @@ HAIR_WEIGHT = {
     "furtail.dds": .39,
 }
 SKIN_DONORS = {(185, 179, 170): "Timber", (221, 221, 221): "White"}
-HAIR_DONORS = {(20, 20, 24): "ValleyBlack", (81, 77, 57): "Timber"}
+HAIR_DONORS = {
+    (20, 20, 24): "ValleyBlack",
+    (48, 35, 33): "Brown",
+    (81, 77, 57): "Timber",
+    (90, 95, 105): "Grey",
+    (92, 88, 80): "ValleyWhite",
+}
 
 LINEAR_TO_LMS = np.array([
     [.4122214708, .5363325363, .0514459929],

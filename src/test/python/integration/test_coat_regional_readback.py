@@ -4,10 +4,12 @@ import json
 from pathlib import Path
 import unittest
 
+from coat_regional_palette import load_palette
 from coat_regional_readback import (
-    compare_pairs, expected_paths, inspect_discrete_regions, inspect_regions, verify_human, verify_skin_only,
+    compare_pairs, expected_paths, inspect_discrete_regions, inspect_regions, verify_human, verify_random_combos,
+    verify_skin_only,
 )
-from coat_regional_scene import SKIN_PALETTE, rgb_key
+from coat_regional_scene import RANDOM_PALETTE, SKIN_PALETTE, rgb_key
 
 
 TEST_SOURCE = Path(__file__).resolve().parents[2]
@@ -107,6 +109,26 @@ class RegionalCoatReadbackTests(unittest.TestCase):
                 sample['surfaces'][index]['tint'] = [0., 0., 0.]
                 with self.assertRaisesRegex(ValueError, color + ' tint differs'):
                     verify_human(sample, self.pairs[0])
+
+    def test_seeded_palette_replays_and_keeps_a_same_skin_comparison(self):
+        default = load_palette(RANDOM_PALETTE)
+        self.assertEqual(default, load_palette(RANDOM_PALETTE, default['selectionSeed']))
+        self.assertNotEqual(default['pairs'], load_palette(RANDOM_PALETTE, 41)['pairs'])
+        self.assertEqual([row['base'] for row in default['pairs']],
+                         ['0x00013602', '0x00013356', '0x00013397', '0x00013BAB', '0x00013282'])
+        left, right = default['pairs'][0], default['pairs'][3]
+        self.assertEqual(left['skinRecordRGB8'], right['skinRecordRGB8'])
+        self.assertNotEqual(left['hair'], right['hair'])
+
+    def test_seeded_audit_requires_variation_and_matching_twins(self):
+        palette = load_palette(RANDOM_PALETTE)
+        rows = [(verify_human(human(pair), pair), verify_human(human(pair), pair)) for pair in palette['pairs']]
+        self.assertEqual(verify_random_combos(rows, palette['selectionSeed'])['pairs'], [row[0] for row in rows])
+        with self.assertRaisesRegex(ValueError, 'identical input'):
+            verify_random_combos([*rows[:4], (rows[4][0], rows[0][1])], 808)
+        duplicate = dict(rows[4][0], hairRGB8=rows[0][0]['hairRGB8'])
+        with self.assertRaisesRegex(ValueError, 'five hair colours'):
+            verify_random_combos([*rows[:4], (duplicate, duplicate)], 808)
 
     def test_requires_fresh_owned_donor_on_all_surfaces(self):
         for field, value, reason in (('diffuseResource', 'textures/other.dds', 'fixed donor'),

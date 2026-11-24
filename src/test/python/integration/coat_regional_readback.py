@@ -82,17 +82,30 @@ def verify_human(audit, pair):
     return observed
 
 
+def _verify_twins(inputs_by_pair):
+    require(len(inputs_by_pair) == 5 and all(human == wolf for human, wolf in inputs_by_pair),
+            'Expected five pairs with identical input on both copies of each actor')
+    return [human for human, _ in inputs_by_pair]
+
+
 def verify_skin_only(inputs_by_pair):
     """Prove matched twin inputs, one held hair colour and five ordered skin colours."""
-    require(len(inputs_by_pair) == 5 and all(human == wolf for human, wolf in inputs_by_pair),
-            'Expected five skin controls with identical input on both copies of each actor')
-    rows = [human for human, _ in inputs_by_pair]
+    rows = _verify_twins(inputs_by_pair)
     hair = {tuple(row['hairRGB8']) for row in rows}
     brightness = [luma(row['skinRGB8']) for row in rows]
     require(len(hair) == 1 and all(b > a for b, a in zip(brightness, brightness[1:])),
             'The skin controls must keep hair fixed and descend in skin lightness')
     return {'hairRGB8': list(next(iter(hair))), 'skinRGB8': [row['skinRGB8'] for row in rows],
             'skinInputLuma8': brightness}
+
+
+def verify_random_combos(inputs_by_pair, seed):
+    """Prove the seeded stock row includes variation in both colour inputs."""
+    rows = _verify_twins(inputs_by_pair)
+    require(len({tuple(row['hairRGB8']) for row in rows}) == 5
+            and len({tuple(row['skinRGB8']) for row in rows}) >= 3,
+            'The seeded row requires five hair colours and at least three skin colours')
+    return {'selectionSeed': seed, 'pairs': rows}
 
 
 def inspect_regions(audit, pair, paths):

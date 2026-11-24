@@ -48,6 +48,29 @@ The normal material readback verifies the actual path and bound diffuse resource
 on all twelve wolf surfaces. With `--capture`, bracketed `lightTones.png` and
 `darkTones.png` supplement the panorama, which is restored for inspection.
 
+## Random stock skin and hair combinations
+
+The [seeded palette](random-pairs.json) samples one stock NPC from each of five
+hair groups and shuffles the row. A hash of the seed, group and base form ID
+selects each actor. A separate hash of the seed and base form ID assigns the
+position. Seed `808` gives Argi Farseer, Edda, Faleen, Ysolda and Gisli from left
+to right. Argi and Ysolda share the same skin RGB, so this row also compares
+blond and auburn hair against a matched skin input.
+
+Pass `--palette src/test/resources/inspection/regional-coats/random-pairs.json`
+to `prepare_coat_harmonized_scene.py`. An optional `--seed` changes selection
+and placement within the stock candidate pool. The preparer saves the exact
+scene to `resolved-palette.json`. Pass that file as `--palette` to the scene
+runner with `--coat-mode harmonized`, the generated `--appearance` directory,
+and its `--generated-coats` file. Admit the selected bases and races from the
+resolved palette to the disposable profile. Stock skin and hair tints are
+observed on both human copies before each transformation. All wolves share the
+Grey skin texture source, and the matching hair-colour group selects the head
+and fur texture source. `combinationComparison` records the seed and the
+measured input pairs. The material checks verify all twelve wolf surfaces.
+With capture enabled, `leftCombinations.png` and `rightCombinations.png` provide
+closer comparisons alongside the panorama.
+
 ## Run the scene
 
 Use a prepared Skyrim SE test profile with the matching CLAW candidate and its

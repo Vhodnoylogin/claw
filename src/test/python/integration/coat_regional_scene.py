@@ -7,8 +7,10 @@ from pathlib import Path
 import time
 from unittest.mock import patch
 
+from coat_regional_palette import load_palette
 from coat_regional_readback import (
-    compare_pairs, expected_paths, inspect_discrete_regions, inspect_regions, verify_human, verify_skin_only,
+    compare_pairs, expected_paths, inspect_discrete_regions, inspect_regions, verify_human, verify_random_combos,
+    verify_skin_only,
 )
 from coat_persistence_readback import require
 from coat_scene_capture import capture_game_frame
@@ -16,6 +18,7 @@ from coat_scene_capture import capture_game_frame
 
 PALETTE = Path(__file__).resolve().parents[2] / 'resources/inspection/regional-coats/pairs.json'
 SKIN_PALETTE = PALETTE.with_name('skin-pairs.json')
+RANDOM_PALETTE = PALETTE.with_name('random-pairs.json')
 PLAYER = '0x00000014'
 WOLF_RACE = '0x000CDD84'
 CELL = '0x00032AE7'  # QASmoke in Skyrim.esm
@@ -63,7 +66,7 @@ class RegionalScene:
         self.pairs = palette['pairs']
         self.camera = palette.get('camera', CAMERA)
         self.review_views = palette.get('reviewViews', {}) if capture else {}
-        self.skin_only = palette.get('comparison') == 'skin-only'
+        self.comparison = palette.get('comparison')
         self.coat_mode = coat_mode
         self.fixed = palette['fixedCoat'] if coat_mode == 'fixed' else None
         self.skin_coats = palette.get('skinCoats', {})
@@ -74,8 +77,8 @@ class RegionalScene:
             require(set(self.generated_coats) == {pair['base'] for pair in self.pairs}
                     and len(set(self.generated_coats.values())) == len(self.pairs),
                     'Expected one locally generated coat per fixture base')
-        require(not self.skin_only or (coat_mode == 'harmonized' and len(self.pairs) == 5),
-                'The five skin controls use locally generated harmonized coats')
+        require(self.comparison not in ('skin-only', 'random-combos') or (coat_mode == 'harmonized' and len(self.pairs) == 5),
+                'The five-pair controls use locally generated harmonized coats')
         self.appearance = appearance
         self.dwell = dwell
         self.capture = capture
@@ -166,6 +169,9 @@ class RegionalScene:
     def place(self, actor, y, *, pin=False):
         self.guard(actor)
         reference = self.spec(actor)['reference']
+        if self.comparison == 'random-combos' and not pin:
+            # Stock actors' packages can move them again after the race change.
+            self.papyrus('Actor', 'SetRestrained', [True], 'none', reference, write=True)
         self.pose(reference, (WALL_X, y, FLOOR_Z), 90.)
         if pin:
             self.guard(actor)
@@ -334,11 +340,15 @@ class RegionalScene:
                 and row.get('cellForm') == CELL for row in player.get('refs', [])), 'QASmoke bootstrap required')
         for entry in actors(self.pairs):
             self.create(*entry)
-        if self.skin_only:
+        if self.comparison in ('skin-only', 'random-combos'):
             inputs = self.data['humanInputs']
-            self.data['skinComparison'] = verify_skin_only([
+            measured = [
                 (inputs[tag(index, 'Human')], inputs[tag(index, 'Wolf')]) for index, _ in enumerate(self.pairs)
-            ])
+            ]
+            if self.comparison == 'skin-only':
+                self.data['skinComparison'] = verify_skin_only(measured)
+            else:
+                self.data['combinationComparison'] = verify_random_combos(measured, self.data['palette']['selectionSeed'])
             self.save()
         for index, pair in enumerate(self.pairs):
             self.transform(index, pair)
@@ -384,6 +394,7 @@ def main():
     parser.add_argument('--scenario', required=True, type=Path, help='Read-only QASmoke bootstrap with the qualified save pins')
     parser.add_argument('--appearance', required=True, type=Path, help='Effective candidate CoatMapping.xml / CoatLibrary.xml directory')
     parser.add_argument('--palette', type=Path, default=PALETTE, help='Reusable scene palette and actor pairs')
+    parser.add_argument('--seed', type=int, help='Override the seed in the random combination source palette')
     parser.add_argument('--coat-mode', choices=('fixed', 'skin-pairs', 'automatic', 'discrete', 'harmonized'), default='fixed')
     parser.add_argument('--generated-coats', type=Path, help='Local manifest of coat IDs keyed by fixture base')
     parser.add_argument('--capture', action='store_true', help='Capture an owned FHD game frame between material audits')
@@ -393,9 +404,9 @@ def main():
 
     from skyrim_autotest import cli, scenarios
 
-    palette = json.loads(args.palette.read_bytes())
-    require(palette.get('comparison') != 'skin-only' or args.coat_mode == 'harmonized',
-            'The skin-only palette requires harmonized coats')
+    palette = load_palette(args.palette, args.seed)
+    require(palette.get('comparison') not in ('skin-only', 'random-combos') or args.coat_mode == 'harmonized',
+            'The five-pair palettes require harmonized coats')
     if args.coat_mode == 'harmonized':
         require(args.generated_coats is not None, 'The harmonized scene needs a generated coat manifest')
         coats = json.loads(args.generated_coats.read_bytes())
