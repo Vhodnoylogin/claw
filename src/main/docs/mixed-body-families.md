@@ -53,6 +53,21 @@ human and wolf routes separate. Verify the actual selected skin and loaded model
 in game: body-family selection alone does not repair an incompatible custom
 skin, and CLAW does not rewrite another mod's skin records automatically.
 
+## Standalone compatibility add-on
+
+Publish verified NPC compatibility patches as a separate optional archive in
+**Miscellaneous Files** on the existing CLAW Nexus page. The core installer
+continues to select one default body family per sex. The add-on supplies the
+tested skin bindings, the required additional profiles while preserving the
+selected defaults, and any necessary plugin overrides for wolf skin routing.
+
+Test the archive as a separate mod-manager installation against the exact
+declared NPC mod and body variant. Check human mesh and TRI availability, the
+selected profile, normal transformation and return, save/load, and whether
+disabling the archive restores the ordinary install for newly assigned actors.
+Document the existing saved assignment and explicit rebind procedure. Add each
+variant to the download only after its own in-game verification.
+
 ## Explicit source adapter
 
 CLAW optionally reads `Data/SKSE/Plugins/CLAW/BodyFamilyBindings.xml` at data load.
