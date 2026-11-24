@@ -41,6 +41,8 @@ APPEARANCE_PATH = "SKSE/Plugins/CLAW/"
 RUNTIME_README = "src/main/resources/publication/runtime/README.md"
 MODEL_SWAP_OVERRIDE = "RandomElegantWerewolves_MS.json"
 MODEL_SWAP_SOURCE = "src/main/resources/compatibility/" + MODEL_SWAP_OVERRIDE
+ANATOMY_VISIBILITY = "src/main/components/adult-anatomy/python/visual_variants.py"
+NIF_RESOURCE = "src/main/python/vr/body_resource.py"
 MESH = "Meshes/Actors/WerewolfBeast/Character Assets"
 MOTION_PREFIX = "40 Motion/"
 FSMP_PREFIX = MOTION_PREFIX + "FSMP/"
@@ -66,7 +68,8 @@ SOURCE_FILES = {"CMakeLists.txt", "src/main/resources/profiles/MorphLinks.xml",
                 "src/main/python/build-tools/player_only_materials.py",
                 "src/main/python/build-tools/build-unified-release.py",
                 "src/main/resources/publication/unified-installer/ModuleConfig.xml",
-                "src/main/resources/publication/unified-installer/info.xml", RUNTIME_README, MODEL_SWAP_SOURCE}
+                "src/main/resources/publication/unified-installer/info.xml", RUNTIME_README, MODEL_SWAP_SOURCE,
+                ANATOMY_VISIBILITY, NIF_RESOURCE}
 HOST_SOURCES = {"src/main/papyrus/obody/CLAWOBodySourceHost.psc",
                 "src/main/papyrus/obody/build.py", "src/main/papyrus/obody/README.md",
                 "src/main/python/physics/wiring.py"}
@@ -323,6 +326,24 @@ def _material_adapter():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def _hide_optional_anatomy(inputs, entries):
+    path = ROOT / ANATOMY_VISIBILITY
+    inputs.read(ROOT / NIF_RESOURCE)
+    visibility = ModuleType('claw_core_anatomy_visibility')
+    visibility.__file__ = str(path)
+    exec(compile(inputs.read(path), str(path), 'exec'), visibility.__dict__)
+    edits = {}
+    for prefix in ('00 Base/', FSMP_PREFIX):
+        for weight in (0, 1):
+            member = f'{prefix}{MESH}/malebodywerewolf_{weight}.nif'
+            if member in entries:
+                original = entries[member]
+                entries[member], edit = visibility.hide_core_anatomy(original)
+                if edit is not None:
+                    edits[member] = {'sourceSha256': sha(original), 'sha256': sha(entries[member]), 'edit': edit}
+    return edits
 
 
 def _nif_string_records(materials, payload):
@@ -861,6 +882,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
                     if 'PlayerWerewolf' in name: continue
                     if name.endswith('_1.nif') and data == files[name.replace('_1.nif', '_0.nif')]: continue
                 entries[MOTION_PREFIX + provider.upper() + '/' + name] = data
+    anatomy_visibility = _hide_optional_anatomy(inputs, entries)
     if obody_esp is not None:
         entries["30 OBody Source/CLAW - OBody Integration.esp"] = inputs.runtime(obody_esp, b"TES4", "OBody ESP")
         entries["30 OBody Source/Scripts/CLAWOBodySourceHost.pex"] = inputs.runtime(obody_pex, b"\xfa\x57\xc0\xde", "OBody PEX")
@@ -889,7 +911,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
         b'@MOTION_INSTRUCTIONS@', (b'Choose None or Faster HDT-SMP on the Werewolf motion page. None is the default. '
         b'Install the matching [Faster HDT-SMP](https://www.nexusmods.com/skyrimspecialedition/mods/57339) provider separately. '
         b'FSMP adds motion to ears, tail and female breasts. Replace the previous CLAW installation when switching options, '
-        b'and disable older CLAW motion mods. Contact colliders, VR body and anatomy are not included.'
+        b'and disable older CLAW motion mods. Contact colliders, VR body and the optional anatomy add-on are separate.'
         if motion else b'This core archive does not include motion physics.'))
     validate_no_nested_archives(entries)
     packed = zip_bytes(entries)
@@ -909,6 +931,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
                "runtimeInputsCompiledByThisCommand": False, "gameOrManagerExecuted": False,
                "runtimeInputProvenance": inputs.runtime_roles,
                "playerOnlyMaterialAdaptations": material_adaptations,
+               "optionalAnatomyVisibilityEdits": anatomy_visibility,
                **({'motionProviders': motion_review} if motion else {}),
                "historicalArchiveUsedAsSource": False, "iniInstalled": False,
                "configuration": "canonical MorphLinks.xml family defaults; runtime has no INI reader",

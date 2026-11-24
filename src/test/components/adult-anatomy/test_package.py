@@ -110,14 +110,17 @@ class ActualCandidatePackage(unittest.TestCase):
             raise unittest.SkipTest('Explicit actual anatomy/core package inputs not selected')
         if not all(paths):
             raise AssertionError('Set all three actual anatomy/core package inputs')
+        receipt = os.environ.get('CLAW_ANATOMY_CORE_RECEIPT')
         cls.temp = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls.temp.cleanup)
         cls.report = p.build(core_archive=Path(paths[0]), neutral=Path(paths[1]), combined=Path(paths[2]),
-                             out=Path(cls.temp.name)/'fresh-output')
+                             out=Path(cls.temp.name)/'fresh-output', core_receipt=Path(receipt) if receipt else None)
         cls.package, cls.reader = helpers()
         cls.entries = cls.package.read_zip(Path(cls.report['archive']['path']).read_bytes())
         cls.base = cls.package.read_zip(Path(cls.report['baseArchive']['path']).read_bytes())
         cls.core = cls.package.read_zip(Path(paths[0]).read_bytes())
+        visuals_path = p.HERE/'visual_variants.py'
+        cls.visuals = p.load(visuals_path, visuals_path.read_bytes())
 
     def test_actual_pair_has_ten_overlay_members_and_160_verified_selections(self):
         self.assertEqual(self.report['archive']['members'], 10)
@@ -130,6 +133,14 @@ class ActualCandidatePackage(unittest.TestCase):
         self.assertEqual(self.report['retainedMotionResult']['result'], 'failed')
         self.assertFalse(any(name.endswith(('.dll', '.pex', '.esp', '.tri', '.dds', '.py')) for name in self.entries))
 
+    def test_companion_and_report_keep_the_input_core_version_and_native_binary(self):
+        version = ET.fromstring(self.core['fomod/info.xml']).findtext('Version')
+        self.assertTrue(version)
+        self.assertEqual(self.report['coreVersion'], version)
+        self.assertEqual(ET.fromstring(self.base['fomod/info.xml']).findtext('Version'), version)
+        binary = '10 Native/SKSE/Plugins/CLAWDistribution.dll'
+        self.assertEqual(self.base[binary], self.core[binary])
+
     def test_explicit_static_anatomy_restores_original_appearance_and_preserves_core_fsmp(self):
         selected = p.selection(self.entries, 'off', self.reader, core_motion='fsmp')
         # Equal core endpoints/armor routes share archive members. Read their
@@ -139,9 +150,10 @@ class ActualCandidatePackage(unittest.TestCase):
             additional_active=('HIMBO.esp', 'CBBE.esp'))
         original = {name: self.core[source] for name, source in paths.items()}
         baseline = {name: self.base[source] for name, source in paths.items()}
-        self.assertEqual({name for name in baseline if baseline[name] != original[name]}, set(p.DESTINATIONS))
         overlay = {**baseline, **{name: self.entries[source] for name, source in selected.items()}}
-        self.assertTrue(all(overlay[name] == data for name, data in original.items()))
+        self.assertEqual({name for name in baseline if baseline[name] != overlay[name]}, set(p.DESTINATIONS))
+        for name in p.DESTINATIONS:
+            self.assertEqual(overlay[name], self.visuals.reviewed_visible_anatomy(original[name], p.CORE_FSMP_SHA))
         self.assertTrue(all(p.sha(overlay[name]) == p.CORE_FSMP_SHA for name in p.DESTINATIONS))
         self.assertEqual(p.sha(overlay[p.XML_ROOT+'CLAWMotionMale.xml']),
                          'b42bfa436a4e53baa48ff2249d4659718603798dabdb1e6b9427dc37efa0ea34')
@@ -189,6 +201,14 @@ class ActualCandidatePackage(unittest.TestCase):
             changed = bytearray(entries[source]); changed[-1] ^= 1; entries[source] = bytes(changed)
             with self.subTest(source=source), self.assertRaisesRegex(ValueError, 'Changed component payload'):
                 p.audit(entries, self.base, self.core, self.package, self.reader)
+
+    def test_rejects_altered_core_male_motion_even_with_the_same_model_hook(self):
+        original = self.package.selection_audit(self.core)
+        source = next(row['source'] for plan in original if plan['physics'] == 'fsmp' for row in plan['files']
+                      if row['path'] == p.XML_ROOT+'CLAWMotionMale.xml')
+        changed = self.core | {source: self.core[source] + b'\n'}
+        with self.assertRaisesRegex(ValueError, 'combined rig input'):
+            p.require_compatible_core(changed, original, self.visuals)
 
 
 if __name__ == '__main__':

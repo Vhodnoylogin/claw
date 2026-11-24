@@ -28,7 +28,7 @@ def sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def read_json(path):
+def parse_json(data):
     def unique(pairs):
         result = {}
         for key, value in pairs:
@@ -36,8 +36,12 @@ def read_json(path):
                 raise ValueError('Duplicate JSON field: ' + key)
             result[key] = value
         return result
-    return json.loads(Path(path).read_text(encoding='utf-8-sig'), object_pairs_hook=unique,
+    return json.loads(data, object_pairs_hook=unique,
                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Nonfinite JSON')))
+
+
+def read_json(path):
+    return parse_json(Path(path).read_text(encoding='utf-8-sig'))
 
 
 def load_profile(path):

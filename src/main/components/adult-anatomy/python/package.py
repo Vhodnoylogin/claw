@@ -16,6 +16,7 @@ CORE_SHA = 'f571ad5e486600c3fcd06432034eeed9a2837be2706ca59bc0f72be28262c91a'
 STATIC_SHA = '6a7fa9e262a8a329dd3dc41a725edbf8c9da0a577176ed8c04dbae9924c45210'
 CORE_FSMP_SHA = '7abd65601c1383272f50b413792e7d54e12a5caf17270fb4f018c9868085c36d'
 TRI_SHA = '3ff00f50493664ec68bbbfbe4843bd64f268df9a5659e6a6bd4baea14ae085fc'
+MALE_FSMP_XML_SHA = 'b42bfa436a4e53baa48ff2249d4659718603798dabdb1e6b9427dc37efa0ea34'
 NAME = 'test_CLAW - Neutral Anatomy Candidate'
 ARCHIVE = NAME + '.zip'
 BASE_NAME = 'test_CLAW - Core with Optional Anatomy'
@@ -232,14 +233,32 @@ def check_motion(payload, xml, core_motion, package, materials, composition, dri
                             ('NPC Head [Head]', 'Tails', 'WWD 1') if core_motion == 'fsmp' else ('WWD 1',))
 
 
-def build_core(core, visuals):
+def require_compatible_core(core, plans, visuals):
+    require({plan.get('physics') for plan in plans} == CORE_MESHES.keys(),
+            'Expected both reviewed core motion selections')
+    visible_models = {name: visuals.reviewed_visible_anatomy(core[name], digest)
+                      for name, digest in CORE_MESHES.values()}
+    for plan in plans:
+        mode = plan['physics']
+        source, _ = CORE_MESHES[mode]
+        routes = {row['path']: row['source'] for row in plan['files']}
+        require(all(routes.get(name) == source for name in DESTINATIONS),
+                'Core male model routes differ from the reviewed anatomy inputs')
+        tri = routes.get(MESH + 'malebodywerewolf.tri')
+        require(tri in core and sha(core[tri]) == TRI_SHA, 'Core male TRI differs from the reviewed anatomy input')
+        xml = routes.get(XML_ROOT + 'CLAWMotionMale.xml')
+        require((xml is None if mode == 'none' else xml in core and sha(core[xml]) == MALE_FSMP_XML_SHA),
+                'Core male FSMP XML differs from the reviewed combined rig input')
+    return visible_models
+
+
+def build_core(core, visible_models, visuals):
     """Keep the original installer/aliases and hide only the two male sources."""
     base = dict(core)
     visibility = {}
-    for name, digest in CORE_MESHES.values():
-        require(sha(core[name]) == digest, 'Unexpected core male model')
-        hidden, ledger = visuals.hide_anatomy(core[name])
-        require(hidden != core[name] and visuals.restore_anatomy(hidden, ledger) == core[name],
+    for name, visible in visible_models.items():
+        hidden, ledger = visuals.hide_anatomy(visible)
+        require(core[name] in (visible, hidden) and visuals.restore_anatomy(hidden, ledger) == visible,
                 'Core visibility change is not independently reversible')
         base[name] = hidden
         visibility[name] = ledger
@@ -267,8 +286,9 @@ def audit(entries, base, core, package, reader):
         require(sha(entries[folder + '/male.nif']) == digest
                 and (not xml or sha(entries[folder + '/' + xml]) == PINS[core_motion]['xml']),
                 'Changed component payload')
-    allowed = {name for name, _ in CORE_MESHES.values()} | {'fomod/ModuleConfig.xml', 'fomod/info.xml'}
-    require(set(base) == set(core) and {name for name in base if base[name] != core[name]} == allowed,
+    installer_names = {'fomod/ModuleConfig.xml', 'fomod/info.xml'}
+    allowed = {name for name, _ in CORE_MESHES.values()} | installer_names
+    require(set(base) == set(core) and installer_names <= {name for name in base if base[name] != core[name]} <= allowed,
             'Unexpected change to the companion core archive')
     literal_default = default_selection(entries, reader)
     plans = []
@@ -295,7 +315,7 @@ def audit(entries, base, core, package, reader):
             _, xml = VARIANTS[core_motion, motion]
             extra = {XML_ROOT + xml} if xml else set()
             require(set(selected) == {*DESTINATIONS, GUIDE, NOTICE} | extra, 'Nonminimal component selection')
-            require(motion == 'on' or all(result[name] == core[core_source] for name in DESTINATIONS),
+            require(motion == 'on' or all(sha(result[name]) == CORE_MESHES[core_motion][1] for name in DESTINATIONS),
                     'Anatomy motion off must restore exact appearance and retain core motion')
             plans.append({**shared, 'anatomy': motion, 'coreProtectedDestinations': len(baseline)-len(changed),
                           'maleModelOverrides': len(changed), 'selectedFiles': {name: sha(entries[source]) for name, source in selected.items()}})
@@ -303,12 +323,14 @@ def audit(entries, base, core, package, reader):
     return plans
 
 
-def build(*, core_archive, neutral, combined, out):
+def build(*, core_archive, neutral, combined, out, core_receipt=None):
     paths = [Path(__file__), HERE/'compose_motion.py', TOOLS/'package-source-build.py',
              TOOLS/'build-unified-release.py', TOOLS/'player_only_materials.py',
              REPO/'src/main/python/physics/recipe.json', HERE.parent/'README.md',
              REPO/'src/main/resources/donors/README.md', REPO/'src/main/python/build-tools/build-genitals.py',
              HERE/'visual_variants.py', REPO/'src/main/python/vr/body_resource.py']
+    core_input_path = TOOLS/'core_package_input.py'
+    paths.append(core_input_path)
     sources = {path.resolve(): path.read_bytes() for path in paths}
     package = load(paths[2], sources[paths[2]])
     inputs = package.Inputs()
@@ -317,10 +339,18 @@ def build(*, core_archive, neutral, combined, out):
     reader, materials, composition = [load(path, sources[path]) for path in paths[3:5]+paths[1:2]]
     visuals = load(HERE/'visual_variants.py', sources[HERE/'visual_variants.py'])
     core_bytes = inputs.read(core_archive)
-    require(sha(core_bytes) == CORE_SHA, 'Explicit reviewed CLAW core archive differs')
-    core = package.read_zip(core_bytes)
+    core_input = load(core_input_path, sources[core_input_path])
+    receipt = None
+    if core_receipt is not None:
+        body_resource_path = REPO/'src/main/python/vr/body_resource.py'
+        resource = load(body_resource_path, sources[body_resource_path])
+        receipt = resource.parse_json(inputs.read(core_receipt).decode('utf-8-sig'))
+        require(isinstance(receipt, dict), 'Expected an object in the core build receipt')
+    core, core_plans = core_input.read_core_package(package, core_bytes, receipt=receipt, known_digest=CORE_SHA)
+    core_version = core_input.core_version(core)
+    visible_models = require_compatible_core(core, core_plans, visuals)
     drivers = tuple(node for group in json.loads(sources[paths[5]])['groups'] for node in group['nodes'])
-    base, visibility = build_core(core, visuals)
+    base, visibility = build_core(core, visible_models, visuals)
     package._check_motion_nif(materials, base[CORE_MESHES['none'][0]], base[CORE_MESHES['fsmp'][0]], 'male')
     entries = {GUIDE: RUNTIME_GUIDE, NOTICE: ASSET_NOTICE, 'fomod/ModuleConfig.xml': installer(),
                'fomod/info.xml': b'<fomod><Name>'+NAME.encode()+b'</Name><Author>CLAW</Author><Version>0.3.0</Version></fomod>'}
@@ -328,7 +358,7 @@ def build(*, core_archive, neutral, combined, out):
     inventories = {}
     for core_motion, root in roots.items():
         static_folder, _ = VARIANTS[core_motion, 'off']
-        entries[static_folder + '/male.nif'] = core[CORE_MESHES[core_motion][0]]
+        entries[static_folder + '/male.nif'] = visible_models[CORE_MESHES[core_motion][0]]
         folder, xml = VARIANTS[core_motion, 'on']
         expected = {MESH+'malebodywerewolf_'+str(weight)+'.nif' for weight in (0, 1)} | {MESH+'malebodywerewolf.tri', XML_ROOT+xml}
         inventories[root] = expected
@@ -345,6 +375,7 @@ def build(*, core_archive, neutral, combined, out):
     archive_bytes = package.zip_bytes(entries)
     reopened_base, reopened = (package.read_zip(x) for x in (base_archive_bytes, archive_bytes))
     require(reopened_base == base and reopened == entries, 'Serialized candidate archives differ')
+    require(core_input.core_version(reopened_base) == core_version, 'Companion core installer version changed')
     plans = audit(reopened, reopened_base, core, package, reader)
     output = Path(out).resolve()
     require(not output.exists() and not any(part.casefold() in ('mods', 'data', 'overwrite', 'downloads') for part in output.parts)
@@ -371,7 +402,10 @@ def build(*, core_archive, neutral, combined, out):
               'default': 'keep-current-male-resources-and-core-motion',
               'literalDefault': default_selection(reopened, reader),
               'explicitVariantPayloads': {name: sha(data) for name, data in reopened.items() if name.endswith(('.nif', '.xml')) and not name.startswith('fomod/')},
-              'sharedCoreTriSha256': TRI_SHA, 'installed': False, 'gameStarted': False,
+              'sharedCoreTriSha256': TRI_SHA, 'coreMaleMotionSha256': MALE_FSMP_XML_SHA,
+              'coreVersion': core_version,
+              'coreSourceCommit': receipt['sourceCommit'] if receipt is not None else None,
+              'installed': False, 'gameStarted': False,
               'runtimeQualified': False, 'renderedAppearanceQualified': False, 'contactQualified': False,
               'retainedMotionResult': {'run': '20261113-064151-968880', 'result': 'failed'},
               'limits': ['The neutral shape is embedded and hidden in the companion core. The overlay restores its visibility.',
@@ -385,10 +419,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('core-archive', 'neutral', 'combined', 'out'):
         parser.add_argument('--'+name, type=Path, required=True)
+    parser.add_argument('--core-receipt', type=Path, help='Verified build-receipt.json for the supplied core ZIP')
     args = parser.parse_args()
     try:
         result = build(**vars(args))
         print(json.dumps({'status': result['status'], 'archive': result['archive'], 'baseArchive': result['baseArchive'], 'plans': result['planCount']}))
-    except (OSError, ValueError, KeyError, TypeError) as error:
+    except (OSError, ValueError, KeyError, TypeError, ET.ParseError) as error:
         print(str(error), file=sys.stderr)
         raise SystemExit(2)

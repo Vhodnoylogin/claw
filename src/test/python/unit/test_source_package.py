@@ -59,6 +59,8 @@ class SourcePackageTests(unittest.TestCase):
         for name in ("package-source-build.py", "build-unified-release.py", "player_only_materials.py"):
             self.write("src/main/python/build-tools/" + name,
                        (ROOT / "src/main/python/build-tools" / name).read_bytes())
+        for name in (package.ANATOMY_VISIBILITY, package.NIF_RESOURCE):
+            self.write(name, (ROOT / name).read_bytes())
         for name in ("ModuleConfig.xml", "info.xml"):
             self.write("src/main/resources/publication/unified-installer/" + name,
                        (ROOT / "src/main/resources/publication/unified-installer" / name).read_bytes())

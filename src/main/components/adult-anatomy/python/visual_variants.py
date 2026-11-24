@@ -60,12 +60,14 @@ _HELPER_BYTES = {path: path.read_bytes() for path in _HELPER_PATHS}
 _materials, _resource = (_load(path, _HELPER_BYTES[path]) for path in _HELPER_PATHS)
 
 
-def _shape_record(payload):
+def _shape_record(payload, *, optional=False):
     _, middle, kinds, indices, blocks, footer = _materials.container(payload)
     reader = _materials.Reader(middle)
     count, _ = reader.unpack('<II')
     strings = [reader.string() for _ in range(count)]
     require(reader.unpack('<I') == (0,) and reader.pos == len(middle), 'Unsupported string table')
+    if optional and b'genitals' not in strings:
+        return None
     offset = len(payload) - sum(map(len, blocks)) - len(footer)
     records = []
     for index, block in enumerate(blocks):
@@ -83,6 +85,34 @@ def _shape_record(payload):
     return records[0]
 
 
+def hide_core_anatomy(payload):
+    """Hide only the optional authored shape, leaving models without it exact."""
+    record = _shape_record(payload, optional=True)
+    if record is None or record['flags'] & _resource.HIDDEN:
+        return payload, None
+    return _hide_shape(payload, record)
+
+
+def _hide_shape(payload, record):
+    hidden, edits = _resource.patch_hidden(payload, [record], ['genitals'])
+    require(_resource.verify_bytes(payload, hidden, edits) == 1, 'Expected exactly one changed flag byte')
+    return hidden, edits[0]
+
+
+def reviewed_visible_anatomy(payload, expected_sha):
+    """Reopen a historical visible input or its exactly reversible hidden variant."""
+    require(any(expected_sha == pin for pin, _ in SOURCES.values()), 'Expected a reviewed visible anatomy digest')
+    if sha(payload) == expected_sha:
+        return payload
+    record = _shape_record(payload)
+    require(record['flags'] & _resource.HIDDEN, 'Expected the reviewed anatomy input or its hidden variant')
+    offset = _resource.flags_offset(payload, record['offset'], record['size'], record['type'], record['flags'])
+    restored = bytearray(payload)
+    restored[offset] &= ~_resource.HIDDEN
+    require(sha(restored) == expected_sha, 'Expected the reviewed anatomy input or its hidden variant')
+    return bytes(restored)
+
+
 def hide_anatomy(payload):
     """Return ``(base_bytes, ledger)`` for one of the four exact visible inputs.
 
@@ -93,10 +123,9 @@ def hide_anatomy(payload):
     families = [name for name, (pin, _) in SOURCES.items() if pin == source]
     require(len(families) == 1, 'Only an exact reviewed visible anatomy source is accepted')
     record = _shape_record(payload)
-    hidden, edits = _resource.patch_hidden(payload, [record], ['genitals'])
-    require(_resource.verify_bytes(payload, hidden, edits) == 1, 'Expected exactly one changed flag byte')
+    hidden, edit = _hide_shape(payload, record)
     ledger = {'schemaVersion': 1, 'family': families[0], 'shapeBlock': record['block'],
-              'sourceSha256': source, 'baseSha256': sha(hidden), 'edit': edits[0],
+              'sourceSha256': source, 'baseSha256': sha(hidden), 'edit': edit,
               'geometryRemainsEmbedded': True}
     return hidden, ledger
 

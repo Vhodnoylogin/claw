@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT / 'src/main/python/physics'))
 import fsmp_motion
 
 
-def body_fixture(sex, marker=b'', geometry_tri=False):
+def body_fixture(sex, marker=b'', geometry_tri=False, optional_shape=False):
     """Synthetic opaque geometry; actual existing producer adds the hook."""
     types = ['NiNode', 'NiStringExtraData', 'BSTriShape', 'BSShaderTextureSet']
     strings = [b'Scene Root', b'BODYTRI', ('Actors/WerewolfBeast/Character Assets/' + sex + 'bodywerewolf.tri').encode()]
@@ -23,6 +23,12 @@ def body_fixture(sex, marker=b'', geometry_tri=False):
     geometry = struct.pack('<III', 0, 1, 1) + b'original geometry/skin' + marker if geometry_tri else b'original geometry/skin' + marker
     blocks = [root + b'original opaque root tail', struct.pack('<II', 1, 2), geometry]
     indices = [0, 1, 2]
+    if optional_shape:
+        if not geometry_tri:
+            blocks[2] = struct.pack('<I', 0) + geometry
+        strings.append(b'genitals')
+        blocks.append(struct.pack('<IIII', len(strings)-1, 0, 0xffffffff, 0x08) + b'opaque optional shape')
+        indices.append(2)
     for name in sorted(fsmp_motion.materials.DIFFUSES):
         slots = [(fsmp_motion.materials.BASE + name).encode(), b'shared-normal', *([b''] * 7)]
         blocks.append(struct.pack('<I', 9) + b''.join(struct.pack('<I', len(s)) + s for s in slots)); indices.append(3)
@@ -89,6 +95,31 @@ class MotionFomodTests(unittest.TestCase):
     def mutate_report(self, provider, callback):
         path = self.receipts[provider]; report = json.loads(path.read_bytes()); callback(report)
         path.write_bytes(self.package.encoded(report))
+
+    def test_core_hides_anatomy_in_both_motion_options_and_both_armor_routes(self):
+        male = body_fixture('male', optional_shape=True)
+        for weight in (0, 1):
+            self.f.write(f'target/bodies/malebodywerewolf_{weight}.nif', male)
+        self.receipts = self.prepare_motion()
+        result = self.package.build(**self.arguments())
+        entries = self.package.read_zip(Path(result['archive']).read_bytes())
+        name = self.package.MESH + '/malebodywerewolf_0.nif'
+        originals = {'00 Base/' + name: fsmp_motion.materials.adapt_nif(male)[0],
+                     self.package.FSMP_PREFIX + name: (self.receipts['fsmp'].parent / 'package' / name).read_bytes()}
+        self.assertEqual(set(result['optionalAnatomyVisibilityEdits']), set(originals))
+        for member, original in originals.items():
+            saved = entries[member]
+            record = result['optionalAnatomyVisibilityEdits'][member]
+            offset = record['edit']['offset']
+            self.assertEqual(record['sourceSha256'], self.package.sha(original))
+            self.assertEqual(record['sha256'], self.package.sha(saved))
+            self.assertEqual(saved, original[:offset] + b'\x09' + original[offset+1:])
+        for row in result['selections']:
+            routed = [value for value in row['files'] if value['path'].endswith('.nif')
+                      and value['path'].split('/')[-1].startswith('male')]
+            self.assertEqual(len(routed), 4)
+            expected = (self.package.FSMP_PREFIX if row['physics'] == 'fsmp' else '00 Base/') + name
+            self.assertTrue(all(value['source'] == expected for value in routed))
 
     def test_forty_actual_plans_are_exclusive_and_share_matrices_tris_native(self):
         self.assertEqual(self.package.CBPC_FILES, {'SKSE/Plugins/' + name for name in
