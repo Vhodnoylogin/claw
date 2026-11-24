@@ -9,6 +9,11 @@ sheet. The existing runners cover the listed individual diagnostic arms.
 - [Player mirrors](player-mirror/README.md) provides separate HIMBO and 3BA
   variants with the same pronounced body morphs on the player and both fixtures.
 
+Run both review scenes in separate disposable games in `QASmoke`. Their shared
+[room setup](test_room.py) verifies the published Dragonborn marker and moves
+the owned player to the fixed viewing position after a normal New Game. The
+other diagnostic arms below retain their original Realm of Lorkhan layout.
+
 ## Prepare one disposable TEST VR session
 
 1. Use the dedicated TEST VR instance and the current `CLAW VR` source. Assign a

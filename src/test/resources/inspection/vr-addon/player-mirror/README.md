@@ -34,9 +34,10 @@ the human mirror's race.
    HIMBO uses local IDs `0x800` and `0x801`. The 3BA alternative uses `0x802`
    and `0x803`. Use the copied profile's effective load order and verify both
    resolutions from the actual game. Each variant's ESP contains two new NPC bases.
-5. Use the existing owned VR launcher and normal character creator. Stand on
-   flat ground with a clear view 155 game units ahead and at least 61 units to
-   each side. Call `run(session, 'himbo')` after ordinary gameplay bootstrap.
+5. Use the owned VR launcher with ordinary character creation. Call
+   `room.position_player(session, 'mirror')` using [test_room.py](../test_room.py)
+   to enter `QASmoke`, then call `run(session, 'himbo')`. Both mirrors are placed
+   on measured points in the west row and the scene records their stable coordinates.
    `Mirrors.stage()` and `Mirrors.transform_player()` are separate when an
    operator wants to inspect the morphed human before the cast. Keep the game
    open with the owned launcher for that inspection interval.
@@ -45,8 +46,10 @@ the human mirror's race.
 
 - Check both copies while everyone is human. The native trace compares loaded
   identity, head parts, sampled face sliders/presets, height, weight and actual
-  skin/hair tints. A failed match blocks the transformation. Compare the visible
-  face and skin in the headset as a separate result.
+  skin/hair tints. Slot 18 is recorded separately because the stock preset can
+  return an unset sentinel on the player. A failed match of the supported face
+  values blocks the transformation. Compare the visible face and skin in the
+  headset as a separate result.
 - The scene writes only its own RaceMenu test key for the two strong source
   values shown in [scene.json](scene.json). It reads each value back and requests
   a model update on all three subjects. Look down before the cast to see the

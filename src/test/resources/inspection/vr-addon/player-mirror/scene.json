@@ -10,9 +10,10 @@
   "initializerQuest": "0x0004B2D9",
   "startupEffects": ["0x00092C45", "0x000F8209"],
   "morphKey": "CLAWTest.VRPlayerMirror",
+  "cell": "0x00032AE7",
   "positions": {
-    "human": {"forwardGameUnits": 155, "rightGameUnits": -61},
-    "wolf": {"forwardGameUnits": 155, "rightGameUnits": 61}
+    "human": [-2697.94482421875, 1536.0, 6976.4501953125],
+    "wolf": [-2697.94482421875, 1646.0, 6976.09912109375]
   },
   "variants": {
     "himbo": {

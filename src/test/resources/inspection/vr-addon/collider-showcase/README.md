@@ -41,13 +41,14 @@ The 120 outlines contain 17,216 triangles. They never generate collision.
 
 ## Prepare the live scene
 
-Use the existing owned VR launcher and a fresh Realm of Lorkhan session on
-the stable starting floor. Verify the planned player position, facing and
-reachable empty floor ahead. Import [prepare_scene.py](prepare_scene.py) and
-invoke the function after gameplay bootstrap and VFS verification.
+Use the owned VR launcher with its normal New Game bootstrap. After verifying
+VFS and gameplay readiness, invoke the shared [room setup](../test_room.py)
+to enter `QASmoke`, then spawn the wolf at the fixed west-floor point.
 
 ~~~python
-prepare(session, cell_form=observed_cell_form, stage_receipt=receipt_path)
+room.position_player(session, 'collider')
+prepare(session, cell_form=int(room.CELL, 16), floor_position=room.COLLIDER_WOLF,
+        stage_receipt=receipt_path)
 ~~~
 
 The runner resolves the exact normal-index fixture base and overlay item

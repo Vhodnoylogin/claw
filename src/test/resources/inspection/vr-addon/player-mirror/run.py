@@ -62,12 +62,12 @@ def visible_source_colours(audit):
 
 class Mirrors:
     def __init__(self, session, variant):
-        from skyrim_autotest import actor_domain, fixture_actors, interactive_bindings, native
+        from skyrim_autotest import actor_domain, interactive_bindings, native
         from skyrim_autotest.platform import Backend
         from skyrim_autotest.runner import atomic_json
 
         self.session, self.variant = session, variant
-        self.actor_domain, self.fixtures, self.bindings, self.native = actor_domain, fixture_actors, interactive_bindings, native
+        self.actor_domain, self.bindings, self.native = actor_domain, interactive_bindings, native
         self.backend, self.atomic_json = Backend, atomic_json
         self.case = SCENE['variants'][variant]
         self.game = session.state['game']
@@ -78,13 +78,17 @@ class Mirrors:
                 and self.config.get('allow_owned_save_load') is False
                 and session.state.get('testProfile') and session.state['gameplayBootstrap']['completed'] is True,
                 'Use an admitted disposable VR profile with ownership and an actual ready game')
-        require(not self.receipt.exists() and not session.state.get('interactiveActorFixtures'),
+        require(session.state.get('ownedWorldGeneration', 0) > 0 and not self.receipt.exists()
+                and not session.state.get('interactiveActorFixtures'),
                 'The mirror scene may be attempted only once in this world')
         self.end = time.monotonic() + 260
         self.result = {'scene': SCENE['schema'], 'run': session.state['id'], 'game': self.game,
                        'variant': variant, 'status': 'preparing', 'headsetVisualVerified': False, 'pending': None}
         self.owned = {}
+        self.world = session.state['ownedWorldGeneration']
         self.player = self.read_identity({'reference': PLAYER, 'base': PLAYER_BASE})
+        self.cell = SCENE['cell']
+        self.guard('player')
         self.save()
 
     def save(self):
@@ -96,7 +100,8 @@ class Mirrors:
 
     def active(self):
         require(any(row['role'] == 'game' and row['identity'] == self.game for row in self.session.state['owned'])
-                and self.native.identity(self.game['pid']) == self.game,
+                and self.native.identity(self.game['pid']) == self.game
+                and self.session.state['ownedWorldGeneration'] == self.world,
                 'Mirror scene lost the exact owned Skyrim VR instance')
 
     def pap(self, script, method, args, returns, target=None):
@@ -122,10 +127,64 @@ class Mirrors:
             original = self.player
         else:
             spec, original = self.owned[role]
-            current = self.fixtures.guard(self.session, spec, self.deadline(), self.policy)
-        require(current['incarnation'] == original['incarnation'] and current['actor']['loaded3D'] is True,
+            current = self.read_identity(spec)
+        require(current['incarnation'] == original['incarnation'] and current['actor']['loaded3D'] is True
+                and current['providerObservation']['refs'][0]['cellForm'] == self.cell,
                 f'Original loaded mirror actor changed: {role}')
         return current['actor']
+
+    def place(self, role, base):
+        self.guard('player')
+        backend = self.backend(self.session, self.deadline())
+        census = backend.call('inspect', {'kind': 'refs', 'formType': 'Actor', 'radius': 0, 'limit': 1024})
+        previous = {form_id(row) for row in census['refs']}
+        require(census['truncated'] is False and census['count'] == census['returned'] == len(previous)
+                == len(census['refs']), 'Exact pre-spawn actor census unavailable')
+        destination = SCENE['positions'][role]
+        facing = 90.
+
+        def spawn():
+            reference = form_id(self.pap('ObjectReference', 'PlaceAtMe', [form(base), 1, False, False],
+                                         'objectreference', PLAYER))
+            require(0xFF000000 <= int(reference, 16) < 0xFFFFFFFF and reference not in previous,
+                    'The scene did not receive a new dynamic actor')
+            self.result.setdefault('mirrors', {})[role] = {'reference': reference, 'base': base,
+                                                           'requestedPosition': destination}
+            return reference
+
+        reference = self.write(f'create {role} mirror', spawn)
+        spec = {'reference': reference, 'base': base}
+        original = self.poll(lambda: self.read_identity(spec), lambda row: row['actor']['loaded3D'] is True,
+                             8, 'A new mirror did not acquire live 3D')
+        require(all(original['incarnation'][key] == self.player['incarnation'][key]
+                    for key in ('sessionId', 'loadGeneration')), 'Mirror belongs to another game world')
+        self.owned[role] = (spec, original)
+        self.mutate_actor(role, 'Actor', 'SetRestrained', [True])
+        self.mutate_actor(role, 'Actor', 'UnequipAll', [])
+        self.mutate_actor(role, 'ObjectReference', 'SetAngle', [0., 0., facing])
+        self.mutate_actor(role, 'ObjectReference', 'SetPosition', destination)
+        captures = self.result['mirrors'][role].setdefault('placementSamples', [])
+
+        def measure():
+            self.active()
+            identity, row, observed = self.actor_domain.anchor(self.backend(self.session, self.deadline()), reference)
+            require(identity == original['incarnation'] and row['loaded3D'] is True and row['cellForm'] == self.cell,
+                    'Mirror identity changed while settling onto the floor')
+            sample = {'position': row['position'], 'sampleId': observed['sampleId'], 'time': time.monotonic()}
+            captures.append(sample)
+            self.save()
+            return sample
+
+        def settled(sample):
+            landed = sample['position']
+            return (len(captures) > 1 and sample['sampleId'] > captures[-2]['sampleId']
+                    and sample['time'] - captures[-2]['time'] >= .2
+                    and math.dist(landed, captures[-2]['position']) <= 1.
+                    and math.dist(landed, destination) <= 4.)
+
+        self.poll(measure, settled, 6., 'A mirror did not settle within its expected lane and floor band')
+        observed_heading = self.pap('ObjectReference', 'GetAngleZ', [], 'float', reference)
+        require(abs((observed_heading - facing + 180.) % 360. - 180.) <= 1., 'Mirror must face the player')
 
     def write(self, name, call):
         require(self.result['pending'] is None, 'A previous mirror mutation has unknown outcome')
@@ -165,7 +224,9 @@ class Mirrors:
         require(type(count) is int and 0 < count <= 16, 'Human head parts are unavailable')
         parts = sorted(form_id(self.pap('ActorBase', 'GetNthHeadPart', [index], ('headpart', 'form'), base))
                        for index in range(count))
-        face = [self.pap('ActorBase', 'GetFaceMorph', [index], 'float', base) for index in (0, 1, 2, 9, 15, 18)]
+        face = [self.pap('ActorBase', 'GetFaceMorph', [index], 'float', base) for index in (0, 1, 2, 9, 15)]
+        require(all(math.isfinite(value) and abs(value) <= 10 for value in face), 'A sampled face morph is unavailable')
+        self.result.setdefault('rawFaceOption18', {})[role] = self.pap('ActorBase', 'GetFaceMorph', [18], 'float', base)
         presets = [self.pap('ActorBase', 'GetFacePreset', [index], 'int', base) for index in range(4)]
         height = self.pap('ActorBase', 'GetHeight', [], 'float', base)
         require(self.claw(actor, 'RequestCoatSurfaceAudit', 'bool') is True, 'Human material audit was refused')
@@ -263,21 +324,8 @@ class Mirrors:
         self.mutate_actor('player', 'Actor', 'UnequipAll', [])
         source = {'player': self.human_source('player')}
         for role in ROLES:
-            request = {'tag': 'claw-vr-mirror-' + role, 'base': runtime_bases[role], **SCENE['positions'][role],
-                       'persistentForOwnedSave': False}
-            placed = self.write(f'create {role} mirror', lambda: self.fixtures.create(
-                self.session, request, self.deadline(28), self.policy))
-            spec = {key: placed['actor'][key] for key in ('reference', 'base')}
-            self.owned[role] = (spec, self.fixtures.guard(self.session, spec, self.deadline(), self.policy))
-            self.mutate_actor(role, 'Actor', 'SetRestrained', [True])
-            self.mutate_actor(role, 'Actor', 'UnequipAll', [])
-            actor = self.guard(role)
-            heading = (self.pap('ObjectReference', 'GetAngleZ', [], 'float', PLAYER) + 180.) % 360.
-            self.mutate_actor(role, 'ObjectReference', 'SetAngle', [0., 0., heading])
-            observed_heading = self.pap('ObjectReference', 'GetAngleZ', [], 'float', actor['reference'])
-            require(abs((observed_heading - heading + 180.) % 360. - 180.) <= 1., 'Mirror must face the player')
+            self.place(role, runtime_bases[role])
             source[role] = self.human_source(role)
-            self.result.setdefault('mirrors', {})[role] = {'actor': actor, 'creation': placed}
             self.save()
         self.result['humanSource'] = source
         self.save()
@@ -285,9 +333,7 @@ class Mirrors:
                 'Head parts, sampled face, weight, height, skin and hair must match before transformation')
         self.result['humanMorphs'] = {role: self.stimulus(role) for role in ('player', *ROLES)}
         self.save()
-        self.write('transform only the wolf-face NPC', lambda: self.bindings.guarded_call(
-            self.session, {'bindingId': 'morph_race', 'self': self.owned['wolf'][0], 'args': [SCENE['beastRace']]},
-            self.deadline(22), self.policy))
+        self.mutate_actor('wolf', 'Actor', 'SetRace', [form(SCENE['beastRace'])])
         self.result['wolfMirror'] = self.poll(lambda: self.ready_wolf('wolf'), bool, 25,
                                              'The wolf mirror did not receive the actual CLAW morphs')
         self.result['status'] = 'ready-for-ordinary-player-beast-form'

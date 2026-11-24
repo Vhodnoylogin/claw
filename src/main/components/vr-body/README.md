@@ -5,8 +5,9 @@ declares `CLAW.esp` as a master. The fixed-profile installer checks that both
 `CLAW.esp` and `vrik.esp` are active. The archive supplies the VR armor override
 and its VR meshes and morph data. CLAW's morph engine, conversion matrices,
 ordinary werewolf models and coat dependencies come from the original install.
-HIGGS is optional for the tracked body. Use it with CBPC if you want to touch
-the werewolf body with the VR controllers.
+Install CBPC for the optional werewolf hand-contact colliders. Its Skyrim VR
+configuration uses the stock left and right controller nodes. HIGGS is an
+optional companion for its own VR interaction features.
 
 Develop the optional VR body in this directory of the CLAW repository. Keep its
 component-specific C++, authoring tools and resources here; put corresponding

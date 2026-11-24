@@ -2,8 +2,8 @@
   "schema": "claw-vr-collider-showcase/1",
   "scope": "Disposable TEST VR profile, isolated stationary male werewolf, fixed neutral capsule bank",
   "location": {
-    "cell": "Realm of Lorkhan starting platform",
-    "measure": "Use the admitted standing player root and floor. Face the target across a clear reachable area.",
+    "cell": "QASmoke",
+    "measure": "Use the designated west-floor player station and the measured wolf floor point from test_room.py.",
     "preferSavedAnchor": false
   },
   "subject": {
