@@ -1,0 +1,54 @@
+{
+  "coatPalette": "human-palette.json",
+  "stage": {
+    "humanY": 1680.0,
+    "wolfY": 1780.0,
+    "cameraX": -2410.0,
+    "cameraZ": 7064.4501953125,
+    "lighting": {
+      "plugin": "test_CLAWInspectionLighting.esp",
+      "references": [2049, 2050, 2051],
+      "modes": {"single-fill": [2051]}
+    }
+  },
+  "morphComparison": {"families": {}},
+  "hairChoices": {
+    "olda": ["ashen", "coal", "shepherd"],
+    "ysolda": ["maned", "bean"],
+    "argi": ["timber-sand", "amber", "swamp", "timber"],
+    "gisli": ["timber", "timber-sand"],
+    "sorli": ["grey", "timber-pebble", "valley-grey", "valley-white", "white"]
+  },
+  "headOnlyChoices": {"ysolda": ["brown-alt"]},
+  "skinChoices": {
+    "idgrod": ["valley-white", "timber-pebble", "white", "timber-sand", "timber"],
+    "olda": ["valley-grey", "dust", "timber-sand", "timber", "timber-pebble"],
+    "aia": ["dust", "shepherd", "himalayan", "khajiit"],
+    "seren": ["coal", "khajiit", "himalayan", "shepherd", "maned"],
+    "anwen": ["black", "timber-dark", "umber", "bean", "silver"]
+  },
+  "batches": {
+    "main": ["idgrod", "olda", "aia", "seren", "anwen", "argi", "ysolda", "sorli"],
+    "gisli": ["gisli"]
+  },
+  "cases": {
+    "palette": [
+      {"id": "olda", "subject": "olda", "body": "valley-grey", "fur": "ashen"},
+      {"id": "ysolda", "subject": "ysolda", "body": "valley-grey", "fur": "maned", "head": "brown-alt"},
+      {"id": "argi", "subject": "argi", "body": "valley-grey", "fur": "timber"},
+      {"id": "gisli", "subject": "gisli", "body": "valley-white", "fur": "timber-sand"},
+      {"id": "sorli", "subject": "sorli", "body": "valley-white", "fur": "grey"},
+      {"id": "idgrod", "subject": "idgrod", "body": "timber-sand", "fur": "ashen"},
+      {"id": "aia", "subject": "aia", "body": "dust", "fur": "ashen"},
+      {"id": "seren", "subject": "seren", "body": "coal", "fur": "ashen"},
+      {"id": "anwen", "subject": "anwen", "body": "black", "fur": "ashen"}
+    ],
+    "return-trials": [
+      {"id": "argi-hyena-spotted", "subject": "argi", "body": "valley-grey", "fur": "hyena-spotted"},
+      {"id": "idgrod-spirit", "subject": "idgrod", "body": "spirit", "fur": "spirit"},
+      {"id": "anwen-timber-rock", "subject": "anwen", "body": "timber-rock", "fur": "ashen"},
+      {"id": "seren-tundra", "subject": "seren", "body": "tundra", "fur": "ashen"},
+      {"id": "anwen-valley-black", "subject": "anwen", "body": "valley-black", "fur": "ashen"}
+    ]
+  }
+}

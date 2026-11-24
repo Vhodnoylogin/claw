@@ -56,11 +56,12 @@ def verify_coat_controls(groups, human):
 
 
 class PublicityScene(RegionalScene):
-    def __init__(self, session, appearance, scene_path=SCENE, *, black_gate=False, subject=None):
+    def __init__(self, session, appearance, scene_path=SCENE, *, black_gate=False, subjects=None):
         scene, palette = load_scene(scene_path, black_gate=black_gate)
-        if subject is not None:
-            palette['pairs'] = [pair for pair in palette['pairs'] if pair['name'] == subject]
-            require(len(palette['pairs']) == 1, 'Expected one distinct publicity subject: ' + subject)
+        if subjects is not None:
+            names = set(subjects)
+            palette['pairs'] = [pair for pair in palette['pairs'] if pair['name'] in names]
+            require(names and len(palette['pairs']) == len(names), 'Publicity subject list does not match the fixture')
         super().__init__(session, palette, appearance, 'discrete', 3, capture=True)
         self.morph = scene['morphComparison']
         stage = scene['stage']
@@ -180,38 +181,42 @@ class PublicityScene(RegionalScene):
         self.save()
         return materials
 
-    def compare_lighting(self, pair, index, full_fill):
+    def lighting_refs(self):
         refs = {local: self.papyrus('Game', 'GetFormFromFile', [local, self.lighting['plugin']], 'form')['formId']
                 for local in self.lighting['references']}
         require(len(set(refs.values())) == len(refs), 'Expected distinct inspection lights')
+        return refs
 
-        def read_disabled():
-            return [self.papyrus('ObjectReference', 'IsDisabled', [], 'bool', ref) for ref in refs.values()]
+    def lights_disabled(self, refs):
+        return [self.papyrus('ObjectReference', 'IsDisabled', [], 'bool', ref) for ref in refs.values()]
 
-        def set_disabled(flags):
-            for ref, off, was_off in zip(refs.values(), flags, read_disabled(), strict=True):
-                if off != was_off:
-                    action = 'DisableNoWait' if off else 'EnableNoWait'
-                    self.papyrus('ObjectReference', action, [False], 'none', ref, write=True)
-            self.poll(read_disabled, lambda observed: observed == flags, 5., 'Light state did not settle')
+    def set_lights_disabled(self, refs, flags):
+        for ref, off, was_off in zip(refs.values(), flags, self.lights_disabled(refs), strict=True):
+            if off != was_off:
+                action = 'DisableNoWait' if off else 'EnableNoWait'
+                self.papyrus('ObjectReference', action, [False], 'none', ref, write=True)
+        return self.poll(lambda: self.lights_disabled(refs), lambda observed: observed == flags, 5.,
+                         'Light state did not settle')
 
-        original = read_disabled()
+    def compare_lighting(self, pair, index, full_fill):
+        refs = self.lighting_refs()
+        original = self.lights_disabled(refs)
         require(not any(original), 'The full fill setup differs from the scene')
         try:
             for mode, enabled in self.lighting['modes'].items():
                 self.session.phase('Capture the same wolf with ' + mode, 55)
                 flags = [local not in enabled for local in refs]
-                set_disabled(flags)
+                self.set_lights_disabled(refs, flags)
                 time.sleep(1.0)
                 label = f'lighting-{mode}'
                 require(self.frame(label, pair, index, 90.) == full_fill, 'Coat changed with room lighting')
                 self.data['lightingComparisons'][label] = {
-                    'lights': list(refs.values()), 'disabled': read_disabled(), 'coat': full_fill,
+                    'lights': list(refs.values()), 'disabled': self.lights_disabled(refs), 'coat': full_fill,
                 }
                 self.save()
         finally:
             if not self.data['unknownMutation']:
-                set_disabled(original)
+                self.set_lights_disabled(refs, original)
 
     def create_pair(self, index, pair):
         for side, role in enumerate(ROLES):

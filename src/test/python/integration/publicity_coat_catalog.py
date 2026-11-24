@@ -62,7 +62,7 @@ def stock_coats(appearance):
 
 class PublicityCoatCatalog(PublicityScene):
     def __init__(self, session, appearance, *, lighting='single-fill'):
-        super().__init__(session, appearance, subject='Angi')
+        super().__init__(session, appearance, subjects=('Angi',))
         self.catalog = {coat: expected_paths(appearance, coat) for coat in stock_coats(appearance)}
         self.selected = next(iter(self.catalog))
         self.catalog_lighting = lighting
@@ -76,23 +76,6 @@ class PublicityCoatCatalog(PublicityScene):
         paths = self.catalog[pattern]
         return inspect_discrete_regions(audit, pair, paths, paths)
 
-    def _lighting_refs(self):
-        refs = {local: self.papyrus('Game', 'GetFormFromFile', [local, self.lighting['plugin']], 'form')['formId']
-                for local in self.lighting['references']}
-        require(len(set(refs.values())) == len(refs), 'Expected distinct inspection lights')
-        return refs
-
-    def _read_lights(self, refs):
-        return [self.papyrus('ObjectReference', 'IsDisabled', [], 'bool', ref) for ref in refs.values()]
-
-    def _set_lights(self, refs, desired):
-        for ref, off, was_off in zip(refs.values(), desired, self._read_lights(refs), strict=True):
-            if off != was_off:
-                action = 'DisableNoWait' if off else 'EnableNoWait'
-                self.papyrus('ObjectReference', action, [False], 'none', ref, write=True)
-        return self.poll(lambda: self._read_lights(refs), lambda actual: actual == desired, 5.,
-                         'Catalog lighting state did not settle')
-
     def photograph(self):
         index, pair = next((i, pair) for i, pair in enumerate(self.pairs)
                            if pair.get('name') == 'Angi' and 'morphs' not in pair)
@@ -100,13 +83,13 @@ class PublicityCoatCatalog(PublicityScene):
         self.session.phase('Prepare the joined coat catalog pair and room lighting', 90)
         self.preselected = True
         self.create_pair(index, pair)
-        refs = self._lighting_refs()
-        original = self._read_lights(refs)
+        refs = self.lighting_refs()
+        original = self.lights_disabled(refs)
         enabled = self.lighting['modes'][self.catalog_lighting]
         desired = [local not in enabled for local in refs]
         self.data['catalog'] = {}
         try:
-            actual = self._set_lights(refs, desired)
+            actual = self.set_lights_disabled(refs, desired)
             self.data['catalogLighting'] = {'mode': self.catalog_lighting, 'fillReferences': list(refs.values()),
                                             'fillsDisabled': actual}
             self.save()
@@ -123,7 +106,7 @@ class PublicityCoatCatalog(PublicityScene):
                 label = f'catalog-{number:02}-{coat.rsplit("/", 1)[-1]}'
                 materials = self.frame(label, pair, index, 90.)
                 require(self.claw(wolf, 'GetCoatPattern') == coat, 'Manual catalog selection changed during capture')
-                require(self._read_lights(refs) == desired, 'Lighting changed during catalog capture')
+                require(self.lights_disabled(refs) == desired, 'Lighting changed during catalog capture')
                 model = self.data['rawAudits'][wolf][label]['before']['modelGeneration']
                 require(model != previous_model, 'The catalog reused the previous wolf model')
                 self.data['catalog'][coat] = {'label': label, 'materials': materials, 'modelGeneration': model}
@@ -133,4 +116,4 @@ class PublicityCoatCatalog(PublicityScene):
             self.save()
         finally:
             if not self.data['unknownMutation']:
-                self._set_lights(refs, original)
+                self.set_lights_disabled(refs, original)

@@ -69,6 +69,28 @@ after every frame the runner verifies source RGB and actor and camera state.
 The `claw-human-palette.json` receipt distinguishes material RGB from the
 lit pixels of a screenshot.
 
+## Selected Elegant combinations
+
+The [review fixture](elegant-review.json) records the owner-reviewed donors
+for each portrait and a smaller set of actual combinations to photograph. The
+return trials are separate from the proposed palette. Run
+`PublicityElegantReview(session, appearance, batch).run('coat')` after the
+same QASmoke bootstrap. Run the `main` and `gisli` batches in separate
+disposable sessions. Use `review_pairs(batch)` to admit the exact bases and
+human races for each batch, plus WerewolfBeast. Eight pairs use Autotest's
+full sixteen-actor allowance in a single session.
+
+Use `review_projection(original_library)` from
+`publicity_elegant_review.py` to build the two review XMLs from the complete
+original 2K Replacer catalog. Stage these XMLs and the default `CoatMatrix.xml`
+in the disposable profile. The generated catalog contains original file paths
+and hashes. It does not create or copy DDS files. The whole-coat override is
+set before each transformation. The Ysolda case uses Brown ALT for `head.dds`
+and Maned for the fur. The Anwen comparisons keep the same head and fur and
+change only the body. Before and after each capture, the scene verifies all
+twelve materials and records their alpha. A neutral fill stays fixed for the
+whole series. Original files and captures stay local.
+
 ## Light-coat morph transfer
 
 Use the same stock NPC and measured weight within each family. Hod exercises
