@@ -7,7 +7,7 @@ from pathlib import Path
 import time
 from unittest.mock import patch
 
-from coat_regional_readback import compare_pairs, expected_paths, inspect_regions, verify_human
+from coat_regional_readback import compare_pairs, expected_paths, inspect_discrete_regions, inspect_regions, verify_human
 from coat_persistence_readback import require
 from coat_scene_capture import capture_game_frame
 
@@ -58,7 +58,10 @@ class RegionalScene:
         require(any(row['role'] == 'game' and row['identity'] == self.game for row in session.state['owned'])
                 and native.identity(self.game['pid']) == self.game, 'Expected exact owned Skyrim process')
         self.pairs = palette['pairs']
+        self.coat_mode = coat_mode
         self.fixed = palette['fixedCoat'] if coat_mode == 'fixed' else None
+        self.skin_coats = palette.get('skinCoats', {})
+        self.hair_coats = palette.get('hairCoats', {})
         self.appearance = appearance
         self.dwell = dwell
         self.capture = capture
@@ -163,6 +166,19 @@ class RegionalScene:
                 count = self.papyrus('ObjectReference', 'GetItemCount', [item], 'int', reference)
             require(count == 0, 'Source equipment remains on ' + actor)
 
+    def common_coat(self, pair):
+        if self.coat_mode == 'skin-pairs':
+            return self.skin_coats[rgb_key(pair['skinRecordRGB8'])]
+        return self.fixed
+
+    def inspect_coat(self, audit, pair, pattern):
+        skin_paths = expected_paths(self.appearance, pattern)
+        if self.coat_mode == 'discrete':
+            require(pattern == self.skin_coats[rgb_key(pair['skinRecordRGB8'])], 'Automatic skin coat differs from the fixture')
+            hair_paths = expected_paths(self.appearance, self.hair_coats[rgb_key(pair['hair'])])
+            return inspect_discrete_regions(audit, pair, skin_paths, hair_paths)
+        return inspect_regions(audit, pair, skin_paths)
+
     def create(self, pair, role, actor, lane, y):
         self.session.state['activeSemanticCommandId'] = 'preview-create-' + actor
         request = {'tag': actor, 'base': pair['base'], 'forwardGameUnits': lane[0],
@@ -189,24 +205,31 @@ class RegionalScene:
     def transform(self, index, pair):
         human, wolf = (tag(index, role) for role in ROLES)
         self.session.state['activeSemanticCommandId'] = 'preview-transform-' + wolf
+        common = self.common_coat(pair)
+        if self.coat_mode == 'skin-pairs':
+            require(self.claw(wolf, 'SetCoatPattern', 'bool', common, write=True) is True,
+                    'Skin-based scene coat was refused before transformation')
         self.mutate('transform ' + wolf, lambda: self.bindings.guarded_call(self.session,
             {'bindingId': 'morph_race', 'self': self.spec(wolf), 'args': [WOLF_RACE]}, self.deadline(), self.policy))
         self.unequip(wolf, pair['inventory'], remove=False)
         self.poll(lambda: self.claw(wolf, 'GetStatus', 'int'), lambda value: value == 2, 10, 'No live CLAW body')
-        automatic = self.poll(lambda: self.claw(wolf, 'GetAppliedCoatPattern'), bool, 12, 'No automatic coat bound')
-        require(self.claw(wolf, 'GetCoatPattern') == '', 'Unexpected manual coat on ' + wolf)
-        audit = self.audit(wolf)
-        self.data['rawAudits'][wolf]['automatic'] = audit
-        self.data['pairs'][pair['name']] = {'tags': [human, wolf], 'human': self.spec(human), 'wolf': self.spec(wolf),
-            'automaticPattern': automatic, 'automaticStatus': self.claw(wolf, 'GetCoatPatternStatus')}
+        row = self.data['pairs'][pair['name']] = {'tags': [human, wolf], 'human': self.spec(human), 'wolf': self.spec(wolf)}
+        if self.coat_mode != 'skin-pairs':
+            automatic = self.poll(lambda: self.claw(wolf, 'GetAppliedCoatPattern'), bool, 12, 'No automatic coat bound')
+            require(self.claw(wolf, 'GetCoatPattern') == '', 'Unexpected manual coat on ' + wolf)
+            audit = self.audit(wolf)
+            self.data['rawAudits'][wolf]['automatic'] = audit
+            row.update(automaticPattern=automatic, automaticStatus=self.claw(wolf, 'GetCoatPatternStatus'))
+            self.inspect_coat(audit, pair, automatic)
         self.save()
-        inspect_regions(audit, pair, expected_paths(self.appearance, automatic))
-        if self.fixed is not None:
-            require(self.claw(wolf, 'SetCoatPattern', 'bool', self.fixed, write=True) is True, 'Fixed coat refused')
-            self.poll(lambda: self.claw(wolf, 'GetAppliedCoatPattern'), lambda value: value == self.fixed,
+        if common is not None:
+            if self.coat_mode != 'skin-pairs':
+                require(self.claw(wolf, 'SetCoatPattern', 'bool', common, write=True) is True, 'Fixed coat refused')
+            self.poll(lambda: self.claw(wolf, 'GetAppliedCoatPattern'), lambda value: value == common,
                       12, 'Fixed coat did not bind')
-            self.poll(lambda: self.claw(wolf, 'GetCoatPattern'), lambda value: value == self.fixed,
+            self.poll(lambda: self.claw(wolf, 'GetCoatPattern'), lambda value: value == common,
                       4, 'Fixed override was not acknowledged')
+            row['commonCoat'] = common
         for role in ROLES:
             self.place(tag(index, role), pair[role.lower() + 'Y'], pin=True)
 
@@ -240,15 +263,15 @@ class RegionalScene:
         groups = []
         for index, pair in enumerate(self.pairs):
             wolf = tag(index, 'Wolf')
-            selected = self.fixed or self.data['pairs'][pair['name']]['automaticPattern']
+            selected = self.common_coat(pair) or self.data['pairs'][pair['name']]['automaticPattern']
             earlier = self.data['rawAudits'][wolf]
             audit = self.audit(wolf)
             prior = max(int(row['sample']) for row in earlier.values())
             require(int(audit['sample']) > prior, 'Replayed material sample: ' + wolf)
             earlier[label] = audit
             self.save()
-            groups.append(inspect_regions(audit, pair, expected_paths(self.appearance, selected)))
-        self.data[label] = compare_pairs(groups, self.pairs) if self.fixed else groups
+            groups.append(self.inspect_coat(audit, pair, selected))
+        self.data[label] = compare_pairs(groups, self.pairs) if self.coat_mode in ('fixed', 'skin-pairs') else groups
         self.save()
 
     def sample(self, label):
@@ -314,6 +337,10 @@ class RegionalScene:
         return self.data
 
 
+def rgb_key(rgb):
+    return ','.join(str(channel) for channel in rgb)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=('preflight', 'preview', 'check'))
@@ -321,7 +348,7 @@ def main():
     parser.add_argument('--profile', required=True, help='Prepared source profile for the disposable clone')
     parser.add_argument('--scenario', required=True, type=Path, help='Read-only QASmoke bootstrap with the qualified save pins')
     parser.add_argument('--appearance', required=True, type=Path, help='Effective candidate CoatMapping.xml / CoatLibrary.xml directory')
-    parser.add_argument('--coat-mode', choices=('fixed', 'automatic'), default='fixed')
+    parser.add_argument('--coat-mode', choices=('fixed', 'skin-pairs', 'automatic', 'discrete'), default='fixed')
     parser.add_argument('--capture', action='store_true', help='Capture an owned FHD game frame between material audits')
     parser.add_argument('--dwell', type=int, choices=range(3, 121), metavar='SECONDS', default=3,
                         help='Passive wait (3–120 seconds) between the two material audits')
@@ -332,6 +359,14 @@ def main():
     palette = json.loads(PALETTE.read_bytes())
     session_policy(json.loads(args.config.read_bytes()), palette)
     expected_paths(args.appearance, palette['fixedCoat'])
+    groups = {'skinCoats': 'skinRecordRGB8', 'hairCoats': 'hair'}
+    for palette_name, input_name in groups.items():
+        if args.coat_mode == 'discrete' or (args.coat_mode == 'skin-pairs' and palette_name == 'skinCoats'):
+            coats = palette[palette_name]
+            require(set(coats) == {rgb_key(pair[input_name]) for pair in palette['pairs']} and len(set(coats.values())) == 2,
+                    'Expected two distinct coats in ' + palette_name)
+            for coat in coats.values():
+                expected_paths(args.appearance, coat)
     scenario = json.loads(args.scenario.read_bytes())
     scenarios.validate(scenario)
     require(scenario.get('cell') == 'QASmoke' and scenario.get('fixture') and len(scenario['steps']) == 1

@@ -19,7 +19,7 @@ to isolate skin with the same hair input.
 
 ## Run the scene
 
-Use a prepared Skyrim SE test profile with the regional-tint CLAW DLL and its
+Use a prepared Skyrim SE test profile with the matching CLAW candidate and its
 matching assets, Elegant Randomized, the inspection lighting, DevBench and
 World Observer. Bind `PYTHONPATH` to the qualified Autotest source. The local
 Autotest configuration needs a disposable profile, the four bases in
@@ -38,14 +38,16 @@ Keep the reusable bootstrap JSON in the local test directory. It requires
 python -B src/test/python/integration/coat_regional_scene.py preview `
   --config '<local Autotest config.json>' --profile '<TEST SE profile>' `
   --scenario '<local QASmoke bootstrap.json>' --appearance '<candidate appearance directory>' `
-  --coat-mode fixed --capture
+  --coat-mode discrete --capture
 ```
 
 `preview` leaves the scene ready for manual inspection until Skyrim exits.
 `check` returns to the runner for ordinary teardown. `preflight` checks
-admission without starting the game. `fixed` records the automatic assignments
-and then uses Valley Grey for all wolves. `automatic` leaves each automatic
-coat in place for an end-to-end comparison. Use `--dwell 90` in a diagnostic
+admission without starting the game. `discrete` checks the automatic choice
+for each surface in the separate skin and hair palettes. `skin-pairs` is a
+control for the earlier tint candidate with one explicit base per skin tone.
+`fixed` records automatic assignments then uses Valley Grey for all wolves.
+`automatic` leaves the earlier automatic tint choices in place. Use `--dwell 90` in a diagnostic
 run to check for changes after the initial sample. The run directory contains
 `claw-regional-scene.json` with the owned references and material observations.
 On Windows, `--capture` requires Pillow with window capture support and an
@@ -54,7 +56,7 @@ bracketed by material audits. It does not need to activate the game window.
 
 ## What counts as a pass
 
-The technical check reads the surface texture, RGB and material alpha. Check
+The technical check reads the surface texture, shader type, RGB and material alpha. Check
 the PNGs separately to establish the visible result. In the first owner review,
 all four wolves reported Valley Grey but the screenshots showed three black
 wolves and one white wolf. A later run reproduced this with audits on both

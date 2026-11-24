@@ -107,6 +107,19 @@ def inspect_regions(audit, pair, paths):
     return measured
 
 
+def inspect_discrete_regions(audit, pair, skin_paths, hair_paths):
+    """Check the original-colour DDS chosen for each actual wolf surface."""
+    paths = dict(hair_paths, body=skin_paths['body'])
+    _, surfaces, _ = read_audit({'audit': audit}, paths)
+    for name, surface in surfaces.items():
+        require(surface.get('feature') == 0 and surface.get('tint') is None
+                and surface.get('healthyLease') is True and surface.get('ownDiffuse') is True
+                and isinstance(surface.get('diffuseResource'), str)
+                and stock_path(surface['diffuseResource']) == stock_path(paths[name]),
+                f'{pair["name"]} {name}: expected the assigned skin or hair DDS on the original-colour shader')
+    return {name: surface['diffuseResource'] for name, surface in surfaces.items()}
+
+
 def compare_pairs(groups, pairs):
     """Confirm skin and hair contrasts independently on every measured surface."""
     require(len(groups) == len(pairs) == 4, 'Expected four complete material comparison groups')

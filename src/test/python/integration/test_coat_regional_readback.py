@@ -4,7 +4,8 @@ import json
 from pathlib import Path
 import unittest
 
-from coat_regional_readback import compare_pairs, expected_paths, inspect_regions, verify_human
+from coat_regional_readback import compare_pairs, expected_paths, inspect_discrete_regions, inspect_regions, verify_human
+from coat_regional_scene import rgb_key
 
 
 TEST_SOURCE = Path(__file__).resolve().parents[2]
@@ -54,6 +55,26 @@ class RegionalCoatReadbackTests(unittest.TestCase):
         self.assertEqual(self.paths['fur_back'], self.paths['scalpfurblend'])
         with self.assertRaisesRegex(ValueError, 'canonical coat range'):
             expected_paths(APPEARANCE, 'elegant-2k-2.1/maned')
+
+    def test_skin_coat_groups_hold_texture_constant_when_hair_changes(self):
+        coats = FIXTURE['skinCoats']
+        groups = [[pair for pair in self.pairs if rgb_key(pair['skinRecordRGB8']) == skin] for skin in coats]
+        self.assertEqual([len(group) for group in groups], [2, 2])
+        for group in groups:
+            self.assertNotEqual(group[0]['hair'], group[1]['hair'])
+        body_paths = {expected_paths(APPEARANCE, coat)['body'] for coat in coats.values()}
+        self.assertEqual(len(body_paths), 2)
+
+    def test_discrete_audit_requires_hair_paths_on_head_and_fur(self):
+        hair = expected_paths(APPEARANCE, FIXTURE['hairCoats']['20,20,24'])
+        sample = wolf(dict(hair, body=self.paths['body']), 0)
+        for surface in sample['surfaces']:
+            surface.update(feature=0, tint=None)
+        inspect_discrete_regions(sample, self.pairs[0], self.paths, hair)
+        wrong = next(surface for surface in sample['surfaces'] if surface['name'] == 'head')
+        wrong.update(diffusePath=self.paths['head'], diffuseResource=self.paths['head'])
+        with self.assertRaises(ValueError):
+            inspect_discrete_regions(sample, self.pairs[0], self.paths, hair)
 
     def test_palette_and_four_pair_measurements_pass(self):
         for pair in self.pairs:
