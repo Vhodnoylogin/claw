@@ -12,6 +12,11 @@ prototypes still live in the earlier C++/Python/resource locations; migrate them
 with their imports, build/package paths and tests when this phase begins. This
 directory does not establish a working or released VR body.
 
+The VR add-on release design uses optional FSMP motion for the tail only.
+Preserve contact colliders for ears, tail and chest and verify them separately
+against the morphed shapes. The sections below retain earlier diagnostic
+overlays and their test history, including the older ear and chest motion trials.
+
 The current [resource candidate](IMPLEMENTATION.md) rebuilds the complete current
 male/female body and TRI family in an independent first-person namespace. It
 reuses the lossless split, Neck skin graft and bound tools and retains actual

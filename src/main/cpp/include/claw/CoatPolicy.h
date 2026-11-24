@@ -5,8 +5,8 @@
 
 namespace claw::appearance {
 inline constexpr std::string_view coatPolicyRelativePath = "SKSE/Plugins/CLAW/CoatPolicy.xml";
-enum class TintMode { original, linked };
-enum class CoatOrigin { none, manual, hairPool, legacyHair, fallback };
+enum class TintMode { original, linked, regional };
+enum class CoatOrigin { none, manual, hairPool, legacyHair, fallback, colourPool };
 struct AutomaticChoice {
     std::string pool, pattern;
     bool operator==(const AutomaticChoice&) const = default;

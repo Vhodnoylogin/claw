@@ -5,9 +5,9 @@ and function matrices. CLAW 0.10 supports HIMBO, CBBE, CBBE+3BA, BHUNP, classic 
 separate male/female Vanilla matrices. Available human face and stature inputs
 also influence the head, ears, tail and claws. Users can install ten optional coats from the original Elegant Randomized
 component. CLAW uses the installed base coat when the selected textures are unavailable. Optional OBody integration supplies human preset inputs to
-eligible actors first encountered as werewolves. Optional Faster HDT-SMP
-adds ear and tail motion on both sexes and female breast motion; select
-Faster HDT-SMP or None in the installer.
+eligible actors first encountered as werewolves. In the 0.11.0 candidate,
+optional Faster HDT-SMP adds tail motion on both sexes. Select Faster HDT-SMP
+or None in the installer.
 
 Every matrix explicitly reads `$actor.weight`, independently of the already
 effective RaceMenu morph values. The installer selects one male and one female

@@ -168,18 +168,20 @@ reapplication until explicit configuration/assignment resumes it.
 
 ## Coat data and the material adapter
 
-The shipped matrix retains a scalar `coat.selector` for hairless fallback
-and schema-1 compatibility. It also copies normalized `hair.red/green/blue` to
-`coat.red/green/blue`, and `seed.withHair` to `coat.variation`. The numerical
-kernel interprets none of those names as a colour or texture ID.
+The shipped matrix projects a blend of 75% skin and 25% hair to
+`coat.red/green/blue` when both are known. A single known colour uses its
+full RGB. The normalized seed drives `coat.variation` and the fallback
+`coat.selector`. The numerical kernel treats these as named numeric channels.
 
 Schema-2 `CoatMapping.xml` selects the configured colour group nearest the RGB
 output in weighted Oklab distance, then partitions that group's variants by the
 stable normalized variation value. RGB does not include the seed. Groups,
 anchors, weights and logical IDs are configuration, not DLL texture constants.
 The ten installed Elegant coats have a limited palette: an exact human RGB
-match is not promised. Without known hair, scalar half-open intervals select
-from the natural coat pool; the final upper endpoint includes 1.
+match is not promised. The `available` attribute binds a 0/1 matrix output.
+With neither colour known, scalar half-open intervals select from the palette.
+The final upper endpoint includes 1. Older matrices without this output
+continue to use the hair-present gate.
 
 `CoatLibrary.xml` resolves material IDs to external diffuse paths. No texture
 artwork is included in CLAW. Install Elegant's PlayerOnly 2K or 4K FOMOD with
@@ -197,7 +199,8 @@ resources, or explicitly reassign a coat to invalidate its validation cache.
 Use `GetCoatPatterns()` for logical IDs, `SetCoatPattern(target,id)` for a manual
 override, and `ClearCoatPattern(target)` to resume automatic selection. Inspect
 `GetAppliedCoatPattern` and `GetCoatPatternStatus`; requested and applied states
-are separate. The shipped configuration uses original texture colours.
+are separate. The candidate also reads regional dye channels from the matrix.
+See [the coat contract](coat-library.md) for source roles, opacity and material ownership.
 
 ## Motion provider adapters
 
@@ -206,9 +209,8 @@ NIFs. FSMP adds one sex-specific XML hook to each model route and installs two X
 Its append-only hook preserves the original geometry, skin weights, materials
 and BODYTRI; both choices share the same male/female TRI resources.
 
-Drivers are four existing ear links and five tail links for both sexes; two
-existing female breast P1 nodes are female-only. Original XP32 nodes/skin
-influences are reused, not renamed. Physics providers and the skeleton are
+The driver uses five existing XP32 tail links for each sex. Physics providers
+and the skeleton are
 separate dependencies. Provider constants do not refit themselves to each morph,
 and this release adds no fitted contact colliders or first-person VR body.
 Avoid another configuration that writes the same werewolf nodes. Human physics

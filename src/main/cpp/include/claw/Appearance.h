@@ -2,6 +2,7 @@
 #include "claw/ColourMath.h"
 #include "claw/CoatGeometry.h"
 #include "claw/CoatMapping.h"
+#include "claw/CoatDye.h"
 #include "claw/MaterialLease.h"
 #include "claw/CoatSurfaceAudit.h"
 #include "claw/CoatTextureRetry.h"
@@ -71,6 +72,7 @@ private:
         RE::NiPointer<RE::BSShaderProperty> original, own;
         std::optional<std::uint32_t> expectedTint;
         std::size_t role{};
+        std::optional<float> expectedOpacity;
         bool tinted{};
         // Retain initialized identities: a later replacement cannot recycle an
         // old pointer into a false match while this surface lease is active.
@@ -114,7 +116,7 @@ private:
         bool loaded{};
         std::vector<Surface> surfaces;
         std::string status;
-        std::string explicitPattern, appliedPattern, attemptedPattern;
+        std::string explicitPattern, appliedPattern, attemptedPattern, attemptedHairPattern;
         std::optional<float> appliedVariation;
         AutomaticCoatState automatic;
         CoatValues coatOutputs;
@@ -143,7 +145,7 @@ private:
     };
     [[nodiscard]] std::string_view rollbackStatus(RE::FormID id) const;
     static std::string_view prepareMaterial(RE::BSShaderProperty* copy,
-        const RE::BSShaderProperty* original, std::optional<std::uint32_t> tint);
+        const RE::BSShaderProperty* original, std::optional<std::uint32_t> tint, bool overlay);
     static bool protectPrivateTint(RE::BSShaderProperty* copy, const RE::BSShaderProperty* original);
     static bool healthyPrivateTint(const Surface& surface);
     static bool inspectPrivateTint(const Surface& surface, std::vector<MaterialLeaseDifference>* differences);
@@ -395,6 +397,9 @@ inline void Runtime::clearPattern(RE::Actor* actor) {
     }
 }
 inline CoatDecision Runtime::decision(const Entry& entry) const {
+    if (mapping_ && mapping_->hasRegionalPalettes() && entry.explicitPattern.empty() &&
+        (entry.colours.hasSkin || entry.colours.hasHair))
+        return mapping_->selectRegional(entry.coatOutputs, !entry.colours.hasSkin);
     if (mapping_) return mapping_->selectOutputs(entry.explicitPattern, entry.coatOutputs, entry.colours.hasHair);
     return policy_.select(library_, entry.explicitPattern,
         entry.colours.hasHair ? std::optional{entry.colours.hair} : std::nullopt,
@@ -412,6 +417,7 @@ inline std::string Runtime::patternStatus(RE::FormID id) const {
     const auto& entry = found->second;
     const auto selected = decision(entry);
     const std::string origin = selected.origin == CoatOrigin::manual ? "explicit" :
+        selected.origin == CoatOrigin::colourPool ? "automatic colour pool " + selected.pool :
         selected.origin == CoatOrigin::hairPool ? "automatic hair pool " + selected.pool :
         selected.origin == CoatOrigin::legacyHair ? "automatic legacy hair" :
         selected.origin == CoatOrigin::fallback ? "automatic fallback pool " + selected.pool : "no automatic pattern";
@@ -675,14 +681,14 @@ inline void Runtime::captureHuman(RE::Actor* actor) {
     entry.status = ambiguous ? "record-hair-fallback: ambiguous rendered hair" : "human colours captured";
 }
 inline std::string_view Runtime::prepareMaterial(RE::BSShaderProperty* copy,
-    const RE::BSShaderProperty* original, std::optional<std::uint32_t> tint) {
+    const RE::BSShaderProperty* original, std::optional<std::uint32_t> tint, bool overlay) {
     using Base = RE::BSLightingShaderMaterialBase;
     using Feature = RE::BSShaderMaterial::Feature;
     // Original coat colours need no tint material. The engine updates all
     // FaceGenRGBTint/HairTint materials during actor appearance refresh, even
     // when NO_TINT is present. A neutral tint is therefore not an untinted coat.
     const auto feature = !tint ? Feature::kDefault :
-        original->material->GetFeature() == Feature::kHairTint ? Feature::kHairTint : Feature::kFaceGenRGBTint;
+        !overlay && original->material->GetFeature() == Feature::kHairTint ? Feature::kHairTint : Feature::kFaceGenRGBTint;
     auto* manager = RE::MemoryManager::GetSingleton();
     auto* heap = manager ? manager->GetThreadScrapHeap() : nullptr;
     if (!heap) return "material scratch heap unavailable";
@@ -768,6 +774,8 @@ inline bool Runtime::inspectPrivateTint(const Surface& surface, std::vector<Mate
         return fail("textureSetIdentity", reinterpret_cast<std::uintptr_t>(surface.textureSet.get()),
             reinterpret_cast<std::uintptr_t>(static_cast<const RE::BSLightingShaderMaterialBase*>(material)->textureSet.get()));
     const auto* lighting = static_cast<const RE::BSLightingShaderMaterialBase*>(material);
+    if (surface.expectedOpacity && lighting->materialAlpha != *surface.expectedOpacity)
+        return fail("materialAlpha", *surface.expectedOpacity, lighting->materialAlpha);
     if ((surface.tinted || surface.patterned) && lighting->diffuseTexture.get() != surface.diffuseTexture.get())
         return fail("diffuseTextureIdentity", reinterpret_cast<std::uintptr_t>(surface.diffuseTexture.get()),
             reinterpret_cast<std::uintptr_t>(lighting->diffuseTexture.get()));
@@ -899,13 +907,20 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     if (!root) { unbind(entry); entry.status = "unloaded"; return false; }
     entry.coatOutputs = std::move(coatOutputs);
     const auto selectedChoice = decision(entry);
-    if (selectedChoice.origin == CoatOrigin::hairPool && !selectedChoice.pattern.empty())
+    if ((selectedChoice.origin == CoatOrigin::hairPool || selectedChoice.origin == CoatOrigin::colourPool) &&
+        !selectedChoice.pattern.empty())
         entry.automatic.hair = {selectedChoice.pool, selectedChoice.pattern};
     if (selectedChoice.origin == CoatOrigin::fallback && !selectedChoice.pattern.empty())
         entry.automatic.fallback = {selectedChoice.pool, selectedChoice.pattern};
     const auto requestedPattern = entry.explicitPattern.empty() ? selectedChoice.pattern : entry.explicitPattern;
     const auto resource = mapping_ ? mapping_->material(selectedChoice.pattern) : std::string_view(selectedChoice.pattern);
-    if (mapping_ && (resource.empty() || resource == installedCoatMaterial)) {
+    const auto dyes = mapping_ ? coatDyes(entry.coatOutputs, entry.colours) : CoatDyes{};
+    const bool discreteRegions = mapping_ && mapping_->hasRegionalPalettes();
+    const auto hairChoice = discreteRegions && entry.explicitPattern.empty() && entry.colours.hasSkin && entry.colours.hasHair ?
+        mapping_->selectRegional(entry.coatOutputs, true) : CoatDecision{};
+    const auto hairResource = mapping_ && !hairChoice.pattern.empty() ? mapping_->material(hairChoice.pattern) : std::string_view{};
+    const bool continuous = !discreteRegions && dyes.active();
+    if (mapping_ && (resource.empty() || (resource == installedCoatMaterial && !continuous))) {
         if (!entry.surfaces.empty() && !unbind(entry)) return false;
         entry.attemptedEar.reset();
         entry.textureRetry.reset();
@@ -918,7 +933,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
             "logical coat " + selectedChoice.pattern + "; installed model material retained";
         return !resource.empty();
     }
-    const auto mode = mapping_ ? TintMode::original : policy_.tintMode();
+    const auto mode = mapping_ ? (continuous ? TintMode::regional : TintMode::original) : policy_.tintMode();
     // Use the engine's case-insensitive names. Check every reachable geometry
     // for retained identities, including a conflicted geometry renamed in place.
     const auto readScene = [&] {
@@ -942,7 +957,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     }
     auto* ear = scene.unique(vrEarCoatRole);
     const bool sameAttempt = root == entry.root.get() && entry.attemptedPattern == requestedPattern &&
-        entry.attemptedMode == mode && entry.attemptedEar.get() == ear;
+        entry.attemptedHairPattern == hairChoice.pattern && entry.attemptedMode == mode && entry.attemptedEar.get() == ear;
     std::unique_ptr<TextureRetry> retry;
     const auto retryStillCurrent = [&](const CoatScene& observed) {
         if (actor->Get3D(false) == root && observed.complete() && observed.matches[vrEarCoatRole] <= 1 &&
@@ -1005,16 +1020,23 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     } else if (!unbind(entry)) return false;
     std::vector<Surface> prepared;
     const auto* selected = library_.find(resource);
-    std::string patternFailure = !requestedPattern.empty() && !selected ? "library or pattern unavailable" : "";
+    std::string patternFailure = !requestedPattern.empty() && !selected && resource != installedCoatMaterial ?
+        "library or pattern unavailable" : "";
     const PatternAssets* assets{};
     if (selected) {
         assets = &validatePattern(std::string(resource), *selected);
         if (!assets->valid) { selected = nullptr; patternFailure = "DDS missing or header/size mismatch"; }
     }
+    const CoatPattern* selectedHair = selected && hairResource != resource ? library_.find(hairResource) : nullptr;
+    const PatternAssets* hairAssets{};
+    if (selectedHair) {
+        hairAssets = &validatePattern(std::string(hairResource), *selectedHair);
+        if (!hairAssets->valid) selectedHair = nullptr;
+    }
     // Resource failure is resolved before any live binding. A human retains the
     // already-working tint, and a source-less born wolf retains its donor.
     bool texturePending{};
-    for (unsigned attempt = 0; attempt < 2; ++attempt) {
+    for (unsigned attempt = 0; attempt < 3; ++attempt) {
     prepared.clear(); bool retryWithoutPattern{};
     for (std::size_t role = 0; role < coatRuntimeRoleCount; ++role) {
         const bool optionalEar = role == vrEarCoatRole;
@@ -1023,7 +1045,11 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         const auto name = surfaceSpec.name;
         const bool skin = surfaceSpec.group == "undercoat";
         const bool hasColour = mode == TintMode::linked && (skin ? entry.colours.hasSkin : entry.colours.hasHair);
-        if (!hasColour && !selected) continue;
+        const auto& dye = coatSurfaceDye(dyes, name);
+        const bool useHair = selected && selectedHair && name != "body";
+        const auto* surfacePattern = useHair ? selectedHair : selected;
+        const auto* surfaceAssets = useHair ? hairAssets : assets;
+        if (!hasColour && !(continuous && dye.tint) && !surfacePattern) continue;
         auto* geometry = scene.unique(role);
         if (!geometry) {
             const auto reason = "coat surface " + std::string(name) + ": matches=" + std::to_string(scene.matches[role]) +
@@ -1051,14 +1077,22 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
         if (copy.get() == original) return isolationFailure("property clone aliases source");
         // Keep the legacy linked mode's neutral fallback when a colour is
         // unavailable; original/discrete coats deliberately have no tint.
-        const std::optional<std::uint32_t> tint = mode == TintMode::original ? std::nullopt :
+        const std::optional<std::uint32_t> tint = mode != TintMode::linked ? (continuous ? dye.tint : std::nullopt) :
             std::optional{hasColour ? pack(coatTint(skin ? entry.colours.skin : entry.colours.hair, !skin)) : 0xFFFFFFU};
-        if (const auto failure = prepareMaterial(copy.get(), original, tint); !failure.empty()) return isolationFailure(failure);
+        if (const auto failure = prepareMaterial(copy.get(), original, tint, mode == TintMode::regional); !failure.empty())
+            return isolationFailure(failure);
         std::string textureFailure;
-        const auto textureResult = selected ? preparePattern(copy.get(), selected->textures.at(std::string(surfaceSpec.texture)),
-            assets->dimensions.at(std::string(surfaceSpec.texture)), textureFailure) : CoatTexturePreparation::ready;
+        const auto textureResult = surfacePattern ? preparePattern(copy.get(), surfacePattern->textures.at(std::string(surfaceSpec.texture)),
+            surfaceAssets->dimensions.at(std::string(surfaceSpec.texture)), textureFailure) : CoatTexturePreparation::ready;
         if (textureResult != CoatTexturePreparation::ready) {
-            const auto& path = selected->textures.at(std::string(surfaceSpec.texture)).path;
+            const auto& path = surfacePattern->textures.at(std::string(surfaceSpec.texture)).path;
+            if (useHair) {
+                SKSE::log::warn("CLAW appearance {:08X}: regional hair asset {}: {}; using base coat",
+                    actor->formID, path, textureFailure);
+                selectedHair = nullptr;
+                retryWithoutPattern = true;
+                break;
+            }
             patternFailure = path + ": " + textureFailure;
             SKSE::log::warn("CLAW appearance {:08X}: coat {} asset {}: {}", actor->formID, requestedPattern, path, textureFailure);
             texturePending = textureResult == CoatTexturePreparation::pending;
@@ -1069,22 +1103,33 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
             tint, role});
         auto& staged = prepared.back();
         auto* material = static_cast<RE::BSLightingShaderMaterialBase*>(copy->material);
+        const auto& alphaProperty = geometry->GetGeometryRuntimeData().alphaProperty;
+        if (surfaceSpec.group == "fur" && (continuous || entry.explicitPattern.empty()) && dye.opacity < 1.F &&
+            alphaProperty && alphaProperty->GetAlphaBlending() &&
+            std::isfinite(material->materialAlpha) && material->materialAlpha >= 0.F && material->materialAlpha <= 1.F) {
+            material->materialAlpha *= dye.opacity;
+            staged.expectedOpacity = material->materialAlpha;
+        }
         staged.material.reset(material);
         staged.guard.reset(netimmerse_cast<RE::NiBooleanExtraData*>(copy->GetExtraData("NO_TINT")));
         staged.materialLease = materialLeaseState(*copy);
         staged.initializedFeature = static_cast<std::int32_t>(material->GetFeature());
-        staged.patterned = selected != nullptr; staged.diffuseTexture = material->diffuseTexture;
+        staged.patterned = surfacePattern != nullptr; staged.diffuseTexture = material->diffuseTexture;
         staged.textureSet = material->textureSet;
         staged.texturePaths = readTexturePaths(*copy);
     }
     if (!retryWithoutPattern) break;
+    if (mode == TintMode::regional && texturePending && !retry) {
+        prepared.clear();
+        break;
     }
-    entry.attemptedPattern = requestedPattern; entry.attemptedMode = mode;
+    }
+    entry.attemptedPattern = requestedPattern; entry.attemptedHairPattern = hairChoice.pattern; entry.attemptedMode = mode;
     entry.attemptedEar.reset(ear);
     if (prepared.empty()) {
         entry.root.reset(root); entry.status = patternFailure.empty() ?
             "original material retained; " + selectedChoice.reason : "coat unavailable: " + patternFailure;
-        if (mode == TintMode::original && texturePending && !retry) {
+        if (mode != TintMode::linked && texturePending && !retry) {
             entry.textureRetry = captureTextureRetry(scene, ear != nullptr);
             if (entry.textureRetry) entry.status += "; one renderer retry pending";
         }
@@ -1128,8 +1173,11 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     entry.yield = {};
     entry.appliedPattern = selected ? requestedPattern : "";
     if (selected) entry.appliedVariation = selectedChoice.variation;
-    entry.status = selected ? "applied private coat " + requestedPattern + " with " +
-        (mode == TintMode::linked && (entry.colours.hasSkin || entry.colours.hasHair) ? "skin/fur tint" : "neutral original colours") : "applied private skin/fur tint";
+    entry.status = selected ? "applied private coat " + requestedPattern : "applied tint to installed coat";
+    if (selected && selectedHair) entry.status += "; regional head and fur " + hairChoice.pattern;
+    else if (selected && !hairChoice.pattern.empty() && hairResource != resource) entry.status += "; regional head and fur use base coat";
+    if (mode == TintMode::regional) entry.status += " with regional tint";
+    else if (mode == TintMode::linked) entry.status += " with legacy tint";
     if (!patternFailure.empty()) entry.status += "; coat unavailable: " + patternFailure;
     SKSE::log::info("CLAW appearance {:08X}: {} ({} surfaces; hair source {})", actor->formID, entry.status,
         entry.surfaces.size(), entry.colours.renderedHair ? "rendered" : "record");

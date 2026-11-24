@@ -233,12 +233,23 @@ class MotionFomodTests(unittest.TestCase):
         result = self.package.build(**self.arguments())
         entries = self.package.read_zip(Path(result['archive']).read_bytes())
         male, female = [self.package.FSMP_PREFIX + self.package.MOTION_XML + sex + '.xml' for sex in ('Male', 'Female')]
-        for name, opposite in ((male, female), (female, male)):
-            for substitute in (b'not XML', entries[opposite]):
+        historical = {}
+        expected_tail = {'Tails', *(f'TailBone{index:02}' for index in range(1, 6))}
+        for name in (male, female):
+            original = (self.receipts['fsmp'].parent / 'package' / name.removeprefix(self.package.FSMP_PREFIX)).read_bytes()
+            historical[name] = original
+            root = ET.fromstring(entries[name])
+            self.assertEqual({node.get('name') for node in root.findall('bone')}, expected_tail)
+            self.assertEqual([joint.get('bodyB') for joint in root.findall('generic-constraint')],
+                             [f'TailBone{index:02}' for index in range(1, 6)])
+            for substitute in (b'not XML', original):
                 with self.subTest(name=name, malformed=substitute == b'not XML'):
                     altered = self.package.read_zip(self.package.zip_bytes(entries | {name: substitute}))
                     with self.assertRaisesRegex(ValueError, 'Invalid FSMP motion system'):
                         self.package.selection_audit(altered)
+        self.assertEqual(len(self.package.selection_audit(entries | historical)), 40)
+        with self.assertRaisesRegex(ValueError, 'Invalid FSMP motion system'):
+            self.package.selection_audit(entries | historical, allow_legacy_full_motion=False)
 
         config_path = 'fomod/ModuleConfig.xml'
         config = ET.fromstring(entries[config_path])

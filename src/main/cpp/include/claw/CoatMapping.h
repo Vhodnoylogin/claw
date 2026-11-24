@@ -29,7 +29,7 @@ public:
         const bool colour = schema == "2";
         if (std::string_view(root.name()) != "CoatMapping" || root.next_sibling() ||
             !(colour ? coatXmlAttributes(root, {"schemaVersion", "output", "red", "green", "blue", "seed"},
-                {"lightnessWeight", "chromaWeight"}) : schema == "1" && coatXmlAttributes(root, {"schemaVersion", "output"})))
+                {"lightnessWeight", "chromaWeight", "available"}) : schema == "1" && coatXmlAttributes(root, {"schemaVersion", "output"})))
             throw std::invalid_argument("Unsupported coat mapping schema");
         CoatMapping result;
         result.output_ = root.attribute("output").value();
@@ -40,6 +40,10 @@ public:
                 if (!coatToken(value)) throw std::invalid_argument("Invalid colour mapping output name");
                 result.channels_.push_back(value);
             }
+            if (const auto available = root.attribute("available")) {
+                result.available_ = available.value();
+                if (!coatToken(result.available_)) throw std::invalid_argument("Invalid colour availability output name");
+            }
             if (root.attribute("lightnessWeight")) result.lightnessWeight_ = weight(root.attribute("lightnessWeight").value());
             if (root.attribute("chromaWeight")) result.chromaWeight_ = weight(root.attribute("chromaWeight").value());
             if (result.lightnessWeight_ == 0 && result.chromaWeight_ == 0)
@@ -48,7 +52,7 @@ public:
         float lower{};
         for (const auto node : root.children()) {
             const auto tag = std::string_view(node.name());
-            if (colour && tag == "Group") continue; // Resolve members only after all logical IDs exist.
+            if (colour && (tag == "Group" || tag == "SkinGroup" || tag == "HairGroup")) continue;
             const bool range = tag == "Range";
             if (node.first_child() || !(range ? coatXmlAttributes(node, {"id", "min", "max", "material"}) :
                 (tag == "Manual" || tag == "Alias") && coatXmlAttributes(node, {"id", "material"})))
@@ -67,9 +71,9 @@ public:
             }
         }
         if (lower != 1.0F) throw std::invalid_argument("Coat ranges must cover [0,1]");
-        if (colour) {
+        const auto parseGroups = [&](const char* tagName, std::vector<Group>& destination) {
             std::set<std::string> groupIds, members;
-            for (const auto node : root.children("Group")) {
+            for (const auto node : root.children(tagName)) {
                 const std::string id = node.attribute("id").value();
                 if (!coatXmlAttributes(node, {"id"}) || !coatToken(id) || !groupIds.insert(id).second || groupIds.size() > 16)
                     throw std::invalid_argument("Invalid or duplicate colour group");
@@ -89,18 +93,29 @@ public:
                     } else throw std::invalid_argument("Invalid colour group entry");
                 }
                 if (group.anchors.empty() || group.variants.empty()) throw std::invalid_argument("Empty colour group");
-                result.groups_.push_back(std::move(group));
+                destination.push_back(std::move(group));
             }
+        };
+        if (colour) {
+            parseGroups("Group", result.groups_);
+            parseGroups("SkinGroup", result.skinGroups_);
+            parseGroups("HairGroup", result.hairGroups_);
             if (result.groups_.empty()) throw std::invalid_argument("Missing colour groups");
+            if (result.skinGroups_.empty() != result.hairGroups_.empty())
+                throw std::invalid_argument("Regional coats require both skin and hair palettes");
         }
         return result;
     }
 
     [[nodiscard]] const std::string& output() const { return output_; }
+    [[nodiscard]] bool hasRegionalPalettes() const { return !skinGroups_.empty(); }
     void checkOutputs(const CoatValues& values) const {
         if (!values.contains(output_) || std::any_of(channels_.begin(), channels_.end(),
             [&](const auto& name) { return !values.contains(name); }))
             throw std::invalid_argument("Coat mapping requests an absent matrix output");
+        if (hasRegionalPalettes()) for (const auto& region : {skinChannels, hairChannels})
+            for (const auto channel : region) if (!values.contains(channel))
+                throw std::invalid_argument("Regional coat mapping requests an absent colour output");
     }
     [[nodiscard]] bool usesExternalMaterials() const {
         return std::any_of(resources_.begin(), resources_.end(), [](const auto& entry) {
@@ -139,9 +154,15 @@ public:
     }
     [[nodiscard]] CoatDecision selectOutputs(std::string_view manual, const CoatValues& values, bool hasHair) const {
         if (!manual.empty()) return select(manual, {}, hasHair);
-        if (!hasHair || channels_.empty()) {
+        const auto available = available_.empty() ? values.end() : values.find(available_);
+        const bool hasAvailability = available != values.end();
+        if (hasAvailability && available->second != 0.F && available->second != 1.F)
+            return {{}, {}, CoatOrigin::none, "invalid coat colour availability output"};
+        // A separately installed older matrix may lack the optional output.
+        const bool useColour = hasAvailability ? available->second == 1.F : hasHair;
+        if (!useColour || channels_.empty()) {
             const auto found = values.find(output_);
-            return select({}, found == values.end() ? std::optional<float>{} : found->second, hasHair);
+            return select({}, found == values.end() ? std::optional<float>{} : found->second, useColour);
         }
         std::array<float, 4> input{};
         for (std::size_t i = 0; i < input.size(); ++i) {
@@ -150,22 +171,44 @@ public:
                 return {{}, {}, CoatOrigin::none, "coat colour output unavailable or outside [0,1]"};
             input[i] = found->second;
         }
-        const auto colour = oklab({input[0], input[1], input[2]});
-        const Group* selected{};
-        double best = std::numeric_limits<double>::infinity();
-        // Declared group/anchor order supplies deterministic ties. Seed cannot affect this choice.
-        for (const auto& group : groups_) for (const auto& anchor : group.anchors) {
-            const auto l = colour[0] - anchor[0], a = colour[1] - anchor[1], b = colour[2] - anchor[2];
-            const auto distance = lightnessWeight_ * l * l + chromaWeight_ * (a * a + b * b);
-            if (distance < best) { best = distance; selected = &group; }
+        return nearest({input[0], input[1], input[2]}, input[3], groups_, lightnessWeight_, chromaWeight_,
+            hasAvailability ? CoatOrigin::colourPool : CoatOrigin::hairPool);
+    }
+    [[nodiscard]] CoatDecision selectRegional(const CoatValues& values, bool hair) const {
+        const auto& groups = hair ? hairGroups_ : skinGroups_;
+        if (groups.empty()) return {};
+        const auto& names = hair ? hairChannels : skinChannels;
+        RGB rgb{};
+        for (std::size_t i = 0; i < rgb.size(); ++i) {
+            const auto value = values.find(names[i]);
+            if (value == values.end() || !std::isfinite(value->second) || value->second < 0.F || value->second > 1.F)
+                return {};
+            rgb[i] = value->second;
         }
-        if (!selected) return {{}, {}, CoatOrigin::none, "coat colour group unavailable"};
-        const auto index = std::min(static_cast<std::size_t>(double(input[3]) * selected->variants.size()), selected->variants.size() - 1);
-        return {selected->variants[index], selected->id, CoatOrigin::hairPool, {}, input[3]};
+        const auto seed = values.find(channels_.back());
+        if (seed == values.end() || !std::isfinite(seed->second) || seed->second < 0.F || seed->second > 1.F) return {};
+        return nearest(rgb, seed->second, groups, 1.F, hair ? 12.F : 4.F, CoatOrigin::colourPool);
     }
 private:
     struct Range { float maximum; std::string id; };
     struct Group { std::string id; std::vector<std::array<double, 3>> anchors; std::vector<std::string> variants; };
+    static constexpr std::array<std::string_view, 3> skinChannels{"dye.body.red", "dye.body.green", "dye.body.blue"};
+    static constexpr std::array<std::string_view, 3> hairChannels{"dye.hair.red", "dye.hair.green", "dye.hair.blue"};
+    static CoatDecision nearest(const RGB& rgb, float seed, const std::vector<Group>& groups,
+        float lightnessWeight, float chromaWeight, CoatOrigin origin) {
+        const auto colour = oklab(rgb);
+        const Group* selected{};
+        double best = std::numeric_limits<double>::infinity();
+        // Declared group/anchor order supplies deterministic ties. Seed cannot affect this choice.
+        for (const auto& group : groups) for (const auto& anchor : group.anchors) {
+            const auto l = colour[0] - anchor[0], a = colour[1] - anchor[1], b = colour[2] - anchor[2];
+            const auto distance = lightnessWeight * l * l + chromaWeight * (a * a + b * b);
+            if (distance < best) { best = distance; selected = &group; }
+        }
+        if (!selected) return {{}, {}, CoatOrigin::none, "coat colour group unavailable"};
+        const auto index = std::min(static_cast<std::size_t>(double(seed) * selected->variants.size()), selected->variants.size() - 1);
+        return {selected->variants[index], selected->id, origin, {}, seed};
+    }
     // Standard Oklab conversion of normalized encoded sRGB. This material adapter,
     // not the shared numerical matrix, owns colour-space interpretation.
     static std::array<double, 3> oklab(const RGB& rgb) {
@@ -191,9 +234,9 @@ private:
             throw std::invalid_argument("Invalid normalized coat range boundary");
         return value;
     }
-    std::string error_, output_;
+    std::string error_, output_, available_;
     std::vector<std::string> channels_;
-    std::vector<Group> groups_;
+    std::vector<Group> groups_, skinGroups_, hairGroups_;
     float lightnessWeight_{1}, chromaWeight_{1};
     std::vector<Range> ranges_;
     std::set<std::string, std::less<>> aliases_;

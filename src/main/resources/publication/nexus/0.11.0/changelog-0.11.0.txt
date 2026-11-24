@@ -1,4 +1,5 @@
-Human hair colour selects a group of Elegant coats. Skin tone and an actor's stable seed help choose a variation. When hair colour is unavailable, known skin tone helps select a coat.
+Skin tone selects the base coat on the body. Hair colour selects the coat materials on the head and fur where available. Individual coat choices remain stable across transformations.
 Improved coat recovery when the game recreates the werewolf's 3D. If a valid texture is temporarily unavailable to the renderer, CLAW keeps the existing material and retries the selection once.
 Added support for explicit compatibility profiles for NPCs with custom bodies. Profiles require a known skin record and matching body resources.
-Clarified that the Faster HDT-SMP installer option requires a separate Faster HDT-SMP installation. Choose None if that provider is absent.
+Optional Faster HDT-SMP motion now applies to the tail only. Choose None to disable CLAW motion physics.
+Increased the effect of human body inputs on female werewolf chest size by 12.5%, covering CBBE, 3BA and BHUNP chest sliders and the Vanilla and UNP weight contribution.

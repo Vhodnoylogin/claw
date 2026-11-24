@@ -7,12 +7,12 @@
 <br />[*]Body, arm, leg, belly and chest proportions.[/*]
 <br />[*]Head and muzzle shape, based on available human traits.[/*]
 <br />[*]Ear, tail and claw size, influenced by human stature and proportions.[/*]
-<br />[*]Optional physics for ears and tails, plus female breast motion.[/*]
+<br />[*]Optional tail physics.[/*]
 <br />[*]Coat appearance, using ten variants from Elegant.[/*]
-<br />[/list]Human hair colour determines the colour group. Skin tone and a stable individual seed help choose a variation. If no hair colour is available, CLAW uses known skin tone and the seed to choose a coat. Werewolves without a known human appearance receive an individual coat selection. The selected coat persists through transformations, model updates and saving/loading.
+<br />[/list]Skin tone selects the base coat on the body. Hair colour influences the head and fur materials when available. Werewolves without a known human appearance receive an individual coat selection. The selected coat persists through transformations, model updates and saving/loading.
 <br />
 <br />[size=4][color=#D0B17A][b]Optional physics[/b][/color][/size]
-<br />Choose [b]Faster HDT-SMP[/b] in the installer to add motion to werewolf ears and tails, and to female breasts. Install the selected physics mod separately. Choose [b]None[/b] to use CLAW without added physics.
+<br />Choose [b]Faster HDT-SMP[/b] in the installer to add tail motion and install Faster HDT-SMP separately. Choose [b]None[/b] to use CLAW without added physics.
 <br />[center][img width=600,height=100]https://staticdelivery.nexusmods.com/mods/1704/images/194796/194796-1791664990-433961669.png[/img][/center]
 <br />[b][color=#d0b17a][size=4]Supported human bodies[/size][/color][/b]
 <br />[list]

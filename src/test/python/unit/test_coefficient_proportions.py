@@ -72,12 +72,26 @@ class ProportionsTests(unittest.TestCase):
   self.assertEqual(compose('HIMBO',{'Muscle':.2,'TorsoWaistSize':.2})['CLAWTorsoWaistNarrow'],0)
   self.assertAlmostEqual(compose('HIMBO',{'TorsoWaistSize':.2})['CLAWTorsoWaistNarrow'],.76709574)
 
+ def test_weight_only_female_breast_uses_the_bounded_weight_proxy(self):
+  catalog=ET.parse(ROOT/'src/main/resources/profiles/MorphLinks.xml').getroot()
+  target='CLAWTorsoBreastSize'
+  for profile_id in ['CLAW.VanillaFemale.Weight1','CLAW.UNP.4.6.Weight1']:
+   profile=catalog.find(f'Profile[@id="{profile_id}"]')
+   rows=[r.attrib for r in profile.findall('Rule') if r.get('target')==target]
+   # 0.40 is the existing neutral BHUNP coefficient on the same wolf morph.
+   # Weight-only inputs scale up to that reference with the 12.5% increase.
+   self.assertEqual(rows,[{'source':'$actor.weight','target':target,'gain':'0.45','cap':'1'}])
+  for profile in catalog.findall('Profile[@sex="male"]'):
+   self.assertFalse(any(r.get('target')==target for r in profile))
+
  def test_breast_transfer_retains_range_for_broader_v3_shape(self):
   # Real Mira/Runa observations: avoid the old Runa saturation while the larger
   # v3 field produces more breadth/downward growth at these lower coefficients.
   mira=compose('3BA',{'Breasts':.15})['CLAWTorsoBreastSize']
   runa=compose('3BA',{'Breasts':.28})['CLAWTorsoBreastSize']
-  self.assertAlmostEqual(mira,.296799)
+  self.assertAlmostEqual(mira,.333898875)
+  self.assertAlmostEqual(compose('3BA',{'Breasts':.03})['CLAWTorsoBreastSize'],.066779775)
+  self.assertEqual(compose('3BA',{'Breasts':.5})['CLAWTorsoBreastSize'],1)
   self.assertGreater(runa,mira);self.assertLess(runa,.7)
   for family in ['HIMBO','3BA','CBBE']:
    rr=rules(family);self.assertLessEqual(len(rr),128)

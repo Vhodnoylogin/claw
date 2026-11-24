@@ -1,0 +1,36 @@
+{
+  "fixture": "Five female Skyrim.esm stock NPC bases with the same BlueBlack hair colour, placed in a QASmoke wall row",
+  "comparison": "skin-only",
+  "fixedCoat": "elegant-2k-2.1/valley-grey",
+  "skinDonor": "Grey",
+  "hairDonor": "ValleyBlack",
+  "camera": [-2179.94482421875, 1740.0, 6976.4501953125],
+  "reviewViews": {
+    "lightTones": [-2290.0, 1570.0, 6976.4501953125],
+    "darkTones": [-2290.0, 1910.0, 6976.4501953125]
+  },
+  "pairs": [
+    {
+      "name": "Idgrod the Younger", "base": "0x000135EC", "race": "0x00013746", "humanY": 1425.0, "wolfY": 1495.0,
+      "hair": [20, 20, 24], "skinRecordRGB8": [221, 221, 221], "inventory": ["0x00013986", "0x001046D1"]
+    },
+    {
+      "name": "Olda", "base": "0x00019A20", "race": "0x00013746", "humanY": 1565.0, "wolfY": 1635.0,
+      "hair": [20, 20, 24], "skinRecordRGB8": [185, 179, 170], "inventory": ["0x0001397E", "0x000B8761"]
+    },
+    {
+      "name": "Aia Arria", "base": "0x0001325C", "race": "0x00013744", "humanY": 1705.0, "wolfY": 1775.0,
+      "hair": [20, 20, 24], "skinRecordRGB8": [143, 114, 101],
+      "inventory": ["0x0001397E", "0x000C13C9", "0x000DABA7", "0x000DABAB", "0x001046D1"]
+    },
+    {
+      "name": "Seren", "base": "0x0001361F", "race": "0x00013748", "humanY": 1845.0, "wolfY": 1915.0,
+      "hair": [20, 20, 24], "skinRecordRGB8": [113, 87, 68], "inventory": ["0x001046D1", "0x0009DA39", "0x0001397E"]
+    },
+    {
+      "name": "Anwen", "base": "0x00013386", "race": "0x00013748", "humanY": 1985.0, "wolfY": 2055.0,
+      "hair": [20, 20, 24], "skinRecordRGB8": [67, 44, 33],
+      "inventory": ["0x001046D1", "0x0001397E", "0x000656EE", "0x000BD79C"]
+    }
+  ]
+}

@@ -23,9 +23,9 @@ BodySlide with **Build Morphs** enabled. Vanilla and classic UNP use actor weigh
 
 ## Individual coats
 
-Human hair colour and a stable actor seed determine the coat; with no known
-human hair colour the seed supplies the variation. Integrations may assign a
-coat explicitly. Keep the separate Elegant installation enabled.
+Skin tone is the main influence on the coat group. Hair colour contributes
+when available, and a stable actor seed chooses a variation. Integrations may
+assign a coat explicitly. Keep the separate Elegant installation enabled.
 
 If a selected Randomized coat is missing, incomplete or has invalid DDS headers
 or dimensions, CLAW retains the installed base coat. Body, head, ear, tail and

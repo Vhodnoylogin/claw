@@ -5,6 +5,19 @@ Its actors, scenes and preset/configuration overrides do not ship in the working
 mod. Compiled test plugins and other generated artifacts belong under ignored
 target/, rather than Git.
 
+## Reusable game scenes
+
+| Scene | Reusable source | What it checks |
+| --- | --- | --- |
+| Human to wolf morphs | [Six-pair placement and operator guide](resources/inspection/README.md), [scene data](resources/inspection/scene.json), [matrix scorer](python/integration/analyze_matrix_capture.py) | Matched human and wolf poses and recorded output against the shared evaluator. The operator guide uses an admitted session. |
+| Coat appearance | [Four matched pairs, five skin tones and seeded combinations](resources/inspection/regional-coats/README.md), [SE runner](python/integration/coat_regional_scene.py) | Compare the automatic coats, common Valley Grey control and harmonized previews. Isolate skin with identical hair inputs, then sample natural skin and hair combinations under the same lighting. Every run retains per-wolf material observations. |
+| Physics and motion | [SE physics probes](docs/physics-probe-fixture.md), [owned FSMP motion case](python/integration/fsmp_owned_case.py), [human-origin lifecycle runner](python/integration/fsmp_human_lifecycle.py) | Compare enabled and disabled motion and verify the target bones and configuration. Each case needs the provider and topology it declares. The earlier whole-body probes do not qualify the tail-only candidate. |
+| VR colliders | [Posed contact case](components/contact-profiles/posed-contact.md), [tail refit scene](components/contact-profiles/tail-refit-preparation.md), [owned tail refit runner](components/contact-profiles/owned_tail_refit_case.py) | Check the bound geometry, controller/contact timing and collider refit at different morph states. The calibrated VR session, controller provider and current fitted model are external inputs. |
+
+Preserve new or revised placements, fixture sources and observations required
+by a scenario here. Keep local configuration, saves, screenshots, generated
+artifacts and MO2, Morphbench and Autotest logs outside the repository.
+
 ## Test categories
 
 - `python/unit/`: synthetic/pure contracts, source configuration and packaging

@@ -1,16 +1,17 @@
 # Coat selection and materials
 
-The 0.9.0 FOMOD installs three XML files under `SKSE/Plugins/CLAW/`.
+The FOMOD installs three XML files under `SKSE/Plugins/CLAW/`.
 `CoatMatrix.xml` produces a named numeric dictionary through the common evaluator.
-Starting with 0.10.0, schema-2 `CoatMapping.xml` reads separate normalized sRGB channels
-and a variation channel. Its configured colour anchors select a group using
-hair RGB. The variation channel combines the saved reference seed and captured
-skin RGB to select a variant within that group. With hair and no captured skin
-it uses the full normalized seed. The material adapter interprets the named
-outputs and resolves the texture identifiers.
+The shipped candidate palette defines `SkinGroup` and `HairGroup` separately.
+Skin RGB selects the body diffuse. Hair RGB selects the head, fur and optional
+equipped VR ear diffuse. Both use separately installed Elegant textures with
+their original colours. The normalized saved reference seed selects a variant
+within each chosen group. Manual choices still select one full coat.
+Mappings without the regional groups keep the previous combined-colour route.
 
 Schema 1 remains supported. Its scalar intervals also remain the schema-2
-hairless fallback: each includes its lower bound, and the final interval includes 1.
+fallback. Each includes its lower bound, and the final interval includes 1.
+The current matrix uses the seed alone when neither colour is available.
 Manual assignments take precedence. Several logical IDs can share a material.
 `CoatLibrary.xml` describes ten externally installed material sets and their
 texture paths, so integrations can retain prior logical identifiers.
@@ -21,9 +22,20 @@ Schema 2 binds `red`, `green`, `blue` and `seed` attributes to exact-case matrix
 output names, alongside the legacy scalar `output`. Each `Group` has an opaque
 `id`, one or more normalized-sRGB `Anchor` entries and logical-ID `Variant`
 entries. Members must exist, be non-alias choices and belong to only one group.
+Regional groups use the same `Anchor` and `Variant` syntax as `Group`. Their
+anchors describe captured human colours in normalized sRGB. They use the
+matrix's `dye.body.*` and `dye.hair.*` RGB outputs independently. If only hair is
+known, its choice supplies the whole coat. If the hair diffuse set is unavailable,
+the skin choice supplies every surface. Eyes, mouth and claws keep their own
+materials. If neither colour is known, the scalar seed selects the whole coat.
+
 Missing/nonfinite/out-of-range required numeric outputs withhold automatic
 selection. A valid manual ID still wins without automatic inputs. Configuration
 load checks all bound names against the matrix output dictionary.
+An optional `available` attribute binds a numeric output that must be 0 or 1.
+At 1 the adapter uses the RGB channels, including for skin-only actors. At 0 it
+uses the scalar output. Older schema-2 mappings without this attribute and
+older custom matrices without the output continue to use their hair-present gate.
 
 The adapter converts RGB to Oklab and minimizes
 `lightnessWeight * deltaL² + chromaWeight * (deltaA² + deltaB²)` over configured
@@ -32,8 +44,8 @@ Ties use declared group/anchor order. The selected group's declared variant
 order partitions the normalized variation into equal half-open intervals, with
 1 selecting the last variant.
 
-The 0.10.0 mapping uses weights 1 and 256 to prioritize chroma.
-Unweighted distance incorrectly maps some neutral greys to nearby warm textures.
+The 0.11.0 candidate uses weights 1 and 128. This preserves neutral greys while
+allowing skin lightness to affect the blended colour group.
 The authored groups are dark neutral, warm brown, light warm, grey and white.
 Their anchors are actual sampled diffuse means, recorded with original hashes in
 [`elegant-randomized.palette.json`](../resources/appearance/elegant-randomized.palette.json).
@@ -41,7 +53,7 @@ Seven fur textures receive equal weight after alpha-weighted linear-RGB sampling
 this is neither UV-area weighting nor rendered colour under game lighting. This
 source metadata is not installed and redistributes no pixels.
 
-The record-input regression uses Skyrim.esm `HousecarlRiften` 0A2C91, whose HCLF
+The historical 0.10.0 record-input regression uses Skyrim.esm `HousecarlRiften` 0A2C91, whose HCLF
 points to `HairColor06Auburn` 0A0431, CNAM bytes `30 23 21 00` (RGB 48,35,33).
 The selected record hashes are `6e7559e62fd30bb1b526c570615b9d93efea65b0d5cdd16e9ed7070ddd6f3c10`
 and `4ddc5271ca123fb605d6a02fb7acbbc99aeaa543bd35dbf1c78a24def46ea107`.
@@ -108,6 +120,23 @@ Earlier catalog and palette tools document the withdrawn release. See its
 [historical contract](https://github.com/Vhodnoylogin/claw/blob/a7076f51333372a349239a4fe68285f50d089572/src/main/docs/coat-library.md)
 for its original tool usage and observations. Install artwork through the
 original author's normal mod-manager distribution.
+
+### Regional tint
+
+The owner-review matrix supplies `dye.body.*` from skin RGB and
+`dye.hair.*` from hair RGB. Its hair saturation uses the distance between the
+strongest and weakest RGB channels. Hair luminance maps to a 0.86–1.0 opacity
+multiplier for fur layers already using alpha blending. The head and fur
+receive the hair tint, and the body receives the skin tint. Missing source
+colours leave their regions unchanged. A manual coat assignment still chooses
+the base texture set. The installed artwork and all non-diffuse maps remain
+external.
+
+This candidate uses private per-surface FaceGen RGB overlay materials. It
+passes colour, saturation and fur opacity separately from texture selection.
+The engine can replace a tint or material during appearance updates. CLAW
+retains the existing ownership checks and yields when another writer claims it.
+Verify the actual tint and alpha on the rendered model and after model refresh.
 
 ## Papyrus interface
 
@@ -204,10 +233,10 @@ and the sample confirms ownership of all managed coat materials,
 `coatDecision.pattern` identifies it and `coatDecision.variation` records the
 normalized value actually used to choose the variant. Manual selections,
 scalar fallback and missing applied patterns leave this object absent. The
-variation can change within the same discrete variant. To verify the skin term,
-join this field to the sampled material and the same actor's saved hair, skin
-and seed. Compare the observed value to independent skin-aware and seed-only
-calculations. An audit without the decision cannot establish that contrast.
+variation can change within the same discrete variant. For the 0.11.0 matrix,
+compare it with the normalized seed. To isolate skin or hair influence, hold
+the seed and other colour fixed and compare the applied group and material
+against an independently evaluated matrix.
 Strings preserve source bytes: ordinary ASCII uses normal JSON escaping;
 non-ASCII bytes use `\u00xx` escapes (`stringEncoding="bytes-u00xx"`). This avoids
 inventing a Unicode decoding for engine paths. Compare names/paths as source

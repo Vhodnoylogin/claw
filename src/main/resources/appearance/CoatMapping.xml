@@ -1,6 +1,6 @@
 <CoatMapping schemaVersion="2" output="coat.selector"
   red="coat.red" green="coat.green" blue="coat.blue" seed="coat.variation"
-  lightnessWeight="1" chromaWeight="256">
+  available="coat.colour-available" lightnessWeight="1" chromaWeight="128">
   <Range min="0" max="0.1" id="elegant-2k-2.1/black" material="randomized/black" />
   <Range min="0.1" max="0.2" id="elegant-2k-2.1/valley-black" material="randomized/valley-black" />
   <Range min="0.2" max="0.3" id="elegant-2k-2.1/timber-dark" material="randomized/timber-dark" />
@@ -65,4 +65,71 @@
     <Variant id="elegant-2k-2.1/valley-white"/>
     <Variant id="elegant-2k-2.1/white"/>
   </Group>
+  <SkinGroup id="deep">
+    <Anchor red="0.207843137" green="0.152941176" blue="0.133333333"/>
+    <Variant id="elegant-2k-2.1/valley-black"/>
+  </SkinGroup>
+  <SkinGroup id="dark">
+    <Anchor red="0.309803922" green="0.270588235" blue="0.250980392"/>
+    <Variant id="elegant-2k-2.1/timber-dark"/>
+  </SkinGroup>
+  <SkinGroup id="tan">
+    <Anchor red="0.443137255" green="0.341176471" blue="0.266666667"/>
+    <Variant id="elegant-2k-2.1/valley-brown"/>
+  </SkinGroup>
+  <SkinGroup id="warm">
+    <Anchor red="0.568627451" green="0.466666667" blue="0.435294118"/>
+    <Variant id="elegant-2k-2.1/brown"/>
+  </SkinGroup>
+  <SkinGroup id="medium">
+    <Anchor red="0.725490196" green="0.701960784" blue="0.666666667"/>
+    <Variant id="elegant-2k-2.1/timber"/>
+  </SkinGroup>
+  <SkinGroup id="grey-neutral">
+    <Anchor red="0.521568627" green="0.521568627" blue="0.521568627"/>
+    <Variant id="elegant-2k-2.1/grey"/>
+  </SkinGroup>
+  <SkinGroup id="fair-neutral">
+    <Anchor red="0.662745098" green="0.662745098" blue="0.662745098"/>
+    <Variant id="elegant-2k-2.1/valley-white"/>
+  </SkinGroup>
+  <SkinGroup id="pale">
+    <Anchor red="0.866666667" green="0.866666667" blue="0.866666667"/>
+    <Anchor red="0.960784314" green="0.945098039" blue="0.921568627"/>
+    <Anchor red="0.992156863" green="0.992156863" blue="0.992156863"/>
+    <Variant id="elegant-2k-2.1/white"/>
+  </SkinGroup>
+  <HairGroup id="black">
+    <Anchor red="0.062745098" green="0.070588235" blue="0.070588235"/>
+    <Anchor red="0.078431373" green="0.078431373" blue="0.094117647"/>
+    <Anchor red="0.101960784" green="0.109803922" blue="0.109803922"/>
+    <Variant id="elegant-2k-2.1/valley-black"/>
+  </HairGroup>
+  <HairGroup id="auburn">
+    <Anchor red="0.188235294" green="0.137254902" blue="0.129411765"/>
+    <Anchor red="0.258823529" green="0.207843137" blue="0.176470588"/>
+    <Variant id="elegant-2k-2.1/brown"/>
+  </HairGroup>
+  <HairGroup id="blond">
+    <Anchor red="0.223529412" green="0.215686275" blue="0.156862745"/>
+    <Anchor red="0.262745098" green="0.239215686" blue="0.180392157"/>
+    <Anchor red="0.317647059" green="0.301960784" blue="0.223529412"/>
+    <Anchor red="0.219607843" green="0.231372549" blue="0.172549020"/>
+    <Variant id="elegant-2k-2.1/timber"/>
+  </HairGroup>
+  <HairGroup id="grey">
+    <Anchor red="0.168627451" green="0.192156863" blue="0.200000000"/>
+    <Anchor red="0.274509804" green="0.294117647" blue="0.333333333"/>
+    <Anchor red="0.352941176" green="0.372549020" blue="0.411764706"/>
+    <Variant id="elegant-2k-2.1/grey"/>
+  </HairGroup>
+  <HairGroup id="platinum">
+    <Anchor red="0.360784314" green="0.345098039" blue="0.313725490"/>
+    <Variant id="elegant-2k-2.1/valley-white"/>
+  </HairGroup>
+  <HairGroup id="white">
+    <Anchor red="0.627450980" green="0.627450980" blue="0.627450980"/>
+    <Anchor red="0.992156863" green="0.992156863" blue="0.992156863"/>
+    <Variant id="elegant-2k-2.1/white"/>
+  </HairGroup>
 </CoatMapping>
