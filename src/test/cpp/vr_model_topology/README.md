@@ -37,6 +37,14 @@ The pure chain traversal is covered by `claw-vr-root-cull` in CTest.
 The game paths are read-only. Graph membership and matching observations do
 not establish rendered geometry, continuous attachment or applied physics.
 
+Plain `Capture` also admits the stock Nord player (race 013746, base 000007)
+and includes the player handle for a same-session pre-transformation control.
+Look for the stock `HandMale_Big1stperson` mesh in a complete explicit
+first-person actor or biped graph. Record camera, active Hands slot and cull
+state alongside the geometry. A declared path, RaceMenu overlay or a
+third-person mesh cannot serve as this control. Capture the wolf afterwards
+with `CaptureDispatch` while keeping the same simulated headset conditions.
+
 ## Loaded Body32 origin
 
 Use `CaptureDispatch(nonce)` to add the schema 8 marker observation. The

@@ -426,7 +426,9 @@ Json collect(Clock::time_point deadline, bool dispatch) {
     const auto base = id(actorBase);
     const auto cell = id(actor->GetParentCell());
     const auto weaponState = actor->GetWeaponState();
-    require(handle && race == 0xCDD84 && base && cell, "loaded wolf owner required");
+    const auto humanControl = !dispatch && race == 0x13746 && base == 7;
+    require(handle && base && cell && (race == 0xCDD84 || humanControl),
+            dispatch ? "loaded wolf owner required" : "loaded wolf or Nord player control required");
     const auto began = dispatch ? qpc() : 0;
     const auto sex = dispatch ? static_cast<int>(actorBase->GetSex()) : -1;
     const auto weight = dispatch ? actorWeight(actorBase) : std::nullopt;
@@ -478,6 +480,7 @@ Json collect(Clock::time_point deadline, bool dispatch) {
             {"weaponState", static_cast<unsigned>(weaponState)},
             {"cameraStateId", camera.id ? Json(*camera.id) : Json(nullptr)},
             {"roles", claw::targetModelRoles}, {"distinctRoots", std::move(rootDetails)}};
+    if (humanControl) sample["runtimeHandle"] = handle.native_handle();
     if (dispatch) {
         require(actor->GetActorBase() == actorBase && static_cast<int>(actorBase->GetSex()) == sex &&
                 actorWeight(actorBase) == weight, "wolf sex or actor weight changed during capture");
