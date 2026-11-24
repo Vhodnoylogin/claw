@@ -132,4 +132,9 @@
     <Anchor red="0.992156863" green="0.992156863" blue="0.992156863"/>
     <Variant id="elegant-2k-2.1/white"/>
   </HairGroup>
+  <PairRestriction skinGroups="deep dark" hairGroups="black"
+    bodyFallback="elegant-2k-2.1/timber-dark" hairFallback="elegant-2k-2.1/valley-grey">
+    <Pattern id="elegant-2k-2.1/black"/>
+    <Pattern id="elegant-2k-2.1/valley-black"/>
+  </PairRestriction>
 </CoatMapping>

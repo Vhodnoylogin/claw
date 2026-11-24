@@ -29,6 +29,19 @@ known, its choice supplies the whole coat. If the hair diffuse set is unavailabl
 the skin choice supplies every surface. Eyes, mouth and claws keep their own
 materials. If neither colour is known, the scalar seed selects the whole coat.
 
+An optional `PairRestriction` applies to designated automatic coat materials.
+Its `skinGroups` and `hairGroups` attributes list the eligible group IDs,
+separated by spaces. `Pattern` children identify the restricted materials by
+their logical IDs. Both genuine colour sources must match eligible groups.
+Otherwise the chosen material is replaced by `bodyFallback` or
+`hairFallback`. Hair-only actors use the hair fallback. The same guard applies
+to the scalar choice for actors without colours. Manual choices and mappings
+without a restriction retain their usual behaviour.
+
+The shipped rule reserves Black and Valley Black for a `black` hair group
+with `deep` or `dark` skin. It substitutes Valley Grey for restricted hair
+selections and Timber Dark for restricted body or seed selections.
+
 Missing/nonfinite/out-of-range required numeric outputs withhold automatic
 selection. A valid manual ID still wins without automatic inputs. Configuration
 load checks all bound names against the matrix output dictionary.

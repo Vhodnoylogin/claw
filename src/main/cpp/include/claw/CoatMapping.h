@@ -1,6 +1,7 @@
 #pragma once
 #include "claw/CoatPolicy.h"
 #include "claw/CoatMatrix.h"
+#include <sstream>
 
 namespace claw::appearance {
 inline constexpr std::string_view coatMappingRelativePath = "SKSE/Plugins/CLAW/CoatMapping.xml";
@@ -52,7 +53,7 @@ public:
         float lower{};
         for (const auto node : root.children()) {
             const auto tag = std::string_view(node.name());
-            if (colour && (tag == "Group" || tag == "SkinGroup" || tag == "HairGroup")) continue;
+            if (colour && (tag == "Group" || tag == "SkinGroup" || tag == "HairGroup" || tag == "PairRestriction")) continue;
             const bool range = tag == "Range";
             if (node.first_child() || !(range ? coatXmlAttributes(node, {"id", "min", "max", "material"}) :
                 (tag == "Manual" || tag == "Alias") && coatXmlAttributes(node, {"id", "material"})))
@@ -103,6 +104,32 @@ public:
             if (result.groups_.empty()) throw std::invalid_argument("Missing colour groups");
             if (result.skinGroups_.empty() != result.hairGroups_.empty())
                 throw std::invalid_argument("Regional coats require both skin and hair palettes");
+            for (const auto node : root.children("PairRestriction")) {
+                if (result.pairRestriction_ || !result.hasRegionalPalettes() ||
+                    !coatXmlAttributes(node, {"skinGroups", "hairGroups", "bodyFallback", "hairFallback"}))
+                    throw std::invalid_argument("Invalid coat pair restriction");
+                auto& rule = result.pairRestriction_.emplace();
+                rule.skinGroups = pairGroups(node.attribute("skinGroups").value(), result.skinGroups_);
+                rule.hairGroups = pairGroups(node.attribute("hairGroups").value(), result.hairGroups_);
+                for (const auto row : node.children()) {
+                    const std::string_view id = row.attribute("id").value();
+                    const auto resource = result.material(id);
+                    if (std::string_view(row.name()) != "Pattern" || row.first_child() ||
+                        !coatXmlAttributes(row, {"id"}) || resource.empty() || result.aliases_.contains(id) ||
+                        !rule.materials.emplace(resource).second)
+                        throw std::invalid_argument("Invalid restricted coat pattern");
+                }
+                if (rule.materials.empty()) throw std::invalid_argument("Empty coat pair restriction");
+                const auto readFallback = [&](const char* name) {
+                    const std::string id = node.attribute(name).value();
+                    const auto resource = result.material(id);
+                    if (resource.empty() || result.aliases_.contains(id) || rule.materials.contains(resource))
+                        throw std::invalid_argument("Invalid coat pair fallback");
+                    return id;
+                };
+                rule.bodyFallback = readFallback("bodyFallback");
+                rule.hairFallback = readFallback("hairFallback");
+            }
         }
         return result;
     }
@@ -189,9 +216,42 @@ public:
         if (seed == values.end() || !std::isfinite(seed->second) || seed->second < 0.F || seed->second > 1.F) return {};
         return nearest(rgb, seed->second, groups, 1.F, hair ? 12.F : 4.F, CoatOrigin::colourPool);
     }
+    [[nodiscard]] CoatDecision selectForAppearance(std::string_view manual, const CoatValues& values,
+        const Colours& colours, bool hairRegion = false) const {
+        if (!manual.empty()) return selectOutputs(manual, values, colours.hasHair);
+        const bool useRegional = hasRegionalPalettes() && (colours.hasSkin || colours.hasHair);
+        const bool useHair = hairRegion || (colours.hasHair && !colours.hasSkin);
+        auto choice = useRegional ? selectRegional(values, useHair) : selectOutputs({}, values, colours.hasHair);
+        if (!pairRestriction_ || !pairRestriction_->materials.contains(material(choice.pattern))) return choice;
+
+        // Numeric outputs for an absent source can be zero. Only real captured
+        // colours can satisfy the restriction on both axes.
+        const auto& rule = *pairRestriction_;
+        if (colours.hasSkin && colours.hasHair &&
+            rule.skinGroups.contains(selectRegional(values, false).pool) &&
+            rule.hairGroups.contains(selectRegional(values, true).pool)) return choice;
+        choice.pattern = useHair ? rule.hairFallback : rule.bodyFallback;
+        return choice;
+    }
 private:
     struct Range { float maximum; std::string id; };
     struct Group { std::string id; std::vector<std::array<double, 3>> anchors; std::vector<std::string> variants; };
+    using NameSet = std::set<std::string, std::less<>>;
+    struct PairRestriction {
+        NameSet skinGroups, hairGroups, materials;
+        std::string bodyFallback, hairFallback;
+    };
+    static NameSet pairGroups(const char* list, const std::vector<Group>& palette) {
+        std::istringstream input{list};
+        NameSet result;
+        for (std::string id; input >> id;) {
+            if (std::none_of(palette.begin(), palette.end(), [&](const Group& group) { return group.id == id; }) ||
+                !result.insert(id).second)
+                throw std::invalid_argument("Unknown or duplicate coat pair group");
+        }
+        if (result.empty()) throw std::invalid_argument("Empty coat pair group list");
+        return result;
+    }
     static constexpr std::array<std::string_view, 3> skinChannels{"dye.body.red", "dye.body.green", "dye.body.blue"};
     static constexpr std::array<std::string_view, 3> hairChannels{"dye.hair.red", "dye.hair.green", "dye.hair.blue"};
     static CoatDecision nearest(const RGB& rgb, float seed, const std::vector<Group>& groups,
@@ -237,6 +297,7 @@ private:
     std::string error_, output_, available_;
     std::vector<std::string> channels_;
     std::vector<Group> groups_, skinGroups_, hairGroups_;
+    std::optional<PairRestriction> pairRestriction_;
     float lightnessWeight_{1}, chromaWeight_{1};
     std::vector<Range> ranges_;
     std::set<std::string, std::less<>> aliases_;

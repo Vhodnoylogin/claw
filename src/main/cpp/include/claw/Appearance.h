@@ -397,10 +397,7 @@ inline void Runtime::clearPattern(RE::Actor* actor) {
     }
 }
 inline CoatDecision Runtime::decision(const Entry& entry) const {
-    if (mapping_ && mapping_->hasRegionalPalettes() && entry.explicitPattern.empty() &&
-        (entry.colours.hasSkin || entry.colours.hasHair))
-        return mapping_->selectRegional(entry.coatOutputs, !entry.colours.hasSkin);
-    if (mapping_) return mapping_->selectOutputs(entry.explicitPattern, entry.coatOutputs, entry.colours.hasHair);
+    if (mapping_) return mapping_->selectForAppearance(entry.explicitPattern, entry.coatOutputs, entry.colours);
     return policy_.select(library_, entry.explicitPattern,
         entry.colours.hasHair ? std::optional{entry.colours.hair} : std::nullopt,
         entry.automatic.seed, entry.automatic);
@@ -917,7 +914,7 @@ inline bool Runtime::applyWolf(RE::Actor* actor, IOverrideInterface* provider,
     const auto dyes = mapping_ ? coatDyes(entry.coatOutputs, entry.colours) : CoatDyes{};
     const bool discreteRegions = mapping_ && mapping_->hasRegionalPalettes();
     const auto hairChoice = discreteRegions && entry.explicitPattern.empty() && entry.colours.hasSkin && entry.colours.hasHair ?
-        mapping_->selectRegional(entry.coatOutputs, true) : CoatDecision{};
+        mapping_->selectForAppearance({}, entry.coatOutputs, entry.colours, true) : CoatDecision{};
     const auto hairResource = mapping_ && !hairChoice.pattern.empty() ? mapping_->material(hairChoice.pattern) : std::string_view{};
     const bool continuous = !discreteRegions && dyes.active();
     if (mapping_ && (resource.empty() || (resource == installedCoatMaterial && !continuous))) {

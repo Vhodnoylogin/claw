@@ -35,7 +35,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[4]
 NAME = "CLAW - Customizable Lycanthrope Appearance and Weight"
 ARCHIVE_NAME = "CLAW - Customizable Lycanthrope Appearance and Weight.zip"
-VERSION = "0.11.0"
+VERSION = "0.11.1"
 APPEARANCE_FILES = ("CoatLibrary.xml", "CoatMapping.xml", "CoatMatrix.xml")
 APPEARANCE_PATH = "SKSE/Plugins/CLAW/"
 RUNTIME_README = "src/main/resources/publication/runtime/README.md"
@@ -668,13 +668,14 @@ def audit_external_coats(entries):
 
     mapping = ET.fromstring(entries[prefix + "CoatMapping.xml"])
     materials = {"randomized/" + name for name in expected_ids}
-    group_tags = {"Group", "SkinGroup", "HairGroup"}
-    records = [row for row in mapping if row.tag not in group_tags]
+    policy_tags = {"Group", "SkinGroup", "HairGroup", "PairRestriction"}
+    records = [row for row in mapping if row.tag not in policy_tags]
     if ({row.get("material") for row in mapping.findall("Range")} != materials or
             any(row.tag not in {"Range", "Manual", "Alias"} or row.get("material") not in materials for row in records)):
         raise ValueError("Coat mapping and external catalog do not agree")
     groups = mapping.findall("Group")
     skin_groups, hair_groups = mapping.findall("SkinGroup"), mapping.findall("HairGroup")
+    restrictions = mapping.findall("PairRestriction")
     if mapping.get("schemaVersion") == "2":
         choices = {row.get("id") for row in records if row.tag != "Alias"}
         variants = [row.get("id") for group in groups for row in group.findall("Variant")]
@@ -693,7 +694,27 @@ def audit_external_coats(entries):
                 if (set(anchor.attrib) != {"red", "green", "blue"} or
                         any(not math.isfinite(float(value)) or not 0 <= float(value) <= 1 for value in anchor.attrib.values())):
                     raise ValueError("Invalid coat colour anchor")
-    elif mapping.get("schemaVersion") != "1" or groups or skin_groups or hair_groups:
+        if restrictions:
+            if len(restrictions) != 1 or not skin_groups:
+                raise ValueError("Invalid coat pair restriction")
+            restriction = restrictions[0]
+            expected = {"skinGroups", "hairGroups", "bodyFallback", "hairFallback"}
+            if set(restriction.attrib) != expected or not len(restriction):
+                raise ValueError("Invalid coat pair restriction")
+            for name, palette in (("skinGroups", skin_groups), ("hairGroups", hair_groups)):
+                ids = restriction.attrib[name].split()
+                if not ids or len(ids) != len(set(ids)) or not set(ids) <= {group.get("id") for group in palette}:
+                    raise ValueError("Unknown or duplicate coat pair group")
+            ids_to_materials = {row.get("id"): row.get("material") for row in records if row.tag != "Alias"}
+            restricted = []
+            for row in restriction:
+                if row.tag != "Pattern" or len(row) or set(row.attrib) != {"id"} or row.get("id") not in choices:
+                    raise ValueError("Invalid restricted coat pattern")
+                restricted.append(ids_to_materials[row.get("id")])
+            fallbacks = {ids_to_materials.get(restriction.attrib[name]) for name in ("bodyFallback", "hairFallback")}
+            if len(restricted) != len(set(restricted)) or None in fallbacks or fallbacks.intersection(restricted):
+                raise ValueError("Invalid coat pair fallback or duplicate restriction")
+    elif mapping.get("schemaVersion") != "1" or groups or skin_groups or hair_groups or restrictions:
         raise ValueError("Unsupported coat mapping schema")
 
 

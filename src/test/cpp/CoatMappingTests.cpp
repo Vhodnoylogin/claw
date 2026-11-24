@@ -168,6 +168,57 @@ int main(int argc, char** argv) {
             region(ionaSkin, paletteColour(90.F, 95.F, 105.F), true) == "elegant-2k-2.1/grey",
             "hair groups lost neutral, warm, blond or grey discrimination");
         require(actual.selectRegional({}, true).pattern.empty(), "missing hair inputs selected a regional donor");
+        const auto forAppearance = [&](const Colours& colours, bool hairRegion = false, std::uint64_t seed = middleSeed) {
+            return actual.selectForAppearance({}, matrix.evaluate(colours, seed), colours, hairRegion).pattern;
+        };
+        const auto deepSkin = paletteColour(67.F, 44.F, 33.F);
+        const auto nextDarkSkin = paletteColour(79.F, 69.F, 64.F);
+        constexpr std::string_view blackCoat = "elegant-2k-2.1/valley-black";
+        constexpr std::string_view grayCoat = "elegant-2k-2.1/valley-grey";
+        constexpr std::string_view softDark = "elegant-2k-2.1/timber-dark";
+        for (const auto& skin : {deepSkin, nextDarkSkin}) {
+            require(forAppearance({skin, darkHairFixture, true, true}, true) == blackCoat,
+                "dark hair and dark skin lost their black regional selection");
+            require(forAppearance({skin, blondFixture, true, true}, true) == "elegant-2k-2.1/timber",
+                "dark skin overrode a nonblack hair palette");
+        }
+        require(forAppearance({deepSkin, darkHairFixture, true, true}) == blackCoat,
+            "deep skin and black hair lost the black body coat");
+        require(forAppearance({deepSkin, blondFixture, true, true}) == softDark &&
+            forAppearance({deepSkin, {}, true, false}) == softDark,
+            "missing or nonblack hair did not soften a deep skin coat");
+        for (const auto& skin : {mediumSkin, ionaSkin})
+            require(forAppearance({skin, darkHairFixture, true, true}, true) == grayCoat,
+                "dark hair alone selected a black coat on an illuminated body");
+        require(forAppearance({{}, darkHairFixture, false, true}) == grayCoat,
+            "unknown skin was classified as black from zero-filled outputs");
+        require(forAppearance({}, false, 0) == softDark &&
+            forAppearance({}, false, std::uint64_t{30} << 56) == softDark &&
+            forAppearance({}, false, UINT64_MAX) == "elegant-2k-2.1/white",
+            "black restrictions changed the wrong source-less seed bands");
+        require(actual.selectForAppearance(blackCoat, {}, {}).pattern == blackCoat &&
+            actual.selectForAppearance("elegant-2k-2.1/coal", {}, {}).pattern == "elegant-2k-2.1/coal",
+            "automatic restriction changed a manual coat or alias");
+        const auto restrictionStart = groupedXml.find("<PairRestriction");
+        const auto restrictionEnd = groupedXml.find("</PairRestriction>", restrictionStart);
+        require(restrictionStart != std::string::npos && restrictionEnd != std::string::npos,
+            "shipped mapping lost its pair restriction");
+        auto legacyXml = groupedXml;
+        legacyXml.erase(restrictionStart, restrictionEnd + std::string_view{"</PairRestriction>"}.size() - restrictionStart);
+        const auto previousMapping = CoatMapping::parse(legacyXml);
+        const Colours mediumWithBlack{mediumSkin, darkHairFixture, true, true};
+        require(previousMapping.selectForAppearance({}, matrix.evaluate(mediumWithBlack, middleSeed), mediumWithBlack, true)
+                .pattern == blackCoat,
+            "older regional palettes without a restriction changed");
+        for (const auto& [from, to] : {std::pair{"skinGroups=\"deep dark\"", "skinGroups=\"invalid\""},
+              std::pair{"hairGroups=\"black\"", "hairGroups=\"black black\""},
+              std::pair{"hairFallback=\"elegant-2k-2.1/valley-grey\"", "hairFallback=\"elegant-2k-2.1/black\""}}) {
+            auto invalidRestriction = groupedXml;
+            const auto offset = invalidRestriction.find(from, restrictionStart);
+            require(offset != std::string::npos, "missing restriction test mutation target");
+            invalidRestriction.replace(offset, std::string_view(from).size(), to);
+            rejectsXml(invalidRestriction);
+        }
         const auto ionaOutputs = matrix.evaluate(iona, middleSeed);
         const auto onlySkinOutputs = matrix.evaluate(skinOnly, middleSeed);
         const auto onlyHairOutputs = matrix.evaluate(hairOnly, middleSeed);
