@@ -47,9 +47,11 @@ Do not commit credentials, external model weights, live sessions or local caches
   the same assets that go into the game test. Record the tool revision, assets,
   settings, expected positions and measurements. Save native game logs and the
   corresponding bone, collider, contact or motion measurements for each SE/VR
-  run. Report the scope, matches, discrepancies and repro steps to the original
-  Morphbench chat with the evidence paths. Morphbench owns tool fixes. Keep
-  offline checks and game results distinct, including when no game run is available.
+  run. Morphbench owns tool fixes. Keep offline checks and game results distinct.
+- Keep reusable scene scripts, placements and fixture inputs in `src/test/` and
+  list each scene in `src/test/README.md`. Keep MO2, Morphbench and Autotest
+  logs in separate local collections outside Git. Retain their evidence and
+  improvement notes for batch handoff when the owner requests it.
 - Update the compact checkpoint after verified milestones. Keep it within 6 KiB
   with at most eight recent checks, eight open risks and five next actions.
   Use the CLAW chat-project report and goal for detailed history and decisions.
