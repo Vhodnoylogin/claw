@@ -46,7 +46,22 @@ def alias_member(config, files, sex):
     return expected
 
 
-def build(fixed_profile, core_release, skeleton, pynifly, out, *, core_receipt=None):
+def read_fixed_profile(pack, raw, archive_name, receipt=None):
+    if receipt is None:
+        if pack.sha(raw) != FIXED_SHA256:
+            raise ValueError("Expected the reviewed fixed-profile archive or its dispatch receipt")
+        return pack.read_zip(raw)
+
+    files = pack.read_zip(raw)
+    if (not isinstance(receipt, dict) or receipt.get("status") != "VR_DISPATCH_CANDIDATE" or
+            receipt.get("archiveMode") != "fixed-profile-fomod" or receipt.get("legacyAlias") != LEGACY_ALIAS or
+            receipt.get("archive") != archive_name or receipt.get("archiveSha256") != pack.sha(raw) or
+            receipt.get("payloadSha256") != {name: pack.sha(data) for name, data in files.items()}):
+        raise ValueError("Fixed-profile archive differs from its dispatch receipt")
+    return files
+
+
+def build(fixed_profile, core_release, skeleton, pynifly, out, *, core_receipt=None, fixed_profile_receipt=None):
     common = fsmp_motion.common
     pack = open_tools(PACKAGER)
     fixed_profile, core_release, skeleton = (Path(path).resolve(strict=True)
@@ -54,12 +69,21 @@ def build(fixed_profile, core_release, skeleton, pynifly, out, *, core_receipt=N
     out = Path(out).absolute()
     if any(path.is_junction() or path.is_symlink() for path in (out, *out.parents)):
         raise ValueError("Output ancestry must use real directories")
-    inputs = (fixed_profile, core_release, skeleton)
-    out = safe_output(out, inputs if core_receipt is None else (*inputs, core_receipt))
+    inputs = (fixed_profile, core_release, skeleton, *(
+        path for path in (core_receipt, fixed_profile_receipt) if path is not None))
+    out = safe_output(out, inputs)
     fixed_payload = fixed_profile.read_bytes()
-    if pack.sha(fixed_payload) != FIXED_SHA256 or common.pin(skeleton)["sha256"] != SKELETON_SHA256:
-        raise ValueError("Expected the exact verified fixed-profile archive and XP32 skeleton")
+    if common.pin(skeleton)["sha256"] != SKELETON_SHA256:
+        raise ValueError("Expected the exact verified XP32 skeleton")
+    fixed_pin = common.pin(Path(fixed_profile_receipt)) if fixed_profile_receipt is not None else None
+    proof = read_json(fixed_profile_receipt) if fixed_pin is not None else None
+    if fixed_pin is not None and not isinstance(proof, dict):
+        raise ValueError("Expected the fixed-profile dispatch receipt object")
+    fixed = read_fixed_profile(pack, fixed_payload, fixed_profile.name, proof)
     core, core_plans, core_pins = read_core_archive(pack, core_release, receipt_path=core_receipt, known_digest=CORE_SHA256)
+    legacy = core_pins[str(core_release)] == CORE_SHA256
+    configuration_inputs = pack.Inputs()
+    rig, core_chains = pack._fsmp_core_chains(configuration_inputs)
     profile = Path(__file__).with_name('current-010.json')
     _, male_anatomy_hidden = require_reviewed_body(pack, core, core_plans, read_json(profile))
     sources = (Path(__file__), profile, PACKAGER, PACKAGER.with_name("build-unified-release.py"), CORE_INPUT_SOURCE,
@@ -68,14 +92,22 @@ def build(fixed_profile, core_release, skeleton, pynifly, out, *, core_receipt=N
                Path(fsmp_motion.head_split.__file__), Path(fsmp_motion.materials.__file__),
                Path(sys.modules["vr_dispatch"].__file__), Path(sys.modules["body_resource"].__file__))
     pins = [common.pin(path) for path in (fixed_profile, skeleton, *sources)]
+    if fixed_pin is not None:
+        pins.append(fixed_pin)
     for path, digest in core_pins.items():
         pin = common.pin(Path(path))
         if pin['sha256'] != digest:
             raise ValueError('Core archive or receipt changed after readback')
         pins.append(pin)
-    fixed = pack.read_zip(fixed_payload)
     config = ET.fromstring(fixed["fomod/ModuleConfig.xml"])
     static_plans = [plan for plan in core_plans if plan.get("physics") in {None, "none"}]
+    motion_paths = {pack.MOTION_XML + sex.title() + ".xml" for sex in SEXES}
+    motion_routes = [{row["path"]: row["source"] for row in plan["files"] if row["path"] in motion_paths}
+                     for plan in core_plans if plan.get("physics") == "fsmp"]
+    if not motion_routes or set(motion_routes[0]) != motion_paths or any(row != motion_routes[0] for row in motion_routes):
+        raise ValueError("Core FSMP selections must share the same two motion XML routes")
+    if any({row["path"] for row in plan["files"]} & (motion_paths | {LEGACY_ALIAS}) for plan in static_plans):
+        raise ValueError("Core None selection conflicts with the world motion overlay")
     destinations = {f"{pack.MESH}/{sex}{role}_{weight}.nif" for sex in SEXES
                     for role in ("bodywerewolf", "PlayerWerewolf") for weight in (0, 1)}
     core_off = static_routes(static_plans, destinations)
@@ -90,8 +122,10 @@ def build(fixed_profile, core_release, skeleton, pynifly, out, *, core_receipt=N
         require_static_nif(original, expected_sex=sex)
         breast = sex == "female"
         xml = pack.MOTION_XML + sex.title() + ".xml"
-        xml_payload = core[pack.MOTION_PREFIX + "FSMP/" + xml]
-        if xml_payload != fsmp_motion.render_xml(breast):
+        xml_payload = core[motion_routes[0][xml]]
+        authored = fsmp_motion.render_xml(breast)
+        expected = authored if legacy else pack._tail_only_fsmp_rig(authored, rig, core_chains[sex.title()])
+        if xml_payload != expected:
             raise ValueError("Released FSMP motion XML differs from its authored rig")
         root = ET.fromstring(xml_payload)
         required = {bone.get("name") for bone in root.findall("bone")}
@@ -101,14 +135,13 @@ def build(fixed_profile, core_release, skeleton, pynifly, out, *, core_receipt=N
         anatomy_edit = None
         if sex == "male" and male_anatomy_hidden:
             original, anatomy_edit = anatomy_visibility.hide_core_anatomy(original)
-            if anatomy_edit is None:
-                raise ValueError("Expected one visible anatomy shape in the fixed male carrier")
         overlay, binding = fsmp_motion.bind_nif(original, xml)
         staged[sex] = (source, xml, xml_payload, drivers, overlay, binding, anatomy_edit)
 
     out.mkdir(parents=True)
     report = {"schema": "claw-fixed-profile-vr-world-motion/1", "inputs": pins, "dependencies": dependencies,
               "coreVersion": core_version(core), "baseSelection": "None", "overlayDestination": LEGACY_ALIAS,
+              "motionRig": "legacy-full" if legacy else "tail-only",
               "maleAnatomy": "hidden" if male_anatomy_hidden else "visible-legacy-diagnostic",
               "coreOffModelHashes": {dest: pack.sha(core[source]) for dest, source in core_off.items()},
               "requiredCoreStaticPlans": len(static_plans), "outputs": {},
@@ -130,9 +163,9 @@ def build(fixed_profile, core_release, skeleton, pynifly, out, *, core_receipt=N
             members = {LEGACY_ALIAS: overlay, xml: xml_payload}
             visible_counts = {bone: sum(count for name, count in shapes.items() if name in visible)
                               for bone, shapes in coverage.items()}
-            moving = set(common.source.NODES[4:] + (common.source.BREAST_NODES if sex == "female" else ()))
+            moving = (common.source.NODES[4:] + (common.source.BREAST_NODES if sex == "female" else ())) if legacy else drivers
             if any(not visible_counts[bone] for bone in moving):
-                raise ValueError("Missing visible tail or breast influence")
+                raise ValueError("Missing visible influence for an expected motion driver")
             validated[sex] = members
             report["outputs"][sex] = {"fromAliasMember": source,
                                        "members": {name: pack.sha(data) for name, data in members.items()},
@@ -140,6 +173,7 @@ def build(fixed_profile, core_release, skeleton, pynifly, out, *, core_receipt=N
                                                        "sha256": pack.sha(fixed["shared/" + resource_paths(sex)])},
                                        "binding": binding, "anatomyFlagEdit": anatomy_edit, "driverVertices": coverage,
                                        "visibleDriverVertices": visible_counts}
+    configuration_inputs.verify()
     common.unchanged([*pins, *dependencies])
     for sex, members in validated.items():
         archive = out / f"test_CLAW VR World Motion - {sex.capitalize()}.zip"
@@ -156,6 +190,7 @@ def main(argv=None):
     for name in ("fixed-profile", "core-release", "skeleton", "pynifly", "out"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument('--core-receipt', type=Path, help='Read the exact current core ZIP through its build receipt')
+    parser.add_argument('--fixed-profile-receipt', type=Path, help='Read a freshly built fixed-profile ZIP through its dispatch receipt')
     try:
         report = build(**vars(parser.parse_args(argv)))
     except (OSError, ValueError, KeyError, RuntimeError) as error:

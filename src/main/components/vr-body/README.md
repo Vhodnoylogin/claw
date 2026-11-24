@@ -136,8 +136,10 @@ and posed contact gates still require their own in-game fixtures.
 
 `world_motion.py` builds one detached FSMP overlay for each fixed-profile sex.
 For a current core candidate, use its ZIP as `--core-release` and its
-`build-receipt.json` as `--core-receipt`. The builder rechecks the serialized
-choices, confirms the static body routes and uses the exact matching FSMP rigs.
+`build-receipt.json` as `--core-receipt`. With a freshly built fixed-profile
+archive, pass its `dispatch-build.json` as `--fixed-profile-receipt`. The
+builder rechecks the serialized choices, confirms the static body routes and
+uses the same tail-only FSMP XML selected by the core installer.
 The historical command below uses the pinned 0.10.0 core archive. Both paths
 use the existing fixed-profile diagnostic archive. Each output contains the selected legacy NIF and its exact
 released FSMP XML. The matching namespaced TRI stays supplied by the
@@ -150,10 +152,10 @@ This restores the fixed-profile static mesh.
 python -B src/main/components/vr-body/world_motion.py --fixed-profile '<fixed profile ZIP>' --core-release '<original 0.10.0 ZIP>' --skeleton '<reviewed XP32 NIF>' --pynifly '<public PyNifly add-on>' --out '<new external trial directory>'
 ```
 
-The NIF adds one Scene Root hook. The native file reader checks stored driver
-influence and the original TRI link. Tail and female breast influences include
-visible file shapes. Ear influences belong to shapes marked hidden in this
-carrier. Qualify the live world route first by checking the loaded Body32
+The NIF adds one Scene Root hook. The native file reader checks each driven
+bone's influence on visible geometry and the original TRI link. The pinned
+historical 0.10.0 trial retains its original full rig and its ear and breast
+driver checks. Qualify the live world route by checking the loaded Body32
 identity, one FSMP system for the actor and normal retirement. The separate
 native first-person graph needs its own qualification.
 

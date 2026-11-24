@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT / "src/main/components/vr-body"))
 from vr_dispatch import ADDON, LEGACY_ALIAS, SEXES, fixed_profile_xml, resource_paths
 from core_archive import anatomy_visibility, read_core_archive, require_reviewed_body, static_routes
 from core_package_input import core_version
-from world_motion import alias_member
+from world_motion import alias_member, read_fixed_profile
 
 
 class CoreArchiveAdmissionTests(unittest.TestCase):
@@ -54,6 +54,24 @@ class CoreArchiveAdmissionTests(unittest.TestCase):
                     receipt.write_text(json.dumps(valid | mutation))
                     with self.assertRaisesRegex(ValueError, 'receipt'):
                         read_core_archive(pack, archive, receipt_path=receipt)
+
+    def test_fresh_fixed_profile_requires_its_archive_and_member_receipt(self):
+        raw = b'fixed profile archive'
+        files = {f'profiles/{sex}/{Path(LEGACY_ALIAS).name}': sex.encode() for sex in SEXES}
+        digest = lambda payload: sha256(payload).hexdigest()
+        pack = SimpleNamespace(sha=digest, read_zip=lambda _: files)
+        name = 'fixed.zip'
+        receipt = {'status': 'VR_DISPATCH_CANDIDATE', 'archive': name,
+                   'archiveMode': 'fixed-profile-fomod', 'legacyAlias': LEGACY_ALIAS,
+                   'archiveSha256': digest(raw),
+                   'payloadSha256': {member: digest(data) for member, data in files.items()}}
+        self.assertEqual(read_fixed_profile(pack, raw, name, receipt), files)
+        with self.assertRaisesRegex(ValueError, 'reviewed fixed-profile archive'):
+            read_fixed_profile(pack, raw, name)
+        for mutation in ({'archive': 'stale.zip'}, {'archiveSha256': '0' * 64},
+                         {'archiveMode': 'standard'}, {'payloadSha256': {}}):
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, 'dispatch receipt'):
+                read_fixed_profile(pack, raw, name, receipt | mutation)
 
     def test_body_routes_must_be_shared_by_every_physics_off_choice(self):
         route = {'path': 'body.nif', 'source': 'static/body.nif'}
