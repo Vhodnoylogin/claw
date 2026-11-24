@@ -3,6 +3,7 @@ import copy
 import json
 import os
 from pathlib import Path
+import struct
 import sys
 import tempfile
 import unittest
@@ -25,9 +26,16 @@ def symbolic(xml):
     roles = (*readback.anchors(), *readback.roles())
     tokens = {name: i for i, name in enumerate(roles, 1)}
     names = readback.node_names()
+    landmarks = {probe.MALE[0]: (0, -6.), probe.MALE[2]: (0, 6.),
+                 'WWLB 1': (2, -2.), 'WWRB 1': (2, 2.)}
 
     def transform(name, local=False):
-        return {'translation': [20. * names.index(name), 0., 1.],
+        position = [20. * names.index(name), 0., 1.]
+        if name in landmarks:
+            axis, offset = landmarks[name]
+            position = transform(profile[name]['parent'])['translation']
+            position[axis] += offset
+        return {'translation': position,
                 'rotationRowMajor': list(ROTATION), 'scale': 1. if local else readback.SCALE}
 
     identity = {'form': REF, 'loadGeneration': 1, 'runtimeHandle': 92}
@@ -48,12 +56,16 @@ def symbolic(xml):
                         'identity': identity, 'rootIdentity': root, 'world': transform(name),
                         'local': transform(name, True)} for name in names]}
     edges = []
+    def parsed_float(value):
+        return struct.unpack('<f', struct.pack('<f', value))[0]
+
     for index, (driver, config) in enumerate(profile.items(), 1):
         values = {}
         for key, (linear, angular) in rig.PARAMETER_PAIRS.items():
             ls, rs = ((readback.SCALE, 1) if key in ('lowerLimit', 'upperLimit')
-                      else (readback.SCALE**3, readback.SCALE**5) if key == 'stiffness' else (1, 1))
-            values[key] = [x*ls for x in config['declared'][linear]] + [x*rs for x in config['declared'][angular]]
+                      else (1.4428969621658325, 1.8424350023269653) if key == 'stiffness' else (1, 1))
+            values[key] = [parsed_float(x)*ls for x in config['declared'][linear]] + [
+                parsed_float(x)*rs for x in config['declared'][angular]]
         values.update(springEnabled=[True]*6, stopERP=[.2]*6, stiffnessLimited=[True]*6, dampingLimited=[True]*6)
         edges.append({'token': index, 'bodyAToken': tokens[config['parent']], 'bodyBToken': tokens[driver],
                       'type': 12, 'enabled': True, 'status': 'spring2', 'spring2': values})
@@ -162,6 +174,13 @@ class Male12ReadbackTests(unittest.TestCase):
                 objects[-1]['maximumPostWorld'] = list(objects[-2]['maximumPostWorld'])
         with self.assertRaisesRegex(ValueError, 'ambiguous'):
             self.evaluate(case)
+
+    def test_directed_association_accepts_a_dynamic_pose_from_another_phase(self):
+        case = copy.deepcopy(self.case)
+        driver = readback.roles()[1]
+        scene_bone = next(node for node in case[0]['nodes'] if node['name'] == driver)
+        scene_bone['world']['translation'][1] += .3
+        self.assertEqual(self.evaluate(case)['tokens'][driver], self.evaluate()['tokens'][driver])
 
     def test_missing_changed_skin_resource_pin_rejected(self):
         with tempfile.TemporaryDirectory() as folder:

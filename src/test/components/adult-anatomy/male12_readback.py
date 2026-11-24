@@ -12,6 +12,7 @@ import importlib.util
 import json
 import math
 from pathlib import Path
+import struct
 import sys
 
 HERE = Path(__file__).resolve().parent
@@ -204,27 +205,75 @@ def _associate(row, window, profile):
     probe, rig, uniform, _ = shared()
     objects = {body['token']: body for body in window['objects']}
     require(len(objects) == len(roles()) + len(anchors()), 'Exact fifteen-body solver inventory required')
+    children = {token: [] for token in objects}
+    for edge in window['incidentConstraints']['constraints']:
+        children[edge['bodyAToken']].append(edge['bodyBToken'])
+
     tokens = {}
-    for name in (*anchors(), *roles()):
+    for name in anchors():
         pose = row['nodes'][name]['world']
-        dynamic = name in profile
         candidates = [token for token, body in objects.items()
-                      if (rig._dynamic if dynamic else rig._kinematic)(body['lastPost'])
-                      and probe.max_delta(body['lastPost']['world'][9:], pose['translation']) <= rig.joint.TRANSLATION_MATCH
-                      and probe.max_delta(body['lastPost']['world'][:9], pose['rotationRowMajor']) <= rig.joint.ROTATION_MATCH]
-        require(len(candidates) == 1, 'Missing or ambiguous solver pose: ' + name)
+                      if all(rig._kinematic(body[stage])
+                             and probe.max_delta(body[stage]['world'][9:], pose['translation']) <= rig.joint.TRANSLATION_MATCH
+                             and probe.max_delta(body[stage]['world'][:9], pose['rotationRowMajor']) <= rig.joint.ROTATION_MATCH
+                             for stage in rig.joint.STAGES)]
+        require(len(candidates) == 1, 'Missing or ambiguous kinematic anchor: ' + name)
         tokens[name] = candidates[0]
+
+    def native_pose(token, stage):
+        values = objects[token][stage]['world']
+        return {'rotationRowMajor': values[:9], 'translation': values[9:], 'scale': SCALE}
+
+    # The observer samples the scene on the game thread and Bullet at its
+    # callback boundaries. Match only stable anchors by pose and follow the
+    # directed graph. Bilateral branches must agree with their scene landmarks.
+    branches = {probe.MALE[0]: (0, -1), probe.MALE[2]: (0, 1),
+                'WWLB 1': (2, -1), 'WWRB 1': (2, 1)}
+    for name, parent in parents().items():
+        parent_token = tokens[parent]
+        candidates = children[parent_token]
+        if name in branches:
+            axis, sign = branches[name]
+            observed = probe.relative(row['nodes'][name]['world'], row['nodes'][parent]['world'])
+            require(sign * observed['translation'][axis] > 1, 'Ambiguous scene branch: ' + name)
+            require(len(candidates) == 2, 'Unexpected directed branch: ' + name)
+            candidates = [token for token in candidates if all(
+                sign * probe.relative(native_pose(token, stage),
+                                      native_pose(parent_token, stage))['translation'][axis] > 1
+                for stage in rig.joint.STAGES)]
+        require(len(candidates) == 1, 'Missing or ambiguous directed solver role: ' + name)
+        token, = candidates
+        tokens[name] = token
+        wanted = profile[name]
         for stage in rig.joint.STAGES:
-            body = objects[candidates[0]][stage]
-            require((rig._dynamic if dynamic else rig._kinematic)(body), 'Body type changed: ' + name)
-            if dynamic:
-                wanted = profile[name]
-                require(abs(body['inverseMass'] - 1 / (wanted['mass'] * SCALE**3)) <= uniform.MASS_TOLERANCE,
-                        'Scaled inverse mass differs: ' + name)
-                require(probe.max_delta(body['inverseLocalInertia'], [1 / (x * SCALE**5) for x in wanted['inertia']])
-                        <= uniform.MASS_TOLERANCE, 'Scaled inverse inertia differs: ' + name)
+            body = objects[token][stage]
+            require(rig._dynamic(body), 'Body type changed: ' + name)
+            require(abs(body['inverseMass'] - 1 / (wanted['mass'] * SCALE**3)) <= uniform.MASS_TOLERANCE,
+                    'Scaled inverse mass differs: ' + name)
+            require(probe.max_delta(body['inverseLocalInertia'], [1 / (x * SCALE**5) for x in wanted['inertia']])
+                    <= uniform.MASS_TOLERANCE, 'Scaled inverse inertia differs: ' + name)
     require(len(set(tokens.values())) == len(objects), 'Full injective male12 role association required')
     return tokens
+
+
+def _float32(value):
+    return struct.unpack('<f', struct.pack('<f', value))[0]
+
+
+def _expected_spring2(declared, pairs):
+    # FSMP parses XML as float32 and forms scale powers in float32 before
+    # multiplying the stored fields. This rig uses one uniform 1.13 scale.
+    squared = _float32(SCALE * SCALE)
+    cubed = _float32(squared * SCALE)
+    fifth = _float32(cubed * squared)
+    factors = {'lowerLimit': (SCALE, 1), 'upperLimit': (SCALE, 1), 'stiffness': (cubed, fifth)}
+    expected = {}
+    for key, (linear, angular) in pairs.items():
+        ls, ars = factors.get(key, (1, 1))
+        expected[key] = [_float32(_float32(x) * ls) for x in declared[linear]] + [
+            _float32(_float32(x) * ars) for x in declared[angular]]
+    return {**expected, 'springEnabled': [True] * 6, 'stopERP': [.2] * 6,
+            'stiffnessLimited': [True] * 6, 'dampingLimited': [True] * 6}
 
 
 def evaluate_configuration(xml, world, native_before, native_after, *, reference, base, pid, nonce):
@@ -253,22 +302,16 @@ def evaluate_configuration(xml, world, native_before, native_after, *, reference
             'Advancing unchanged native configuration bracket required')
     tokens = _associate(row, start, profile)
     require(tokens == _associate(row, end, profile), 'Run-local male12 role association changed')
-    expected = {}
-    for driver, config in profile.items():
-        wanted = {}
-        for key, (linear, angular) in rig.PARAMETER_PAIRS.items():
-            linear_scale, angular_scale = ((SCALE, 1) if key in ('lowerLimit', 'upperLimit')
-                                          else (SCALE**3, SCALE**5) if key == 'stiffness' else (1, 1))
-            wanted[key] = [x*linear_scale for x in config['declared'][linear]] + [x*angular_scale for x in config['declared'][angular]]
-        wanted.update(springEnabled=[True]*6, stopERP=[.2]*6, stiffnessLimited=[True]*6, dampingLimited=[True]*6)
-        expected[config['parent'], driver] = {**config, 'expected': wanted}
+    expected = {(config['parent'], driver): {
+        **config, 'expected': _expected_spring2(config['declared'], rig.PARAMETER_PAIRS),
+    } for driver, config in profile.items()}
     return {'status': 'configured-se-rig-observed', 'component': 'CLAW.neutral-anatomy.male12',
             'pid': pid, 'nonce': nonce, 'loadEpoch': after['sample']['loadEpoch'], 'sex': 'male', 'reference': reference,
             'worldSample': row['sample'], 'worldGuard': guard, 'firstPreQpc': start['firstPreQpc'],
             'bracketingLastPostQpc': [start['lastPostQpc'], end['lastPostQpc']], 'tokens': tokens,
             'joints': rig._observe_joints(end, tokens, expected), 'xmlSha256': digest(xml),
             'runtimeQualified': False, 'contactQualified': False, 'renderedMeshAttachmentQualified': False,
-            'scope': 'Exact male12 poses, scaled body mass/inertia and Spring2 values only. '
+            'scope': 'Exact male12 anchor poses, directed graph, side landmarks, scaled body mass/inertia and Spring2 values. '
                      'Joint frames/equilibria are authored declarations; no direct owner getter, motion or contact acceptance.'}
 
 
