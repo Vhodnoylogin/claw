@@ -45,7 +45,7 @@
   ],
   "providerProfiles": [
     {"id": "stock", "vrik": false, "higgs": false, "referenceRuns": ["20261124-175324-4213ef"]},
-    {"id": "vrik", "vrik": true, "higgs": false, "referenceRuns": ["20261124-180301-0e5e1e", "20261124-181745-0ebb2c"]},
+    {"id": "vrik", "vrik": true, "higgs": false, "referenceRuns": ["20261124-180301-0e5e1e", "20261124-181745-0ebb2c", "20261124-182546-bad57d"]},
     {"id": "vrik-higgs", "vrik": true, "higgs": true, "referenceRuns": ["20261124-180753-e45674"]},
     {"id": "higgs", "vrik": false, "higgs": true, "referenceRuns": ["20261124-180514-37822d"]}
   ],

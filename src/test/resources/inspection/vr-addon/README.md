@@ -71,13 +71,13 @@ contact. Historical XML with ear or breast motion is its own control.
 | VRIK | HIGGS | Retained evidence and next check |
 | --- | --- | --- |
 | Off | Off | `20261124-175324-4213ef` completed ordinary Beast Form and the world diagnostic on core 0.11.0. Use this arm as the fallback control. |
-| On | Off | `20261124-180301-0e5e1e` completed the core diagnostic. `20261124-181745-0ebb2c` loaded the actual male fixed-profile 0.5.0 body in the world and verified the same nonzero `CLAWTorsoGirth` value from both CLAW and RaceMenu. |
+| On | Off | `20261124-180301-0e5e1e` completed the core diagnostic. `20261124-181745-0ebb2c` loaded the actual male fixed-profile 0.5.0 body in the world and verified the same nonzero `CLAWTorsoGirth` value from both CLAW and RaceMenu. `20261124-182546-bad57d` repeated the body check and passed natural expiry and morph cleanup for the same actor. |
 | On | On | `20261124-180753-e45674` completed the core diagnostic with both providers loaded. Check HIGGS hand contacts and headset visibility separately. |
 | Off | On | `20261124-180514-37822d` completed the core diagnostic with HIGGS alone. Qualify add-on body and hands separately. |
 
-All four core runs covered the player world graph. The exact body run reported
+All four core runs covered the player world graph. The exact body runs reported
 an unloaded first-person armor graph. Headset presentation, applied vertex
-displacement and natural return still require separate captures.
+displacement and the female transformation lifecycle remain open.
 
 An absent HIGGS callback leaves the post-HIGGS collector unavailable. Use the
 admitted topology and ordinary World Observer for the fallback path. Keep the
