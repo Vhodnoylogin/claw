@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from coat_regional_readback import compare_pairs, expected_paths, inspect_regions, verify_human
 from coat_persistence_readback import require
+from coat_scene_capture import capture_game_frame
 
 
 PALETTE = Path(__file__).resolve().parents[2] / 'resources/inspection/regional-coats/pairs.json'
@@ -16,7 +17,7 @@ PLAYER = '0x00000014'
 WOLF_RACE = '0x000CDD84'
 CELL = '0x00032AE7'  # QASmoke in Skyrim.esm
 WALL_X, FLOOR_Z = -2697.94482421875, 6976.4501953125
-CAMERA = (-2319.94482421875, 1740., FLOOR_Z)
+CAMERA = (-2279.94482421875, 1740., FLOOR_Z)
 ROLES = ('Human', 'Wolf')
 
 
@@ -44,12 +45,14 @@ def session_policy(config, palette):
 
 
 class RegionalScene:
-    def __init__(self, session, palette, appearance, coat_mode, dwell):
+    def __init__(self, session, palette, appearance, coat_mode, dwell, *, capture=False):
         from skyrim_autotest import fixture_actors, interactive_bindings, native
+        from skyrim_autotest.runner import atomic_json
 
         self.session = session
         self.fixture, self.bindings = fixture_actors, interactive_bindings
         self.native = native
+        self.atomic_json = atomic_json
         self.policy = session_policy(session.state['configuration'], palette)
         self.game = session.state['game']
         require(any(row['role'] == 'game' and row['identity'] == self.game for row in session.state['owned'])
@@ -58,18 +61,17 @@ class RegionalScene:
         self.fixed = palette['fixedCoat'] if coat_mode == 'fixed' else None
         self.appearance = appearance
         self.dwell = dwell
+        self.capture = capture
         self.end = time.monotonic() + 307 + dwell
         self.path = session.dir / 'claw-regional-scene.json'
         require(not self.path.exists() and not session.state.get('interactiveActorFixtures'),
                 'Scene may only create actors once in a fresh run')
         self.data = {'run': session.state['id'], 'game': self.game, 'palette': palette,
                      'coatMode': coat_mode, 'dwellSeconds': dwell, 'actors': {}, 'pairs': {}, 'rawAudits': {},
-                     'status': 'PREPARING', 'intent': None, 'unknownMutation': False}
+                     'frames': {}, 'status': 'PREPARING', 'intent': None, 'unknownMutation': False}
 
     def save(self):
-        pending = self.path.with_suffix('.tmp')
-        pending.write_text(json.dumps(self.data, indent=2) + '\n', encoding='utf-8')
-        pending.replace(self.path)
+        self.atomic_json(self.path, self.data)
 
     def mutate(self, label, call):
         require(not self.data['unknownMutation'], 'Previous scene write uncertain')
@@ -213,7 +215,8 @@ class RegionalScene:
 
     def layout(self):
         self.pose(PLAYER, CAMERA, 270.)
-        row = [self.spec(actor)['reference'] for _, _, actor, _, _ in actors(self.pairs)]
+        wall_row = sorted(actors(self.pairs), key=lambda entry: entry[-1])
+        row = [self.spec(actor)['reference'] for _, _, actor, _, _ in wall_row]
         refs = [PLAYER, *row]
         previous = {}
 
@@ -233,21 +236,33 @@ class RegionalScene:
 
         return self.poll(lambda: self.view(refs), stable, 10, 'Actors and camera did not settle in QASmoke')
 
-    def sample(self, label):
+    def sample_materials(self, label):
         groups = []
         for index, pair in enumerate(self.pairs):
             wolf = tag(index, 'Wolf')
             selected = self.fixed or self.data['pairs'][pair['name']]['automaticPattern']
             earlier = self.data['rawAudits'][wolf]
             audit = self.audit(wolf)
-            earlier_audits = [earlier[key] for key in ('automatic', 'first') if key in earlier]
-            if earlier_audits:
-                require(int(audit['sample']) > int(earlier_audits[-1]['sample']), 'Replayed material sample: ' + wolf)
+            prior = max(int(row['sample']) for row in earlier.values())
+            require(int(audit['sample']) > prior, 'Replayed material sample: ' + wolf)
             earlier[label] = audit
             self.save()
             groups.append(inspect_regions(audit, pair, expected_paths(self.appearance, selected)))
         self.data[label] = compare_pairs(groups, self.pairs) if self.fixed else groups
         self.save()
+
+    def sample(self, label):
+        if self.capture:
+            bracket = label + 'BeforeFrame'
+            self.sample_materials(bracket)
+            self.data['frames'][label] = capture_game_frame(self.native, self.game, self.session.dir / (label + '.png'))
+            self.save()
+        self.sample_materials(label)
+        if self.capture:
+            for index, _ in enumerate(self.pairs):
+                audits = self.data['rawAudits'][tag(index, 'Wolf')]
+                require(audits[bracket]['modelGeneration'] == audits[label]['modelGeneration'],
+                        'Wolf model changed during frame capture')
 
     def release_crosshair(self):
         def target():
@@ -307,6 +322,7 @@ def main():
     parser.add_argument('--scenario', required=True, type=Path, help='Read-only QASmoke bootstrap with the qualified save pins')
     parser.add_argument('--appearance', required=True, type=Path, help='Effective candidate CoatMapping.xml / CoatLibrary.xml directory')
     parser.add_argument('--coat-mode', choices=('fixed', 'automatic'), default='fixed')
+    parser.add_argument('--capture', action='store_true', help='Capture an owned FHD game frame between material audits')
     parser.add_argument('--dwell', type=int, choices=range(3, 121), metavar='SECONDS', default=3,
                         help='Passive wait (3–120 seconds) between the two material audits')
     args = parser.parse_args()
@@ -332,7 +348,8 @@ def main():
     def execute(session, admitted_scenario):
         require(admitted_scenario == scenario, 'Bootstrap changed after admission')
         original_execute(session, admitted_scenario)
-        RegionalScene(session, palette, args.appearance, args.coat_mode, args.dwell).run(preview=args.mode == 'preview')
+        RegionalScene(session, palette, args.appearance, args.coat_mode, args.dwell, capture=args.capture).run(
+            preview=args.mode == 'preview')
 
     # The runner imports execute at the point of use. Keep the adapter local to this invocation.
     with patch.object(scenarios, 'execute', execute):

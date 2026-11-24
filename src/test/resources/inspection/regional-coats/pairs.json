@@ -7,11 +7,11 @@
       "hair": [20, 20, 24], "skinRecordRGB8": [185, 179, 170], "inventory": ["0x0001397E", "0x000B8761"]
     },
     {
-      "name": "Idgrod the Younger", "base": "0x000135EC", "race": "0x00013746", "humanY": 1635.0, "wolfY": 1705.0,
+      "name": "Idgrod the Younger", "base": "0x000135EC", "race": "0x00013746", "humanY": 1775.0, "wolfY": 1845.0,
       "hair": [20, 20, 24], "skinRecordRGB8": [221, 221, 221], "inventory": ["0x00013986", "0x001046D1"]
     },
     {
-      "name": "Argi Farseer", "base": "0x00013602", "race": "0x00013746", "humanY": 1775.0, "wolfY": 1845.0,
+      "name": "Argi Farseer", "base": "0x00013602", "race": "0x00013746", "humanY": 1635.0, "wolfY": 1705.0,
       "hair": [81, 77, 57], "skinRecordRGB8": [185, 179, 170], "inventory": ["0x0009E2A6", "0x0001397E"]
     },
     {

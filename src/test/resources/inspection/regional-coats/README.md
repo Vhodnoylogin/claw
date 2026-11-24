@@ -9,12 +9,13 @@ the wolf copy's recorded equipment and holds the four pairs at the QASmoke wall.
 | Pair | Hair | Skin |
 | --- | --- | --- |
 | Olda | Dark | Medium |
-| Idgrod the Younger | Dark | Light |
 | Argi Farseer | Blond | Medium |
+| Idgrod the Younger | Dark | Light |
 | Angi | Blond | Light |
 
-Compare Olda with Idgrod and Argi with Angi for skin. Compare Olda with Argi
-and Idgrod with Angi for hair.
+The two left pairs isolate hair at the same medium skin tone. The two right
+pairs do the same for light skin. Compare Olda with Idgrod or Argi with Angi
+to isolate skin with the same hair input.
 
 ## Run the scene
 
@@ -37,7 +38,7 @@ Keep the reusable bootstrap JSON in the local test directory. It requires
 python -B src/test/python/integration/coat_regional_scene.py preview `
   --config '<local Autotest config.json>' --profile '<TEST SE profile>' `
   --scenario '<local QASmoke bootstrap.json>' --appearance '<candidate appearance directory>' `
-  --coat-mode fixed
+  --coat-mode fixed --capture
 ```
 
 `preview` leaves the scene ready for manual inspection until Skyrim exits.
@@ -47,14 +48,16 @@ and then uses Valley Grey for all wolves. `automatic` leaves each automatic
 coat in place for an end-to-end comparison. Use `--dwell 90` in a diagnostic
 run to check for changes after the initial sample. The run directory contains
 `claw-regional-scene.json` with the owned references and material observations.
+On Windows, `--capture` requires Pillow with window capture support and an
+owned 1920×1080 Skyrim SE window. It saves two PNGs locally with each frame
+bracketed by material audits. It does not need to activate the game window.
 
 ## What counts as a pass
 
-The technical check reads the surface texture, RGB and material alpha twice.
-It does not sample the rendered frame. In the first owner review, all four
-wolves reported Valley Grey before handoff. Later screenshots showed three
-black wolves and one white wolf, so the rendered comparison failed. That run
-has no material capture synchronized to the screenshots. For a follow-up,
-sample the same four references and capture the frame together. Compare fixed
-and automatic coats separately, using the earlier distinct Brown and White
-fixtures as visible controls if they are present in the bootstrap.
+The technical check reads the surface texture, RGB and material alpha. Check
+the PNGs separately to establish the visible result. In the first owner review,
+all four wolves reported Valley Grey but the screenshots showed three black
+wolves and one white wolf. A later run reproduced this with audits on both
+sides of the frame. Matching material fields alone cannot pass the scene.
+Compare fixed and automatic coats separately, using the earlier distinct Brown
+and White fixtures as visible controls if they are present in the bootstrap.
