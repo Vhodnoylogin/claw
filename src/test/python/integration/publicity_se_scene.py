@@ -56,8 +56,11 @@ def verify_coat_controls(groups, human):
 
 
 class PublicityScene(RegionalScene):
-    def __init__(self, session, appearance, scene_path=SCENE, *, black_gate=False):
+    def __init__(self, session, appearance, scene_path=SCENE, *, black_gate=False, subject=None):
         scene, palette = load_scene(scene_path, black_gate=black_gate)
+        if subject is not None:
+            palette['pairs'] = [pair for pair in palette['pairs'] if pair['name'] == subject]
+            require(len(palette['pairs']) == 1, 'Expected one distinct publicity subject: ' + subject)
         super().__init__(session, palette, appearance, 'discrete', 3, capture=True)
         self.morph = scene['morphComparison']
         stage = scene['stage']
@@ -226,6 +229,16 @@ class PublicityScene(RegionalScene):
         for role in ROLES:
             self.papyrus('ObjectReference', 'DisableNoWait', [False], 'none',
                          self.spec(tag(index, role))['reference'], write=True)
+
+    def return_to_human(self, actor, pair):
+        self.guard(actor)
+        self.session.state['activeSemanticCommandId'] = 'preview-return-' + actor
+        self.mutate('Return the wolf to human form', lambda: self.bindings.guarded_call(self.session,
+            {'bindingId': 'morph_race', 'self': self.spec(actor), 'args': [pair['race']]}, self.deadline(), self.policy))
+        self.poll(lambda: self.guard(actor)['actor']['race'], lambda race: race == pair['race'], 12.,
+                  'The wolf did not return to human form')
+        self.poll(lambda: self.claw(actor, 'GetStatus', 'int'), lambda status: status == 5, 12.,
+                  'The human retained the old wolf morph state')
 
     def photograph(self):
         self.session.phase('Photograph the CLAW paired colour controls in QASmoke', self.prep_seconds)

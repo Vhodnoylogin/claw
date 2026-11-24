@@ -1,6 +1,6 @@
 # SE reference photos
 
-These two nonshipping scenes use the same lit wall bay in QASmoke. One copy
+These nonshipping scenes use the same lit wall bay in QASmoke. One copy
 of each actor stays human. The second starts as an identical human and
 transforms after the source readback. The camera and standing marks remain
 fixed across the series. The script hides the HUD for capture and restores it
@@ -35,13 +35,39 @@ receives a manual coat selection.
 
 ## Full coat gallery
 
-Use the same release profile and QASmoke bootstrap, then call
-`PublicityCoatCatalog(session, appearance).run('coat')`. The gallery retains
-one copy of Angi and one transformed twin for all ten canonical Elegant
-patterns, in serialized range order. It uses the room's original lights.
-Every frame checks the requested and applied manual choice and the managed
-material paths on the same wolf. Aliases share existing textures and are
-not additional gallery entries.
+Use a fresh release profile and QASmoke bootstrap with only Angi's base
+(`0x000CAB2F`), the Nord and WerewolfBeast races, and the guarded `morph_race`
+binding admitted. Call `PublicityCoatCatalog(session, appearance).run('coat')`.
+The scene retains Angi and her twin for all entries. The twin returns to
+human form between entries, receives the next coat, and transforms onto a
+fresh wolf model. Live material swaps can darken the old model even with
+the correct texture bindings and fixed room lights. The gallery uses one
+neutral fill throughout and restores the original lights after capture.
+Each frame checks the requested and applied choice, the bound material paths
+on twelve surfaces, the new model identity, and the camera and subject marks.
+
+The shipped Randomized provider offers ten canonical entries. To photograph
+all 34 original Elegant Replacer 2K 2.1 patterns, prepare the owner-supplied
+archive using `src/main/python/build-tools/coat_library.py`. For the disposable
+profile, use `compact_replacer_library(library)` for `CoatLibrary.xml` and
+`replacer_catalog_mapping(base_mapping, library)` for `CoatMapping.xml`.
+The compact projection keeps the original DDS paths, sizes and hashes within
+the existing runtime XML limit. The test mapping assigns each original its
+own material, including Gold, Ginger and Amber. The configured discrete
+palette keeps the render on the original-colour shader path for manual choices.
+Keep both XML projections, the installed original textures and captures local.
+
+## Human skin and hair references
+
+Use `human_palette()` from `publicity_human_palette.py` to admit the exact
+nine base IDs and their races plus WerewolfBeast in a fresh session. Call
+`PublicityHumanPalette(session, appearance).run()` after QASmoke bootstrap.
+It photographs five skin tones with identical dark hair, three hair colours
+with identical medium skin, and grey versus platinum with identical fair
+skin. There is one fixed portrait mark, camera and neutral fill. Before and
+after every frame the runner verifies source RGB and actor and camera state.
+The `claw-human-palette.json` receipt distinguishes material RGB from the
+lit pixels of a screenshot.
 
 ## Light-coat morph transfer
 

@@ -13,16 +13,6 @@ class PublicityMorphSeries(PublicityScene):
         self.data['seriesCoat'] = coat
         self.data['series'] = {}
 
-    def return_to_human(self, actor, pair):
-        self.guard(actor)
-        self.session.state['activeSemanticCommandId'] = 'preview-return-' + actor
-        self.mutate('Return the wolf to human form', lambda: self.bindings.guarded_call(self.session,
-            {'bindingId': 'morph_race', 'self': self.spec(actor), 'args': [pair['race']]}, self.deadline(), self.policy))
-        self.poll(lambda: self.guard(actor)['actor']['race'], lambda race: race == pair['race'], 12.,
-                  'The wolf did not return to human form')
-        self.poll(lambda: self.claw(actor, 'GetStatus', 'int'), lambda status: status == 5, 12.,
-                  'The human retained the old wolf morph state')
-
     def photograph_morphs(self, case):
         family, _, _ = case.partition('-')
         index, base = next((i, pair) for i, pair in enumerate(self.pairs) if pair['name'] == case)
