@@ -5,7 +5,7 @@ selected male/female weight-0/1 NIFs and the existing pinned XP32 skeleton. The
 CBPC research archive includes only original motion configuration and a short README.
 Neither adapter changes the universal CLAW DLL, human-family matrices, skeleton,
 other mods, or the optional collider host.
-Only FSMP motion is offered by the working CLAW 0.10 installer. The standalone
+The core installer offers optional FSMP motion. The standalone
 CBPC generator remains offline research tooling, not a released runtime option.
 
 ## Optional integration in one CLAW installer
@@ -25,6 +25,11 @@ and output hashes, permits only the eight FSMP NIF routes plus two XMLs, and
 discards the separate adapter README. Any
 unlisted payload fails. Source/recipe pins remain external provenance; no builder,
 provider DLL, skeleton, collider host, anatomy or VR component is installed.
+The core installer derives a tail-only system for both sexes from the reviewed
+source receipt. The five tail drivers retain their authored parameters, parent
+bindings and pivots. Ear and breast drivers and their dedicated anchors are
+omitted. The FSMP hook still uses the same sex-specific XML path. Ear and breast
+TRI deformation and independent contact colliders do not depend on these XMLs.
 
 The existing lightweight SSE reader independently checks the FSMP output against
 the final material-adapted core: unchanged original non-root blocks and strings,
@@ -105,11 +110,11 @@ Select `--provider fsmp` for the working installer's motion resources in `fsmp_m
 It emits original XML with nine or eleven dynamic bones, kinematic anchors,
 restoring linear/angular springs and no collision shapes. Tail constraints
 connect existing driver nodes across unchanged CME wrappers. Ear/tail identity
-`frameInB` uses actual loaded rest transforms. The two single-body P1 joints use
+`frameInB` uses actual loaded rest transforms. The two single-body P1 joints in the source trial use
 identity `frameInA`, attaching at the kinematic PreBreast origin instead of the
 dynamic body's center. Package validation checks each ordered parent, pivot,
-explicit parameter and bound independently of the receipt hashes. Male and
-female core XML use the same motion graph contract as the generator. The
+explicit parameter and bound independently of the receipt hashes. The runtime
+packager validates both the input rig and the derived tail-only output. The
 adult composer reuses the motion-only parser for its separate explicit frames.
 The pinned skeleton has a one-unit P1 lever; this pivot
 change is mechanical. Earlier isolated cases recorded female11 and authored
@@ -150,9 +155,10 @@ not own the selected werewolf driver nodes/ancestors.
 
 Build success means an inspectable offline adapter, with `gameValidated`,
 `runtimeQualified` and `releaseReady` all false. Runtime acceptance still needs
-node traces and visible ears/tail/P1 motion, neutral/disabled controls, both sexes,
-weight and morph extremes, transformations, reload and human return. Bounds for
-the chosen motion envelope are a separate geometry prerequisite.
+node traces and visible motion on the selected drivers, neutral/disabled
+controls, both sexes, weight and morph extremes, transformations, reload and
+human return. The core acceptance scope is the tail. Bounds for the chosen
+motion envelope are a separate geometry prerequisite.
 
 The next motion trial uses the exact released v4 body endpoints and matching
 TRIs. The fresh v4 body pipeline already applies the current-TRI P1 rig and

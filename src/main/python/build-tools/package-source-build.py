@@ -35,7 +35,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[4]
 NAME = "CLAW - Customizable Lycanthrope Appearance and Weight"
 ARCHIVE_NAME = "CLAW - Customizable Lycanthrope Appearance and Weight.zip"
-VERSION = "0.10.0"
+VERSION = "0.11.0"
 APPEARANCE_FILES = ("CoatLibrary.xml", "CoatMapping.xml", "CoatMatrix.xml")
 APPEARANCE_PATH = "SKSE/Plugins/CLAW/"
 RUNTIME_README = "src/main/resources/publication/runtime/README.md"
@@ -402,7 +402,7 @@ def _check_motion_nif(materials, core, hooked, sex):
         raise ValueError('FSMP output changed core geometry/skin/material/strings or root hook scope')
 
 
-def _validate_fsmp_rigs(files, inputs, prefix=''):
+def _fsmp_core_chains(inputs):
     rig_path = ROOT / FSMP_RIG_SOURCE
     rig = ModuleType('claw_fsmp_rig')
     exec(compile(inputs.read(rig_path), str(rig_path), 'exec'), rig.__dict__)
@@ -411,12 +411,35 @@ def _validate_fsmp_rigs(files, inputs, prefix=''):
                   for node in group['nodes'])
     breast_nodes = tuple(node for group in json.loads(inputs.read(recipes / 'breast-motion.json'))['groups']
                          for node in group['nodes'])
-    for sex in ('Male', 'Female'):
+    return rig, {sex: rig.core_chains(nodes, breast_nodes if sex == 'Female' else ())
+                 for sex in ('Male', 'Female')}
+
+
+def _tail_chains(chains):
+    return tuple(chain for chain in chains if chain[0] == 'Tails')
+
+
+def _tail_only_fsmp_rig(payload, rig, chains):
+    rig.validate_core(payload, chains)
+    tail = _tail_chains(chains)
+    retained = {name for anchor, nodes, _ in tail for name in (anchor, *nodes)}
+    root = ET.fromstring(payload)
+    for item in list(root):
+        if item.get('name', item.get('bodyB')) not in retained:
+            root.remove(item)
+    result = ET.tostring(root, encoding='utf-8', xml_declaration=True)
+    rig.validate_core(result, tail)
+    return result
+
+
+def _validate_fsmp_rigs(files, inputs, prefix='', *, tail_only=False):
+    rig, chains_by_sex = _fsmp_core_chains(inputs)
+    for sex, chains in chains_by_sex.items():
         name = prefix + MOTION_XML + sex + '.xml'
         if name not in files:
             raise ValueError('Missing FSMP motion configuration: ' + name)
         try:
-            rig.validate_core(files[name], rig.core_chains(nodes, breast_nodes if sex == 'Female' else ()))
+            rig.validate_core(files[name], _tail_chains(chains) if tail_only else chains)
         except ValueError as error:
             raise ValueError(f'{name}: {error}') from error
 
@@ -470,7 +493,13 @@ def _motion_payload(inputs, receipt_path, provider, core_inputs, core_bodies, ma
         if not any(Path(row['path']).parts[-len(FSMP_RIG_SOURCE.parts):] == FSMP_RIG_SOURCE.parts
                    and inputs.read(row['path']) == rig_bytes for row in sources):
             raise ValueError('FSMP motion system requires identical builder and package rig source')
-        _validate_fsmp_rigs(files, inputs)
+        rig, chains_by_sex = _fsmp_core_chains(inputs)
+        for sex, chains in chains_by_sex.items():
+            name = MOTION_XML + sex + '.xml'
+            try:
+                files[name] = _tail_only_fsmp_rig(files[name], rig, chains)
+            except ValueError as error:
+                raise ValueError(f'{name}: {error}') from error
     return files, {'provider': provider, 'receiptSha256': sha(payload), 'resources': resources,
                    'runtimeQualified': False, 'sharedTriSha256': {sex: sha(core_inputs[sex + 'Tri']) for sex in ('male', 'female')}}
 
@@ -580,7 +609,7 @@ def installer(template, entries, motion=False):
             provider_url = 'https://www.nexusmods.com/skyrimspecialedition/mods/57339'
             ET.SubElement(option, 'description').text = ('No CLAW werewolf motion configuration.' if mode == 'none' else
                 'Requires ' + name + ': ' + provider_url +
-                '. Choose None if the provider is missing. Adds motion to ears, tail and female breasts.')
+                '. Choose None if the provider is missing. Adds motion to the tail.')
             ET.SubElement(ET.SubElement(option, 'conditionFlags'), 'flag', name='physicsMode').text = mode
             ET.SubElement(ET.SubElement(option, 'typeDescriptor'), 'type', name='Recommended' if mode == 'none' else 'Optional')
             pattern = ET.SubElement(patterns, 'pattern')
@@ -639,27 +668,36 @@ def audit_external_coats(entries):
 
     mapping = ET.fromstring(entries[prefix + "CoatMapping.xml"])
     materials = {"randomized/" + name for name in expected_ids}
-    records = [row for row in mapping if row.tag != "Group"]
+    group_tags = {"Group", "SkinGroup", "HairGroup"}
+    records = [row for row in mapping if row.tag not in group_tags]
     if ({row.get("material") for row in mapping.findall("Range")} != materials or
             any(row.tag not in {"Range", "Manual", "Alias"} or row.get("material") not in materials for row in records)):
         raise ValueError("Coat mapping and external catalog do not agree")
     groups = mapping.findall("Group")
+    skin_groups, hair_groups = mapping.findall("SkinGroup"), mapping.findall("HairGroup")
     if mapping.get("schemaVersion") == "2":
         choices = {row.get("id") for row in records if row.tag != "Alias"}
         variants = [row.get("id") for group in groups for row in group.findall("Variant")]
         if (not groups or len(variants) != len(set(variants)) or set(variants) != choices or
                 any(not group.findall("Anchor") or not group.findall("Variant") for group in groups)):
             raise ValueError("Coat colour groups and logical choices do not agree")
-        for group in groups:
+        if bool(skin_groups) != bool(hair_groups):
+            raise ValueError("Regional coats require skin and hair palettes")
+        for palette in (skin_groups, hair_groups):
+            regional = [row.get("id") for group in palette for row in group.findall("Variant")]
+            if (len(regional) != len(set(regional)) or not set(regional) <= choices or
+                    any(not group.findall("Anchor") or not group.findall("Variant") for group in palette)):
+                raise ValueError("Invalid regional coat groups")
+        for group in groups + skin_groups + hair_groups:
             for anchor in group.findall("Anchor"):
                 if (set(anchor.attrib) != {"red", "green", "blue"} or
                         any(not math.isfinite(float(value)) or not 0 <= float(value) <= 1 for value in anchor.attrib.values())):
                     raise ValueError("Invalid coat colour anchor")
-    elif mapping.get("schemaVersion") != "1" or groups:
+    elif mapping.get("schemaVersion") != "1" or groups or skin_groups or hair_groups:
         raise ValueError("Unsupported coat mapping schema")
 
 
-def selection_audit(entries, *, inputs=None):
+def selection_audit(entries, *, inputs=None, allow_legacy_full_motion=True):
     spec = importlib.util.spec_from_file_location("claw_source_fomod_reader", ROOT / "src/main/python/build-tools/build-unified-release.py")
     reader = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(reader)
@@ -687,7 +725,14 @@ def selection_audit(entries, *, inputs=None):
                          for option in options if option.find('typeDescriptor/type') is not None}
         if len(options) != 2 or mode_defaults != {'none': 'Recommended', 'fsmp': 'Optional'}:
             raise ValueError('None must be the default and Faster HDT-SMP must be opt-in')
-        _validate_fsmp_rigs(entries, inputs if inputs is not None else Inputs(), FSMP_PREFIX)
+        motion_inputs = inputs if inputs is not None else Inputs()
+        try:
+            _validate_fsmp_rigs(entries, motion_inputs, FSMP_PREFIX, tail_only=True)
+        except ValueError:
+            if not allow_legacy_full_motion:
+                raise
+            # Compatibility for tools that inspect pinned historical archives.
+            _validate_fsmp_rigs(entries, motion_inputs, FSMP_PREFIX)
     if json.loads(entries["00 Base/" + MODEL_SWAP_OVERRIDE]) != []:
         raise ValueError("Elegant model-swap compatibility override must be an empty JSON array")
     audit_external_coats(entries)
@@ -910,7 +955,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
         b"@SOURCE_URL@", reference["url"].encode("ascii")).replace(b"@VERSION@", version.encode("ascii")).replace(
         b'@MOTION_INSTRUCTIONS@', (b'Choose None or Faster HDT-SMP on the Werewolf motion page. None is the default. '
         b'Install the matching [Faster HDT-SMP](https://www.nexusmods.com/skyrimspecialedition/mods/57339) provider separately. '
-        b'FSMP adds motion to ears, tail and female breasts. Replace the previous CLAW installation when switching options, '
+        b'FSMP adds motion to the tail. Replace the previous CLAW installation when switching options, '
         b'and disable older CLAW motion mods. Contact colliders, VR body and the optional anatomy add-on are separate.'
         if motion else b'This core archive does not include motion physics.'))
     validate_no_nested_archives(entries)
@@ -918,7 +963,7 @@ def build(*, native_dll, bodies_dir, game_esp, native_pex, source_companion_dir,
     readback = read_zip(packed)
     if readback != entries:
         raise ValueError("Literal ZIP/readback installation differs from the recorded payload")
-    selections = selection_audit(readback, inputs=inputs)
+    selections = selection_audit(readback, inputs=inputs, allow_legacy_full_motion=False)
     receipt = {"schemaVersion": 1, "status": "packaged-explicit-build-inputs-not-game-qualified-not-published",
                "name": NAME, "version": version, "sourceCommit": reference["commit"],
                "sourceCheckoutHead": commit, "sourceReference": reference, "nativeDllSha256": native_sha,

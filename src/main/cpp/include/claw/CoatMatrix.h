@@ -11,19 +11,33 @@ using CoatValues = std::map<std::string, float, std::less<>>;
 inline CoatValues coatInputs(const Colours& colours, std::uint64_t seed) {
     const float unitSeed = static_cast<float>(seed >> 40) / 16777215.F;
     const bool skinOnly = colours.hasSkin && !colours.hasHair;
+    const bool hairOnly = colours.hasHair && !colours.hasSkin;
+    const bool both = colours.hasSkin && colours.hasHair;
     return {
         {"hair.red", colours.hasHair ? colours.hair[0] : 0.F},
         {"hair.green", colours.hasHair ? colours.hair[1] : 0.F},
         {"hair.blue", colours.hasHair ? colours.hair[2] : 0.F},
+        {"hair.chroma", colours.hasHair ? std::ranges::max(colours.hair) - std::ranges::min(colours.hair) : 0.F},
         {"skin.red", colours.hasSkin ? colours.skin[0] : 0.F},
         {"skin.green", colours.hasSkin ? colours.skin[1] : 0.F},
         {"skin.blue", colours.hasSkin ? colours.skin[2] : 0.F},
         {"skin.withoutHair.red", skinOnly ? colours.skin[0] : 0.F},
         {"skin.withoutHair.green", skinOnly ? colours.skin[1] : 0.F},
         {"skin.withoutHair.blue", skinOnly ? colours.skin[2] : 0.F},
+        {"skin.withHair.red", both ? colours.skin[0] : 0.F},
+        {"skin.withHair.green", both ? colours.skin[1] : 0.F},
+        {"skin.withHair.blue", both ? colours.skin[2] : 0.F},
+        {"hair.withSkin.red", both ? colours.hair[0] : 0.F},
+        {"hair.withSkin.green", both ? colours.hair[1] : 0.F},
+        {"hair.withSkin.blue", both ? colours.hair[2] : 0.F},
+        {"hair.withoutSkin.red", hairOnly ? colours.hair[0] : 0.F},
+        {"hair.withoutSkin.green", hairOnly ? colours.hair[1] : 0.F},
+        {"hair.withoutSkin.blue", hairOnly ? colours.hair[2] : 0.F},
+        {"colour.available", colours.hasSkin || colours.hasHair ? 1.F : 0.F},
+        {"seed", unitSeed},
         {"seed.withHair", colours.hasHair ? unitSeed : 0.F},
-        {"seed.withHairAndSkin", colours.hasHair && colours.hasSkin ? unitSeed : 0.F},
-        {"seed.withHairWithoutSkin", colours.hasHair && !colours.hasSkin ? unitSeed : 0.F},
+        {"seed.withHairAndSkin", both ? unitSeed : 0.F},
+        {"seed.withHairWithoutSkin", hairOnly ? unitSeed : 0.F},
         {"seed.withoutHair", colours.hasHair ? 0.F : unitSeed},
         {"seed.withoutHairWithSkin", skinOnly ? unitSeed : 0.F},
         {"seed.withoutHairWithoutSkin", !colours.hasHair && !colours.hasSkin ? unitSeed : 0.F}

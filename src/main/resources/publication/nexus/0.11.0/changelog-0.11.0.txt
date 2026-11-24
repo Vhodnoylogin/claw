@@ -1,0 +1,5 @@
+Skin tone selects the base coat on the body. Hair colour selects the coat materials on the head and fur where available. Individual coat choices remain stable across transformations.
+Improved coat recovery when the game recreates the werewolf's 3D. If a valid texture is temporarily unavailable to the renderer, CLAW keeps the existing material and retries the selection once.
+Added support for separate compatibility patches for specific standalone NPC bodies. The installer continues to select one default body family per sex.
+Optional Faster HDT-SMP motion now applies to the tail only. Choose None to disable CLAW motion physics.
+Human body shape has a stronger effect on female werewolf chest size, using chest sliders for CBBE, 3BA and BHUNP and actor weight for Vanilla and UNP.

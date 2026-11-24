@@ -18,15 +18,15 @@
     <Rule source="BellyUnder_v2" target="CLAWTorsoGirth" gain="0.0012652" cap="0.25" />
     <Rule source="BigBelly" target="CLAWTorsoBellyRound" gain="1.2054381" cap="1.0" />
     <Rule source="BigTorso" target="CLAWTorsoGirth" gain="0.5534656" cap="0.25" />
-    <Rule source="BreastFlatness" target="CLAWTorsoBreastSize" gain="-3.4935134" cap="1" />
-    <Rule source="BreastFlatness2" target="CLAWTorsoBreastSize" gain="-2.8434081" cap="1" />
-    <Rule source="Breasts" target="CLAWTorsoBreastSize" gain="1.97866" cap="1" />
-    <Rule source="BreastsFantasy" target="CLAWTorsoBreastSize" gain="2.4861836" cap="1" />
-    <Rule source="BreastsGone" target="CLAWTorsoBreastSize" gain="-2.1447901" cap="1" />
-    <Rule source="BreastsNewSH" target="CLAWTorsoBreastSize" gain="2.8892392" cap="1" />
-    <Rule source="BreastsNewSHSymmetry" target="CLAWTorsoBreastSize" gain="-0.07113711" cap="1" />
-    <Rule source="BreastsSmall" target="CLAWTorsoBreastSize" gain="-1.5284438" cap="1" />
-    <Rule source="BreastsSmall2" target="CLAWTorsoBreastSize" gain="-1.157192" cap="1" />
+    <Rule source="BreastFlatness" target="CLAWTorsoBreastSize" gain="-3.93020258" cap="1" />
+    <Rule source="BreastFlatness2" target="CLAWTorsoBreastSize" gain="-3.19883411" cap="1" />
+    <Rule source="Breasts" target="CLAWTorsoBreastSize" gain="2.22599250" cap="1" />
+    <Rule source="BreastsFantasy" target="CLAWTorsoBreastSize" gain="2.79695655" cap="1" />
+    <Rule source="BreastsGone" target="CLAWTorsoBreastSize" gain="-2.41288886" cap="1" />
+    <Rule source="BreastsNewSH" target="CLAWTorsoBreastSize" gain="3.25039410" cap="1" />
+    <Rule source="BreastsNewSHSymmetry" target="CLAWTorsoBreastSize" gain="-0.0800292488" cap="1" />
+    <Rule source="BreastsSmall" target="CLAWTorsoBreastSize" gain="-1.71949928" cap="1" />
+    <Rule source="BreastsSmall2" target="CLAWTorsoBreastSize" gain="-1.30184100" cap="1" />
     <Rule source="CalfFBThicc_v2" target="CLAWLegCalfGirth" gain="0.2414425" cap="1" />
     <Rule source="CalfSize" target="CLAWLegCalfGirth" gain="0.2234755" cap="1" />
     <Rule source="CalfSmooth" target="CLAWLegCalfGirth" gain="-0.1904531" cap="1" />
@@ -37,7 +37,7 @@
     <Rule source="ChubbyLegs" target="CLAWLegThighGirth" gain="0.5452318" cap="1" />
     <Rule source="ChubbyLegs" target="CLAWLegCalfGirth" gain="0.8043513" cap="1" />
     <Rule source="ChubbyWaist" target="CLAWTorsoGirth" gain="0.2102183" cap="0.25" />
-    <Rule source="DoubleMelon" target="CLAWTorsoBreastSize" gain="2.2184469" cap="1" />
+    <Rule source="DoubleMelon" target="CLAWTorsoBreastSize" gain="2.49575276" cap="1" />
     <Rule source="ForearmSize" target="CLAWArmGirth" gain="0.1446655" cap="1" />
     <Rule source="HipNarrow_v2" target="CLAWTorsoFlankWidth" gain="-0.1192936" cap="1" />
     <Rule source="HipUpperWidth" target="CLAWTorsoFlankWidth" gain="0.135566" cap="1" />
@@ -293,15 +293,15 @@
     <Rule source="BellyUnder_v2" target="CLAWTorsoGirth" gain="0.0021572" cap="0.25" />
     <Rule source="BigBelly" target="CLAWTorsoBellyRound" gain="4.7562522" cap="1" />
     <Rule source="BigTorso" target="CLAWTorsoGirth" gain="0.8702332" cap="0.25" />
-    <Rule source="BreastFlatness" target="CLAWTorsoBreastSize" gain="-2.5058155" cap="1" />
-    <Rule source="BreastFlatness2" target="CLAWTorsoBreastSize" gain="-1.9623913" cap="1" />
-    <Rule source="Breasts" target="CLAWTorsoBreastSize" gain="1.4196154" cap="1" />
-    <Rule source="BreastsFantasy" target="CLAWTorsoBreastSize" gain="1.7931225" cap="1" />
-    <Rule source="BreastsGone" target="CLAWTorsoBreastSize" gain="-1.5279138" cap="1" />
-    <Rule source="BreastsNewSH" target="CLAWTorsoBreastSize" gain="2.092957" cap="1" />
-    <Rule source="BreastsNewSHSymmetry" target="CLAWTorsoBreastSize" gain="-0.051347285" cap="1" />
-    <Rule source="BreastsSmall" target="CLAWTorsoBreastSize" gain="-1.0903751" cap="1" />
-    <Rule source="BreastsSmall2" target="CLAWTorsoBreastSize" gain="-0.83502089" cap="1" />
+    <Rule source="BreastFlatness" target="CLAWTorsoBreastSize" gain="-2.81904244" cap="1" />
+    <Rule source="BreastFlatness2" target="CLAWTorsoBreastSize" gain="-2.20769021" cap="1" />
+    <Rule source="Breasts" target="CLAWTorsoBreastSize" gain="1.59706732" cap="1" />
+    <Rule source="BreastsFantasy" target="CLAWTorsoBreastSize" gain="2.01726281" cap="1" />
+    <Rule source="BreastsGone" target="CLAWTorsoBreastSize" gain="-1.71890302" cap="1" />
+    <Rule source="BreastsNewSH" target="CLAWTorsoBreastSize" gain="2.35457662" cap="1" />
+    <Rule source="BreastsNewSHSymmetry" target="CLAWTorsoBreastSize" gain="-0.0577656956" cap="1" />
+    <Rule source="BreastsSmall" target="CLAWTorsoBreastSize" gain="-1.22667199" cap="1" />
+    <Rule source="BreastsSmall2" target="CLAWTorsoBreastSize" gain="-0.939398501" cap="1" />
     <Rule source="CalfFBThicc_v2" target="CLAWLegCalfGirth" gain="0.2419787" cap="1" />
     <Rule source="CalfSize" target="CLAWLegCalfGirth" gain="0.2234911" cap="1" />
     <Rule source="CalfSmooth" target="CLAWLegCalfGirth" gain="-0.1904419" cap="1" />
@@ -312,7 +312,7 @@
     <Rule source="ChubbyLegs" target="CLAWLegThighGirth" gain="0.5638285" cap="1" />
     <Rule source="ChubbyLegs" target="CLAWLegCalfGirth" gain="0.7995872" cap="1" />
     <Rule source="ChubbyWaist" target="CLAWTorsoGirth" gain="0.3787508" cap="0.25" />
-    <Rule source="DoubleMelon" target="CLAWTorsoBreastSize" gain="1.5731371" cap="1" />
+    <Rule source="DoubleMelon" target="CLAWTorsoBreastSize" gain="1.76977924" cap="1" />
     <Rule source="ForearmSize" target="CLAWArmGirth" gain="0.1461806" cap="1" />
     <Rule source="HipNarrow_v2" target="CLAWTorsoFlankWidth" gain="-0.1300842" cap="1" />
     <Rule source="HipUpperWidth" target="CLAWTorsoFlankWidth" gain="0.1502059" cap="1" />
@@ -446,6 +446,7 @@
     <Rule source="$human.face.jawWidth" target="CLAWHeadEarTilt" gain="0.08" cap="1" function="positive" />
   </Profile>
   <Profile id="CLAW.VanillaFemale.Weight1" family="Vanilla" version="game-weight-v1" sex="female" calibration="anatomy-v4-response-normalized">
+    <Rule source="$actor.weight" target="CLAWTorsoBreastSize" gain="0.45" cap="1" />
     <Rule source="" target="CLAWArmLean" gain="1" cap="0.5" function="constant" value="1" />
     <Rule source="$actor.weight" target="CLAWArmLean" gain="-2" cap="0.5" />
     <Rule source="" target="CLAWLegThighLean" gain="1" cap="0.5" function="constant" value="1" />
@@ -544,91 +545,91 @@
     <Rule source="Back" target="CLAWTorsoBackWide" gain="1.06194519" cap="1" />
     <Rule source="ChestDepth" target="CLAWTorsoChestSize" gain="2" cap="1" />
     <Rule source="" target="CLAWTorsoBreastSize" gain="0.4" cap="1" function="constant" value="1" />
-    <Rule source="Breasts" target="CLAWTorsoBreastSize" gain="-1.37150084" cap="1" />
-    <Rule source="BreastsSmall" target="CLAWTorsoBreastSize" gain="-1.1046665" cap="1" />
-    <Rule source="BreastsGone" target="CLAWTorsoBreastSize" gain="-2" cap="1" />
-    <Rule source="BreastFlatness" target="CLAWTorsoBreastSize" gain="-2" cap="1" />
-    <Rule source="BreastWidth" target="CLAWTorsoBreastSize" gain="0.468409092" cap="1" />
+    <Rule source="Breasts" target="CLAWTorsoBreastSize" gain="-1.54293844" cap="1" />
+    <Rule source="BreastsSmall" target="CLAWTorsoBreastSize" gain="-1.24274981" cap="1" />
+    <Rule source="BreastsGone" target="CLAWTorsoBreastSize" gain="-2.250" cap="1" />
+    <Rule source="BreastFlatness" target="CLAWTorsoBreastSize" gain="-2.250" cap="1" />
+    <Rule source="BreastWidth" target="CLAWTorsoBreastSize" gain="0.526960228" cap="1" />
     <Rule source="7B Low" target="CLAWArmLean" gain="0.112496222" cap="1" function="positive" />
     <Rule source="7B Low" target="CLAWLegThighLean" gain="0.0918854251" cap="1" function="positive" />
     <Rule source="7B Low" target="CLAWLegCalfLean" gain="0.260961192" cap="1" function="positive" />
     <Rule source="7B Low" target="CLAWTorsoGirth" gain="0.0923323801" cap="1" function="positive" />
-    <Rule source="7B Low" target="CLAWTorsoBreastSize" gain="0.293426252" cap="1" function="positive" />
+    <Rule source="7B Low" target="CLAWTorsoBreastSize" gain="0.330104534" cap="1" function="positive" />
     <Rule source="7B High" target="CLAWArmLean" gain="0.0647086623" cap="1" function="positive" />
     <Rule source="7B High" target="CLAWLegThighGirth" gain="0.0584015522" cap="1" function="positive" />
     <Rule source="7B High" target="CLAWLegCalfLean" gain="0.156808173" cap="1" function="positive" />
     <Rule source="7B High" target="CLAWTorsoGirth" gain="0.137517202" cap="1" function="positive" />
-    <Rule source="7B High" target="CLAWTorsoBreastSize" gain="0.840682403" cap="1" function="positive" />
+    <Rule source="7B High" target="CLAWTorsoBreastSize" gain="0.945767703" cap="1" function="positive" />
     <Rule source="7B Bombshell Low" target="CLAWArmLean" gain="0.0799639373" cap="1" function="positive" />
     <Rule source="7B Bombshell Low" target="CLAWLegThighLean" gain="0.0263974769" cap="1" function="positive" />
     <Rule source="7B Bombshell Low" target="CLAWLegCalfLean" gain="0.15348955" cap="1" function="positive" />
     <Rule source="7B Bombshell Low" target="CLAWTorsoGirth" gain="0.0680950848" cap="1" function="positive" />
-    <Rule source="7B Bombshell Low" target="CLAWTorsoBreastSize" gain="0.0961328241" cap="1" function="positive" />
+    <Rule source="7B Bombshell Low" target="CLAWTorsoBreastSize" gain="0.108149427" cap="1" function="positive" />
     <Rule source="7B Bombshell High" target="CLAWArmLean" gain="0.065435883" cap="1" function="positive" />
     <Rule source="7B Bombshell High" target="CLAWLegThighGirth" gain="0.0240332005" cap="1" function="positive" />
     <Rule source="7B Bombshell High" target="CLAWLegCalfLean" gain="0.160829632" cap="1" function="positive" />
     <Rule source="7B Bombshell High" target="CLAWTorsoGirth" gain="0.141875746" cap="1" function="positive" />
-    <Rule source="7B Bombshell High" target="CLAWTorsoBreastSize" gain="0.887055467" cap="1" function="positive" />
+    <Rule source="7B Bombshell High" target="CLAWTorsoBreastSize" gain="0.997937400" cap="1" function="positive" />
     <Rule source="UNP Low" target="CLAWArmLean" gain="0.168528508" cap="1" function="positive" />
     <Rule source="UNP Low" target="CLAWLegThighLean" gain="0.289005908" cap="1" function="positive" />
     <Rule source="UNP Low" target="CLAWLegCalfLean" gain="0.355307899" cap="1" function="positive" />
     <Rule source="UNP Low" target="CLAWTorsoGirth" gain="0.011790043" cap="1" function="positive" />
-    <Rule source="UNP Low" target="CLAWTorsoBreastSize" gain="-1.45811634" cap="1" function="positive" />
+    <Rule source="UNP Low" target="CLAWTorsoBreastSize" gain="-1.64038088" cap="1" function="positive" />
     <Rule source="UNP High" target="CLAWArmLean" gain="0.0602099996" cap="1" function="positive" />
     <Rule source="UNP High" target="CLAWLegThighLean" gain="0.000536926613" cap="1" function="positive" />
     <Rule source="UNP High" target="CLAWLegCalfLean" gain="0.0807632053" cap="1" function="positive" />
     <Rule source="UNP High" target="CLAWTorsoGirth" gain="0.157925" cap="1" function="positive" />
-    <Rule source="UNP High" target="CLAWTorsoBreastSize" gain="-0.0643289251" cap="1" function="positive" />
+    <Rule source="UNP High" target="CLAWTorsoBreastSize" gain="-0.0723700407" cap="1" function="positive" />
     <Rule source="UNPB Low" target="CLAWArmLean" gain="0.168456737" cap="1" function="positive" />
     <Rule source="UNPB Low" target="CLAWLegThighLean" gain="0.281607373" cap="1" function="positive" />
     <Rule source="UNPB Low" target="CLAWLegCalfLean" gain="0.349501975" cap="1" function="positive" />
     <Rule source="UNPB Low" target="CLAWTorsoGirth" gain="0.010513671" cap="1" function="positive" />
-    <Rule source="UNPB Low" target="CLAWTorsoBreastSize" gain="-1.2672974" cap="1" function="positive" />
+    <Rule source="UNPB Low" target="CLAWTorsoBreastSize" gain="-1.42570958" cap="1" function="positive" />
     <Rule source="UNPB High" target="CLAWArmLean" gain="0.0643622995" cap="1" function="positive" />
     <Rule source="UNPB High" target="CLAWLegThighLean" gain="0.00301145018" cap="1" function="positive" />
     <Rule source="UNPB High" target="CLAWLegCalfLean" gain="0.131360096" cap="1" function="positive" />
     <Rule source="UNPB High" target="CLAWTorsoGirth" gain="0.132878383" cap="1" function="positive" />
-    <Rule source="UNPB High" target="CLAWTorsoBreastSize" gain="0.866318906" cap="1" function="positive" />
+    <Rule source="UNPB High" target="CLAWTorsoBreastSize" gain="0.974608769" cap="1" function="positive" />
     <Rule source="UNPB Oppai v3.2 Low" target="CLAWArmGirth" gain="0.00624530378" cap="1" function="positive" />
     <Rule source="UNPB Oppai v3.2 Low" target="CLAWLegThighLean" gain="0.0210544964" cap="1" function="positive" />
     <Rule source="UNPB Oppai v3.2 Low" target="CLAWLegCalfLean" gain="0.163725514" cap="1" function="positive" />
     <Rule source="UNPB Oppai v3.2 Low" target="CLAWTorsoLean" gain="0.0726113626" cap="1" function="positive" />
-    <Rule source="UNPB Oppai v3.2 Low" target="CLAWTorsoBreastSize" gain="0.364622375" cap="1" function="positive" />
+    <Rule source="UNPB Oppai v3.2 Low" target="CLAWTorsoBreastSize" gain="0.410200172" cap="1" function="positive" />
     <Rule source="UNPB Oppai v3.2 High" target="CLAWArmLean" gain="0.0731917194" cap="1" function="positive" />
     <Rule source="UNPB Oppai v3.2 High" target="CLAWLegThighGirth" gain="0.0286402897" cap="1" function="positive" />
     <Rule source="UNPB Oppai v3.2 High" target="CLAWLegCalfLean" gain="0.0386644824" cap="1" function="positive" />
     <Rule source="UNPB Oppai v3.2 High" target="CLAWTorsoGirth" gain="0.151718877" cap="1" function="positive" />
-    <Rule source="UNPB Oppai v3.2 High" target="CLAWTorsoBreastSize" gain="1.0394965" cap="1" function="positive" />
+    <Rule source="UNPB Oppai v3.2 High" target="CLAWTorsoBreastSize" gain="1.16943356" cap="1" function="positive" />
     <Rule source="UNPC Low" target="CLAWArmLean" gain="0.171286775" cap="1" function="positive" />
     <Rule source="UNPC Low" target="CLAWLegThighLean" gain="0.144203211" cap="1" function="positive" />
     <Rule source="UNPC Low" target="CLAWLegCalfLean" gain="0.299146113" cap="1" function="positive" />
     <Rule source="UNPC Low" target="CLAWTorsoLean" gain="0.0320402592" cap="1" function="positive" />
-    <Rule source="UNPC Low" target="CLAWTorsoBreastSize" gain="-1.20994472" cap="1" function="positive" />
+    <Rule source="UNPC Low" target="CLAWTorsoBreastSize" gain="-1.36118781" cap="1" function="positive" />
     <Rule source="UNPC High" target="CLAWArmLean" gain="0.103080647" cap="1" function="positive" />
     <Rule source="UNPC High" target="CLAWLegThighGirth" gain="0.142328611" cap="1" function="positive" />
     <Rule source="UNPC High" target="CLAWLegCalfGirth" gain="0.00664931369" cap="1" function="positive" />
     <Rule source="UNPC High" target="CLAWTorsoGirth" gain="0.128069384" cap="1" function="positive" />
-    <Rule source="UNPC High" target="CLAWTorsoBreastSize" gain="0.45285703" cap="1" function="positive" />
+    <Rule source="UNPC High" target="CLAWTorsoBreastSize" gain="0.509464159" cap="1" function="positive" />
     <Rule source="Top Model Low" target="CLAWArmLean" gain="0.3181666" cap="1" function="positive" />
     <Rule source="Top Model Low" target="CLAWLegThighLean" gain="0.349914391" cap="1" function="positive" />
     <Rule source="Top Model Low" target="CLAWLegCalfLean" gain="0.393371185" cap="1" function="positive" />
     <Rule source="Top Model Low" target="CLAWTorsoLean" gain="0.118035719" cap="1" function="positive" />
-    <Rule source="Top Model Low" target="CLAWTorsoBreastSize" gain="-1.45434576" cap="1" function="positive" />
+    <Rule source="Top Model Low" target="CLAWTorsoBreastSize" gain="-1.63613898" cap="1" function="positive" />
     <Rule source="Top Model High" target="CLAWArmLean" gain="0.200483538" cap="1" function="positive" />
     <Rule source="Top Model High" target="CLAWLegThighLean" gain="0.288193321" cap="1" function="positive" />
     <Rule source="Top Model High" target="CLAWLegCalfLean" gain="0.354235688" cap="1" function="positive" />
     <Rule source="Top Model High" target="CLAWTorsoGirth" gain="0.0471995898" cap="1" function="positive" />
-    <Rule source="Top Model High" target="CLAWTorsoBreastSize" gain="0.887278722" cap="1" function="positive" />
+    <Rule source="Top Model High" target="CLAWTorsoBreastSize" gain="0.998188562" cap="1" function="positive" />
     <Rule source="Aruru6Duck Low" target="CLAWArmGirth" gain="0.0848968773" cap="1" function="positive" />
     <Rule source="Aruru6Duck Low" target="CLAWLegThighGirth" gain="0.749976126" cap="1" function="positive" />
     <Rule source="Aruru6Duck Low" target="CLAWLegCalfGirth" gain="0.124391086" cap="1" function="positive" />
     <Rule source="Aruru6Duck Low" target="CLAWTorsoGirth" gain="0.117682521" cap="1" function="positive" />
-    <Rule source="Aruru6Duck Low" target="CLAWTorsoBreastSize" gain="1.12017613" cap="1" function="positive" />
+    <Rule source="Aruru6Duck Low" target="CLAWTorsoBreastSize" gain="1.26019815" cap="1" function="positive" />
     <Rule source="Aruru6Duck High" target="CLAWArmGirth" gain="0.11668034" cap="1" function="positive" />
     <Rule source="Aruru6Duck High" target="CLAWLegThighGirth" gain="0.847220527" cap="1" function="positive" />
     <Rule source="Aruru6Duck High" target="CLAWLegCalfGirth" gain="0.122251317" cap="1" function="positive" />
     <Rule source="Aruru6Duck High" target="CLAWTorsoGirth" gain="0.107948409" cap="1" function="positive" />
-    <Rule source="Aruru6Duck High" target="CLAWTorsoBreastSize" gain="2" cap="1" function="positive" />
+    <Rule source="Aruru6Duck High" target="CLAWTorsoBreastSize" gain="2.250" cap="1" function="positive" />
     <Rule source="$actor.weight" target="CLAWTorsoGirth" gain="0.25" cap="1" />
     <Rule source="" target="CLAWTorsoGirth" gain="-0.125" cap="1" function="constant" value="1" />
     <Rule source="$actor.weight" target="CLAWTorsoLean" gain="-0.25" cap="1" />
@@ -692,6 +693,7 @@
     <Rule source="ThighThicker" target="CLAWLegThighLean" gain="0.02" cap="1" function="negative" />
   </Profile>
   <Profile id="CLAW.UNP.4.6.Weight1" family="UNP" version="4.6" sex="female" calibration="vanilla-female-weight-contract1">
+    <Rule source="$actor.weight" target="CLAWTorsoBreastSize" gain="0.45" cap="1" />
     <Rule source="" target="CLAWArmLean" gain="1" cap="0.5" function="constant" value="1" />
     <Rule source="$actor.weight" target="CLAWArmLean" gain="-2" cap="0.5" />
     <Rule source="" target="CLAWLegThighLean" gain="1" cap="0.5" function="constant" value="1" />

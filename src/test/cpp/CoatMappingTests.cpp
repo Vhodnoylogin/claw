@@ -1,11 +1,13 @@
 #include "claw/CoatMapping.h"
 #include "claw/CoatMatrix.h"
+#include "claw/CoatDye.h"
 #include <fstream>
 #include <iostream>
 #include <iterator>
 
 namespace {
 using namespace claw::appearance;
+constexpr auto middleSeed = std::uint64_t{128} << 56;
 void require(bool ok, const char* message) { if (!ok) throw std::runtime_error(message); }
 std::string manifest(std::string_view rows) {
     return "<CoatMapping schemaVersion=\"1\" output=\"coat.selector\">" + std::string(rows) + "</CoatMapping>";
@@ -101,12 +103,6 @@ int main(int argc, char** argv) {
         Colours hair;
         hair.hasHair = true;
         require(evaluate({}, 0) == 0 && evaluate({}, UINT64_MAX) == 1, "seed-only endpoints lost");
-        require(evaluate(hair, 0) == 0, "known black hair changed lower endpoint");
-        hair.hair = {1, 0, 0};
-        require(std::abs(evaluate(hair, 0) - .187088F) < 1e-6F, "red hair coefficient changed");
-        require(std::abs(evaluate(hair, UINT64_MAX) - .307088F) < 1e-6F, "known-hair seed contribution changed");
-        hair.hair = {1, 1, 1};
-        require(evaluate(hair, UINT64_MAX) == 1, "known white hair changed upper endpoint");
         std::ifstream input(argv[1], std::ios::binary);
         require(input.good(), "shipped mapping unreadable");
         const auto actual = CoatMapping::parse(std::string((std::istreambuf_iterator<char>(input)), {}));
@@ -142,94 +138,139 @@ int main(int argc, char** argv) {
         }
         require(actual.select("elegant-2k-2.1/coal", {}, false).pattern == "elegant-2k-2.1/coal" &&
             actual.material("elegant-2k-2.1/coal") == "randomized/black", "saved legacy alias not resolved");
-        // Real NPC record input, not a claim that the photo run retained rendered RGB:
-        // Skyrim.esm HousecarlRiften 0A2C91 -> HairColor06Auburn 0A0431 CNAM 30 23 21 00.
         const RGB auburn{48.F / 255, 35.F / 255, 33.F / 255};
-        const float luminance = .2126F * auburn[0] + .7152F * auburn[1] + .0722F * auburn[2];
-        std::set<std::string> warmVariants;
-        for (unsigned step = 0; step <= 256; ++step) {
-            const auto seed = step == 256 ? UINT64_MAX : std::uint64_t(step) << 56;
-            hair.hair = auburn;
-            const auto outputs = matrix.evaluate(hair, seed);
-            require(outputs.at("coat.red") == auburn[0] && outputs.at("coat.green") == auburn[1] &&
-                outputs.at("coat.blue") == auburn[2], "matrix discarded source hue");
-            const auto selected = actual.selectOutputs({}, outputs, true);
-            require(selected.pool == "warm-brown", "auburn escaped its warm colour group");
-            require(actual.material(selected.pattern) == "randomized/timber-dark" ||
-                actual.material(selected.pattern) == "randomized/valley-brown" || actual.material(selected.pattern) == "randomized/brown",
-                "seed escaped eligible warm variants");
-            warmVariants.insert(selected.pattern);
-            const auto record = AutomaticCoatRecord{7, 9, 0, {1, seed ? seed : 1, {selected.pool, selected.pattern}}};
-            require(readAutomaticCoat(writeAutomaticCoat(record)).automatic == record.automatic, "group choice codec changed");
-            hair.hair = {luminance, luminance, luminance};
-            require(actual.selectOutputs({}, matrix.evaluate(hair, seed), true).pool == "dark-neutral",
-                "same-luminance neutral and auburn lost hue distinction");
-            for (unsigned grey = 0; grey <= 255; ++grey) {
-                hair.hair = {grey / 255.F, grey / 255.F, grey / 255.F};
-                const auto neutral = actual.selectOutputs({}, matrix.evaluate(hair, seed), true);
-                require(neutral.pool == "dark-neutral" || neutral.pool == "grey" || neutral.pool == "white",
-                    "neutral grey selected a warm coat");
-            }
-        }
-        require(warmVariants.size() == 3, "within-group seed diversity lost");
-        const std::uint64_t skinContrastSeed = std::uint64_t{102} << 56;
+        const RGB ionaSkin{221.F / 255, 221.F / 255, 221.F / 255};
         const Colours darkSkin{{0, 0, 0}, auburn, true, true};
         const Colours lightSkin{{1, 1, 1}, auburn, true, true};
-        const Colours withoutSkin{{1, 1, 1}, auburn, false, true};
-        const auto darkOutputs = matrix.evaluate(darkSkin, skinContrastSeed);
-        const auto lightOutputs = matrix.evaluate(lightSkin, skinContrastSeed);
-        const auto noSkinOutputs = matrix.evaluate(withoutSkin, skinContrastSeed);
-        const auto darkChoice = actual.selectOutputs({}, darkOutputs, true);
-        const auto lightChoice = actual.selectOutputs({}, lightOutputs, true);
-        require(darkChoice.pool == "warm-brown" && lightChoice.pool == darkChoice.pool &&
-            lightChoice.pattern != darkChoice.pattern, "skin did not affect the coat variant within the same hair group");
-        require(darkOutputs.at("coat.selector") == lightOutputs.at("coat.selector") &&
-            darkOutputs.at("coat.selector") == noSkinOutputs.at("coat.selector"), "legacy scalar selector changed with skin");
-        require(noSkinOutputs.at("coat.variation") == static_cast<float>(skinContrastSeed >> 40) / 16777215.F,
-            "unknown skin changed the full seed contribution");
-        // Observed Runa skin DDDDDD. This seed moves the variation within the same Valley Brown bin.
-        constexpr auto sameCoatSeed = std::uint64_t{128} << 56;
-        const Colours runa{{221.F / 255, 221.F / 255, 221.F / 255}, auburn, true, true};
-        const auto withSkin = matrix.evaluate(runa, sameCoatSeed);
-        const auto seedOnly = matrix.evaluate(withoutSkin, sameCoatSeed);
-        const auto selected = actual.selectOutputs({}, withSkin, true);
-        const auto unchanged = actual.selectOutputs({}, seedOnly, true);
-        require(selected.pattern == "elegant-2k-2.1/valley-brown" && selected.pattern == unchanged.pattern &&
-            selected.variation == withSkin.at("coat.variation") && unchanged.variation == seedOnly.at("coat.variation") &&
-            selected.variation > unchanged.variation, "selection lost the exact variation used inside an unchanged coat bin");
+        const Colours hairOnly{{}, auburn, false, true};
+        const Colours skinOnly{ionaSkin, {}, true, false};
+        const Colours iona{ionaSkin, auburn, true, true};
+        const Colours edda{{145.F / 255, 119.F / 255, 111.F / 255}, {90.F / 255, 95.F / 255, 105.F / 255}, true, true};
+        const auto select = [&](const Colours& colours, std::uint64_t seed = middleSeed) {
+            return actual.selectOutputs({}, matrix.evaluate(colours, seed), colours.hasHair);
+        };
+        const auto paletteColour = [](float r, float g, float b) -> RGB { return {r / 255.F, g / 255.F, b / 255.F}; };
+        const auto region = [&](const RGB& skin, const RGB& hair, bool chooseHair) {
+            return actual.selectRegional(matrix.evaluate({skin, hair, true, true}, middleSeed), chooseHair).pattern;
+        };
+        const auto mediumSkin = paletteColour(185.F, 179.F, 170.F);
+        const auto darkHairFixture = paletteColour(20.F, 20.F, 24.F);
+        const auto blondFixture = paletteColour(81.F, 77.F, 57.F);
+        require(actual.hasRegionalPalettes() && !colourMapping.hasRegionalPalettes(), "regional palettes broke legacy selection");
+        require(region(mediumSkin, darkHairFixture, false) == "elegant-2k-2.1/timber" &&
+            region(mediumSkin, blondFixture, false) == "elegant-2k-2.1/timber" &&
+            region(ionaSkin, darkHairFixture, false) == "elegant-2k-2.1/white",
+            "same-skin fixtures disagreed or skin groups collapsed");
+        require(region(mediumSkin, darkHairFixture, true) == "elegant-2k-2.1/valley-black" &&
+            region(ionaSkin, darkHairFixture, true) == "elegant-2k-2.1/valley-black" &&
+            region(ionaSkin, blondFixture, true) == "elegant-2k-2.1/timber" &&
+            region(ionaSkin, auburn, true) == "elegant-2k-2.1/brown" &&
+            region(ionaSkin, paletteColour(90.F, 95.F, 105.F), true) == "elegant-2k-2.1/grey",
+            "hair groups lost neutral, warm, blond or grey discrimination");
+        require(actual.selectRegional({}, true).pattern.empty(), "missing hair inputs selected a regional donor");
+        const auto ionaOutputs = matrix.evaluate(iona, middleSeed);
+        const auto onlySkinOutputs = matrix.evaluate(skinOnly, middleSeed);
+        const auto onlyHairOutputs = matrix.evaluate(hairOnly, middleSeed);
+        const auto ionaDye = coatDyes(ionaOutputs, iona);
+        const auto eddaDye = coatDyes(matrix.evaluate(edda, middleSeed), edda);
+        require(ionaDye.body.tint && ionaDye.hair.tint && eddaDye.body.tint && eddaDye.hair.tint &&
+            ionaDye.body.tint != eddaDye.body.tint && ionaDye.hair.tint != eddaDye.hair.tint,
+            "regional dye absent or insensitive to human colours");
+        const auto skinContrast = coatDyes(matrix.evaluate(darkSkin, middleSeed), darkSkin);
+        require(ionaDye.body.tint != skinContrast.body.tint && ionaDye.hair.tint == skinContrast.hair.tint &&
+            ionaDye.hair.opacity == skinContrast.hair.opacity, "skin colour contaminated the hair dye");
+        auto hairContrast = iona;
+        hairContrast.hair = {1, .3F, .1F};
+        const auto hairContrastDye = coatDyes(matrix.evaluate(hairContrast, middleSeed), hairContrast);
+        require(ionaDye.body.tint == hairContrastDye.body.tint && ionaDye.body.opacity == 1.F &&
+            ionaDye.hair.tint != hairContrastDye.hair.tint && hairContrastDye.hair.opacity > ionaDye.hair.opacity,
+            "hair colour did not independently modulate tint and opacity");
+        require(coatSurfaceDye(ionaDye, "body").tint == ionaDye.body.tint &&
+            coatSurfaceDye(ionaDye, "head").tint == ionaDye.hair.tint &&
+            coatSurfaceDye(ionaDye, "ScalpFurBlend").tint == ionaDye.hair.tint,
+            "regional routing diverged from the painted mesh parts");
+        require(coatDyes(onlySkinOutputs, skinOnly).body.tint && !coatDyes(onlySkinOutputs, skinOnly).hair.tint &&
+            coatDyes(onlyHairOutputs, hairOnly).hair.tint && !coatDyes(onlyHairOutputs, hairOnly).body.tint &&
+            !coatDyes(ionaOutputs, {}).active() && !coatDyes({}, iona).active(), "missing dye input was fabricated");
+        auto invalidDye = ionaOutputs;
+        invalidDye["dye.hair.saturation"] = std::numeric_limits<float>::infinity();
+        require(!coatDyes(invalidDye, iona).hair.tint && coatDyes(invalidDye, iona).hair.opacity == 1.F,
+            "invalid dye affected the coat");
+        const std::array<const char*, 3> channels{"coat.red", "coat.green", "coat.blue"};
+        for (std::size_t i = 0; i < channels.size(); ++i) {
+            const auto key = channels[i];
+            require(std::abs(ionaOutputs.at(key) - (.75F * ionaSkin[i] + .25F * auburn[i])) < 1e-6F,
+                "primary skin or secondary hair coefficient changed");
+            require(onlySkinOutputs.at(key) == ionaSkin[i] && onlyHairOutputs.at(key) == auburn[i],
+                "sole known colour was attenuated");
+        }
+        require(select(darkSkin).pool == "dark-neutral" && select(lightSkin).pool == "white",
+            "skin with fixed hair did not change the coat group");
+        const Colours darkHair{{110.F/255, 95.F/255, 88.F/255}, {10.F/255, 10.F/255, 10.F/255}, true, true};
+        auto fairHair = darkHair;
+        fairHair.hair = {1, 1, 1};
+        require(select(darkHair).pool == "warm-brown" && select(fairHair).pool == "light-warm",
+            "hair did not have a secondary effect with fixed skin");
+        require(select(iona).pattern == "elegant-2k-2.1/white" && select(edda).pattern == "elegant-2k-2.1/timber",
+            "Iona or Edda record inputs unexpectedly changed");
+        require(select(skinOnly).origin == CoatOrigin::colourPool && select(skinOnly).pool == "white" &&
+            select(hairOnly).origin == CoatOrigin::colourPool && select(hairOnly).pool == "warm-brown",
+            "single available colour bypassed the group mapping");
+        std::set<std::string> variants;
+        for (unsigned step = 0; step <= 256; ++step) {
+            const auto seed = step == 256 ? UINT64_MAX : std::uint64_t(step) << 56;
+            const auto selected = select(hairOnly, seed);
+            const auto outputs = matrix.evaluate(hairOnly, seed);
+            require(selected.pool == "warm-brown" && selected.variation == outputs.at("coat.variation"),
+                "seed changed the group or its observed variation was lost");
+            variants.insert(selected.pattern);
+        }
+        require(variants.size() == 3, "within-group seed diversity lost");
+        const float auburnLuma = .2126F * auburn[0] + .7152F * auburn[1] + .0722F * auburn[2];
+        const Colours neutralAuburn{{}, {auburnLuma, auburnLuma, auburnLuma}, false, true};
+        require(select(neutralAuburn).pool == "dark-neutral", "equal-luminance auburn and neutral lost their distinction");
+        require(select({{}, {.25F, .24F, .24F}, false, true}).pool == "grey", "low-saturation grey became warm");
+        for (const auto known : {false, true}) for (unsigned grey = 0; grey <= 255; ++grey) {
+            const float value = grey / 255.F;
+            const Colours neutral{{value, value, value}, {value, value, value}, true, known};
+            const auto selected = select(neutral);
+            require(selected.origin == CoatOrigin::colourPool &&
+                (selected.pool == "dark-neutral" || selected.pool == "grey" || selected.pool == "white"),
+                "neutral grey selected a warm coat");
+        }
+        const auto unknownColours = select({});
+        require(unknownColours.origin == CoatOrigin::fallback && !unknownColours.variation,
+            "no colour did not use the scalar fallback");
+        require(matrix.evaluate({{1, 1, 1}, {1, 1, 1}, false, false}, middleSeed) == matrix.evaluate({}, middleSeed),
+            "unavailable channels affected the result");
+        CoatValues invalid = ionaOutputs;
+        invalid.erase("coat.colour-available");
+        actual.checkOutputs(invalid);
+        require(actual.selectOutputs({}, invalid, true).origin == CoatOrigin::hairPool &&
+            actual.selectOutputs({}, invalid, false).origin == CoatOrigin::fallback,
+            "updated mapping lost compatibility with an old matrix without colour availability");
+        invalid["coat.colour-available"] = .5F;
+        require(actual.selectOutputs({}, invalid, true).pattern.empty(), "non-binary availability accepted");
+        const auto manual = actual.selectOutputs("elegant-2k-2.1/black", invalid, false);
+        require(manual.pattern == "elegant-2k-2.1/black" && !manual.variation,
+            "manual coat lost precedence over colour availability");
+        rejectsXml(colourManifest(groups, R"(available="invalid/name")"));
         const auto legacy = CoatMatrix::parse(R"(<CoatMatrix schemaVersion="1">
             <Rule source="seed.withHair" target="coat.variation" gain="1" cap="1"/>
             <Rule source="seed.withoutHair" target="coat.selector" gain="1" cap="1"/>
         </CoatMatrix>)");
-        require(legacy.evaluate(darkSkin, skinContrastSeed) == legacy.evaluate(lightSkin, skinContrastSeed) &&
-            legacy.evaluate(lightSkin, skinContrastSeed).at("coat.variation") == noSkinOutputs.at("coat.variation"),
-            "legacy coat matrix gained an implicit skin term");
-        const Colours skinOnlyDark{{0, 0, 0}, {}, true, false};
-        const Colours skinOnlyLight{{1, 1, 1}, {}, true, false};
-        const auto hairlessSkin = matrix.evaluate(skinOnlyLight, skinContrastSeed);
-        const auto first = actual.selectOutputs({}, matrix.evaluate(skinOnlyDark, skinContrastSeed), false);
-        const auto second = actual.selectOutputs({}, hairlessSkin, false);
-        require(first.origin == CoatOrigin::fallback && second.origin == CoatOrigin::fallback &&
-            first.pattern == "elegant-2k-2.1/valley-brown" && second.pattern == "elegant-2k-2.1/timber",
-            "known skin must influence choice while using the numeric fallback");
-        const auto unavailable = Colours{{1, 1, 1}, {1, 1, 1}, false, false};
-        require(matrix.evaluate(unavailable, skinContrastSeed) == matrix.evaluate({}, skinContrastSeed) &&
-            evaluate({}, skinContrastSeed) == legacy.evaluate(skinOnlyLight, skinContrastSeed).at("coat.selector"),
-            "unavailable colours or legacy seed-only matrix changed");
-        const auto savedSkinOnly = AutomaticCoatRecord{7, 9, 0, {1, skinContrastSeed, {}, {second.pool, second.pattern}}};
-        const auto restoredSkinOnly = readAutomaticCoat(writeAutomaticCoat(savedSkinOnly));
-        require(actual.selectOutputs({}, matrix.evaluate(skinOnlyLight, restoredSkinOnly.automatic.seed), false).pattern == second.pattern,
-            "round-tripped seed changed the skin-only selection");
-        const auto manual = actual.selectOutputs("elegant-2k-2.1/black", lightOutputs, true);
-        require(manual.pattern == "elegant-2k-2.1/black" && !manual.variation &&
-            actual.selectOutputs(manual.pattern, hairlessSkin, false).pattern == manual.pattern &&
-            !actual.selectOutputs({}, hairlessSkin, false).variation, "manual or hairless coat reported automatic colour variation");
-        hair.hair = {.25F, .24F, .24F};
-        require(actual.selectOutputs({}, matrix.evaluate(hair, 0), true).pool == "grey" &&
-            actual.selectOutputs({}, matrix.evaluate(hair, UINT64_MAX), true).pool == "grey", "low-saturation grey became warm");
+        require(legacy.evaluate(darkSkin, middleSeed) == legacy.evaluate(lightSkin, middleSeed) &&
+            legacy.evaluate(iona, middleSeed).at("coat.variation") == ionaOutputs.at("coat.variation") &&
+            legacy.evaluate(skinOnly, middleSeed).at("coat.selector") == evaluate({}, middleSeed),
+            "legacy matrix sources or full seed changed");
+        const auto selected = select(skinOnly);
+        const auto record = AutomaticCoatRecord{7, 9, 0, {1, middleSeed, {selected.pool, selected.pattern}}};
+        const auto restored = readAutomaticCoat(writeAutomaticCoat(record));
+        require(restored.automatic == record.automatic &&
+            select(skinOnly, restored.automatic.seed).pattern == selected.pattern, "save round trip changed the selected skin-only coat");
         require(actual.selectOutputs("elegant-2k-2.1/coal", {}, true).pattern == "elegant-2k-2.1/coal", "manual alias lost with colour mapping");
         require(actual.selectOutputs({}, matrix.evaluate({}, UINT64_MAX), false).pattern == "elegant-2k-2.1/white", "hairless upper fallback changed");
-        std::cout << "Legacy scalar/manual compatibility, named RGB groups and all-seed neutral/auburn checks passed\n";
+        std::cout << "Legacy/manual compatibility, skin-first RGB groups and deterministic coat variants passed\n";
         return 0;
     } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }

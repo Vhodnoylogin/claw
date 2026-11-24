@@ -19,6 +19,9 @@ Keep each CLAW body and appearance component installable with physics turned
 off. Default to the static model and make optional motion or contact support
 an explicit choice for players.
 
+For the 0.11.0 main mod and the future VR add-on, retain FSMP tail motion
+as an option. VR contact colliders remain required for ears, tail and chest.
+
 ## Deferred CBPC actor rebinding
 
 Actual 13 November case142827-3a903c transformed a human NPC successfully, but

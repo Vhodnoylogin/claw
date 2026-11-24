@@ -1,19 +1,30 @@
 <CoatMatrix schemaVersion="1">
-  <Rule source="hair.red" target="coat.red" gain="1" cap="1"/>
-  <Rule source="hair.green" target="coat.green" gain="1" cap="1"/>
-  <Rule source="hair.blue" target="coat.blue" gain="1" cap="1"/>
-  <Rule source="seed.withHairWithoutSkin" target="coat.variation" gain="1" cap="1"/>
-  <Rule source="seed.withHairAndSkin" target="coat.variation" gain="0.8" cap="1"/>
-  <Rule source="skin.red" target="coat.variation" gain="0.04252" cap="1"/>
-  <Rule source="skin.green" target="coat.variation" gain="0.14304" cap="1"/>
-  <Rule source="skin.blue" target="coat.variation" gain="0.01444" cap="1"/>
-  <Rule source="hair.red" target="coat.selector" gain="0.187088" cap="1"/>
-  <Rule source="hair.green" target="coat.selector" gain="0.629376" cap="1"/>
-  <Rule source="hair.blue" target="coat.selector" gain="0.063536" cap="1"/>
-  <Rule source="seed.withHair" target="coat.selector" gain="0.12" cap="1"/>
-  <Rule source="seed.withoutHairWithoutSkin" target="coat.selector" gain="1" cap="1"/>
-  <Rule source="seed.withoutHairWithSkin" target="coat.selector" gain="0.8" cap="1"/>
-  <Rule source="skin.withoutHair.red" target="coat.selector" gain="0.04252" cap="1"/>
-  <Rule source="skin.withoutHair.green" target="coat.selector" gain="0.14304" cap="1"/>
-  <Rule source="skin.withoutHair.blue" target="coat.selector" gain="0.01444" cap="1"/>
+  <Rule source="skin.withHair.red" target="coat.red" gain="0.75" cap="1"/>
+  <Rule source="skin.withHair.green" target="coat.green" gain="0.75" cap="1"/>
+  <Rule source="skin.withHair.blue" target="coat.blue" gain="0.75" cap="1"/>
+  <Rule source="hair.withSkin.red" target="coat.red" gain="0.25" cap="1"/>
+  <Rule source="hair.withSkin.green" target="coat.green" gain="0.25" cap="1"/>
+  <Rule source="hair.withSkin.blue" target="coat.blue" gain="0.25" cap="1"/>
+  <Rule source="skin.withoutHair.red" target="coat.red" gain="1" cap="1"/>
+  <Rule source="skin.withoutHair.green" target="coat.green" gain="1" cap="1"/>
+  <Rule source="skin.withoutHair.blue" target="coat.blue" gain="1" cap="1"/>
+  <Rule source="hair.withoutSkin.red" target="coat.red" gain="1" cap="1"/>
+  <Rule source="hair.withoutSkin.green" target="coat.green" gain="1" cap="1"/>
+  <Rule source="hair.withoutSkin.blue" target="coat.blue" gain="1" cap="1"/>
+  <Rule source="colour.available" target="coat.colour-available" gain="1" cap="1"/>
+  <Rule source="seed" target="coat.variation" gain="1" cap="1"/>
+  <Rule source="seed" target="coat.selector" gain="1" cap="1"/>
+  <Rule source="skin.red" target="dye.body.red" gain="1" cap="1"/>
+  <Rule source="skin.green" target="dye.body.green" gain="1" cap="1"/>
+  <Rule source="skin.blue" target="dye.body.blue" gain="1" cap="1"/>
+  <Rule source="" target="dye.body.saturation" gain="0.55" cap="1" function="constant" value="1"/>
+  <Rule source="hair.red" target="dye.hair.red" gain="1" cap="1"/>
+  <Rule source="hair.green" target="dye.hair.green" gain="1" cap="1"/>
+  <Rule source="hair.blue" target="dye.hair.blue" gain="1" cap="1"/>
+  <Rule source="" target="dye.hair.saturation" gain="0.5" cap="1" function="constant" value="1"/>
+  <Rule source="hair.chroma" target="dye.hair.saturation" gain="0.5" cap="1"/>
+  <Rule source="" target="dye.hair.opacity" gain="0.86" cap="1" function="constant" value="1"/>
+  <Rule source="hair.red" target="dye.hair.opacity" gain="0.029764" cap="1"/>
+  <Rule source="hair.green" target="dye.hair.opacity" gain="0.100128" cap="1"/>
+  <Rule source="hair.blue" target="dye.hair.opacity" gain="0.010108" cap="1"/>
 </CoatMatrix>
