@@ -42,8 +42,12 @@ and includes the player handle for a same-session pre-transformation control.
 Look for the stock `HandMale_Big1stperson` mesh in a complete explicit
 first-person actor or biped graph. Record camera, active Hands slot and cull
 state alongside the geometry. A declared path, RaceMenu overlay or a
-third-person mesh cannot serve as this control. Capture the wolf afterwards
-with `CaptureDispatch` while keeping the same simulated headset conditions.
+third-person mesh cannot serve as this control. The native VR gauntlet can
+instead contain `HandMaleVR` and `leatherCuffs`. The
+`human_firstperson_readback.py` scorer requires that exact two-shape roster
+in the active stock Hands33 clone and in a complete direct first-person
+inventory. Capture the wolf afterwards with `CaptureDispatch` while keeping
+the same simulated headset conditions.
 
 ## Loaded Body32 origin
 
