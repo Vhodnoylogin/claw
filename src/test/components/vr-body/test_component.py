@@ -69,12 +69,14 @@ class NativeCurrentCompositionTests(unittest.TestCase):
     def setUpClass(cls):
         cls.root = Path(os.environ['CLAW_VR_COMPONENT_ROOT'])
         cls.profile = component.resource.read_json(component.HERE/'current-010.json')
+        cls.manifest = component.resource.read_json(cls.root/'install-manifest.json')
+        cls.male_anatomy_hidden = cls.manifest.get('maleAnatomy') == 'hidden'
         cls.api, _, cls.Trip, _ = component.resource.dependencies(Path(os.environ['CLAW_VR_COMPONENT_PYNIFLY']), Path(os.environ['CLAW_VR_COMPONENT_MORPHBENCH']))
         cls.skeleton = cls.api.NifFile(str(REPO/'src/main/resources/donors/skeleton.nif'))
         cls.head = component.resource.head_descendant_names(cls.skeleton, component.isolation.HEAD)
 
     def test_six_real_resources_match_manifest_and_namespace(self):
-        manifest = component.resource.read_json(self.root/'install-manifest.json')
+        manifest = self.manifest
         self.assertEqual(len(manifest['files']), 6)
         self.assertEqual(manifest['worldOverrides'], [])
         self.assertFalse(manifest['nativeDispatchQualified'])
@@ -88,7 +90,8 @@ class NativeCurrentCompositionTests(unittest.TestCase):
                     path = self.root/'resources'/component.resource_paths(sex, endpoint)
                     component.require_static_nif(path.read_bytes())
                     nif = self.api.NifFile(str(path))
-                    receipt = component.verify_first_person(nif, self.Trip, tri, sex, self.profile, self.head)
+                    receipt = component.verify_first_person(nif, self.Trip, tri, sex, self.profile, self.head,
+                                                            male_anatomy_hidden=self.male_anatomy_hidden)
                     self.assertEqual(receipt['visibleHeadSubtreeWeights'], 0)
                     self.assertEqual(receipt['publicMorphCount'], 31 if sex == 'female' else 30)
 
@@ -110,6 +113,14 @@ class NativeCurrentCompositionTests(unittest.TestCase):
         next(s for s in nif.shapes if s.name == 'body').flags |= component.resource.HIDDEN
         with self.assertRaisesRegex(ValueError, 'visibility'):
             component.verify_first_person(nif, self.Trip, tri, sex, self.profile, self.head)
+
+    def test_rejects_male_anatomy_with_wrong_visibility(self):
+        sex = 'male'; tri = self.root/'resources'/component.resource_paths(sex)
+        nif = self.api.NifFile(str(self.root/'resources'/component.resource_paths(sex, 0)))
+        nif.shape_dict['genitals'].flags ^= component.resource.HIDDEN
+        with self.assertRaisesRegex(ValueError, 'visibility'):
+            component.verify_first_person(nif, self.Trip, tri, sex, self.profile, self.head,
+                                          male_anatomy_hidden=self.male_anatomy_hidden)
 
 
 if __name__ == '__main__': unittest.main()

@@ -220,10 +220,12 @@ def reference_proof(root, expected):
             'meaning': 'Installed reference and saved author metadata use this first-person path; not native sex/weight/path dispatch proof'}
 
 
-def verify_first_person(nif, Trip, tri, sex, profile, head_descendants):
+def verify_first_person(nif, Trip, tri, sex, profile, head_descendants, *, male_anatomy_hidden=False):
     raw = Trip.from_filepath(str(tri)).shapes
     fields, _ = morph_quality.decode_fields(Path(tri).read_bytes(), raw, {s.name: len(s.verts) for s in nif.shapes})
     hidden = set(profile['hiddenShapes'])
+    if sex == 'male' and male_anatomy_hidden:
+        hidden.add('genitals')
     if len(nif.shapes) != len({s.name for s in nif.shapes}) or not hidden <= {s.name for s in nif.shapes}:
         raise ValueError('Missing or duplicate first-person shape')
     hands = {name: 0 for name in resource.HAND_BONES}; breast = 0
@@ -255,8 +257,8 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
     body_root, skeleton_path = Path(body_root).resolve(strict=True), Path(skeleton_path).resolve(strict=True)
     profile = resource.read_json(profile_path)
     if profile != resource.read_json(HERE/'current-010.json'): raise ValueError('Only the pinned current0.10 composition is admitted')
-    inputs = {str(body_root/name): h for name, h in profile['inputSha256'].items()}
-    inputs[str(skeleton_path)] = profile['skeletonSha256']
+    inputs = {str(skeleton_path): profile['skeletonSha256']}
+    body_digests, male_anatomy_hidden = profile['inputSha256'], False
     runtime_receipt = Path(runtime_receipt).resolve(strict=True)
     source_version = profile['sourceVersion']
     if core_archive_path is None:
@@ -270,16 +272,17 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
     else:
         pack = core_archive.open_tools(core_archive.PACKAGER)
         files, plans, provenance = core_archive.read_core_archive(pack, core_archive_path, receipt_path=runtime_receipt)
-        core_archive.require_reviewed_body(pack, files, plans, profile)
+        body_digests, male_anatomy_hidden = core_archive.require_reviewed_body(pack, files, plans, profile)
         source_version = core_version(files)
         inputs.update(provenance)
+    inputs.update({str(body_root/name): digest for name, digest in body_digests.items()})
     if any(resource.sha256(p) != h for p, h in inputs.items()): raise ValueError('Current source body/TRI/skeleton pin differs')
     proof = reference_proof(reference_mod, profile['reference'])
     inputs.update({proof['mesh']: proof['sha256'], proof['metadata']: proof['metadataSha256'], str(profile_path): resource.sha256(profile_path)})
     out = resource.safe_output(output, inputs)
     api, Patch, Trip, dependencies = resource.dependencies(pynifly, morphbench); TRIP = Trip
     if any(resource.sha256(p) != h for p, h in inputs.items()): raise ValueError('Input changed during dependency loading')
-    sources = [Path(__file__), *(Path(module.__file__) for module in
+    sources = [Path(__file__), core_archive.ANATOMY_VISIBILITY_SOURCE, *(Path(module.__file__) for module in
                (resource, core_archive, head_split, isolation, neck_bounds, rig, morph_quality, player_only_materials, vr_dispatch))]
     if core_archive_path is not None:
         sources.extend((core_archive.PACKAGER, core_archive.PACKAGER.with_name('build-unified-release.py'),
@@ -287,6 +290,7 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
     pins = {**inputs, **dependencies, **{str(p): resource.sha256(p) for p in sources}}
     out.mkdir(parents=True)
     report = {'schemaVersion': 1, 'status': 'building', 'sourceVersion': source_version, 'inputSha256': inputs,
+              'maleAnatomy': 'hidden' if male_anatomy_hidden else 'visible-legacy-diagnostic',
               'executedSourceAndDependencies': pins, 'worldBodiesWritten': False, 'texturesSupplied': False,
               'nativeDispatchQualified': False, 'installedReferenceProof': proof, 'sexes': {}}
     try:
@@ -305,6 +309,8 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
             plan, protected = anatomical_plan(native, original_fields, head, actual_protected)
             hidden = sorted([n for n, p in plan.items() if p['action'] == 'head'] + [n+head_split.SUFFIX for n, p in plan.items() if p['action'] == 'split'])
             if hidden != sorted(profile['hiddenShapes']): raise ValueError('Actual anatomical head selection differs from reviewed contract')
+            if sex == 'male' and male_anatomy_hidden:
+                hidden.append('genitals')
             split = work/'split.nif'; tri = work/'split.tri'
             raw_split, split_receipt = head_split.split_nif(source_bytes, plan, native.nodes)
             split.write_bytes(raw_split); tri.write_bytes(head_split.split_trip(source_tri.read_bytes(), plan))
@@ -328,7 +334,8 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
             for endpoint in (0, 1):
                 target = out/'resources'/resource_paths(sex, endpoint); target.write_bytes(namespaced)
                 reopened = api.NifFile(str(target))
-                final_receipt = verify_first_person(reopened, Trip, tri_target, sex, profile, head)
+                final_receipt = verify_first_person(reopened, Trip, tri_target, sex, profile, head,
+                                                    male_anatomy_hidden=male_anatomy_hidden)
                 endpoints[str(endpoint)] = {'path': resource_paths(sex, endpoint), 'sha256': resource.sha256(target), 'verification': final_receipt}
             report['sexes'][sex] = {'sourceEndpointsIdentical': True, 'morphCount': profile['publicMorphCount'][sex],
                 'protectedActualMorphNames': actual_protected, 'retainedHeadSideVisibility': protected,
@@ -342,7 +349,8 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
         files = {str(p.relative_to(out/'resources')).replace('\\', '/'): resource.sha256(p) for p in (out/'resources').rglob('*') if p.is_file()}
         if set(files) != {resource_paths(s, e) for s in ('female', 'male') for e in (None, 0, 1)}: raise ValueError('Unexpected component payload')
         manifest = {'schemaVersion': 1, 'component': 'CLAW/vr-body', 'status': 'offline-resource-candidate-dispatch-unqualified',
-            'sourceVersion': source_version, 'files': files, 'worldOverrides': [], 'skeletonFiles': [], 'textureFiles': [],
+            'sourceVersion': source_version, 'maleAnatomy': report['maleAnatomy'], 'files': files,
+            'worldOverrides': [], 'skeletonFiles': [], 'textureFiles': [],
             'nativeDispatchQualified': False, 'defaultInstallEnabled': False,
             'selection': 'Namespaced first-person assets only; no native load route is asserted or installed',
             'prospectiveProbeEntry': REFERENCE_ENTRY, 'prospectiveProbeChoices': [
@@ -353,7 +361,7 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
                       'Hand/ear/tail contact and headset verification', 'Human return and save/load'],
             'runtimeAccepted': False, 'installed': False}
         dump(out/'install-manifest.json', manifest)
-        report['status'] = 'offline-current010-first-person-candidate-verified-dispatch-pending'
+        report['status'] = 'offline-first-person-candidate-verified-dispatch-pending'
     except BaseException as error:
         report.update(status='failed-candidate-not-admitted', failure=repr(error)); raise
     finally:

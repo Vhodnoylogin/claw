@@ -7,12 +7,13 @@ import sys
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "src/main/components/vr-body"))
 from vr_dispatch import ADDON, LEGACY_ALIAS, SEXES, fixed_profile_xml, resource_paths
-from core_archive import read_core_archive, require_reviewed_body, static_routes
+from core_archive import anatomy_visibility, read_core_archive, require_reviewed_body, static_routes
 from core_package_input import core_version
 from world_motion import alias_member
 
@@ -74,6 +75,34 @@ class CoreArchiveAdmissionTests(unittest.TestCase):
         require_reviewed_body(pack, paths, plans, profile)
         with self.assertRaisesRegex(ValueError, 'differ from the reviewed VR resource profile'):
             require_reviewed_body(pack, {'static/body.nif': b'another body'}, plans, profile)
+
+    def test_both_installed_male_endpoints_must_match_one_reviewed_visibility(self):
+        digest = lambda data: sha256(data).hexdigest()
+        pack = SimpleNamespace(MESH='meshes', sha=digest)
+        visible = b'reviewed visible male'
+        hidden = b'reviewed hidden male'
+        original = {'malebodywerewolf_0.nif': visible, 'malebodywerewolf_1.nif': visible,
+                    'malebodywerewolf.tri': b'male TRI', 'femalebodywerewolf_0.nif': b'female NIF',
+                    'femalebodywerewolf_1.nif': b'female NIF', 'femalebodywerewolf.tri': b'female TRI'}
+        male_names = ('malebodywerewolf_0.nif', 'malebodywerewolf_1.nif')
+        endpoints = dict.fromkeys(male_names, hidden)
+        plans = [{'physics': 'none', 'files': [{'path': 'meshes/' + name, 'source': name} for name in original]}]
+        profile = {'inputSha256': {name: digest(data) for name, data in original.items()}}
+        self.assertEqual(require_reviewed_body(pack, original, plans, profile), (profile['inputSha256'], False))
+        with patch.object(anatomy_visibility, 'reviewed_visible_anatomy', return_value=visible) as restore:
+            files = original | endpoints
+            digests, hidden_selected = require_reviewed_body(pack, files, plans, profile)
+            self.assertTrue(hidden_selected)
+            self.assertEqual(digests, {name: digest(data) for name, data in files.items()})
+            self.assertEqual(restore.call_count, 2)
+            restore.assert_called_with(hidden, digest(visible))
+        for altered in ({male_names[0]: hidden}, endpoints | {'malebodywerewolf.tri': b'different'},
+                        endpoints | {'femalebodywerewolf_0.nif': b'different'}):
+            with self.subTest(paths=list(altered)), self.assertRaisesRegex(ValueError, 'body and TRI bytes differ'):
+                require_reviewed_body(pack, original | altered, plans, profile)
+        with patch.object(anatomy_visibility, 'reviewed_visible_anatomy', side_effect=ValueError('flag proof failed')):
+            with self.assertRaisesRegex(ValueError, 'flag proof failed'):
+                require_reviewed_body(pack, original | endpoints, plans, profile)
 
 
 class AliasMemberTests(unittest.TestCase):

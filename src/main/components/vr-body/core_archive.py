@@ -10,6 +10,8 @@ import core_package_input
 ROOT = Path(__file__).resolve().parents[4]
 PACKAGER = ROOT / 'src/main/python/build-tools/package-source-build.py'
 CORE_INPUT_SOURCE = Path(core_package_input.__file__)
+ANATOMY_VISIBILITY_SOURCE = ROOT / 'src/main/components/adult-anatomy/python/visual_variants.py'
+MALE_ENDPOINTS = frozenset(f'malebodywerewolf_{index}.nif' for index in (0, 1))
 
 
 def open_tools(path):
@@ -17,6 +19,9 @@ def open_tools(path):
     tool = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(tool)
     return tool
+
+
+anatomy_visibility = open_tools(ANATOMY_VISIBILITY_SOURCE)
 
 
 def read_core_archive(pack, archive, *, receipt_path=None, known_digest=None):
@@ -46,7 +51,16 @@ def static_routes(plans, destinations):
 
 
 def require_reviewed_body(pack, files, plans, profile):
-    expected = {pack.MESH + '/' + name: digest for name, digest in profile['inputSha256'].items()}
-    routes = static_routes(plans, expected.keys())
-    if any(pack.sha(files[source]) != expected[name] for name, source in routes.items()):
+    expected = profile['inputSha256']
+    paths = {name: f'{pack.MESH}/{name}' for name in expected}
+    routes = static_routes(plans, set(paths.values()))
+    payloads = {name: files[routes[path]] for name, path in paths.items()}
+    digests = {name: pack.sha(data) for name, data in payloads.items()}
+    changed = {name for name, digest in digests.items() if digest != expected[name]}
+    if not changed:
+        return digests, False
+    if changed != MALE_ENDPOINTS:
         raise ValueError('Core archive body and TRI bytes differ from the reviewed VR resource profile')
+    for name in sorted(MALE_ENDPOINTS):
+        anatomy_visibility.reviewed_visible_anatomy(payloads[name], expected[name])
+    return digests, True
