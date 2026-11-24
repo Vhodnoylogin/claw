@@ -285,7 +285,8 @@ class Mirrors:
             require(abs(stored - expected) <= 1e-5, f'{role} {name} differs from the pinned conversion: {stored}')
             coefficients[name] = stored
         return {'reference': actor['reference'], 'family': family, 'coefficients': coefficients,
-                'coat': self.claw(actor, 'GetAppliedCoatPattern', 'string')}
+                'coat': self.claw(actor, 'GetAppliedCoatPattern', 'string'),
+                'coatStatus': self.claw(actor, 'GetCoatPatternStatus', 'string')}
 
     def topology(self):
         self.guard('player')
@@ -307,8 +308,14 @@ class Mirrors:
         sample = observed.get('sample', {})
         require(observed['status'] == 'ready' and sample['actor'] == int(PLAYER, 16)
                 and sample['base'] == int(PLAYER_BASE, 16) and sample['race'] == int(SCENE['beastRace'], 16)
-                and sample['runtimeHandle'] == self.player['incarnation']['runtimeHandle'],
+                and sample['cell'] == int(self.cell, 16),
                 'Native topology does not identify the same player in Beast Form')
+        if 'runtimeHandle' in sample:
+            require(sample['runtimeHandle'] == self.player['incarnation']['runtimeHandle'],
+                    'The topology collector observed a different player handle')
+        # Schema 4 only includes a handle in human-control mode. The world
+        # observer independently brackets the collector in both modes.
+        require(self.guard('player')['race'] == SCENE['beastRace'], 'The player race changed during topology capture')
         world = sample['roots']['thirdPerson']
         roots = [item for item in sample['distinctRoots'] if item['id'] == world]
         require(world and len(roots) == 1 and any(roots[0]['roleGeometries']), 'No live CLAW wolf body in the world graph')
@@ -349,26 +356,28 @@ class Mirrors:
                 for check in ('IsDead', 'IsInCombat', 'IsOnMount')), 'The owned player cannot use Beast Form now')
         self.write('one ordinary Beast Form cast', lambda: self.pap('Spell', 'Cast', [form(PLAYER), None],
                                                                    'none', SCENE['beastPower']))
-        self.result['playerWolf'] = self.poll(lambda: self.ready_wolf('player'),
-                                              lambda row: row and row['coat'], 65,
+        self.result['playerWolf'] = self.poll(lambda: self.ready_wolf('player'), bool, 65,
                                               'Player did not settle after ordinary Beast Form')
+        self.save()
         require(self.guard('human')['race'] == SCENE['nordRace'], 'The human mirror was transformed by mistake')
         player_values = self.result['playerWolf']['coefficients']
         mirror_values = self.result['wolfMirror']['coefficients']
         require(all(abs(player_values[name] - mirror_values[name]) <= 1e-5 for name in self.case['expectedWolf']),
                 'Actual player and wolf mirror coefficients differ')
-        desired_coat = self.result['playerWolf']['coat']
-        if self.result['wolfMirror']['coat'] != desired_coat:
-            mirror = self.guard('wolf')
+        automatic = {key: self.result[key]['coat'] for key in ('playerWolf', 'wolfMirror')}
+        if not automatic['playerWolf'] or automatic['playerWolf'] != automatic['wolfMirror']:
+            desired_coat = automatic['playerWolf'] or automatic['wolfMirror']
             patterns = self.pap(CLAW, 'GetCoatPatterns', [], 'string[]')
             match = next((candidate for candidate in (desired_coat, desired_coat.split('/')[-1]) if candidate in patterns), None)
-            require(match is not None, 'The applied player coat is outside the installed manual catalog')
-            self.result['wolfMirrorAutomaticCoat'] = self.result['wolfMirror']['coat']
-            require(self.write('match the NPC mirror coat to the player', lambda: self.claw(
-                mirror, 'SetCoatPattern', 'bool', match)) is True, 'The mirror coat override was refused')
-            self.result['wolfMirror'] = self.poll(lambda: self.ready_wolf('wolf'),
-                                                  lambda row: row and row['coat'] == desired_coat, 15,
-                                                  'The mirror did not display the player coat')
+            require(match is not None, 'No matching coat is available in the installed manual catalog')
+            self.result['automaticCoats'] = {key: self.result[key].copy() for key in automatic}
+            for role, key in (('player', 'playerWolf'), ('wolf', 'wolfMirror')):
+                actor = self.guard(role)
+                require(self.write(f'{role}: apply shared inspection coat', lambda: self.claw(
+                    actor, 'SetCoatPattern', 'bool', match)) is True, f'{role}: shared coat request was refused')
+                self.result[key] = self.poll(lambda: self.ready_wolf(role), lambda row: row and row['coat'] == desired_coat,
+                                             15, f'{role}: the shared inspection coat was not applied')
+                self.save()
         self.topology()
         self.result['status'] = 'ready-for-headset-review'
         self.save()

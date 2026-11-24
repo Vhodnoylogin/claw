@@ -146,6 +146,12 @@ class DispatchControls(unittest.TestCase):
                     name: hashlib.sha256(archive.read(name)).hexdigest() for name in archive.namelist()
                 })
                 config = ET.fromstring(archive.read("fomod/ModuleConfig.xml"))
+                dependencies, = config.findall("moduleDependencies")
+                self.assertEqual(dependencies.get("operator"), "And")
+                self.assertEqual([node.attrib for node in dependencies], [
+                    {"file": "CLAW.esp", "state": "Active"},
+                    {"file": "vrik.esp", "state": "Active"},
+                ])
                 required = config.findall("requiredInstallFiles/file")
                 self.assertEqual(len(required), 7)
                 self.assertEqual({

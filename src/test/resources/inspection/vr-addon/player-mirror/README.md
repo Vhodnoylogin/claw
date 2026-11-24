@@ -55,8 +55,8 @@ the human mirror's race.
   a model update on all three subjects. Look down before the cast to see the
   human base. The normal CLAW conversion reads those inputs in Beast Form.
 - The live player and right-hand NPC must have the same nonzero CLAW and
-  RaceMenu wolf morph values. If automatic coat selection differs, match only
-  the NPC mirror to the player's installed coat and retain the original result.
+  RaceMenu wolf morph values. Record any difference in automatic coats before
+  applying one shared installed coat to both disposable subjects for comparison.
 - As the wolf, look down at the abdomen, chest, legs and hands. Compare their
   proportions with the wolf standing on the right and the human on the left.
   Sweep the head and hands across ordinary viewing angles. Record visible seams,
