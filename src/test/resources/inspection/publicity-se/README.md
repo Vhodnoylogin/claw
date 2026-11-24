@@ -71,14 +71,14 @@ lit pixels of a screenshot.
 
 ## Selected Elegant combinations
 
-The [review fixture](elegant-review.json) records the owner-reviewed donors
-for each portrait and a smaller set of actual combinations to photograph. The
-return trials are separate from the proposed palette. Run
+The [review fixture](elegant-review.json) records the owner-reviewed donors,
+the active combinations and the rejected combinations. The return trials are
+separate from the proposed palette. Run
 `PublicityElegantReview(session, appearance, batch).run('coat')` after the
 same QASmoke bootstrap. Run the `main` and `gisli` batches in separate
 disposable sessions. Use `review_pairs(batch)` to admit the exact bases and
-human races for each batch, plus WerewolfBeast. Eight pairs use Autotest's
-full sixteen-actor allowance in a single session.
+human races for each batch, plus WerewolfBeast. The seven pairs in `main` use
+fourteen of Autotest's sixteen actor slots.
 
 Use `review_projection(original_library)` from
 `publicity_elegant_review.py` to build the two review XMLs from the complete
@@ -90,6 +90,19 @@ and Maned for the fur. The Anwen comparisons keep the same head and fur and
 change only the body. Before and after each capture, the scene verifies all
 twelve materials and records their alpha. A neutral fill stays fixed for the
 whole series. Original files and captures stay local.
+
+For the separate red hair study, call `build_hair_fixture(master, target)` in
+`publicity_red_hair_review.py` with the installed `Skyrim.esm` and stage the
+generated `test_CLAWAnwenRedHair.esp` in a disposable TEST SE profile. Keep
+the standard Randomized coat mapping, and admit only the base and race from
+`red_hair_pair()` plus WerewolfBeast. Extract Anwen's stock `FACEGEN` member
+from the installed `Skyrim - Meshes0.bsa` and use `build_hair_facegen(source,
+target)` to update its baked hair colour. Stage it at `FACEGEN` in the same
+disposable profile. The fixture keeps the stock skin and mesh geometry. Run
+`PublicityRedHairReview(session, appearance).run('coat')` in QASmoke. The run
+checks both actors' rendered human colours, then verifies the automatically
+bound original-body and hair-region textures after both transformations of
+the same reference.
 
 ## Light-coat morph transfer
 

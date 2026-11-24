@@ -28,7 +28,7 @@
     "anwen": ["black", "timber-dark", "umber", "bean", "silver"]
   },
   "batches": {
-    "main": ["idgrod", "olda", "aia", "seren", "anwen", "argi", "ysolda", "sorli"],
+    "main": ["idgrod", "olda", "seren", "anwen", "argi", "ysolda", "sorli"],
     "gisli": ["gisli"]
   },
   "cases": {
@@ -39,16 +39,24 @@
       {"id": "gisli", "subject": "gisli", "body": "valley-white", "fur": "timber-sand"},
       {"id": "sorli", "subject": "sorli", "body": "valley-white", "fur": "grey"},
       {"id": "idgrod", "subject": "idgrod", "body": "timber-sand", "fur": "ashen"},
-      {"id": "aia", "subject": "aia", "body": "dust", "fur": "ashen"},
       {"id": "seren", "subject": "seren", "body": "coal", "fur": "ashen"},
       {"id": "anwen", "subject": "anwen", "body": "black", "fur": "ashen"}
     ],
     "return-trials": [
-      {"id": "argi-hyena-spotted", "subject": "argi", "body": "valley-grey", "fur": "hyena-spotted"},
-      {"id": "idgrod-spirit", "subject": "idgrod", "body": "spirit", "fur": "spirit"},
       {"id": "anwen-timber-rock", "subject": "anwen", "body": "timber-rock", "fur": "ashen"},
-      {"id": "seren-tundra", "subject": "seren", "body": "tundra", "fur": "ashen"},
       {"id": "anwen-valley-black", "subject": "anwen", "body": "valley-black", "fur": "ashen"}
     ]
+  },
+  "rejectedCombinations": [
+    {"id": "aia", "subject": "aia", "body": "dust", "fur": "ashen"},
+    {"id": "argi-hyena-spotted", "subject": "argi", "body": "valley-grey", "fur": "hyena-spotted"},
+    {"id": "idgrod-spirit", "subject": "idgrod", "body": "spirit", "fur": "spirit"},
+    {"id": "seren-tundra", "subject": "seren", "body": "tundra", "fur": "ashen"}
+  ],
+  "redHairStudy": {
+    "subject": "anwen",
+    "hair": [140, 33, 43],
+    "automaticBody": "elegant-2k-2.1/timber-dark",
+    "automaticHair": "elegant-2k-2.1/brown"
   }
 }

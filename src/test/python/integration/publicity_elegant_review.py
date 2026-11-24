@@ -17,7 +17,10 @@ CATALOG_ID = 'elegant-review'
 def review_data():
     review = json.loads(REVIEW.read_bytes())
     cases = [case for group in review['cases'].values() for case in group]
-    require(len(cases) == len({case['id'] for case in cases}), 'Duplicate Elegant review case')
+    ids = {case['id'] for case in cases}
+    rejected = {case['id'] for case in review['rejectedCombinations']}
+    require(len(cases) == len(ids), 'Duplicate Elegant review case')
+    require(ids.isdisjoint(rejected), 'Rejected Elegant combination is still active')
     return review, cases
 
 
