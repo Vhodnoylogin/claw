@@ -67,6 +67,14 @@ admission. Missing observations are an error. A configured rig is separate from
 its measured movement and from any anatomy collision implementation; the
 original combined XML contains no collision shapes.
 
+An owned SE launcher can collect these observations with
+`male12_configuration_trial.run(session, xml_bytes, nonce=...)` after confirming
+the winning assets and native modules and enabling the restrained QASmoke
+fixture. Keep the actor and world active until the collector reaches the
+900-pair boundary of the same schema-4 window. The outer launcher handles
+fixture disposal and process teardown, including any unacknowledged arm.
+This callback verifies configuration. Apply a separate stimulus for motion.
+
 ## Reciprocal FSMP contact fixture
 
 Use the installed Spriggit 0.41.0 translation to deserialize
