@@ -205,6 +205,9 @@ class RegionalScene:
             return inspect_discrete_regions(audit, pair, skin_paths, skin_paths)
         return inspect_regions(audit, pair, skin_paths)
 
+    def prepare_human(self, pair, actor, audit):
+        return verify_human(audit, pair)
+
     def create(self, pair, role, actor, lane, y):
         self.session.state['activeSemanticCommandId'] = 'preview-create-' + actor
         request = {'tag': actor, 'base': pair['base'], 'forwardGameUnits': lane[0],
@@ -212,7 +215,8 @@ class RegionalScene:
         self.data['actors'][actor] = self.mutate('create ' + actor, lambda: self.fixture.create(
             self.session, request, self.deadline(), self.policy))
         observed = self.guard(actor)['actor']
-        require(observed['race'] == pair['race'] and observed['sex'] == 'female', 'Human identity differs: ' + actor)
+        require(observed['race'] == pair['race'] and observed['sex'] == pair.get('sex', 'female'),
+                'Human identity differs: ' + actor)
         self.poll(lambda: self.claw(actor, 'GetAppearanceStatus'), lambda value: value == 'human colours captured',
                   12, 'Human colour source was not captured: ' + actor)
         self.place(actor, y, pin=True)
@@ -224,7 +228,7 @@ class RegionalScene:
         audit = self.audit(actor)
         self.data['rawAudits'][actor] = {'human': audit}
         self.save()
-        self.data['humanInputs'][actor] = verify_human(audit, pair)
+        self.data['humanInputs'][actor] = self.prepare_human(pair, actor, audit)
         if role == 'Wolf':
             self.unequip(actor, pair['inventory'], remove=True)
 

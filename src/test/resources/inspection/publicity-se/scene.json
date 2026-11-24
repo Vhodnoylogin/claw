@@ -1,0 +1,52 @@
+{
+  "coatPalette": "../regional-coats/pairs.json",
+  "blackGate": {
+    "controlPalette": "../regional-coats/skin-pairs.json",
+    "controlBase": "0x00013386",
+    "permittedPattern": "elegant-2k-2.1/valley-black",
+    "hairFallback": "elegant-2k-2.1/valley-grey"
+  },
+  "stage": {
+    "humanY": 1680.0,
+    "wolfY": 1780.0,
+    "cameraX": -2410.0,
+    "cameraZ": 7064.4501953125,
+    "lighting": {
+      "plugin": "test_CLAWInspectionLighting.esp",
+      "references": [2049, 2050, 2051],
+      "modes": {
+        "room": [],
+        "single-fill": [2051],
+        "full-fill": [2049, 2050, 2051]
+      }
+    }
+  },
+  "morphComparison": {
+    "coat": "elegant-2k-2.1/valley-white",
+    "ownerKey": "CLAW.PhotoComparison",
+    "families": {
+      "himbo": {
+        "base": "0x0001347D",
+        "race": "0x00013746",
+        "sex": "male",
+        "weight": 100.0,
+        "inventory": ["0x00036A40", "0x0001397E", "0x00013790", "0x001046D1"],
+        "profile": "CLAW.HIMBO.5.8.Geometry1",
+        "human": {"TorsoBelly": 1.0, "TorsoShoulderInc": 1.0, "ArmsBiceps": 1.0, "ArmsBicepsBack": 1.0},
+        "wolf": {"CLAWTorsoBellyRound": 0.56, "CLAWTorsoShoulderGirth": 0.37971003,
+                 "CLAWArmBiceps": 0.517305242, "CLAWArmTriceps": 0.478203688}
+      },
+      "cbbe": {
+        "base": "0x000CAB2F",
+        "race": "0x00013746",
+        "sex": "female",
+        "weight": 50.0,
+        "inventory": ["0x0001397D", "0x00013985"],
+        "profile": "CLAW.CBBE.2.0.3.Geometry1",
+        "human": {"Breasts": 0.8, "Hips": 1.0, "Thighs": 1.0, "ChubbyLegs": 0.5, "Butt": 0.8},
+        "wolf": {"CLAWTorsoBreastSize": 1.0, "CLAWTorsoFlankWidth": 0.2583189,
+                 "CLAWLegThighGirth": 0.58686755, "CLAWLegCalfGirth": 0.4270922}
+      }
+    }
+  }
+}
