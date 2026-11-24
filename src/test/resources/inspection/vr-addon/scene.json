@@ -1,0 +1,79 @@
+{
+  "schema": "claw-vr-addon-inspection/1",
+  "targetAddonVersion": "0.5.0",
+  "session": {
+    "edition": "Skyrim VR",
+    "instanceRole": "TEST VR",
+    "sourceProfile": "CLAW VR",
+    "startMode": "new-game",
+    "cellEditorId": "RealmLorkhan",
+    "referenceRunCellForm": "0x0A01A5C6",
+    "player": "0x00000014",
+    "playerBase": "0x00000007",
+    "humanRace": "0x00013746",
+    "wolfRace": "0x000CDD84",
+    "normalBeastForm": "0x00092C48",
+    "initializerQuest": "0x0004B2D9",
+    "initializerRunningStage": 1,
+    "startupEffectForms": ["0x00092C45", "0x000F8209"],
+    "floorAnchor": "first stable standing player root in the admitted Realm cell",
+    "hands": ["LeftWandNode", "RightWandNode"],
+    "unknownWriteOutcome": "retire the disposable session and inspect the retained ledger"
+  },
+  "humanCases": [
+    {"id": "male-human-reference", "sex": "male", "humanFamily": "Vanilla", "weight": 0},
+    {"id": "female-human-reference", "sex": "female", "humanFamily": "Vanilla", "weight": 0},
+    {"id": "male-morph-contrast", "sex": "male", "humanFamily": "HIMBO", "weight": 70},
+    {"id": "female-morph-contrast", "sex": "female", "humanFamily": "CBBE", "weight": 70}
+  ],
+  "checkpoints": [
+    "human-visible-and-source-recorded",
+    "real-beast-form-post-effects",
+    "headset-body-and-tracking",
+    "effective-morphs-and-materials",
+    "contact-and-motion-as-selected",
+    "human-return-and-cleanup"
+  ],
+  "layerRuns": [
+    {"id": "core-control", "body": false, "contact": false, "tailMotion": false},
+    {"id": "static-body", "body": true, "contact": false, "tailMotion": false},
+    {"id": "body-contact", "body": true, "contact": true, "tailMotion": false},
+    {"id": "body-tail-motion", "body": true, "contact": false, "tailMotion": true},
+    {"id": "body-contact-and-tail-motion", "body": true, "contact": true, "tailMotion": true}
+  ],
+  "providerProfiles": [
+    {"id": "stock", "vrik": false, "higgs": false, "referenceRuns": ["20261120-035616-9914ee", "20261124-121054-310858"]},
+    {"id": "vrik", "vrik": true, "higgs": false, "referenceRuns": ["20261120-032311-3fcac0"]},
+    {"id": "vrik-higgs", "vrik": true, "higgs": true, "referenceRuns": ["20261124-005927-321659"]},
+    {"id": "higgs", "vrik": false, "higgs": true, "referenceRuns": []}
+  ],
+  "contact": {
+    "referenceBank": "vr-detailed-whole-body-v1",
+    "referenceBankSlots": 128,
+    "holdOrder": ["unattached", "near", "far", "near-again", "detached"],
+    "morphHoldOrder": ["baseline", "morphed", "returned"],
+    "referenceMarginGu": 0.75,
+    "referenceWandSphere": {"node": "LeftWandNode", "localCenterGu": [0, -6, -2], "localRadiusGu": 3},
+    "targets": [
+      {"id": "left-ear", "owner": ["NPC EarL [EarL]Bone01", "NPC EarL [EarL]Bone02"], "referenceSlots": [88, 95], "automatedIsolatedProbe": "first-owner-only"},
+      {"id": "right-ear", "owner": ["NPC EarR [EarR]Bone01", "NPC EarR [EarR]Bone02"], "referenceSlots": [96, 103], "automatedIsolatedProbe": "missing"},
+      {"id": "muzzle", "owner": ["NPC Head [Head]"], "referenceSlots": [20, 29], "automatedIsolatedProbe": "missing"},
+      {"id": "chest", "owner": ["NPC Spine2 [Spn2]"], "referenceSlots": [12, 19], "automatedIsolatedProbe": "missing"},
+      {"id": "female-chest", "owner": ["NPC L Breast P1", "NPC R Breast P1"], "referenceSlots": [120, 127], "sex": "female", "automatedIsolatedProbe": "missing"},
+      {"id": "tail", "owner": ["TailBone01", "TailBone02", "TailBone03", "TailBone05"], "referenceSlots": [104, 119], "automatedIsolatedProbe": "second-owner-only"}
+    ]
+  },
+  "repoSources": {
+    "bodyBuilder": "src/main/components/vr-body/build.py",
+    "splitBodyFixture": "src/test/components/vr-body/stage_player_armor.py",
+    "splitBodyProbe": "src/test/components/vr-body/probe_player_dispatch.py",
+    "splitBodyReplay": "src/test/components/vr-body/verify_dispatch_markers.py",
+    "handsReplay": "src/test/components/vr-body/hands33_readback.py",
+    "torsoReplay": "src/test/components/vr-body/avatar_torso.py",
+    "earReplay": "src/test/components/vr-body/avatar_ear_stereo.py",
+    "capsuleWaypoints": "src/test/components/contact-profiles/retarget_player_contact.py",
+    "playerContactReplay": "src/test/components/contact-profiles/verify_player_contact.py",
+    "morphContactReplay": "src/test/components/contact-profiles/verify_player_morph_contact.py",
+    "nativeTailMotionGuide": "src/test/python/integration/fsmp_probe.md"
+  }
+}
