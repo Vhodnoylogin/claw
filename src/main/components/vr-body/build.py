@@ -17,6 +17,7 @@ HERE = Path(__file__).resolve().parent
 sys.path[:0] = [str(HERE), str(ROOT/'src/main/python/vr'), str(ROOT/'src/main/python/build-tools')]
 import body_resource as resource
 import core_archive
+from core_package_input import core_version
 import head_split
 import head_isolation as isolation
 import neck_bounds
@@ -270,7 +271,7 @@ def build(body_root, skeleton_path, output, pynifly, morphbench, reference_mod, 
         pack = core_archive.open_tools(core_archive.PACKAGER)
         files, plans, provenance = core_archive.read_core_archive(pack, core_archive_path, receipt_path=runtime_receipt)
         core_archive.require_reviewed_body(pack, files, plans, profile)
-        source_version = core_archive.core_version(files)
+        source_version = core_version(files)
         inputs.update(provenance)
     if any(resource.sha256(p) != h for p, h in inputs.items()): raise ValueError('Current source body/TRI/skeleton pin differs')
     proof = reference_proof(reference_mod, profile['reference'])

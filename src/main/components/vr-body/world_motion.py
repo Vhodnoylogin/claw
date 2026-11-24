@@ -9,8 +9,9 @@ import xml.etree.ElementTree as ET
 
 from vr_dispatch import LEGACY_ALIAS, ROOT, SEXES, require_static_nif, resource_paths
 from body_resource import bodytri, read_json, safe_output, visible_by_hidden_flags
-from core_archive import (CORE_INPUT_SOURCE, PACKAGER, core_version, open_tools, read_core_archive,
-                          require_reviewed_body, static_routes)
+from core_archive import (CORE_INPUT_SOURCE, PACKAGER, open_tools, read_core_archive, require_reviewed_body,
+                          static_routes)
+from core_package_input import core_version
 
 PHYSICS = ROOT / "src/main/python/physics"
 sys.path.insert(0, str(PHYSICS))

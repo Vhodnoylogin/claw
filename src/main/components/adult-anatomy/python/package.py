@@ -344,6 +344,7 @@ def build(*, core_archive, neutral, combined, out, core_receipt=None):
         receipt = resource.parse_json(inputs.read(core_receipt).decode('utf-8-sig'))
         require(isinstance(receipt, dict), 'Expected an object in the core build receipt')
     core, core_plans = core_input.read_core_package(package, core_bytes, receipt=receipt, known_digest=CORE_SHA)
+    core_version = core_input.core_version(core)
     require_compatible_core(core, core_plans)
     drivers = tuple(node for group in json.loads(sources[paths[5]])['groups'] for node in group['nodes'])
     base, visibility = build_core(core, visuals)
@@ -371,6 +372,7 @@ def build(*, core_archive, neutral, combined, out, core_receipt=None):
     archive_bytes = package.zip_bytes(entries)
     reopened_base, reopened = (package.read_zip(x) for x in (base_archive_bytes, archive_bytes))
     require(reopened_base == base and reopened == entries, 'Serialized candidate archives differ')
+    require(core_input.core_version(reopened_base) == core_version, 'Companion core installer version changed')
     plans = audit(reopened, reopened_base, core, package, reader)
     output = Path(out).resolve()
     require(not output.exists() and not any(part.casefold() in ('mods', 'data', 'overwrite', 'downloads') for part in output.parts)
@@ -398,6 +400,7 @@ def build(*, core_archive, neutral, combined, out, core_receipt=None):
               'literalDefault': default_selection(reopened, reader),
               'explicitVariantPayloads': {name: sha(data) for name, data in reopened.items() if name.endswith(('.nif', '.xml')) and not name.startswith('fomod/')},
               'sharedCoreTriSha256': TRI_SHA, 'coreMaleMotionSha256': MALE_FSMP_XML_SHA,
+              'coreVersion': core_version,
               'coreSourceCommit': receipt['sourceCommit'] if receipt is not None else None,
               'installed': False, 'gameStarted': False,
               'runtimeQualified': False, 'renderedAppearanceQualified': False, 'contactQualified': False,
@@ -418,6 +421,6 @@ if __name__ == '__main__':
     try:
         result = build(**vars(args))
         print(json.dumps({'status': result['status'], 'archive': result['archive'], 'baseArchive': result['baseArchive'], 'plans': result['planCount']}))
-    except (OSError, ValueError, KeyError, TypeError) as error:
+    except (OSError, ValueError, KeyError, TypeError, ET.ParseError) as error:
         print(str(error), file=sys.stderr)
         raise SystemExit(2)

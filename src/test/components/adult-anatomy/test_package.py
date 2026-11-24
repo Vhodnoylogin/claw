@@ -131,6 +131,14 @@ class ActualCandidatePackage(unittest.TestCase):
         self.assertEqual(self.report['retainedMotionResult']['result'], 'failed')
         self.assertFalse(any(name.endswith(('.dll', '.pex', '.esp', '.tri', '.dds', '.py')) for name in self.entries))
 
+    def test_companion_and_report_keep_the_input_core_version_and_native_binary(self):
+        version = ET.fromstring(self.core['fomod/info.xml']).findtext('Version')
+        self.assertTrue(version)
+        self.assertEqual(self.report['coreVersion'], version)
+        self.assertEqual(ET.fromstring(self.base['fomod/info.xml']).findtext('Version'), version)
+        binary = '10 Native/SKSE/Plugins/CLAWDistribution.dll'
+        self.assertEqual(self.base[binary], self.core[binary])
+
     def test_explicit_static_anatomy_restores_original_appearance_and_preserves_core_fsmp(self):
         selected = p.selection(self.entries, 'off', self.reader, core_motion='fsmp')
         # Equal core endpoints/armor routes share archive members. Read their

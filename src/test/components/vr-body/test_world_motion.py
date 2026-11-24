@@ -12,7 +12,8 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "src/main/components/vr-body"))
 from vr_dispatch import ADDON, LEGACY_ALIAS, SEXES, fixed_profile_xml, resource_paths
-from core_archive import core_version, read_core_archive, require_reviewed_body, static_routes
+from core_archive import read_core_archive, require_reviewed_body, static_routes
+from core_package_input import core_version
 from world_motion import alias_member
 
 

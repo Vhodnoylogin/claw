@@ -2,6 +2,15 @@
 from __future__ import annotations
 
 import re
+from xml.etree import ElementTree as ET
+
+
+def core_version(files):
+    versions = ET.fromstring(files['fomod/info.xml']).findall('Version')
+    version = (versions[0].text or '').strip() if len(versions) == 1 else ''
+    if not version:
+        raise ValueError('Expected one version in the core installer info')
+    return version
 
 
 def read_core_package(pack, raw, *, receipt=None, known_digest=None):
